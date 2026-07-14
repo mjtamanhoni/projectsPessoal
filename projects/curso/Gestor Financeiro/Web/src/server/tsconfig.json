@@ -1,0 +1,80 @@
+{
+  "compilerOptions": {
+    // ===============================================================
+    // COMPILAÇÃO
+    // ===============================================================
+
+    //Versão do ECMAScript alvo (2022 = mais recente)
+    //ES2022 suporta async/await nativo, optional chaining, etc.
+    "target": "ES2022",
+
+    // Sistema de módulos (ComonJS = padrão do Node.js)
+    // CommonJS = require/module.exports (padrão do Node.js)
+    // ES2020 = import/export (mais completo)
+    "module": "commonjs",
+
+    //Biblioteca padrão do TypeScript (ES2022 = mais recente)
+    // ES2022 inclui: Promise, Array, Object, Map, Set, est.
+    "lib": ["ES2022"],
+
+    // ==========================================================
+    // SAÍDA
+    // ==========================================================
+
+    //Diretório de saída dos arquivos .js compilados
+    "outDir": "./dist",
+
+    // =========================
+    // VERIFICAÇÕES
+    // =========================
+
+    // Modo estrito (RECOMENDADO para todos os projetos)
+    // Habilita a verificação de tipos estrita
+    "strict": true,
+
+    // Pula a verificação de tipos em blibliotecas de terceiros
+    // Acelera a compilação
+    "skipLibCheck": true,
+
+    // Força consistência de maiúsculas e minúsculas nos nomes de arquivos
+    // Impede erros por "Arquivos.ts" vx "arquivos.ts"
+    "forceConsistentCasingInFileNames": true,
+
+    // ===========================
+    // FUNCIONABILIDADES
+    // ===========================
+
+    // Permite importações de módulos sem extensões de arquivo
+    // Permite importar módulos ES em CommonJS
+    // Necessário para: import express from 'express'
+    "esModuleInterop": true,
+
+    // Permite importar arquivos JSON como módulos
+    // Util para outros projetos consumirem este código
+    "resolveJsonModule": true,
+
+    // ==========================
+    // GERAÇÃO DE ARQUIVOS
+    // ==========================
+
+    // Gera arquivos de declaração de tipos (.d.ts) para os arquivos TypeScript
+    // Util para outros projetos consumirem esse código
+    "declaration": true,
+
+    // Gera mapas de declaração (para debugging)
+    // Ajuda a mapear erros para o código original
+    "declarationMap": true,
+
+    // Gera source maps
+    // Permite debug do código original no navegador/ferramentas
+    "sourceMap": true,
+
+    //Pasta raiz dos arquivos TypeScript
+    "rootDir": "./src",
+    //Gera sourcemaps (para debugging)
+  },
+  //Arquivos typeScript a serem incluídos na compilação
+  "include": ["src"],
+  //arquivos/pastas a serem excluídos da compilação
+  "exclude": ["node_modules", "dist"]
+}
