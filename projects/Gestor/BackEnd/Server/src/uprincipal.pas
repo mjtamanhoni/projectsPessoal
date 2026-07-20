@@ -21,6 +21,8 @@ type
     constructor Create(AOwner: TForm1);
   end;
 
+	{ TForm1 }
+
   TForm1 = class(TForm)
     btRefresh: TButton;
     btConfig: TButton;

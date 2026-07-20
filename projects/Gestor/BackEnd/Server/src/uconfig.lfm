@@ -254,6 +254,7 @@ object Form2: TForm2
       Align = alRight
       Caption = 'btnCancelar'
       TabOrder = 0
+      OnClick = btnCancelarClick
     end
     object btnSalvar: TButton
       Left = 423
@@ -263,6 +264,7 @@ object Form2: TForm2
       Align = alRight
       Caption = 'btnSalvar'
       TabOrder = 1
+      OnClick = btnSalvarClick
     end
   end
 end

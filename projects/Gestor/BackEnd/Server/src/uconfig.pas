@@ -9,6 +9,9 @@ uses
   IniFiles;
 
 type
+
+	{ TForm2 }
+
   TForm2 = class(TForm)
     btnExibirSenha: TButton;
     btnSelecionarDLL: TButton;

@@ -22,8 +22,8 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="uPrincipal"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="224"/>
-        <CursorPos X="48" Y="245"/>
+        <TopLine Value="197"/>
+        <CursorPos X="3" Y="201"/>
         <UsageCount Value="60"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -36,8 +36,8 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="uConfig"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="93"/>
-        <CursorPos X="14" Y="3"/>
+        <TopLine Value="31"/>
+        <CursorPos X="31" Y="99"/>
         <UsageCount Value="60"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -113,10 +113,6 @@
       </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
-      <Position>
-        <Filename Value="urotas.pas"/>
-        <Caret Line="3277" TopLine="3260"/>
-      </Position>
       <Position>
         <Filename Value="urotas.pas"/>
         <Caret Line="3338" Column="17" TopLine="3328"/>
@@ -232,6 +228,10 @@
       <Position>
         <Filename Value="uprincipal.pas"/>
         <Caret Line="161" Column="70" TopLine="143"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="244" Column="52" TopLine="225"/>
       </Position>
     </JumpHistory>
     <RunParams>
