@@ -1,0 +1,268 @@
+object Form2: TForm2
+  Left = 350
+  Height = 425
+  Top = 250
+  Width = 588
+  Caption = 'Form2'
+  ClientHeight = 425
+  ClientWidth = 588
+  LCLVersion = '4.4.0.0'
+  object pnBancoDados: TPanel
+    Left = 0
+    Height = 144
+    Top = 0
+    Width = 588
+    Align = alTop
+    BevelOuter = bvNone
+    BorderWidth = 5
+    ClientHeight = 144
+    ClientWidth = 588
+    TabOrder = 0
+    object Panel1: TPanel
+      Left = 5
+      Height = 33
+      Top = 5
+      Width = 578
+      Align = alTop
+      BevelOuter = bvNone
+      BorderWidth = 5
+      ClientHeight = 33
+      ClientWidth = 578
+      TabOrder = 0
+      object Label1: TLabel
+        Left = 5
+        Height = 23
+        Top = 5
+        Width = 34
+        Align = alLeft
+        Caption = 'Label1'
+        Layout = tlCenter
+      end
+      object Label5: TLabel
+        Left = 322
+        Height = 23
+        Top = 5
+        Width = 34
+        Align = alRight
+        Caption = 'Label5'
+        Layout = tlCenter
+      end
+      object edtServidor: TEdit
+        Left = 39
+        Height = 23
+        Top = 5
+        Width = 217
+        Align = alLeft
+        TabOrder = 0
+        Text = 'edtServidor'
+      end
+      object edtPorta: TEdit
+        Left = 356
+        Height = 23
+        Top = 5
+        Width = 217
+        Align = alRight
+        TabOrder = 1
+        Text = 'edtPorta'
+      end
+    end
+    object Panel2: TPanel
+      Left = 5
+      Height = 33
+      Top = 38
+      Width = 578
+      Align = alTop
+      BevelOuter = bvNone
+      BorderWidth = 5
+      ClientHeight = 33
+      ClientWidth = 578
+      TabOrder = 1
+      object Label2: TLabel
+        Left = 5
+        Height = 23
+        Top = 5
+        Width = 34
+        Align = alLeft
+        Caption = 'Label2'
+        Layout = tlCenter
+      end
+      object edtBancoDados: TEdit
+        Left = 39
+        Height = 23
+        Top = 5
+        Width = 217
+        Align = alLeft
+        TabOrder = 0
+        Text = 'edtBancoDados'
+      end
+    end
+    object Panel3: TPanel
+      Left = 5
+      Height = 33
+      Top = 104
+      Width = 578
+      Align = alTop
+      BevelOuter = bvNone
+      BorderWidth = 5
+      ClientHeight = 33
+      ClientWidth = 578
+      TabOrder = 2
+      object Label4: TLabel
+        Left = 5
+        Height = 23
+        Top = 5
+        Width = 34
+        Align = alLeft
+        Caption = 'Label4'
+        Layout = tlCenter
+      end
+      object edtDLLPath: TEdit
+        Left = 39
+        Height = 23
+        Top = 5
+        Width = 217
+        Align = alLeft
+        TabOrder = 0
+        Text = 'edtDLLPath'
+      end
+      object btnSelecionarDLL: TButton
+        Left = 522
+        Height = 23
+        Top = 5
+        Width = 51
+        Align = alRight
+        Caption = 'btnSelecionarDLL'
+        TabOrder = 1
+      end
+    end
+    object Panel4: TPanel
+      Left = 5
+      Height = 33
+      Top = 71
+      Width = 578
+      Align = alTop
+      BevelOuter = bvNone
+      BorderWidth = 5
+      ClientHeight = 33
+      ClientWidth = 578
+      TabOrder = 3
+      object Label3: TLabel
+        Left = 5
+        Height = 23
+        Top = 5
+        Width = 34
+        Align = alLeft
+        Caption = 'Label3'
+        Layout = tlCenter
+      end
+      object Label6: TLabel
+        Left = 271
+        Height = 23
+        Top = 5
+        Width = 34
+        Align = alRight
+        Caption = 'Label6'
+        Layout = tlCenter
+      end
+      object edtUsuario: TEdit
+        Left = 39
+        Height = 23
+        Top = 5
+        Width = 217
+        Align = alLeft
+        TabOrder = 0
+        Text = 'edtUsuario'
+      end
+      object edtSenha: TEdit
+        Left = 305
+        Height = 23
+        Top = 5
+        Width = 217
+        Align = alRight
+        TabOrder = 1
+        Text = 'edtSenha'
+      end
+      object btnExibirSenha: TButton
+        Left = 522
+        Height = 23
+        Top = 5
+        Width = 51
+        Align = alRight
+        Caption = 'btnExibirSenha'
+        TabOrder = 2
+      end
+    end
+  end
+  object pnServer: TPanel
+    Left = 0
+    Height = 50
+    Top = 144
+    Width = 588
+    Align = alTop
+    BevelOuter = bvNone
+    BorderWidth = 5
+    ClientHeight = 50
+    ClientWidth = 588
+    TabOrder = 1
+    object Panel5: TPanel
+      Left = 5
+      Height = 33
+      Top = 5
+      Width = 578
+      Align = alTop
+      BevelOuter = bvNone
+      BorderWidth = 5
+      ClientHeight = 33
+      ClientWidth = 578
+      TabOrder = 0
+      object Label7: TLabel
+        Left = 5
+        Height = 23
+        Top = 5
+        Width = 34
+        Align = alLeft
+        Caption = 'Label2'
+        Layout = tlCenter
+      end
+      object edServer_Port: TEdit
+        Left = 39
+        Height = 23
+        Top = 5
+        Width = 217
+        Align = alLeft
+        TabOrder = 0
+        Text = 'Edit3'
+      end
+    end
+  end
+  object pnFooter: TPanel
+    Left = 0
+    Height = 44
+    Top = 381
+    Width = 588
+    Align = alBottom
+    BevelOuter = bvNone
+    BorderWidth = 5
+    ClientHeight = 44
+    ClientWidth = 588
+    TabOrder = 2
+    object btnCancelar: TButton
+      Left = 503
+      Height = 34
+      Top = 5
+      Width = 80
+      Align = alRight
+      Caption = 'btnCancelar'
+      TabOrder = 0
+    end
+    object btnSalvar: TButton
+      Left = 423
+      Height = 34
+      Top = 5
+      Width = 80
+      Align = alRight
+      Caption = 'btnSalvar'
+      TabOrder = 1
+    end
+  end
+end

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <PathDelim Value="\"/>
+    <General>
+      <SessionStorage Value="InProjectDir"/>
+      <Title Value="Gestor.Server"/>
+      <Scaled Value="True"/>
+      <ResourceType Value="res"/>
+      <UseXPManifest Value="True"/>
+      <XPManifest>
+        <DpiAware Value="True"/>
+      </XPManifest>
+      <Icon Value="0"/>
+    </General>
+    <BuildModes>
+      <Item Name="Default" Default="True"/>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+    <RunParams>
+      <FormatVersion Value="2"/>
+    </RunParams>
+    <RequiredPackages>
+      <Item>
+        <PackageName Value="zcomponentdesign"/>
+      </Item>
+      <Item>
+        <PackageName Value="zcomponent"/>
+      </Item>
+      <Item>
+        <PackageName Value="LCL"/>
+      </Item>
+    </RequiredPackages>
+    <Units>
+      <Unit>
+        <Filename Value="Gestor.Server.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uprincipal.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form1"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="uPrincipal"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uconfig.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form2"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="uConfig"/>
+      </Unit>
+      <Unit>
+        <Filename Value="udm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="DataModule1"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="DataModule"/>
+        <UnitName Value="uDm"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ubase.functions.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uBase.Functions"/>
+      </Unit>
+      <Unit>
+        <Filename Value="udatabase.manager.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uDataBase.Manager"/>
+      </Unit>
+      <Unit>
+        <Filename Value="urotas.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uRotas"/>
+      </Unit>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="..\Lib\Gestor.Server"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="C:\lazarus\components\Horse\horse-master\src\;C:\lazarus\components\Horse\handle-exception-master\src\;C:\lazarus\components\Horse\horse-basic-auth-master\src\;C:\lazarus\components\Horse\horse-compression-master\src\;C:\lazarus\components\Horse\horse-cors-master\src\;C:\lazarus\components\Horse\horse-jwt-master\src\;C:\lazarus\components\Horse\horse-logger-lumberjack\src\;C:\lazarus\components\Horse\horse-octet-stream-master\src\;C:\lazarus\components\Horse\jhonson-master\src\;C:\lazarus\components\Horse\delphi-jose-jwt-master\Source\Common\;C:\lazarus\components\Horse\delphi-jose-jwt-master\Source\JOSE\"/>
+      <UnitOutputDirectory Value="Temp\$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf3"/>
+        <UseExternalDbgSyms Value="True"/>
+      </Debugging>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
+    </Linking>
+  </CompilerOptions>
+  <Debugging>
+    <Exceptions>
+      <Item>
+        <Name Value="EAbort"/>
+      </Item>
+      <Item>
+        <Name Value="ECodetoolError"/>
+      </Item>
+      <Item>
+        <Name Value="EFOpenError"/>
+      </Item>
+    </Exceptions>
+  </Debugging>
+</CONFIG>

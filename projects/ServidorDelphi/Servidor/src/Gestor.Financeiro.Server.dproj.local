@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2026/02/06 10:08:11.000.989,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Unit1.pas</Transaction>
+    <Transaction>2026/02/06 11:52:23.000.700,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Unit1.pas</Transaction>
+    <Transaction>2026/02/06 14:43:52.000.524,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Unit1.pas</Transaction>
+    <Transaction>2026/05/22 06:19:09.000.795,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Unit1.pas</Transaction>
+    <Transaction>2026/05/22 06:20:06.000.619,E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\uPrincipal.dfm=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Unit1.dfm</Transaction>
+    <Transaction>2026/05/22 06:20:06.000.619,E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\uPrincipal.pas=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Unit1.pas</Transaction>
+    <Transaction>2026/05/22 06:20:18.000.032,E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\Gestor.Financeiro.Server.dproj=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Project1.dproj</Transaction>
+    <Transaction>2026/05/22 06:21:58.000.172,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Global\uDm.pas</Transaction>
+    <Transaction>2026/05/22 06:22:15.000.131,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Global\Funcoes\uBase.Functions.pas</Transaction>
+    <Transaction>2026/05/22 07:04:39.000.888,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\Unit1.pas</Transaction>
+    <Transaction>2026/05/22 07:04:49.000.306,E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\Unit1.pas=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\uRotas.pas</Transaction>
+    <Transaction>2026/05/22 07:04:53.000.576,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\Unit1.pas</Transaction>
+    <Transaction>2026/05/22 07:08:42.000.555,E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\Unit1.pas=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Servidor\src\uDataBase.Manager.pas</Transaction>
+    <Transaction>2026/05/26 20:29:35.000.466,=E:\Adapta\Desenvolvimento\Projetos Conesoft\Adapta\Pessoal\Gestor Financeiro\Descktop\src\uConfig.pas</Transaction>
+  </Transactions>
+</BorlandProject>

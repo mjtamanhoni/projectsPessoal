@@ -1,0 +1,38 @@
+object DataModule1: TDataModule1
+  OldCreateOrder = False
+  Height = 391
+  HorizontalOffset = 350
+  VerticalOffset = 250
+  Width = 470
+  object ZConnection: TZConnection
+    ControlsCodePage = cCP_UTF8
+    Properties.Strings = (
+      'RawStringEncoding=DB_CP'
+    )
+    AutoCommit = False
+    TransactIsolationLevel = tiReadCommitted
+    DisableSavepoints = False
+    HostName = 'localhost'
+    Port = 5432
+    Database = 'emissor'
+    User = 'postgres'
+    Password = 'Cs@#1519'
+    Protocol = 'postgresql'
+    LibraryLocation = 'C:\Program Files\PostgreSQL\psqlODBC\bin\libpq.dll'
+    Left = 56
+    Top = 40
+  end
+  object ZTransaction: TZTransaction
+    Connection = ZConnection
+    AutoCommit = True
+    Left = 200
+    Top = 40
+  end
+  object ZQuery1: TZQuery
+    Connection = ZConnection
+    Transaction = ZTransaction
+    Params = <>
+    Left = 376
+    Top = 48
+  end
+end

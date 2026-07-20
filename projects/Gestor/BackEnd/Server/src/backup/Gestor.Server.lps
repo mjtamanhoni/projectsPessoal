@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="Gestor.Server.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="-1"/>
+        <CursorPos X="-1" Y="-1"/>
+        <UsageCount Value="60"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uprincipal.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form1"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="uPrincipal"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="224"/>
+        <CursorPos X="48" Y="245"/>
+        <UsageCount Value="60"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uconfig.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form2"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="uConfig"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="93"/>
+        <CursorPos X="14" Y="3"/>
+        <UsageCount Value="60"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="udm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="DataModule1"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="DataModule"/>
+        <UnitName Value="uDm"/>
+        <EditorIndex Value="2"/>
+        <CursorPos X="107" Y="10"/>
+        <UsageCount Value="60"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ubase.functions.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uBase.Functions"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="67"/>
+        <CursorPos X="28" Y="84"/>
+        <UsageCount Value="60"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="udatabase.manager.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uDataBase.Manager"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="10414"/>
+        <CursorPos X="9" Y="10431"/>
+        <UsageCount Value="60"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="urotas.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uRotas"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="6675"/>
+        <CursorPos X="27" Y="6680"/>
+        <UsageCount Value="60"/>
+        <Bookmarks Count="1">
+          <Item0 X="7" Y="1072" Left="1" Top="1053" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\components\Horse\horse-jwt-master\src\Horse.JWT.pas"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="616"/>
+        <CursorPos Y="633"/>
+        <UsageCount Value="16"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\components\Horse\delphi-jose-jwt-master\Source\JOSE.inc"/>
+        <EditorIndex Value="6"/>
+        <CursorPos X="5" Y="3"/>
+        <UsageCount Value="16"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\components\Horse\horse-master\src\Horse.Response.pas"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="424"/>
+        <CursorPos X="25" Y="441"/>
+        <UsageCount Value="14"/>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="3277" TopLine="3260"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="3338" Column="17" TopLine="3328"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="3830" Column="33" TopLine="3825"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="3843" Column="51" TopLine="3826"/>
+      </Position>
+      <Position>
+        <Filename Value="ubase.functions.pas"/>
+        <Caret Line="84" Column="28" TopLine="67"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="3837" Column="81" TopLine="3826"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="3835" Column="40" TopLine="3826"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="3836" Column="49" TopLine="3813"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="3848" Column="63" TopLine="3827"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="4145" Column="25" TopLine="4134"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="4958" TopLine="4946"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="5167" TopLine="5157"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="5743" Column="23" TopLine="5732"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="5946" Column="17" TopLine="5935"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="6105" TopLine="6088"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="6469" Column="29" TopLine="6457"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="6509" Column="21" TopLine="6504"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="6640" Column="29" TopLine="6627"/>
+      </Position>
+      <Position>
+        <Filename Value="urotas.pas"/>
+        <Caret Line="6680" Column="27" TopLine="6675"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="15" Column="13"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="19" Column="69"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="68" Column="9" TopLine="51"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="83" Column="15" TopLine="66"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="88" Column="57" TopLine="66"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="108" Column="18" TopLine="92"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="115" Column="60" TopLine="99"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="143" Column="54" TopLine="127"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="148" Column="70" TopLine="127"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="159" Column="45" TopLine="143"/>
+      </Position>
+      <Position>
+        <Filename Value="uprincipal.pas"/>
+        <Caret Line="161" Column="70" TopLine="143"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+  <Debugging>
+    <BreakPoints>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="udatabase.manager.pas"/>
+        <Line Value="1581"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="urotas.pas"/>
+        <Line Value="773"/>
+      </Item>
+    </BreakPoints>
+  </Debugging>
+</CONFIG>

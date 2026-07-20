@@ -1,0 +1,13 @@
+projects/Gestor/BackEnd/Server/src/Temp/
+projects/ServidorDelphi/Servidor/src/__history/
+projects/ServidorDelphi/Servidor/src/Win32/Debug/
+projects/ServidorDelphi/Servidor/src/Win64/Debug/
+projects/ServidorDelphi/Servidor/src/Win64/Release/
+projects/ServidorDelphi/Servidor/src/__recovery/
+*.dump
+*.ps1
+*.icns
+*.ico
+*.png
+*.exe
+*.dbg
