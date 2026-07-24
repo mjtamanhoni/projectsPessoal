@@ -1,0 +1,11 @@
+{
+  "name": "producao-mobile",
+  "private": true,
+  "scripts": {
+    "build": "vite build --outDir ../dist/producao",
+    "sync": "npx cap sync",
+    "copy": "npx cap copy",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios"
+  }
+}

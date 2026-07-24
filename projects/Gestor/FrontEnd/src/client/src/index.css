@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg-primary text-text-primary font-body antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-heading;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-bg-card rounded-xl border border-border-subtle shadow-sm;
+  }
+
+  .card-hover {
+    @apply card transition-shadow hover:shadow-md;
+  }
+
+  .btn-primary {
+    @apply bg-accent-primary text-text-inverse px-6 py-2.5 rounded-lg font-medium
+           transition-all hover:bg-accent-primary/90 active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed
+           inline-flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-bg-muted text-text-primary px-6 py-2.5 rounded-lg font-medium
+           border border-border-subtle transition-all hover:bg-border-subtle
+           active:scale-[0.98]
+           inline-flex items-center justify-center gap-2;
+  }
+
+  .btn-danger {
+    @apply bg-accent-red text-text-inverse px-6 py-2.5 rounded-lg font-medium
+           transition-all hover:bg-accent-red/90 active:scale-[0.98]
+           inline-flex items-center justify-center gap-2;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-card
+           text-text-primary placeholder:text-text-muted
+           focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary
+           transition-all;
+  }
+
+  .label-field {
+    @apply block text-sm font-medium text-text-secondary mb-1.5;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-text-secondary
+           hover:text-accent-primary hover:bg-accent-light transition-all cursor-pointer;
+  }
+
+  .sidebar-link.active {
+    @apply text-accent-primary bg-accent-light font-medium;
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4;
+  }
+
+  .modal-content {
+    @apply bg-bg-card rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-badge.pago {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .status-badge.pendente {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  .status-badge.atrasado {
+    @apply bg-red-100 text-red-800;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}

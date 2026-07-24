@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Producao</string>
+    <string name="title_activity_main">Producao</string>
+    <string name="package_name">com.conesoft.producao</string>
+    <string name="custom_url_scheme">com.conesoft.producao</string>
+</resources>

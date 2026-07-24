@@ -24937,6 +24937,36 @@
   ],
   "2026-07-24": [
     {
+      "hora": "18:07:45",
+      "metodo": "GET",
+      "rota": "/empresaPublic",
+      "status": 200,
+      "mensagem": "OK",
+      "empresa_id": 1,
+      "usuario_id": 0,
+      "duracao_ms": 0
+    },
+    {
+      "hora": "18:07:45",
+      "metodo": "GET",
+      "rota": "/empresaPublic",
+      "status": 200,
+      "mensagem": "OK",
+      "empresa_id": 1,
+      "usuario_id": 0,
+      "duracao_ms": 0
+    },
+    {
+      "hora": "18:07:44",
+      "metodo": "GET",
+      "rota": "/empresaPublic",
+      "status": 200,
+      "mensagem": "OK",
+      "empresa_id": 1,
+      "usuario_id": 0,
+      "duracao_ms": 214
+    },
+    {
       "hora": "15:52:54",
       "metodo": "POST",
       "rota": "/empresa/atualizar-sequencias",
