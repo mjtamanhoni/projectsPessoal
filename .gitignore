@@ -11,3 +11,8 @@ projects/ServidorDelphi/Servidor/src/__recovery/
 *.png
 *.exe
 *.dbg
+*.lnk
+*.sql
+*.lpr
+*.rar
+projects/Gestor/FrontEnd/docs/

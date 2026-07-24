@@ -1,12 +1,14 @@
-object Form2: TForm2
+object frmConfig: TfrmConfig
   Left = 350
   Height = 425
   Top = 250
   Width = 588
-  Caption = 'Form2'
+  Caption = 'Configuração'
   ClientHeight = 425
   ClientWidth = 588
   LCLVersion = '4.4.0.0'
+  OnClose = FormClose
+  OnShow = FormShow
   object pnBancoDados: TPanel
     Left = 0
     Height = 144
@@ -33,22 +35,22 @@ object Form2: TForm2
         Left = 5
         Height = 23
         Top = 5
-        Width = 34
+        Width = 46
         Align = alLeft
-        Caption = 'Label1'
+        Caption = 'Servidor:'
         Layout = tlCenter
       end
       object Label5: TLabel
-        Left = 322
+        Left = 325
         Height = 23
         Top = 5
-        Width = 34
+        Width = 31
         Align = alRight
-        Caption = 'Label5'
+        Caption = 'Porta:'
         Layout = tlCenter
       end
       object edtServidor: TEdit
-        Left = 39
+        Left = 51
         Height = 23
         Top = 5
         Width = 217
@@ -81,13 +83,13 @@ object Form2: TForm2
         Left = 5
         Height = 23
         Top = 5
-        Width = 34
+        Width = 85
         Align = alLeft
-        Caption = 'Label2'
+        Caption = 'Banco de Dados'
         Layout = tlCenter
       end
       object edtBancoDados: TEdit
-        Left = 39
+        Left = 90
         Height = 23
         Top = 5
         Width = 217
@@ -111,13 +113,13 @@ object Form2: TForm2
         Left = 5
         Height = 23
         Top = 5
-        Width = 34
+        Width = 55
         Align = alLeft
-        Caption = 'Label4'
+        Caption = 'Biblioteca:'
         Layout = tlCenter
       end
       object edtDLLPath: TEdit
-        Left = 39
+        Left = 60
         Height = 23
         Top = 5
         Width = 217
@@ -150,22 +152,22 @@ object Form2: TForm2
         Left = 5
         Height = 23
         Top = 5
-        Width = 34
+        Width = 43
         Align = alLeft
-        Caption = 'Label3'
+        Caption = 'Usuário:'
         Layout = tlCenter
       end
       object Label6: TLabel
-        Left = 271
+        Left = 270
         Height = 23
         Top = 5
-        Width = 34
+        Width = 35
         Align = alRight
-        Caption = 'Label6'
+        Caption = 'Senha:'
         Layout = tlCenter
       end
       object edtUsuario: TEdit
-        Left = 39
+        Left = 48
         Height = 23
         Top = 5
         Width = 217
@@ -219,13 +221,13 @@ object Form2: TForm2
         Left = 5
         Height = 23
         Top = 5
-        Width = 34
+        Width = 77
         Align = alLeft
-        Caption = 'Label2'
+        Caption = 'Porta Servidor:'
         Layout = tlCenter
       end
       object edServer_Port: TEdit
-        Left = 39
+        Left = 82
         Height = 23
         Top = 5
         Width = 217
@@ -252,7 +254,7 @@ object Form2: TForm2
       Top = 5
       Width = 80
       Align = alRight
-      Caption = 'btnCancelar'
+      Caption = 'Cancelar'
       TabOrder = 0
       OnClick = btnCancelarClick
     end
@@ -262,7 +264,7 @@ object Form2: TForm2
       Top = 5
       Width = 80
       Align = alRight
-      Caption = 'btnSalvar'
+      Caption = 'Confirmar'
       TabOrder = 1
       OnClick = btnSalvarClick
     end

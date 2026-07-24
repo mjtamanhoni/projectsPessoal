@@ -1,0 +1,11 @@
+{
+  "name": "gestor-mobile",
+  "private": true,
+  "scripts": {
+    "build": "vite build --outDir ../dist/gestor",
+    "sync": "npx cap sync",
+    "copy": "npx cap copy",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios"
+  }
+}

@@ -1,12 +1,15 @@
-object Form1: TForm1
+object frmPrincipal: TfrmPrincipal
   Left = 350
   Height = 524
   Top = 250
   Width = 934
-  Caption = 'Form1'
+  Caption = 'Servidor Horse'
   ClientHeight = 524
   ClientWidth = 934
   LCLVersion = '4.4.0.0'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnShow = FormShow
   object pnHeader: TPanel
     Left = 0
     Height = 25
@@ -126,6 +129,7 @@ object Form1: TForm1
       Align = alRight
       Caption = 'Refresh'
       TabOrder = 0
+      OnClick = btRefreshClick
     end
     object btConfig: TButton
       Left = 852

@@ -10,9 +10,9 @@ uses
 
 type
 
-	{ TForm2 }
+	{ TfrmConfig }
 
-  TForm2 = class(TForm)
+  TfrmConfig = class(TForm)
     btnExibirSenha: TButton;
     btnSelecionarDLL: TButton;
     btnCancelar: TButton;
@@ -39,6 +39,7 @@ type
     pnBancoDados: TPanel;
     pnServer: TPanel;
     pnFooter: TPanel;
+		procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormShow(Sender: TObject);
     procedure btnSalvarClick(Sender: TObject);
     procedure btnCancelarClick(Sender: TObject);
@@ -50,7 +51,7 @@ type
   end;
 
 var
-  Form2: TForm2;
+  frmConfig: TfrmConfig;
 
 implementation
 
@@ -59,12 +60,17 @@ implementation
 uses
   uBase.Functions;
 
-procedure TForm2.FormShow(Sender: TObject);
+procedure TfrmConfig.FormShow(Sender: TObject);
 begin
   CarregarConfig;
 end;
 
-procedure TForm2.CarregarConfig;
+procedure TfrmConfig.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+  //Action := caFree;
+end;
+
+procedure TfrmConfig.CarregarConfig;
 begin
   edtServidor.Text := LerIni('BANCO', 'HOST', ConfigFile);
   edtPorta.Text := LerIni('BANCO', 'PORT', ConfigFile);
@@ -75,7 +81,7 @@ begin
   edServer_Port.Text := LerIni('SERVER', 'PORT', ConfigFile);
 end;
 
-procedure TForm2.SalvarConfig;
+procedure TfrmConfig.SalvarConfig;
 var
   Ini: TIniFile;
 begin
@@ -93,18 +99,18 @@ begin
   end;
 end;
 
-procedure TForm2.btnSalvarClick(Sender: TObject);
+procedure TfrmConfig.btnSalvarClick(Sender: TObject);
 begin
   SalvarConfig;
   Close;
 end;
 
-procedure TForm2.btnCancelarClick(Sender: TObject);
+procedure TfrmConfig.btnCancelarClick(Sender: TObject);
 begin
   Close;
 end;
 
-procedure TForm2.btnExibirSenhaClick(Sender: TObject);
+procedure TfrmConfig.btnExibirSenhaClick(Sender: TObject);
 begin
   if edtSenha.EchoMode = emNormal then
     edtSenha.EchoMode := emPassword
@@ -112,7 +118,7 @@ begin
     edtSenha.EchoMode := emNormal;
 end;
 
-procedure TForm2.btnSelecionarDLLClick(Sender: TObject);
+procedure TfrmConfig.btnSelecionarDLLClick(Sender: TObject);
 var
   Dlg: TOpenDialog;
 begin

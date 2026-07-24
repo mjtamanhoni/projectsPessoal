@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, ZConnection, ZDataset, ZAbstractRODataset;
 
 type
-  TDataModule1 = class(TDataModule)
+  TDm = class(TDataModule)
     ZConnection: TZConnection;
     ZQuery1: TZQuery;
     ZTransaction: TZTransaction;
@@ -18,13 +18,13 @@ type
   end;
 
 var
-  DataModule1: TDataModule1;
+  Dm: TDm;
 
 implementation
 
 {$R *.lfm}
 
-function TDataModule1.ConectarBanco: Boolean;
+function TDm.ConectarBanco: Boolean;
 begin
   Result := False;
   try

@@ -327,7 +327,7 @@ end;
 
 function TDataBaseManager.Fornecedor_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   I :Integer;
@@ -349,7 +349,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -461,7 +461,7 @@ end;
 
 function TDataBaseManager.Fornecedor_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -477,7 +477,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -542,7 +542,7 @@ end;
 
 function TDataBaseManager.Cliente_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   I: Integer;
@@ -561,7 +561,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -664,7 +664,7 @@ end;
 
 function TDataBaseManager.Cliente_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -680,7 +680,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -752,7 +752,7 @@ function TDataBaseManager.Cliente_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -773,7 +773,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -857,7 +857,7 @@ end;
 
 function TDataBaseManager.CategoriaPagar_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   I: Integer;
@@ -876,7 +876,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -973,7 +973,7 @@ end;
 
 function TDataBaseManager.CategoriaPagar_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -989,7 +989,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -1060,7 +1060,7 @@ function TDataBaseManager.CategoriaPagar_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -1081,7 +1081,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -1160,7 +1160,7 @@ end;
 
 function TDataBaseManager.CategoriaReceber_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   I: Integer;
@@ -1179,7 +1179,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -1276,7 +1276,7 @@ end;
 
 function TDataBaseManager.CategoriaReceber_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -1292,7 +1292,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -1363,7 +1363,7 @@ function TDataBaseManager.CategoriaReceber_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -1384,7 +1384,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -1463,7 +1463,7 @@ end;
 
 function TDataBaseManager.ContasPagar_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   I,J,K: Integer;
@@ -1484,7 +1484,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -1647,7 +1647,7 @@ end;
 
 function TDataBaseManager.ContasPagar_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -1663,7 +1663,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -1738,7 +1738,7 @@ function TDataBaseManager.ContasPagar_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -1759,7 +1759,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -1866,7 +1866,7 @@ end;
 
 function TDataBaseManager.ContasPagar_Pagar(const aId: Integer; const aDataPagamento: TDateTime; const aEmpresaId: Integer = 0; const aValorBaixa: Double = 0; const aDesconto: Double = 0; const aAcrescimo: Double = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Update: TZQuery;
 begin
   with Result do
@@ -1882,7 +1882,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Update := TZQuery.Create(nil);
       FDQ_Update.Connection := fDm.ZConnection;
 
@@ -1976,7 +1976,7 @@ end;
 
 function TDataBaseManager.ContasReceber_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -1995,7 +1995,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -2129,7 +2129,7 @@ end;
 
 function TDataBaseManager.ContasReceber_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -2145,7 +2145,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -2220,7 +2220,7 @@ function TDataBaseManager.ContasReceber_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -2241,7 +2241,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -2348,7 +2348,7 @@ end;
 
 function TDataBaseManager.ContasReceber_Receber(const aId: Integer; const aDataRecebimento: TDateTime; const aEmpresaId: Integer = 0; const aValorBaixa: Double = 0; const aDesconto: Double = 0; const aAcrescimo: Double = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Update: TZQuery;
 begin
   with Result do
@@ -2364,7 +2364,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Update := TZQuery.Create(nil);
       FDQ_Update.Connection := fDm.ZConnection;
 
@@ -2465,7 +2465,7 @@ function TDataBaseManager.Fornecedor_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -2486,7 +2486,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -2572,7 +2572,7 @@ end;
 function TDataBaseManager.Login(const aPin, ALogin, ASenha: String; const aFilial: Integer; out fJson: TJSONObject;
   out FCod_Usuario: Integer): TReturn;
 var
-  fDm :TDataModule1;
+  fDm :TDm;
   fQuery: TZQuery;
   lSenha :String;
 begin
@@ -2589,7 +2589,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       if not fDm.ConectarBanco then
         raise Exception.Create('Banco de dados n�o conectado');
 
@@ -2690,7 +2690,7 @@ end;
 
 function TDataBaseManager.ContasPagar_Estornar(const aId: Integer; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Update: TZQuery;
 begin
   with Result do
@@ -2706,7 +2706,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Update := TZQuery.Create(nil);
       FDQ_Update.Connection := fDm.ZConnection;
 
@@ -2780,7 +2780,7 @@ end;
 
 function TDataBaseManager.ContasReceber_Estornar(const aId: Integer; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Update: TZQuery;
 begin
   with Result do
@@ -2796,7 +2796,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Update := TZQuery.Create(nil);
       FDQ_Update.Connection := fDm.ZConnection;
 
@@ -2870,7 +2870,7 @@ end;
 
 function TDataBaseManager.Dashboard_Listar(out fJson: TJSONObject; const aDataInicial, aDataFinal: TDateTime; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Total: TZQuery;
   FDQ_Mensal: TZQuery;
   fTotalReceber, fTotalPagar: Double;
@@ -2893,7 +2893,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       if not fDm.ConectarBanco then
         raise Exception.Create('Banco de dados n�o conectado');
 
@@ -2996,7 +2996,7 @@ function TDataBaseManager.Usuario_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -3017,7 +3017,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -3105,7 +3105,7 @@ end;
 
 function TDataBaseManager.Usuario_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -3124,7 +3124,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -3217,7 +3217,7 @@ end;
 
 function TDataBaseManager.Usuario_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -3233,7 +3233,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -3298,7 +3298,7 @@ end;
 
 function TDataBaseManager.Usuario_AlterarSenha(const aId: Integer; const aSenhaAtual, aNovaSenha: String; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Update: TZQuery;
 begin
   with Result do
@@ -3314,7 +3314,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Update := TZQuery.Create(nil);
       FDQ_Update.Connection := fDm.ZConnection;
 
@@ -3404,7 +3404,7 @@ end;
 
 function TDataBaseManager.Usuario_AlterarPin(const aId: Integer; const aNovoPin: String; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Update: TZQuery;
 begin
   with Result do
@@ -3420,7 +3420,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Update := TZQuery.Create(nil);
       FDQ_Update.Connection := fDm.ZConnection;
 
@@ -3509,7 +3509,7 @@ function TDataBaseManager.Servico_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -3530,7 +3530,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -3610,7 +3610,7 @@ end;
 
 function TDataBaseManager.Servico_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -3629,7 +3629,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -3726,7 +3726,7 @@ end;
 
 function TDataBaseManager.Servico_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -3742,7 +3742,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -3819,7 +3819,7 @@ function TDataBaseManager.HorasTrabalhadas_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -3840,7 +3840,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -3945,7 +3945,7 @@ end;
 
 function TDataBaseManager.HorasTrabalhadas_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -3964,7 +3964,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -4098,7 +4098,7 @@ end;
 
 function TDataBaseManager.HorasTrabalhadas_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -4114,7 +4114,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -4189,7 +4189,7 @@ function TDataBaseManager.HorasAbatidas_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -4209,7 +4209,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -4292,7 +4292,7 @@ end;
 
 function TDataBaseManager.HorasAbatidas_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -4311,7 +4311,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -4439,7 +4439,7 @@ end;
 
 function TDataBaseManager.HorasAbatidas_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -4454,7 +4454,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -4531,7 +4531,7 @@ function TDataBaseManager.HorasExcedidas_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -4546,7 +4546,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then fDm.ConectarBanco;
@@ -4622,7 +4622,7 @@ end;
 
 function TDataBaseManager.HorasExcedidas_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -4634,7 +4634,7 @@ begin
   fDm := nil; FDQ_Append := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then fDm.ConectarBanco;
@@ -4725,7 +4725,7 @@ end;
 
 function TDataBaseManager.HorasExcedidas_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do begin
@@ -4734,7 +4734,7 @@ begin
   FDQ_Select := nil; fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then fDm.ConectarBanco;
@@ -4788,7 +4788,7 @@ function TDataBaseManager.Empresa_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -4809,7 +4809,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -4886,7 +4886,7 @@ end;
 
 function TDataBaseManager.Empresa_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -4906,7 +4906,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -5018,7 +5018,7 @@ end;
 
 function TDataBaseManager.Empresa_Delete(out fJson:TJSONObject; const aId:Integer=0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -5040,7 +5040,7 @@ begin
         Exit;
       end;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -5087,7 +5087,7 @@ function TDataBaseManager.Formulario_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -5108,7 +5108,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -5187,7 +5187,7 @@ end;
 
 function TDataBaseManager.Formulario_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -5206,7 +5206,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -5297,7 +5297,7 @@ end;
 
 function TDataBaseManager.Formulario_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -5313,7 +5313,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -5392,7 +5392,7 @@ function TDataBaseManager.UsuarioFormulario_Listar(
   const APaginas:Integer=0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -5413,7 +5413,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -5501,7 +5501,7 @@ end;
 
 function TDataBaseManager.UsuarioFormulario_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -5520,7 +5520,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -5622,7 +5622,7 @@ end;
 
 function TDataBaseManager.UsuarioFormulario_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -5638,7 +5638,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -5703,7 +5703,7 @@ end;
 
 function TDataBaseManager.Permissao_Listar(out fJson: TJSONArray; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -5718,7 +5718,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -5766,7 +5766,7 @@ function TDataBaseManager.UsuarioFormularioPermissao_Listar(
   const aUsuarioFormularioId: Integer = 0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -5781,7 +5781,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -5834,7 +5834,7 @@ function TDataBaseManager.UsuarioFormularioPermissao_Salvar(
   const aEmpresaId: Integer;
   const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   i: Integer;
   lPermId: Integer;
@@ -5853,7 +5853,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -5934,7 +5934,7 @@ function TDataBaseManager.Usuario_Permissoes(
   const aUsuarioId: Integer;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   lItemObj: TJSONObject;
   lResultArray: TJSONArray;
@@ -5955,7 +5955,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -6051,7 +6051,7 @@ end;
 
 function TDataBaseManager.Insumo_Listar(out fJson:TJSONArray; const aId:Integer=0; const aNome:String=''; const APagina:Integer=0; const APaginas:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -6071,7 +6071,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -6150,7 +6150,7 @@ end;
 
 function TDataBaseManager.Insumo_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -6169,7 +6169,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -6269,7 +6269,7 @@ end;
 
 function TDataBaseManager.Insumo_Delete(out fJson:TJSONObject; const aId:Integer=0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   lQtdCompra, lQtdReceita, lQtdFabricacao: Integer;
   lMsgVinculos: string;
@@ -6287,7 +6287,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -6391,7 +6391,7 @@ end;
 
 function TDataBaseManager.CompraInsumo_Listar(out fJson:TJSONArray; const aId:Integer=0; const aInsumoId:Integer=0; const aDataInicial:TDateTime=0; const aDataFinal:TDateTime=0; const APagina:Integer=0; const APaginas:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -6411,7 +6411,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -6498,7 +6498,7 @@ end;
 
 function TDataBaseManager.CompraInsumo_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -6527,7 +6527,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -6701,7 +6701,7 @@ end;
 
 function TDataBaseManager.CompraInsumo_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   lInsumoId :Integer;
   lQuantidade :Double;
@@ -6720,7 +6720,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -6906,7 +6906,7 @@ end;
 
 function TDataBaseManager.EstoqueInsumo_Listar(out fJson:TJSONArray; const aId:Integer=0; const aInsumoId:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   with Result do
@@ -6921,7 +6921,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -6983,7 +6983,7 @@ end;
 
 function TDataBaseManager.EstoqueInsumo_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno: Integer;
   LObj: TJSONObject;
@@ -7004,7 +7004,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -7106,7 +7106,7 @@ end;
 
 function TDataBaseManager.EstoqueInsumo_Delete(out fJson:TJSONObject; const aId:Integer=0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   with Result do
@@ -7121,7 +7121,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -7174,7 +7174,7 @@ end;
 
 function TDataBaseManager.EstoqueProdutoFabricado_Listar(out fJson:TJSONArray; const aId:Integer=0; const aProdutoFabricadoId:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   with Result do
@@ -7189,7 +7189,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -7251,7 +7251,7 @@ end;
 
 function TDataBaseManager.EstoqueProdutoFabricado_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno: Integer;
   LObj: TJSONObject;
@@ -7272,7 +7272,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -7374,7 +7374,7 @@ end;
 
 function TDataBaseManager.EstoqueProdutoFabricado_Delete(out fJson:TJSONObject; const aId:Integer=0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   with Result do
@@ -7389,7 +7389,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -7442,7 +7442,7 @@ end;
 
 function TDataBaseManager.ProdutoFabricado_Listar(out fJson:TJSONArray; const aId:Integer=0; const aNome:String=''; const APagina:Integer=0; const APaginas:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -7462,7 +7462,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -7541,7 +7541,7 @@ end;
 
 function TDataBaseManager.ProdutoFabricado_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -7560,7 +7560,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -7672,7 +7672,7 @@ end;
 
 function TDataBaseManager.ProdutoFabricado_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -7688,7 +7688,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -7775,7 +7775,7 @@ end;
 
 function TDataBaseManager.ReceitaIngrediente_Listar(out fJson:TJSONArray; const aId:Integer=0; const aProdutoFabricadoId:Integer=0; const APagina:Integer=0; const APaginas:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -7795,7 +7795,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -7879,7 +7879,7 @@ end;
 
 function TDataBaseManager.ReceitaIngrediente_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -7898,7 +7898,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -7995,7 +7995,7 @@ end;
 
 function TDataBaseManager.ReceitaIngrediente_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -8011,7 +8011,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -8077,7 +8077,7 @@ end;
 
 function TDataBaseManager.CustoAdicionalTipo_Listar(out fJson:TJSONArray; const aId:Integer=0; const aNome:String=''; const APagina:Integer=0; const APaginas:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -8097,7 +8097,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -8176,7 +8176,7 @@ end;
 
 function TDataBaseManager.CustoAdicionalTipo_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   LObj: TJSONObject;
@@ -8195,7 +8195,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -8289,7 +8289,7 @@ end;
 
 function TDataBaseManager.CustoAdicionalTipo_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -8305,7 +8305,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -8371,7 +8371,7 @@ end;
 
 function TDataBaseManager.Fabricacao_Listar(out fJson:TJSONArray; const aId:Integer=0; const aProdutoFabricadoId:Integer=0; const aDataInicial:TDateTime=0; const aDataFinal:TDateTime=0; const APagina:Integer=0; const APaginas:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -8391,7 +8391,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -8480,7 +8480,7 @@ end;
 
 function TDataBaseManager.Fabricacao_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FDQ_Aux: TZQuery;
   FCodigoRetorno :Integer;
@@ -8511,7 +8511,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
       FDQ_Aux := TZQuery.Create(nil);
@@ -8686,7 +8686,7 @@ end;
 
 function TDataBaseManager.Fabricacao_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -8702,7 +8702,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -8768,7 +8768,7 @@ end;
 
 function TDataBaseManager.FabricacaoCustoAdicional_Listar(out fJson:TJSONArray; const aFabricacaoId:Integer=0; const APagina:Integer=0; const APaginas:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -8788,7 +8788,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -8866,7 +8866,7 @@ end;
 
 function TDataBaseManager.FabricacaoCustoAdicional_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FDQ_Aux: TZQuery;
   FCodigoRetorno: Integer;
@@ -8889,7 +8889,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
       FDQ_Aux := TZQuery.Create(nil);
@@ -9022,7 +9022,7 @@ end;
 
 function TDataBaseManager.FabricacaoCustoAdicional_Delete(out fJson:TJSONObject; const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fFabricacaoId: Integer;
 begin
@@ -9038,7 +9038,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -9139,7 +9139,7 @@ end;
 
 function TDataBaseManager.VendaProduto_Listar(out fJson:TJSONArray; const aId:Integer=0; const aProdutoFabricadoId:Integer=0; const aClienteId:Integer=0; const aDataInicial:TDateTime=0; const aDataFinal:TDateTime=0; const APagina:Integer=0; const APaginas:Integer=0; const aEmpresaId:Integer=0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -9159,7 +9159,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -9254,7 +9254,7 @@ end;
 
 function TDataBaseManager.VendaProduto_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FDQ_InsertCR: TZQuery;
   FCodigoRetorno :Integer;
@@ -9283,7 +9283,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
       FDQ_InsertCR := TZQuery.Create(nil);
@@ -9478,7 +9478,7 @@ end;
 
 function TDataBaseManager.VendaProduto_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -9494,7 +9494,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -9560,7 +9560,7 @@ end;
 
 function TDataBaseManager.Modulo_Listar(out fJson: TJSONArray; const aId: Integer; const aNome: String; const APagina: Integer; const APaginas: Integer; const aEmpresaId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
   fPagina :Integer;
   fPaginas :Integer;
@@ -9580,7 +9580,7 @@ begin
       fPagina := 0;
       fPaginas := APaginas;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -9658,7 +9658,7 @@ end;
 
 function TDataBaseManager.Modulo_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno: Integer;
   LObj: TJSONObject;
@@ -9677,7 +9677,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -9769,7 +9769,7 @@ end;
 
 function TDataBaseManager.Modulo_Delete(out fJson: TJSONObject; const aId: Integer; const aEmpresaId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   with Result do
@@ -9784,7 +9784,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -9850,7 +9850,7 @@ end;
 
 function TDataBaseManager.ModuloFormulario_Listar(out fJson: TJSONArray; const aModuloId: Integer; const aFormularioId: Integer; const aEmpresaId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   with Result do
@@ -9865,7 +9865,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -9932,7 +9932,7 @@ function TDataBaseManager.ModuloFormulario_Salvar(
   const aModuloId: Integer; const aFormularios: TJSONArray;
   const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Exec: TZQuery;
   I: Integer;
   lFormularioId, lAbertura: Integer;
@@ -9950,7 +9950,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Exec := TZQuery.Create(nil);
       FDQ_Exec.Connection := fDm.ZConnection;
 
@@ -10019,7 +10019,7 @@ end;
 
 function TDataBaseManager.EmpresaModulo_Listar(out fJson: TJSONArray; const aEmpresaIdFiltro: Integer; const aModuloId: Integer; const aEmpresaId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   with Result do
@@ -10034,7 +10034,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -10094,7 +10094,7 @@ end;
 
 function TDataBaseManager.EmpresaModulo_Salvar(const aEmpresaIdAlvo: Integer; const aModulos: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Exec: TZQuery;
   I: Integer;
   lModuloId :Integer;
@@ -10112,7 +10112,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Exec := TZQuery.Create(nil);
       FDQ_Exec.Connection := fDm.ZConnection;
 
@@ -10175,7 +10175,7 @@ end;
 
 function TDataBaseManager.ModuloFormulario_Delete(const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Exec: TZQuery;
 begin
   with Result do
@@ -10198,7 +10198,7 @@ begin
         Exit;
       end;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Exec := TZQuery.Create(nil);
       FDQ_Exec.Connection := fDm.ZConnection;
 
@@ -10243,7 +10243,7 @@ end;
 
 function TDataBaseManager.EmpresaModulo_Delete(const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Exec: TZQuery;
 begin
   with Result do
@@ -10266,7 +10266,7 @@ begin
         Exit;
       end;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Exec := TZQuery.Create(nil);
       FDQ_Exec.Connection := fDm.ZConnection;
 
@@ -10315,7 +10315,7 @@ function TDataBaseManager.UsuarioEmpresa_Listar(out fJson: TJSONArray;
   const aUsuarioIdFiltro: Integer; const aEmpresaIdFiltro: Integer;
   const aEmpresaId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   with Result do
@@ -10330,7 +10330,7 @@ begin
   fDm := nil;
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -10393,7 +10393,7 @@ function TDataBaseManager.UsuarioEmpresa_Salvar(
   const aUsuarioIdAlvo: Integer; const aEmpresas: TJSONArray;
   const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Exec: TZQuery;
   I: Integer;
   lEmpresaId :Integer;
@@ -10411,7 +10411,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Exec := TZQuery.Create(nil);
       FDQ_Exec.Connection := fDm.ZConnection;
 
@@ -10473,7 +10473,7 @@ end;
 function TDataBaseManager.UsuarioEmpresa_Delete(const aId: Integer = 0;
   const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Exec: TZQuery;
 begin
   with Result do
@@ -10496,7 +10496,7 @@ begin
         Exit;
       end;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Exec := TZQuery.Create(nil);
       FDQ_Exec.Connection := fDm.ZConnection;
 
@@ -10541,7 +10541,7 @@ end;
 
 function TDataBaseManager.VerificarUsuarioEmpresa(const aUsuarioId: Integer; const aEmpresaId: Integer): Boolean;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select: TZQuery;
 begin
   Result := False;
@@ -10554,7 +10554,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -10581,7 +10581,7 @@ end;
 
 function TDataBaseManager.Empresa_LimparDados(const aEmpresaId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ: TZQuery;
 begin
   with Result do
@@ -10604,7 +10604,7 @@ begin
         Exit;
       end;
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ := TZQuery.Create(nil);
       FDQ.Connection := fDm.ZConnection;
 

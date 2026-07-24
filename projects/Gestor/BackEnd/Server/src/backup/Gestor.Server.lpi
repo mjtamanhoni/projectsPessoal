@@ -43,7 +43,7 @@
       <Unit>
         <Filename Value="uprincipal.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="Form1"/>
+        <ComponentName Value="frmPrincipal"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="uPrincipal"/>
@@ -51,7 +51,7 @@
       <Unit>
         <Filename Value="uconfig.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="Form2"/>
+        <ComponentName Value="frmConfig"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="uConfig"/>
@@ -59,7 +59,7 @@
       <Unit>
         <Filename Value="udm.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="DataModule1"/>
+        <ComponentName Value="Dm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="DataModule"/>
         <UnitName Value="uDm"/>
@@ -89,7 +89,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="C:\lazarus\components\Horse\horse-master\src\;C:\lazarus\components\Horse\handle-exception-master\src\;C:\lazarus\components\Horse\horse-basic-auth-master\src\;C:\lazarus\components\Horse\horse-compression-master\src\;C:\lazarus\components\Horse\horse-cors-master\src\;C:\lazarus\components\Horse\horse-jwt-master\src\;C:\lazarus\components\Horse\horse-logger-lumberjack\src\;C:\lazarus\components\Horse\horse-octet-stream-master\src\;C:\lazarus\components\Horse\jhonson-master\src\;C:\lazarus\components\Horse\delphi-jose-jwt-master\Source\Common\;C:\lazarus\components\Horse\delphi-jose-jwt-master\Source\JOSE\"/>
+      <OtherUnitFiles Value=""/>
       <UnitOutputDirectory Value="Temp\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

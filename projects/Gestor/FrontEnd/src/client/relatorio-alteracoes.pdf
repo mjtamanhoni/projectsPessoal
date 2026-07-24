@@ -1,0 +1,2846 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 694
+>>
+stream
+0.5670000000000001 w
+0 G
+BT
+/F2 28 Tf
+32.1999999999999957 TL
+0 g
+92.1177952755905523 615.1183464566928478 Td
+(RELATÓRIO DE ALTERAÇÕES) Tj
+ET
+BT
+/F1 16 Tf
+18.3999999999999986 TL
+0 g
+210.9977952755905619 558.42543307086612 Td
+(Gestor Financeiro - Web) Tj
+ET
+BT
+/F1 12 Tf
+13.7999999999999989 TL
+0 g
+214.8377952755905369 515.9057480314959321 Td
+(Análise, Correções e Melhorias) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0 g
+232.737795275590571 473.3860629921259147 Td
+(Data de emissão: 13/06/2026) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0 g
+247.0877952755905937 445.0396062992125508 Td
+(Total de alterações: 13) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0 g
+233.3877952755905767 416.69314960629913 Td
+(4 críticas · 7 médias · 2 leves) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 11743
+>>
+stream
+0.5670000000000001 w
+0 G
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0 g
+39.6850393700787407 779.5277952755905062 Td
+(Sumário das Alterações) Tj
+ET
+0. G
+0.5670000000000001 w
+0. G
+0.5670000000000001 w
+0.18 0.37 0.23 rg
+0.78 G
+0. w
+0.18 0.37 0.23 rg
+40. 756.8506299212598378 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+1. g
+45. 743.3506299212598378 Td
+(ID) Tj
+ET
+0.18 0.37 0.23 rg
+0.78 G
+0. w
+0.18 0.37 0.23 rg
+71.2222349066959168 756.8506299212598378 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+1. g
+76.222234906695931 743.3506299212598378 Td
+(Severidade) Tj
+ET
+0.18 0.37 0.23 rg
+0.78 G
+0. w
+0.18 0.37 0.23 rg
+142.4903798024148784 756.8506299212598378 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+1. g
+147.4903798024148784 743.3506299212598378 Td
+(Título) Tj
+ET
+0.18 0.37 0.23 rg
+0.78 G
+0. w
+0.18 0.37 0.23 rg
+450.5271394072447038 756.8506299212598378 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+1. g
+455.5271394072447038 743.3506299212598378 Td
+(Arquivo Principal) Tj
+ET
+0. G
+0.5670000000000001 w
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 735.3506299212597241 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 721.8506299212598378 Td
+(S01) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+71.2222349066959168 735.3506299212597241 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+0.722 0.29 0.29 rg
+76.222234906695931 721.8506299212598378 Td
+(Crítico) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+142.4903798024148784 735.3506299212597241 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 721.8506299212598378 Td
+(Token JWT por requisição \(HorseApiService stateless\)) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+450.5271394072447038 735.3506299212597241 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 721.8506299212598378 Td
+(horseApi.ts) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+40. 713.8506299212598378 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 700.3506299212598378 Td
+(S02) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+71.2222349066959168 713.8506299212598378 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+0.722 0.29 0.29 rg
+76.222234906695931 700.3506299212598378 Td
+(Crítico) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+142.4903798024148784 713.8506299212598378 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 700.3506299212598378 Td
+(JWT Secret sem fallback hardcoded) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+450.5271394072447038 713.8506299212598378 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 700.3506299212598378 Td
+(config.ts) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 692.3506299212598378 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 678.8506299212598378 Td
+(S03) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+71.2222349066959168 692.3506299212598378 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+0.722 0.29 0.29 rg
+76.222234906695931 678.8506299212598378 Td
+(Crítico) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+142.4903798024148784 692.3506299212598378 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 678.8506299212598378 Td
+(CORS restrito por variável de ambiente) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+450.5271394072447038 692.3506299212598378 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 678.8506299212598378 Td
+(index.ts) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+40. 670.8506299212598378 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 657.3506299212598378 Td
+(S04) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+71.2222349066959168 670.8506299212598378 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.784 0.588 0. rg
+76.222234906695931 657.3506299212598378 Td
+(Médio) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+142.4903798024148784 670.8506299212598378 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 657.3506299212598378 Td
+(Variáveis não utilizadas removidas) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+450.5271394072447038 670.8506299212598378 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 657.3506299212598378 Td
+(horseApi.ts) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 649.3506299212598378 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 635.8506299212598378 Td
+(S05) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+71.2222349066959168 649.3506299212598378 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.784 0.588 0. rg
+76.222234906695931 635.8506299212598378 Td
+(Médio) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+142.4903798024148784 649.3506299212598378 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 635.8506299212598378 Td
+(Validação de entrada nas rotas do BFF) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+450.5271394072447038 649.3506299212598378 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 635.8506299212598378 Td
+(clientes.ts) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+40. 627.8506299212598378 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 614.3506299212598378 Td
+(S06) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+71.2222349066959168 627.8506299212598378 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.784 0.588 0. rg
+76.222234906695931 614.3506299212598378 Td
+(Médio) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+142.4903798024148784 627.8506299212598378 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 614.3506299212598378 Td
+(Função utilitária toSnakeCase \(eliminação de repetição\)) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+450.5271394072447038 627.8506299212598378 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 614.3506299212598378 Td
+(horseApi.ts) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 606.3506299212597241 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 592.8506299212598378 Td
+(S07) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+71.2222349066959168 606.3506299212597241 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.784 0.588 0. rg
+76.222234906695931 592.8506299212598378 Td
+(Médio) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+142.4903798024148784 606.3506299212597241 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 592.8506299212598378 Td
+(Endpoint de Dashboard com dados reais) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+450.5271394072447038 606.3506299212597241 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 592.8506299212598378 Td
+(horseApi.ts) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+40. 584.8506299212598378 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 571.3506299212597241 Td
+(S08) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+71.2222349066959168 584.8506299212598378 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+0.722 0.29 0.29 rg
+76.222234906695931 571.3506299212597241 Td
+(Crítico) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+142.4903798024148784 584.8506299212598378 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 571.3506299212597241 Td
+(HttpOnly Cookie para autenticação \(removido localStorage\)) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+450.5271394072447038 584.8506299212598378 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 571.3506299212597241 Td
+(auth.ts) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 563.3506299212598378 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 549.8506299212597241 Td
+(S09) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+71.2222349066959168 563.3506299212598378 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.784 0.588 0. rg
+76.222234906695931 549.8506299212597241 Td
+(Médio) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+142.4903798024148784 563.3506299212598378 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 549.8506299212597241 Td
+(DataTable com @tanstack/react-table) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+450.5271394072447038 563.3506299212598378 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 549.8506299212597241 Td
+(DataTable.tsx) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+40. 541.8506299212597241 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 528.3506299212597241 Td
+(S10) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+71.2222349066959168 541.8506299212597241 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+76.222234906695931 528.3506299212597241 Td
+(Leve) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+142.4903798024148784 541.8506299212597241 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 528.3506299212597241 Td
+(Lazy Loading de rotas + Spinner componente) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+450.5271394072447038 541.8506299212597241 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 528.3506299212597241 Td
+(App.tsx) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 520.3506299212597241 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 506.850629921259781 Td
+(S11) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+71.2222349066959168 520.3506299212597241 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+76.222234906695931 506.850629921259781 Td
+(Leve) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+142.4903798024148784 520.3506299212597241 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 506.850629921259781 Td
+(Interceptor 401 com notificação ao usuário) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+450.5271394072447038 520.3506299212597241 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 506.850629921259781 Td
+(api.ts) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+40. 498.8506299212597241 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 485.3506299212597241 Td
+(S12) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+71.2222349066959168 498.8506299212597241 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.784 0.588 0. rg
+76.222234906695931 485.3506299212597241 Td
+(Médio) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+142.4903798024148784 498.8506299212597241 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 485.3506299212597241 Td
+(Tratamento de erro tipado \(redução de any\)) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+450.5271394072447038 498.8506299212597241 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 485.3506299212597241 Td
+(*.ts) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 477.350629921259781 31.222234906695931 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+45. 463.8506299212598378 Td
+(S13) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+71.2222349066959168 477.350629921259781 71.2681448957189758 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.784 0.588 0. rg
+76.222234906695931 463.8506299212598378 Td
+(Médio) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+142.4903798024148784 477.350629921259781 308.0367596048297969 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+147.4903798024148784 463.8506299212598378 Td
+(Testes automatizados \(server + client\)) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+450.5271394072447038 477.350629921259781 104.7528605927551553 -21.4999999999999964 re
+f
+BT
+/F1 10 Tf
+11.5 TL
+0.314 g
+455.5271394072447038 463.8506299212598378 Td
+(horseApi.test.ts) Tj
+ET
+0. G
+0.5670000000000001 w
+0.78 G
+0. w
+0. G
+0.5670000000000001 w
+0. G
+0.5670000000000001 w
+endstream
+endobj
+7 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 8 0 R
+>>
+endobj
+8 0 obj
+<<
+/Length 3142
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S01) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.722 0.29 0.29 rg
+469.1362204724409821 790.8663779527558972 Td
+(CRÍTICO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Token JWT por requisição \(HorseApiService stateless\)) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/services/horseApi.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • server/src/middleware/auth.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • server/src/routes/*.ts) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 651.9687401574802834 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 634.9608661417322537 Td
+(O HorseApiService era um singleton que armazenava o token JWT como estado interno \(this.token\). Em um servidor Node.js) Tj
+T* (com múltiplos usuários simultâneos, o primeiro login definia o token e requisições subsequentes de outros usuários) Tj
+T* (sobrescreviam esse token, causando vazamento de dados entre contas.) Tj
+T* () Tj
+T* (Solução: Removido o estado mutável da classe. O token agora é extraído do cabeçalho Authorization ou do cookie httpOnly pelo) Tj
+T* (middleware de autenticação e passado como parâmetro para cada método do serviço.) Tj
+T* () Tj
+T* (Cada requisição carrega seu próprio token de forma isolada.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 521.5750393700786844 Td
+(Antes:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.722 0.29 0.29 rg
+39.6850393700787407 510.2364566929133503 Td
+(class HorseApiService {) Tj
+T* (  private token: string | null = null;) Tj
+T* () Tj
+T* (  async listarClientes\(\) {) Tj
+T* (    const token = await this.getToken\(\);) Tj
+T* (    ...) Tj
+T* (  }) Tj
+T* (}) Tj
+T* () Tj
+T* (export const horseApi = new HorseApiService\(\);) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 399.6852755905511003 Td
+(Depois:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 388.3466929133857661 Td
+(class HorseApiService {) Tj
+T* (  // Sem estado! Token é parâmetro.) Tj
+T* (  async listarClientes\(token: string\) {) Tj
+T* (    ...this.getAuthHeaders\(token\)) Tj
+T* (  }) Tj
+T* (}) Tj
+T* () Tj
+T* (export const horseApi = new HorseApiService\(\);) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 297.6380314960629221 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 283.4648031496062686 Td
+(IMPACTO: ALTO. Corrige vulnerabilidade crítica de segurança onde usuários poderiam acessar dados de outros usuários. O BFF) Tj
+T* (agora é seguro para ambientes multi-usuário.) Tj
+ET
+endstream
+endobj
+9 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 10 0 R
+>>
+endobj
+10 0 obj
+<<
+/Length 2562
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S02) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.722 0.29 0.29 rg
+469.1362204724409821 790.8663779527558972 Td
+(CRÍTICO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(JWT Secret sem fallback hardcoded) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/config.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • server/.env.example) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 666.1419685039369369 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 649.1340944881889072 Td
+(O arquivo config.ts tinha um fallback hardcoded para o JWT_SECRET:) Tj
+T* (jwtSecret: process.env.HORSE_JWT_SECRET || 'c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d') Tj
+T* () Tj
+T* (Se a variável de ambiente não estivesse configurada em produção, o secret era público e conhecido.) Tj
+T* () Tj
+T* (Solução: Criada função requiredEnv\(\) que lança erro em startup se a variável não estiver definida. O .env.example foi atualizado) Tj
+T* (com um valor placeholder.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 548.5041732283464171 Td
+(Antes:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.722 0.29 0.29 rg
+39.6850393700787407 537.1655905511811397 Td
+(jwtSecret: process.env.HORSE_JWT_SECRET || 'c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d') Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 515.9057480314959321 Td
+(Depois:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 504.5671653543306547 Td
+(function requiredEnv\(name: string\): string {) Tj
+T* (  const value = process.env[name];) Tj
+T* (  if \(!value\) throw new Error\(...\);) Tj
+T* (  return value;) Tj
+T* (}) Tj
+T* () Tj
+T* (jwtSecret: requiredEnv\('HORSE_JWT_SECRET'\)) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 423.7797637795275136 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 409.6065354330708033 Td
+(IMPACTO: ALTO. Impede que um secret padrão conhecido seja usado em produção. O servidor falha ao iniciar se a configuração) Tj
+T* (não for explícita.) Tj
+ET
+endstream
+endobj
+11 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 12 0 R
+>>
+endobj
+12 0 obj
+<<
+/Length 2352
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S03) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.722 0.29 0.29 rg
+469.1362204724409821 790.8663779527558972 Td
+(CRÍTICO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(CORS restrito por variável de ambiente) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/index.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • server/src/config.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • server/.env.example) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 651.9687401574802834 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 634.9608661417322537 Td
+(CORS estava configurado com origin: '*', permitindo qualquer site fazer requisições ao BFF.) Tj
+T* () Tj
+T* (Solução: Adicionada config.corsOrigin lida do .env, com suporte a múltiplas origens \(separadas por vírgula\). Também adicionado) Tj
+T* (credentials: true para suporte a cookies httpOnly.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 572.5986614173227736 Td
+(Antes:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.722 0.29 0.29 rg
+39.6850393700787407 561.2600787401574962 Td
+(app.use\(cors\({ origin: '*' }\)\);) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 540.0002362204724022 Td
+(Depois:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 528.6616535433070112 Td
+(const corsOrigins = config.corsOrigin.split\(','\).map\(\(s\) => s.trim\(\)\);) Tj
+T* (app.use\(cors\({ origin: corsOrigins, credentials: true }\)\);) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 497.480551181102328 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 483.3073228346456176 Td
+(IMPACTO: ALTO. Em produção, apenas origens explicitamente configuradas poderão acessar a API.) Tj
+ET
+endstream
+endobj
+13 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 14 0 R
+>>
+endobj
+14 0 obj
+<<
+/Length 1511
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S04) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.706 0.29 0.29 rg
+477.5362204724410162 790.8663779527558972 Td
+(MÉDIO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Variáveis não utilizadas removidas) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/services/horseApi.ts) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 680.3151968503937042 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 663.3073228346456744 Td
+(Em todos os métodos do HorseApiService, a variável const token = await this.getToken\(\) era declarada mas nunca utilizada — os) Tj
+T* (headers eram obtidos via this.getAuthHeaders\(\). Isso gerava warnings e poluía o código.) Tj
+T* () Tj
+T* (Solução: Removidas todas as declarações de variável não utilizadas, já que o token agora é parâmetro do método.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 600.9451181102361943 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 586.7718897637794271 Td
+(IMPACTO: BAIXO. Melhora a qualidade do código e elimina warnings do compilador.) Tj
+ET
+endstream
+endobj
+15 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 16 0 R
+>>
+endobj
+16 0 obj
+<<
+/Length 3042
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S05) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.706 0.29 0.29 rg
+477.5362204724410162 790.8663779527558972 Td
+(MÉDIO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Validação de entrada nas rotas do BFF) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/routes/clientes.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • server/src/routes/fornecedores.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • server/src/routes/categorias.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 663.3073228346456744 Td
+(  • server/src/routes/contasPagar.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 649.1340944881889072 Td
+(  • server/src/routes/contasReceber.ts) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 623.6222834645668627 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 606.614409448818833 Td
+(As rotas não validavam os dados recebidos antes de enviá-los à API Horse. Qualquer payload malformado chegava ao backend) Tj
+T* (legado sem filtro.) Tj
+T* () Tj
+T* (Solução: Adicionada validação básica de campos obrigatórios \(nome, descrição\) com mensagens de erro claras em português) Tj
+T* (antes de chamar o serviço.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 531.4962992125983874 Td
+(Antes:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.722 0.29 0.29 rg
+39.6850393700787407 520.1577165354329964 Td
+(router.post\('/', authMiddleware, async \(req, res\) => {) Tj
+T* (  const result = await horseApi.salvarClientes\(clientes\);) Tj
+T* (  res.json\(result\);) Tj
+T* (}\);) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 469.1340944881889072 Td
+(Depois:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 457.795511811023573 Td
+(router.post\('/', authMiddleware, async \(req, res\) => {) Tj
+T* (  if \(!clientes.length || !clientes[0].nome\) {) Tj
+T* (    res.status\(400\).json\({ error: 'Nome do cliente é obrigatório' }\);) Tj
+T* (    return;) Tj
+T* (  }) Tj
+T* (  const result = await horseApi.salvarClientes\(req.token!, clientes\);) Tj
+T* (  res.json\(result\);) Tj
+T* (}\);) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 367.086850393700729 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 352.9136220472440186 Td
+(IMPACTO: MÉDIO. Evita que dados inválidos ou incompletos cheguem à API Horse, melhorando a integridade.) Tj
+ET
+endstream
+endobj
+17 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 18 0 R
+>>
+endobj
+18 0 obj
+<<
+/Length 2609
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S06) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.706 0.29 0.29 rg
+477.5362204724410162 790.8663779527558972 Td
+(MÉDIO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Função utilitária toSnakeCase \(eliminação de repetição\)) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/services/horseApi.ts) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 680.3151968503937042 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 663.3073228346456744 Td
+(A conversão manual de camelCase para snake_case era feita de forma repetitiva em salvarContasPagar e salvarContasReceber,) Tj
+T* (com mapeamento campo a campo propenso a erros.) Tj
+T* () Tj
+T* (Solução: Criadas funções genéricas toSnakeCase\(\) e mapKeysToSnake\(\) que convertem automaticamente todas as chaves de) Tj
+T* (um objeto, eliminando a duplicação.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 588.1892125984251152 Td
+(Antes:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.722 0.29 0.29 rg
+39.6850393700787407 576.8506299212597241 Td
+(const mappedContas = contas.map\(\(conta\) => {) Tj
+T* (  const { dataPagamento, ...rest } = conta as any;) Tj
+T* (  return {) Tj
+T* (    codigo: rest.codigo || rest.id,) Tj
+T* (    descricao: rest.descricao,) Tj
+T* (    data_vencimento: rest.dataVencimento,) Tj
+T* (    fornecedor_id: rest.fornecedorId,) Tj
+T* (    id_categoria: rest.idCategoria,) Tj
+T* (  };) Tj
+T* (}\);) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 466.2994488188975879 Td
+(Depois:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.176 0.369 0.227 rg
+39.6850393700787407 454.9608661417322537 Td
+(const mappedContas = contas.map\(\(c\) => {) Tj
+T* (  const { dataPagamento, dataRecebimento, ...rest } = c as unknown as Record<string, unknown>;) Tj
+T* (  return mapKeysToSnake\(rest\);) Tj
+T* (}\);) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 403.9372440944881077 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 389.7640157480314542 Td
+(IMPACTO: MÉDIO. Reduz duplicação de código e elimina risco de esquecer de mapear um campo ao adicionar novas) Tj
+T* (propriedades.) Tj
+ET
+endstream
+endobj
+19 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 20 0 R
+>>
+endobj
+20 0 obj
+<<
+/Length 2397
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S07) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.706 0.29 0.29 rg
+477.5362204724410162 790.8663779527558972 Td
+(MÉDIO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Endpoint de Dashboard com dados reais) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/services/horseApi.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • server/src/routes/dashboard.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • server/src/index.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 663.3073228346456744 Td
+(  • server/src/types.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 649.1340944881889072 Td
+(  • client/src/pages/Dashboard.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 634.9608661417322537 Td
+(  • client/src/components/charts/DashboardChart.tsx) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 609.4490551181102092 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 592.4411811023621794 Td
+(O Dashboard anteriormente fazia requisições paralelas para /contas-pagar e /contas-receber e calculava os totais no frontend. O) Tj
+T* (gráfico usava dados mockados com valores zero.) Tj
+T* () Tj
+T* (Solução: Criado endpoint /api/dashboard que agrega os dados no servidor, incluindo:) Tj
+T* (- Totais a receber/pagar, recebido/pago) Tj
+T* (- Contas pendentes e atrasadas) Tj
+T* (- Receitas e despesas dos últimos 6 meses para o gráfico) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 491.8112598425196325 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 477.6380314960629221 Td
+(IMPACTO: MÉDIO. Dashboard agora reflete dados reais. Reduz o número de requisições do cliente \(1 em vez de 2\). O gráfico de) Tj
+T* (barras agora mostra a evolução mensal real.) Tj
+ET
+endstream
+endobj
+21 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 22 0 R
+>>
+endobj
+22 0 obj
+<<
+/Length 2749
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S08) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.722 0.29 0.29 rg
+469.1362204724409821 790.8663779527558972 Td
+(CRÍTICO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(HttpOnly Cookie para autenticação \(removido localStorage\)) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/routes/auth.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • server/src/middleware/auth.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • server/src/index.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 663.3073228346456744 Td
+(  • server/package.json) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 649.1340944881889072 Td
+(  • client/src/lib/api.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 634.9608661417322537 Td
+(  • client/src/context/AuthContext.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 620.7876377952754865 Td
+(  • client/src/types/index.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 606.614409448818833 Td
+(  • client/src/pages/Login.tsx) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 581.1025984251967884 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 564.0947244094487587 Td
+(O token JWT era armazenado no localStorage do navegador, vulnerável a ataques XSS. Qualquer script injetado poderia roubar) Tj
+T* (o token.) Tj
+T* () Tj
+T* (Solução: ) Tj
+T* (- Login agora define um cookie httpOnly \(inacessível via JavaScript\) com o token) Tj
+T* (- O middleware de autenticação lê o token do cookie como fallback) Tj
+T* (- As requisições Axios usam withCredentials: true) Tj
+T* (- O tipo User não inclui mais token) Tj
+T* (- O interceptor 401 dispara um evento customizado que redireciona ao login com mensagem de sessão expirada) Tj
+T* (- Adicionado cookie-parser ao servidor) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 425.1970866141731449 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 411.0238582677164914 Td
+(IMPACTO: ALTO. Elimina a vulnerabilidade de roubo de token via XSS. Sessão gerenciada pelo servidor.) Tj
+ET
+endstream
+endobj
+23 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 24 0 R
+>>
+endobj
+24 0 obj
+<<
+/Length 2167
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S09) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.706 0.29 0.29 rg
+477.5362204724410162 790.8663779527558972 Td
+(MÉDIO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(DataTable com @tanstack/react-table) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • client/src/components/ui/DataTable.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • client/src/pages/Clientes.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • client/src/pages/Fornecedores.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 663.3073228346456744 Td
+(  • client/src/pages/Categorias.tsx) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 637.7955118110235162 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 620.7876377952754865 Td
+(O componente DataTable.tsx existia mas não utilizava o @tanstack/react-table \(que já estava instalado\). Além disso, não era) Tj
+T* (usado por nenhuma página.) Tj
+T* () Tj
+T* (Solução: Reescrito o DataTable usando useReactTable, getCoreRowModel e getSortedRowModel. Atualizadas as páginas de) Tj
+T* (Clientes, Fornecedores e Categorias para utilizar o componente. Adicionado suporte a ordenação por coluna com indicadores) Tj
+T* (visuais \(setas\).) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 532.9136220472440755 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 518.7403937007873083 Td
+(IMPACTO: MÉDIO. Código mais limpo e padronizado. A lib @tanstack/react-table agora é efetivamente utilizada, eliminando a) Tj
+T* (dependency orphan. Usuários podem ordenar colunas clicando nos cabeçalhos.) Tj
+ET
+endstream
+endobj
+25 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 26 0 R
+>>
+endobj
+26 0 obj
+<<
+/Length 1697
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S10) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.392 0.29 0.29 rg
+484.3362204724409708 790.8663779527558972 Td
+(LEVE) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Lazy Loading de rotas + Spinner componente) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • client/src/App.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • client/src/components/ui/Spinner.tsx) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 666.1419685039369369 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 649.1340944881889072 Td
+(Todas as páginas eram importadas estaticamente no App.tsx, aumentando o bundle inicial.) Tj
+T* () Tj
+T* (Solução: ) Tj
+T* (- Usado React.lazy\(\) + Suspense para carregamento sob demanda) Tj
+T* (- Criado componente Spinner reutilizável \(com variantes de tamanho e modo fullPage\)) Tj
+T* (- Substituídas as repetições manuais de div.animate-spin nas páginas \(Clientes, Fornecedores\)) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 561.2600787401574962 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 547.086850393700729 Td
+(IMPACTO: BAIXO. Reduz o tamanho do bundle inicial. O Spinner centralizado facilita manutenção.) Tj
+ET
+endstream
+endobj
+27 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 28 0 R
+>>
+endobj
+28 0 obj
+<<
+/Length 1791
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S11) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.392 0.29 0.29 rg
+484.3362204724409708 790.8663779527558972 Td
+(LEVE) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Interceptor 401 com notificação ao usuário) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • client/src/lib/api.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • client/src/context/AuthContext.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • client/src/pages/Login.tsx) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 651.9687401574802834 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 634.9608661417322537 Td
+(O interceptor 401 redirecionava silenciosamente para /login sem informar o usuário.) Tj
+T* () Tj
+T* (Solução: O interceptor agora dispara um evento customizado auth:unauthorized com a mensagem de erro. O AuthContext escuta) Tj
+T* (o evento e redireciona para /login?expired=1&message=... que exibe um alerta explicando que a sessão expirou.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 572.5986614173227736 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 558.42543307086612 Td
+(IMPACTO: BAIXO. Melhora a experiência do usuário ao informar claramente quando a sessão expira.) Tj
+ET
+endstream
+endobj
+29 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 30 0 R
+>>
+endobj
+30 0 obj
+<<
+/Length 2566
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S12) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.706 0.29 0.29 rg
+477.5362204724410162 790.8663779527558972 Td
+(MÉDIO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Tratamento de erro tipado \(redução de any\)) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/routes/*.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • server/src/services/horseApi.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • server/src/types.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 663.3073228346456744 Td
+(  • client/src/hooks/useApi.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 649.1340944881889072 Td
+(  • client/src/pages/Login.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 634.9608661417322537 Td
+(  • client/src/pages/Clientes.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 620.7876377952754865 Td
+(  • client/src/pages/Fornecedores.tsx) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 606.614409448818833 Td
+(  • client/src/pages/Categorias.tsx) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 581.1025984251967884 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 564.0947244094487587 Td
+(O código usava catch \(error: any\) e casts as any em vários lugares, perdendo a segurança de tipos.) Tj
+T* () Tj
+T* (Solução: ) Tj
+T* (- Criada classe AppError com campo status no servidor) Tj
+T* (- Substituídos catch \(error: any\) por catch \(error: unknown\) com narrowing adequado) Tj
+T* (- Utilizadas arrow functions auto-invocadas para narrowing de axios errors) Tj
+T* (- Adicionado status à interface HorseError) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 463.4648031496062686 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 449.2915748031495582 Td
+(IMPACTO: MÉDIO. Melhora a segurança de tipos e reduz bugs silenciosos em tempo de execução.) Tj
+ET
+endstream
+endobj
+31 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 32 0 R
+>>
+endobj
+32 0 obj
+<<
+/Length 2048
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 790.8663779527558972 Td
+(ID: S13) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.706 0.29 0.29 rg
+477.5362204724410162 790.8663779527558972 Td
+(MÉDIO) Tj
+ET
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 756.8506299212598378 Td
+(Testes automatizados \(server + client\)) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 722.8348818897637784 Td
+(Arquivos modificados:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 705.8270078740157487 Td
+(  • server/src/__tests__/horseApi.test.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 691.6537795275589815 Td
+(  • server/package.json) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 677.480551181102328 Td
+(  • client/src/__tests__/utils.test.ts) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.42 0.439 0.424 rg
+39.6850393700787407 663.3073228346456744 Td
+(  • client/package.json) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 637.7955118110235162 Td
+(Descrição:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 620.7876377952754865 Td
+(O projeto não possuía nenhum teste automatizado.) Tj
+T* () Tj
+T* (Solução: ) Tj
+T* (- Adicionado Vitest como framework de testes \(server e client\)) Tj
+T* (- Criados testes para o serviço HorseApi \(conversão snake_case\)) Tj
+T* (- Criados testes para o middleware de autenticação) Tj
+T* (- Criados testes unitários para funções utilitárias do client \(formatCurrency, formatDate, isOverdue, cn\)) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 520.1577165354329964 Td
+(Impacto:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 505.9844881889763428 Td
+(IMPACTO: MÉDIO. Estabelece uma base de testes que pode ser expandida. Garante que as funções críticas funcionam) Tj
+T* (conforme esperado após alterações.) Tj
+ET
+endstream
+endobj
+33 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 34 0 R
+>>
+endobj
+34 0 obj
+<<
+/Length 2323
+>>
+stream
+0.5670000000000001 w
+0. G
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0.106 0.122 0.11 rg
+39.6850393700787407 779.5277952755905062 Td
+(Resumo Estatístico) Tj
+ET
+0. G
+0.5670000000000001 w
+0. G
+0.5670000000000001 w
+0. G
+0.5670000000000001 w
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 739.846692913385823 Td
+(Total de alterações) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 739.846692913385823 Td
+(13) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 711.3388188976377933 Td
+(Críticas \(segurança\)) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 711.3388188976377933 Td
+(4) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 682.8309448818897636 Td
+(Médias \(qualidade/arquitetura\)) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 682.8309448818897636 Td
+(7) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 654.3230708661417339 Td
+(Leves \(UX/manutenibilidade\)) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 654.3230708661417339 Td
+(2) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 625.8151968503937042 Td
+(Arquivos server modificados) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 625.8151968503937042 Td
+(13) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 597.3073228346456744 Td
+(Arquivos client modificados) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 597.3073228346456744 Td
+(15+) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 568.7994488188976447 Td
+(Arquivos novos \(testes, componentes\)) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 568.7994488188976447 Td
+(6) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 540.291574803149615 Td
+(Dependências adicionadas \(server\)) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 540.291574803149615 Td
+(cookie-parser, vitest, @types/cookie-parser) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+40. 511.7837007874015853 Td
+(Dependências adicionadas \(client\)) Tj
+ET
+0.78 G
+0. w
+0.96 g
+BT
+/F1 10 Tf
+11.5 TL
+0.078 g
+301.8591970864947029 511.7837007874015853 Td
+(vitest) Tj
+ET
+0. G
+0.5670000000000001 w
+0.78 G
+0. w
+0. G
+0.5670000000000001 w
+0. G
+0.5670000000000001 w
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R 25 0 R 27 0 R 29 0 R 31 0 R 33 0 R ]
+/Count 16
+>>
+endobj
+35 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+36 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+37 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+38 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+39 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+40 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+41 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+42 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+43 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+44 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+45 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+46 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+47 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+48 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 35 0 R
+/F2 36 0 R
+/F3 37 0 R
+/F4 38 0 R
+/F5 39 0 R
+/F6 40 0 R
+/F7 41 0 R
+/F8 42 0 R
+/F9 43 0 R
+/F10 44 0 R
+/F11 45 0 R
+/F12 46 0 R
+/F13 47 0 R
+/F14 48 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+49 0 obj
+<<
+/Producer (jsPDF 4.2.1)
+/CreationDate (D:20260613090027-03'00')
+>>
+endobj
+50 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 51
+0000000000 65535 f 
+0000048470 00000 n 
+0000050395 00000 n 
+0000000015 00000 n 
+0000000152 00000 n 
+0000000897 00000 n 
+0000001034 00000 n 
+0000012830 00000 n 
+0000012967 00000 n 
+0000016161 00000 n 
+0000016299 00000 n 
+0000018914 00000 n 
+0000019053 00000 n 
+0000021458 00000 n 
+0000021597 00000 n 
+0000023161 00000 n 
+0000023300 00000 n 
+0000026395 00000 n 
+0000026534 00000 n 
+0000029196 00000 n 
+0000029335 00000 n 
+0000031785 00000 n 
+0000031924 00000 n 
+0000034726 00000 n 
+0000034865 00000 n 
+0000037085 00000 n 
+0000037224 00000 n 
+0000038974 00000 n 
+0000039113 00000 n 
+0000040957 00000 n 
+0000041096 00000 n 
+0000043715 00000 n 
+0000043854 00000 n 
+0000045955 00000 n 
+0000046094 00000 n 
+0000048630 00000 n 
+0000048756 00000 n 
+0000048887 00000 n 
+0000049021 00000 n 
+0000049159 00000 n 
+0000049283 00000 n 
+0000049412 00000 n 
+0000049544 00000 n 
+0000049680 00000 n 
+0000049808 00000 n 
+0000049935 00000 n 
+0000050064 00000 n 
+0000050197 00000 n 
+0000050299 00000 n 
+0000050648 00000 n 
+0000050734 00000 n 
+trailer
+<<
+/Size 51
+/Root 50 0 R
+/Info 49 0 R
+/ID [ <2C3A165468207E2CC520504C14470A63> <2C3A165468207E2CC520504C14470A63> ]
+>>
+startxref
+50838
+%%EOF

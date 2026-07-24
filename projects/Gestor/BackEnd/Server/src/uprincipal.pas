@@ -5,25 +5,25 @@ unit uPrincipal;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  EditBtn, FileUtil, fpjson, jsonparser, Horse, Horse.Jhonson, Horse.CORS,
-  uRotas, uBase.Functions, uConfig;
+   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
+   EditBtn, FileUtil, fpjson, jsonparser,
+   uBase.Functions, uConfig;
 
 type
-  TForm1 = class;
+  TfrmPrincipal = class;
   TLogRefreshThread = class(TThread)
   private
-    FOwner: TForm1;
+    FOwner: TfrmPrincipal;
   protected
     procedure Execute; override;
     procedure SyncCarregarLogs;
   public
-    constructor Create(AOwner: TForm1);
+    constructor Create(AOwner: TfrmPrincipal);
   end;
 
-	{ TForm1 }
+	{ TfrmPrincipal }
 
-  TForm1 = class(TForm)
+  TfrmPrincipal = class(TForm)
     btRefresh: TButton;
     btConfig: TButton;
     DateTimePicker1: TDateEdit;
@@ -36,6 +36,7 @@ type
     pnFilter: TPanel;
     pnBody: TPanel;
     pnFooter: TPanel;
+		procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -48,13 +49,13 @@ type
   end;
 
 var
-  Form1: TForm1;
+  frmPrincipal: TfrmPrincipal;
 
 implementation
 
 {$R *.lfm}
 
-constructor TLogRefreshThread.Create(AOwner: TForm1);
+constructor TLogRefreshThread.Create(AOwner: TfrmPrincipal);
 begin
     inherited Create(True);
   FOwner := AOwner;
@@ -77,7 +78,7 @@ begin
   end;
 end;
 
-procedure TForm1.CarregarLogs;
+procedure TfrmPrincipal.CarregarLogs;
 var
   LArquivos: TStringList;
   LArquivo: string;
@@ -194,11 +195,11 @@ begin
   end;
 end;
 
-procedure TForm1.btConfigClick(Sender: TObject);
+procedure TfrmPrincipal.btConfigClick(Sender: TObject);
 var
-  frm: TForm2;
+  frm: TfrmConfig;
 begin
-  frm := TForm2.Create(Self);
+  frm := TfrmConfig.Create(Self);
   try
     frm.ShowModal;
   finally
@@ -206,18 +207,24 @@ begin
   end;
 end;
 
-procedure TForm1.btRefreshClick(Sender: TObject);
+procedure TfrmPrincipal.btRefreshClick(Sender: TObject);
 begin
   CarregarLogs;
 end;
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TfrmPrincipal.FormCreate(Sender: TObject);
 begin
   FThreadLog := TLogRefreshThread.Create(Self);
   FThreadLog.Start;
 end;
 
-procedure TForm1.FormDestroy(Sender: TObject);
+procedure TfrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction
+			);
+begin
+  //Action := TCloseAction.caFree;
+end;
+
+procedure TfrmPrincipal.FormDestroy(Sender: TObject);
 begin
   if Assigned(FThreadLog) then
   begin
@@ -227,14 +234,12 @@ begin
   end;
 end;
 
-procedure TForm1.DateTimePickerChange(Sender: TObject);
+procedure TfrmPrincipal.DateTimePickerChange(Sender: TObject);
 begin
   CarregarLogs;
 end;
 
-procedure TForm1.FormShow(Sender: TObject);
-var
-  lPorta: Integer;
+procedure TfrmPrincipal.FormShow(Sender: TObject);
 begin
   DateTimePicker1.Date := Date;
   DateTimePicker2.Date := Date;
@@ -242,18 +247,6 @@ begin
   DateTimePicker2.OnChange := DateTimePickerChange;
 
   CarregarLogs;
-
-  THorse.Use(Jhonson());
-  THorse.Use(CORS);
-
-  RegistrarRotas;
-
-  lPorta := StrToIntDef(LerIni('SERVER','PORT',ConfigFile), 0);
-  if lPorta = 0 then
-    lPorta := 9000;
-
-  THorse.Listen(lPorta);
-  lbServer_Port_Ativa.Caption := 'Servidor executando na porta: ' + lPorta.ToString;
 end;
 
 end.

@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: gestor-server
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - HORSE_API_BASE_URL=http://host.docker.internal:3002
+      - HORSE_JWT_SECRET=${HORSE_JWT_SECRET:-c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d}
+      - CORS_ORIGIN=*
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - APP_MODE=${APP_MODE:-gestor}
+    container_name: gestor-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server

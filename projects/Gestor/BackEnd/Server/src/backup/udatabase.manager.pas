@@ -327,7 +327,7 @@ end;
 
 function TDataBaseManager.Fornecedor_Atualizar(const aJSon: TJSONArray; const aEmpresaId: Integer; const aUsuarioId: Integer): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Append: TZQuery;
   FCodigoRetorno :Integer;
   I :Integer;
@@ -349,7 +349,7 @@ begin
 
   try
     try
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Append := TZQuery.Create(nil);
       FDQ_Append.Connection := fDm.ZConnection;
 
@@ -461,7 +461,7 @@ end;
 
 function TDataBaseManager.Fornecedor_Delete(out fJson:TJSONObject;const aId: Integer = 0; const aEmpresaId: Integer = 0): TReturn;
 var
-  fDm: TDataModule1;
+  fDm: TDm;
   FDQ_Select :TZQuery;
 begin
   with Result do
@@ -477,7 +477,7 @@ begin
   try
     try
 
-      fDm := TDataModule1.Create(nil);
+      fDm := TDm.Create(nil);
       FDQ_Select := TZQuery.Create(Nil);
       FDQ_Select.Connection := fDm.ZConnection;
       if not fDm.ZConnection.Connected then
@@ -10428,7 +10428,7 @@ begin
 
       for i :=    0 to aEmpresas.Count - 1 do
       begin
-        var lEmpresaId := StrToIntDef(aEmpresas.Items[I].Value, 0);
+        lEmpresaId := StrToIntDef(aEmpresas.Items[I].Value, 0);
         if lEmpresaId > 0 then
         begin
           FDQ_Exec.Close;

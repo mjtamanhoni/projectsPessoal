@@ -6677,6 +6677,7 @@ var
   fId: Integer;
   fEmpresas: TJSONArray;
   fEmpresaId: Integer;
+  fUsuarioIdAlvo: Integer;
 begin
   fDataBaseManager := TDataBaseManager.Create;
   lBody := nil;
