@@ -48,7 +48,11 @@ const RelatorioInsumos = lazy(() => import('@/pages/RelatorioInsumos').then((m) 
 const RelatorioProdutosFabricados = lazy(() => import('@/pages/RelatorioProdutosFabricados').then((m) => ({ default: m.RelatorioProdutosFabricados })));
 const RelatorioFabricacoes = lazy(() => import('@/pages/RelatorioFabricacoes').then((m) => ({ default: m.RelatorioFabricacoes })));
 const LancamentoAutomaticoConfigPage = lazy(() => import('@/pages/LancamentoAutomaticoConfig').then((m) => ({ default: m.LancamentoAutomaticoConfigPage })));
+const PerdasInsumo = lazy(() => import('@/pages/PerdasInsumo').then((m) => ({ default: m.PerdasInsumo })));
+const PerdasProduto = lazy(() => import('@/pages/PerdasProduto').then((m) => ({ default: m.PerdasProduto })));
+const UsoConsumoPage = lazy(() => import('@/pages/UsoConsumo').then((m) => ({ default: m.UsoConsumoPage })));
 const RelatorioVendasProduto = lazy(() => import('@/pages/RelatorioVendasProduto').then((m) => ({ default: m.RelatorioVendasProduto })));
+const Marcas = lazy(() => import('@/pages/Marcas').then((m) => ({ default: m.Marcas })));
 const Help = lazy(() => import('@/pages/Help').then((m) => ({ default: m.Help })));
 
 const superadminRoutes = new Set([
@@ -149,6 +153,7 @@ export default function App() {
           {routesFor(HORAS, mode) && <Route path="/servicos" element={<Private><Servicos /></Private>} />}
           {/* producao */}
           {routesFor(PRODUCAO, mode) && <Route path="/insumos" element={<Private><Insumos /></Private>} />}
+          {routesFor(PRODUCAO, mode) && <Route path="/marcas" element={<Private><Marcas /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/compras-insumo" element={<Private><ComprasInsumo /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/produtos-fabricados" element={<Private><ProdutosFabricados /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/custos-adicionais" element={<Private><CustosAdicionais /></Private>} />}
@@ -161,6 +166,9 @@ export default function App() {
           {routesFor(PRODUCAO, mode) && <Route path="/relatorios/producao/produtos-fabricados" element={<Private><RelatorioProdutosFabricados /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/relatorios/producao/fabricacoes" element={<Private><RelatorioFabricacoes /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/relatorios/producao/vendas-produto" element={<Private><RelatorioVendasProduto /></Private>} />}
+          {routesFor(PRODUCAO, mode) && <Route path="/perdas-insumo" element={<Private><PerdasInsumo /></Private>} />}
+          {routesFor(PRODUCAO, mode) && <Route path="/perdas-produto" element={<Private><PerdasProduto /></Private>} />}
+          {routesFor(PRODUCAO, mode) && <Route path="/uso-consumo" element={<Private><UsoConsumoPage /></Private>} />}
           {routesFor(SHARED, mode) && <Route path="/lancamento-automatico-config" element={<Private><LancamentoAutomaticoConfigPage /></Private>} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

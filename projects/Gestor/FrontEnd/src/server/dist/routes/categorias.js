@@ -16,7 +16,7 @@ router.get('/pagar', auth_1.authMiddleware, async (req, res) => {
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
-router.post('/pagar', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.categoriaBodySchema), async (req, res) => {
+router.post('/pagar', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.categoriaSaveSchema), async (req, res) => {
     try {
         const body = req.body;
         const categorias = Array.isArray(body) ? body : [body];
@@ -53,7 +53,7 @@ router.get('/receber', auth_1.authMiddleware, async (req, res) => {
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
-router.post('/receber', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.categoriaBodySchema), async (req, res) => {
+router.post('/receber', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.categoriaSaveSchema), async (req, res) => {
     try {
         const body = req.body;
         const categorias = Array.isArray(body) ? body : [body];

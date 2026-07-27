@@ -44,7 +44,7 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
         name="razao_social"
         control={control}
         render={({ field }) => (
-          <Input label="Razao Social *" error={errors.razao_social?.message} {...field} />
+          <Input label="Razao Social *" error={errors.razao_social?.message} autoFocus {...field} />
         )}
       />
       <Controller

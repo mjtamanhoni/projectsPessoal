@@ -32,7 +32,7 @@ export function EstoqueInsumo() {
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
       id: 'codigo',
-      header: 'Codigo',
+      header: 'Código',
       enableSorting: true,
       meta: { align: 'right' } as Record<string, string>,
     }),
@@ -52,12 +52,12 @@ export function EstoqueInsumo() {
       meta: { align: 'right' } as Record<string, string>,
     }),
     columnHelper.accessor('data_atualizacao', {
-      header: 'Data Atualizacao',
+      header: 'Data Atualização',
       cell: (info) => formatDate(info.getValue()),
     }),
     columnHelper.display({
       id: 'acoes',
-      header: 'Acoes',
+      header: 'Ações',
       enableColumnFilter: false,
       enableSorting: false,
       cell: ({ row }) => (
@@ -121,7 +121,7 @@ export function EstoqueInsumo() {
     try {
       await remove(confirmDelete);
       setConfirmDelete(null);
-      addToast('success', 'Registro excluido com sucesso');
+      addToast('success', 'Registro excluído com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao excluir registro';
       addToast('error', msg);
@@ -149,7 +149,7 @@ export function EstoqueInsumo() {
         <DataTable columns={columns} data={estoques} loading={loading} error={error} emptyMessage="Nenhum registro de estoque encontrado" />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Estoque' : 'Novo Lancamento'}>
+      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Estoque' : 'Novo Lançamento'}>
         {fetchingOne ? (
           <Spinner />
         ) : (
@@ -168,7 +168,7 @@ export function EstoqueInsumo() {
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
         title="Excluir Registro"
-        message="Tem certeza que deseja excluir este registro? Esta acao nao pode ser desfeita."
+        message="Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita."
         variant="danger"
         confirmLabel="Excluir"
         loading={deleting}

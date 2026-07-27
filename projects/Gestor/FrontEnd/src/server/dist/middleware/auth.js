@@ -16,8 +16,16 @@ function authMiddleware(req, res, next) {
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jsonwebtoken_1.default.verify(token, config_1.config.horseApi.jwtSecret);
+        if (!decoded.id || !decoded.empresa) {
+            res.status(401).json({ error: 'Token inválido: claims ausentes' });
+            return;
+        }
         req.usuarioId = decoded.id;
-        req.empresaId = decoded.empresa || 1;
+        req.empresaId = decoded.empresa;
+        req.isSuperadmin = decoded.is_superadmin ?? false;
+        if (!req.query.empresa_id) {
+            req.query.empresa_id = decoded.empresa;
+        }
         horseApi_1.horseApi.setToken(token);
         next();
     }

@@ -174,9 +174,9 @@ export function Fabricacoes() {
       }
       setModalOpen(false);
       setEditing(null);
-      addToast('success', editing ? 'Fabricacao atualizada com sucesso' : 'Fabricacao cadastrada com sucesso');
+      addToast('success', editing ? 'Fabricação atualizada com sucesso' : 'Fabricação cadastrada com sucesso');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar fabricacao';
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar fabricação';
       addToast('error', msg);
     }
   };
@@ -187,9 +187,9 @@ export function Fabricacoes() {
     try {
       await remove(confirmDelete);
       setConfirmDelete(null);
-      addToast('success', 'Fabricacao excluída com sucesso');
+      addToast('success', 'Fabricação excluída com sucesso');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao excluir fabricacao';
+      const msg = err instanceof Error ? err.message : 'Erro ao excluir fabricação';
       addToast('error', msg);
     } finally {
       setDeleting(false);
@@ -310,7 +310,7 @@ export function Fabricacoes() {
 
   return (
     <Layout>
-      <PageHeader title="Fabricacoes" subtitle="Gerencie as fabricacoes">
+      <PageHeader title="Fabricações" subtitle="Gerencie as fabricações">
         <ShowForPermission rota="/fabricacoes" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Nova Fabricacao
@@ -324,10 +324,10 @@ export function Fabricacoes() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={fabricacoes} loading={loading} error={error} emptyMessage="Nenhuma fabricacao cadastrada" renderSubComponent={renderSubComponent} />
+        <DataTable columns={columns} data={fabricacoes} loading={loading} error={error} emptyMessage="Nenhuma fabricação cadastrada" renderSubComponent={renderSubComponent} />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Fabricacao' : 'Nova Fabricacao'}>
+      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Fabricação' : 'Nova Fabricação'}>
         {fetchingOne ? (
           <Spinner />
         ) : (
@@ -355,8 +355,8 @@ export function Fabricacoes() {
         isOpen={confirmDelete !== null}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
-        title="Excluir Fabricacao"
-        message="Tem certeza que deseja excluir esta fabricacao? Esta ação não pode ser desfeita."
+        title="Excluir Fabricação"
+        message="Tem certeza que deseja excluir esta fabricação? Esta ação não pode ser desfeita."
         variant="danger"
         confirmLabel="Excluir"
         loading={deleting}

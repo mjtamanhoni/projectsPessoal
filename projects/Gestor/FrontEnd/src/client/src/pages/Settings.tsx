@@ -6,11 +6,13 @@ import { useToast } from '@/context/ToastContext';
 import { fetchSettings, saveSettings } from '@/lib/settings';
 import api from '@/lib/api';
 import type { AppSettings, Categoria, Empresa } from '@/types';
-import { Save, Server, Monitor, Loader2, ImageIcon, Trash2, DollarSign, AlertTriangle, Database, CheckCircle } from 'lucide-react';
+import { Save, Server, Monitor, Loader2, ImageIcon, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Spinner } from '@/components/ui/Spinner';
 
-type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'logomarcas' | 'limpeza' | 'sequencias';
+
+type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'logomarcas' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes';
 
 export function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -25,6 +27,9 @@ export function Settings() {
   const [cleaning, setCleaning] = useState(false);
   const [atualizandoSeq, setAtualizandoSeq] = useState(false);
   const [resultadoSeq, setResultadoSeq] = useState<string | null>(null);
+  const [migracoes, setMigracoes] = useState<{ nome: string; aplicada: boolean; aplicada_em?: string }[] | null>(null);
+  const [aplicando, setAplicando] = useState<string | null>(null);
+  const [msgMigracao, setMsgMigracao] = useState<{ tipo: string; texto: string } | null>(null);
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputPdfRef = useRef<HTMLInputElement>(null);
@@ -57,6 +62,27 @@ export function Settings() {
     api.get<Empresa[]>('/empresas').then((r) => setEmpresas(r.data ?? [])).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (tab === 'migracoes') {
+      api.get('/migracoes').then((r) => setMigracoes(r.data ?? [])).catch(() => {});
+    }
+  }, [tab]);
+
+  async function aplicarMigracao(nome: string) {
+    setAplicando(nome);
+    setMsgMigracao(null);
+    try {
+      const res = await api.post('/migracoes/aplicar', { nome });
+      setMsgMigracao({ tipo: 'sucesso', texto: res.data?.mensagem || 'Migração aplicada' });
+      const lista = await api.get('/migracoes');
+      setMigracoes(lista.data ?? []);
+    } catch {
+      setMsgMigracao({ tipo: 'erro', texto: 'Erro ao aplicar migração' });
+    } finally {
+      setAplicando(null);
+    }
+  }
+
   const handleSave = async () => {
     if (!settings) return;
     setSaving(true);
@@ -88,8 +114,10 @@ export function Settings() {
     { key: 'exibicao', label: 'Exibição', icon: <Monitor size={16} /> },
     { key: 'financeiro', label: 'Financeiro', icon: <DollarSign size={16} /> },
     { key: 'logomarcas', label: 'Logomarcas', icon: <ImageIcon size={16} /> },
+    { key: 'impressao', label: 'Impressao', icon: <Printer size={16} /> },
     { key: 'limpeza', label: 'Limpeza', icon: <AlertTriangle size={16} /> },
     { key: 'sequencias', label: 'Sequências', icon: <Database size={16} /> },
+    { key: 'migracoes', label: 'Banco de Dados', icon: <HardDrive size={16} /> },
   ];
 
   return (
@@ -153,6 +181,22 @@ export function Settings() {
                   className="input-field"
                   placeholder="9000"
                 />
+              </div>
+            </div>
+            <div className="mt-6 pt-4 border-t border-border">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Limite de Requisições</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="label-field">Máximo por janela (15 min)</label>
+                  <input
+                    type="number"
+                    min={100}
+                    max={100000}
+                    value={settings.rateLimit?.max ?? 1000}
+                    onChange={(e) => setSettings({ ...settings, rateLimit: { max: Number(e.target.value) } })}
+                    className="input-field"
+                  />
+                </div>
               </div>
             </div>
           </Card>
@@ -294,6 +338,313 @@ export function Settings() {
           </Card>
         )}
 
+        {tab === 'impressao' && (
+          <Card>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <Printer size={20} className="text-amber-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-text-primary">Dados da Empresa para Cupom</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="space-y-1.5">
+                <label className="label-field">Nome da Empresa</label>
+                <input
+                  type="text"
+                  value={settings.empresaNome ?? ''}
+                  onChange={(e) => setSettings({ ...settings, empresaNome: e.target.value })}
+                  className="input-field"
+                  placeholder="Nome da empresa"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">CNPJ</label>
+                <input
+                  type="text"
+                  value={settings.empresaCnpj ?? ''}
+                  onChange={(e) => setSettings({ ...settings, empresaCnpj: e.target.value })}
+                  className="input-field"
+                  placeholder="00.000.000/0001-00"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Endereco</label>
+                <input
+                  type="text"
+                  value={settings.empresaEndereco ?? ''}
+                  onChange={(e) => setSettings({ ...settings, empresaEndereco: e.target.value })}
+                  className="input-field"
+                  placeholder="Rua, numero, bairro, cidade/UF"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Telefone</label>
+                <input
+                  type="text"
+                  value={settings.empresaTelefone ?? ''}
+                  onChange={(e) => setSettings({ ...settings, empresaTelefone: e.target.value })}
+                  className="input-field"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-border-subtle pt-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Printer size={20} className="text-amber-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-text-primary">Impressora Termica (PosPrinter)</h2>
+              </div>
+            <p className="text-sm text-text-secondary mb-4">
+              Configure a impressora termica para impressao de cupons nao fiscais.
+              Modelos compativeis: Epson TM, Daruma, Bematech, Elgin, etc.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="space-y-1.5">
+                <label className="label-field">Modelo</label>
+                <select
+                  value={settings.printer?.modelo ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, modelo: Number(e.target.value) } })}
+                  className="input-field"
+                >
+                  <option value={0}>Nenhum</option>
+                  <option value={1}>Epson TM</option>
+                  <option value={2}>Daruma</option>
+                  <option value={3}>Bematech</option>
+                  <option value={4}>Elgin</option>
+                  <option value={5}>Sweda</option>
+                  <option value={6}>Diebold</option>
+                  <option value={7}>ICAPlayer</option>
+                  <option value={8}>Generic</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Porta</label>
+                <input
+                  type="text"
+                  value={settings.printer?.porta ?? ''}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, porta: e.target.value } })}
+                  className="input-field"
+                  placeholder="Ex: COM1, USB001, TCP:192.168.0.10:9100"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Params (Serial)</label>
+                <input
+                  type="text"
+                  value={settings.printer?.deviceParams ?? ''}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, deviceParams: e.target.value } })}
+                  className="input-field"
+                  placeholder="Ex: 9600,N,8,1"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Colunas</label>
+                <input
+                  type="number"
+                  min={20}
+                  max={80}
+                  value={settings.printer?.colunas ?? 48}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, colunas: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Espaco entre linhas</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={settings.printer?.espacoEntreLinhas ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, espacoEntreLinhas: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Linhas em Buffer</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={255}
+                  value={settings.printer?.linhasBuffer ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, linhasBuffer: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Linhas entre cupons</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={settings.printer?.linhasPular ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, linhasPular: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Pagina de Codigo</label>
+                <select
+                  value={settings.printer?.paginaCodigo ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, paginaCodigo: Number(e.target.value) } })}
+                  className="input-field"
+                >
+                  <option value={0}>PC850</option>
+                  <option value={1}>PC852</option>
+                  <option value={2}>PC860</option>
+                  <option value={3}>PC861</option>
+                  <option value={4}>PC862</option>
+                  <option value={5}>PC863</option>
+                  <option value={6}>PC865</option>
+                  <option value={7}>PC866</option>
+                  <option value={8}>PC869</option>
+                  <option value={9}>ISO8859-1</option>
+                  <option value={10}>UTF8</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4 mb-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.printer?.cortarPapel ?? true}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, cortarPapel: e.target.checked } })}
+                  className="rounded border-border-subtle"
+                />
+                Cortar Papel
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.printer?.controlePorta ?? false}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, controlePorta: e.target.checked } })}
+                  className="rounded border-border-subtle"
+                />
+                Controle de Porta
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.printer?.barrasHRI ?? true}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, barrasHRI: e.target.checked } })}
+                  className="rounded border-border-subtle"
+                />
+                Mostrar codigo (Barras HRI)
+              </label>
+            </div>
+            <h3 className="text-sm font-medium text-text-primary mt-4 mb-2">Codigo de Barras</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="label-field">Largura</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={settings.printer?.barrasLargura ?? 2}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, barrasLargura: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Altura</label>
+                <input
+                  type="number"
+                  min={10}
+                  max={500}
+                  value={settings.printer?.barrasAltura ?? 100}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, barrasAltura: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+            </div>
+            <h3 className="text-sm font-medium text-text-primary mt-4 mb-2">QRCode</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="label-field">Tipo</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={3}
+                  value={settings.printer?.qrcodeTipo ?? 2}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, qrcodeTipo: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Largura do Modulo</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={settings.printer?.qrcodeLarguraModulo ?? 6}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, qrcodeLarguraModulo: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Error Level</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={3}
+                  value={settings.printer?.qrcodeErrorLevel ?? 2}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, qrcodeErrorLevel: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+            </div>
+            <h3 className="text-sm font-medium text-text-primary mt-4 mb-2">Logo (gravado na impressora)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <label className="label-field">KeyCode 1</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={255}
+                  value={settings.printer?.logoKC1 ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, logoKC1: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">KeyCode 2</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={255}
+                  value={settings.printer?.logoKC2 ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, logoKC2: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Fator X</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={settings.printer?.logoFatorX ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, logoFatorX: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Fator Y</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={settings.printer?.logoFatorY ?? 0}
+                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, logoFatorY: Number(e.target.value) } })}
+                  className="input-field w-24"
+                />
+              </div>
+            </div>
+            </div>
+          </Card>
+        )}
+
         {tab === 'limpeza' && (
           <Card>
             <div className="flex items-center gap-3 mb-4">
@@ -402,7 +753,7 @@ export function Settings() {
                       alt="Logo Menu"
                       className="max-h-16 max-w-40 object-contain border border-border-subtle rounded-lg p-2"
                     />
-                    <Button variant="secondary" onClick={() => setSettings({ ...settings, logoBase64: undefined })}>
+                    <Button variant="secondary" onClick={() => setSettings({ ...settings, logoBase64: null })}>
                       <Trash2 size={16} />
                       Remover
                     </Button>
@@ -433,7 +784,7 @@ export function Settings() {
                         alt="Logo PDF"
                         className="max-h-16 max-w-40 object-contain border border-border-subtle rounded-lg p-2"
                       />
-                      <Button variant="secondary" onClick={() => setSettings({ ...settings, logoPdfBase64: undefined })}>
+                      <Button variant="secondary" onClick={() => setSettings({ ...settings, logoPdfBase64: null })}>
                         <Trash2 size={16} />
                         Remover
                       </Button>
@@ -453,6 +804,57 @@ export function Settings() {
                   </div>
                 </div>
               </div>
+            </div>
+          </Card>
+        )}
+
+        {tab === 'migracoes' && (
+          <Card>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-cyan-100 rounded-lg">
+                <HardDrive size={20} className="text-cyan-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-text-primary">Atualização do Banco de Dados</h2>
+            </div>
+            <div className="space-y-4">
+              <p className="text-sm text-text-secondary">
+                Execute scripts de atualização do banco de dados. Cada migração é executada uma única vez.
+              </p>
+              {migracoes === null ? (
+                <Spinner />
+              ) : migracoes.length === 0 ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-lg text-sm">
+                  <CheckCircle size={16} />
+                  Nenhuma migração pendente.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {migracoes.map((m) => (
+                    <div key={m.nome} className={`flex items-center justify-between p-3 rounded-lg border ${m.aplicada ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                      <div>
+                        <span className={`text-sm font-medium ${m.aplicada ? 'text-green-700' : 'text-amber-700'}`}>{m.nome}</span>
+                        {m.aplicada && <span className="text-xs text-green-500 ml-2">Aplicada em {m.aplicada_em}</span>}
+                      </div>
+                      {!m.aplicada && (
+                        <button
+                          onClick={() => aplicarMigracao(m.nome)}
+                          disabled={aplicando === m.nome}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-primary text-white hover:bg-accent-hover disabled:opacity-50"
+                        >
+                          {aplicando === m.nome ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                          {aplicando === m.nome ? 'Aplicando...' : 'Aplicar'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {msgMigracao && (
+                <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: msgMigracao.tipo === 'sucesso' ? '#f0fdf4' : '#fef2f2', color: msgMigracao.tipo === 'sucesso' ? '#166534' : '#991b1b' }}>
+                  {msgMigracao.tipo === 'sucesso' ? <Check size={16} /> : <AlertTriangle size={16} />}
+                  {msgMigracao.texto}
+                </div>
+              )}
             </div>
           </Card>
         )}

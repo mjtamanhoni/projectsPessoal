@@ -20,7 +20,7 @@ router.post('/', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.compr
     try {
         const body = req.body;
         const items = Array.isArray(body) ? body : [body];
-        const result = await horseApi_1.horseApi.salvarComprasInsumo(items);
+        const result = await horseApi_1.horseApi.salvarComprasInsumo(items, req.empresaId);
         res.json(result);
     }
     catch (error) {

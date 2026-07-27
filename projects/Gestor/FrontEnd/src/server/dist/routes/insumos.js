@@ -28,6 +28,17 @@ router.post('/', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.insum
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
+router.get('/recalcular', auth_1.authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.query;
+        const result = await horseApi_1.horseApi.recalcularInsumos(id ? String(id) : undefined);
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
 router.delete('/', auth_1.authMiddleware, async (req, res) => {
     try {
         const { id } = req.query;

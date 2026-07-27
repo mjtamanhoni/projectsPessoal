@@ -24,6 +24,7 @@ export function Clientes() {
   const [fetchingOne, setFetchingOne] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
 
   const columns = [
@@ -76,6 +77,17 @@ export function Clientes() {
     }),
   ];
 
+  const openNew = () => {
+    setEditing(null);
+    setFormKey((k) => k + 1);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditing(null);
+  };
+
   const handleEdit = async (cliente: Cliente) => {
     const idToFetch = cliente.id || cliente.codigo;
     if (!idToFetch) return;
@@ -96,12 +108,14 @@ export function Clientes() {
     try {
       if (editing) {
         await update({ ...data, id: editing.id ?? editing.codigo });
+        closeModal();
+        addToast('success', 'Cliente atualizado com sucesso');
       } else {
         await create(data);
+        setFormKey((k) => k + 1);
+        refetch();
+        addToast('success', 'Cliente cadastrado com sucesso');
       }
-      setModalOpen(false);
-      setEditing(null);
-      addToast('success', editing ? 'Cliente atualizado com sucesso' : 'Cliente cadastrado com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar cliente';
       addToast('error', msg);
@@ -127,7 +141,7 @@ export function Clientes() {
     <Layout>
       <PageHeader title="Clientes" subtitle="Gerencie seus clientes">
         <ShowForPermission rota="/clientes" acao={ACAO.INCLUIR}>
-          <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
+          <Button onClick={openNew}>
             <Plus size={18} /> Novo Cliente
           </Button>
         </ShowForPermission>
@@ -142,14 +156,14 @@ export function Clientes() {
         <DataTable columns={columns} data={clientes} loading={loading} error={error} emptyMessage="Nenhum cliente cadastrado" />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Cliente' : 'Novo Cliente'}>
+      <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Cliente' : 'Novo Cliente'}>
         {fetchingOne ? (
           <Spinner />
         ) : (
           <ClienteForm
-            key={`cliente-form-${editing?.id ?? editing?.codigo ?? 'new'}`}
+            key={`cliente-form-${editing?.id ?? editing?.codigo ?? `new-${formKey}`}`}
             onSubmit={handleSubmit}
-            onCancel={() => { setModalOpen(false); setEditing(null); }}
+            onCancel={closeModal}
             initial={editing}
           />
         )}

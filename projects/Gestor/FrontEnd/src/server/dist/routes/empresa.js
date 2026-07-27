@@ -43,5 +43,30 @@ router.delete('/', auth_1.authMiddleware, async (req, res) => {
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
+router.post('/limpar-dados', auth_1.authMiddleware, async (req, res) => {
+    try {
+        const { empresa_id } = req.body;
+        if (!empresa_id) {
+            res.status(400).json({ error: 'empresa_id é obrigatório' });
+            return;
+        }
+        const result = await horseApi_1.horseApi.limparDadosEmpresa(Number(empresa_id));
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
+router.post('/atualizar-sequencias', auth_1.authMiddleware, async (_req, res) => {
+    try {
+        const result = await horseApi_1.horseApi.atualizarSequencias();
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=empresa.js.map

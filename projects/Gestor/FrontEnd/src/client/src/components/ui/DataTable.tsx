@@ -25,6 +25,7 @@ interface DataTableProps<T> {
   error?: string | null;
   emptyMessage?: string;
   renderSubComponent?: (row: T) => JSX.Element;
+  onExpand?: (row: T) => void;
 }
 
 const inputStyles = 'w-full px-2 py-1 text-xs border border-border-primary rounded bg-background-primary text-text-primary placeholder:text-text-muted outline-none focus:border-accent-primary transition-colors';
@@ -38,6 +39,7 @@ export function DataTable<T>({
   error,
   emptyMessage = 'Nenhum registro encontrado',
   renderSubComponent,
+  onExpand,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -157,11 +159,15 @@ export function DataTable<T>({
                           }`}>
                           {isExpand ? (
                             <button
-                              onClick={() => setExpandedRows((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(row.id)) next.delete(row.id); else next.add(row.id);
-                                return next;
-                              })}
+                              onClick={() => {
+                                const isAlreadyExpanded = expandedRows.has(row.id);
+                                setExpandedRows((prev) => {
+                                  const next = new Set(prev);
+                                  if (isAlreadyExpanded) next.delete(row.id); else next.add(row.id);
+                                  return next;
+                                });
+                                if (!isAlreadyExpanded) onExpand?.(row.original);
+                              }}
                               className="p-0.5 rounded hover:bg-bg-muted transition-colors"
                             >
                               {expandedRows.has(row.id) ? <ChevronDown size={16} className="text-text-secondary" /> : <ChevronRight size={16} className="text-text-secondary" />}

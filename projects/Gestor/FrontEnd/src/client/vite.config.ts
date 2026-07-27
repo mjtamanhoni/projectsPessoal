@@ -13,6 +13,7 @@ function getInput() {
     return { [mode]: htmlFiles[mode] };
   }
   return {
+    index: path.resolve(__dirname, 'index.html'),
     gestor: htmlFiles.gestor,
     horas: htmlFiles.horas,
     producao: htmlFiles.producao,

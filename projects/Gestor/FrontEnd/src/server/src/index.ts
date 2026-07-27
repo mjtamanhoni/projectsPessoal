@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { config } from './config';
 import { requestLogger } from './middleware/logger';
 import { apiLimiter } from './middleware/rateLimit';
@@ -20,6 +21,11 @@ import horasExcedidasRoutes from './routes/horasExcedidas';
 import servicosRoutes from './routes/servicos';
 import permissoesRoutes from './routes/permissoes';
 import insumosRoutes from './routes/insumos';
+import marcasRoutes from './routes/marcas';
+import migracoesRoutes from './routes/migracoes';
+import perdasInsumoRoutes from './routes/perdas-insumo';
+import perdasProdutoRoutes from './routes/perdas-produto';
+import usoConsumoRoutes from './routes/uso-consumo';
 import comprasInsumoRoutes from './routes/compras-insumo';
 import produtosFabricadosRoutes from './routes/produtos-fabricados';
 import receitasIngredientesRoutes from './routes/receitas-ingredientes';
@@ -36,6 +42,7 @@ import empresaModulosRoutes from './routes/empresa-modulos';
 import menuRoutes from './routes/menu';
 import relatoriosProducaoRoutes from './routes/relatorios-producao';
 import lancamentoAutomaticoConfigRoutes from './routes/lancamento-automatico-config';
+import printRoutes from './routes/print';
 
 const app = express();
 
@@ -66,6 +73,8 @@ app.use('/api/horas-excedidas', horasExcedidasRoutes);
 app.use('/api/servicos', servicosRoutes);
 app.use('/api/permissoes', permissoesRoutes);
 app.use('/api/insumos', insumosRoutes);
+app.use('/api/marcas', marcasRoutes);
+app.use('/api/migracoes', migracoesRoutes);
 app.use('/api/compras-insumo', comprasInsumoRoutes);
 app.use('/api/produtos-fabricados', produtosFabricadosRoutes);
 app.use('/api/receitas-ingredientes', receitasIngredientesRoutes);
@@ -82,6 +91,18 @@ app.use('/api/empresa-modulos', empresaModulosRoutes);
 app.use('/api/auth/menu', menuRoutes);
 app.use('/api/relatorios-producao', relatoriosProducaoRoutes);
 app.use('/api/lancamento-automatico-config', lancamentoAutomaticoConfigRoutes);
+app.use('/api/print', printRoutes);
+app.use('/api/perdas-insumo', perdasInsumoRoutes);
+app.use('/api/perdas-produto', perdasProdutoRoutes);
+app.use('/api/uso-consumo', usoConsumoRoutes);
+
+const clientDistPath = path.resolve(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Rota não encontrada' });

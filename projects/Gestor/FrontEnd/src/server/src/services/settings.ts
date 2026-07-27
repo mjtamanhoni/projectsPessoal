@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { config } from '../config';
-import type { AppSettings, SettingsFile, EmpresaSettings, FinanceiroSettings } from '../types';
+import type { AppSettings, SettingsFile, EmpresaSettings, FinanceiroSettings, RateLimitSettings } from '../types';
 
 const SETTINGS_PATH = path.resolve(__dirname, '../../data/settings.json');
 
@@ -23,10 +23,33 @@ const envConnection = parseBaseUrl(config.horseApi.baseUrl);
 export const DEFAULT_EMPRESA: EmpresaSettings = {
   display: { grid: { defaultPageSize: 10, pageSizeOptions: [5, 10, 15, 20, 30, 50] }, number: { decimalPlaces: 4 } },
   sessionTimeout: 30,
+  printer: {
+    modelo: 0,
+    porta: '',
+    deviceParams: '',
+    colunas: 48,
+    espacoEntreLinhas: 0,
+    linhasBuffer: 0,
+    linhasPular: 0,
+    cortarPapel: true,
+    controlePorta: false,
+    paginaCodigo: 0,
+    barrasLargura: 2,
+    barrasAltura: 100,
+    barrasHRI: true,
+    qrcodeTipo: 2,
+    qrcodeLarguraModulo: 6,
+    qrcodeErrorLevel: 2,
+    logoKC1: 0,
+    logoKC2: 0,
+    logoFatorX: 0,
+    logoFatorY: 0,
+  },
 };
 
 const DEFAULT_FILE: SettingsFile = {
   horseApi: { host: envConnection.host, port: envConnection.port, protocol: envConnection.protocol },
+  rateLimit: { max: 1000 },
   empresa: {},
 };
 
@@ -44,6 +67,7 @@ function readFile(): SettingsFile {
     const parsed = JSON.parse(raw);
     return {
       horseApi: { ...DEFAULT_FILE.horseApi, ...parsed.horseApi },
+      rateLimit: { ...DEFAULT_FILE.rateLimit, ...parsed.rateLimit } as RateLimitSettings,
       empresa: { ...parsed.empresa },
     };
   } catch {
@@ -64,6 +88,9 @@ export function saveSettings(data: Partial<AppSettings>): SettingsFile {
   const file = readFile();
   if (data.horseApi) {
     file.horseApi = { ...file.horseApi, ...data.horseApi };
+  }
+  if (data.rateLimit) {
+    file.rateLimit = { ...file.rateLimit, ...data.rateLimit } as RateLimitSettings;
   }
   writeFile(file);
   return file;

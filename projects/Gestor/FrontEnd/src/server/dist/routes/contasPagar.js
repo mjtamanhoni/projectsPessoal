@@ -10,6 +10,8 @@ router.get('/', auth_1.authMiddleware, async (req, res) => {
         const horseParams = {};
         if (queryId)
             horseParams.id = queryId;
+        if (req.empresaId)
+            horseParams.empresa_id = req.empresaId;
         const result = await horseApi_1.horseApi.listarContasPagar(horseParams);
         let contas = result;
         const inicio = dataInicio ? new Date(dataInicio) : null;

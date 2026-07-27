@@ -7,6 +7,7 @@ exports.horseApi = void 0;
 const axios_1 = __importDefault(require("axios"));
 const config_1 = require("../config");
 const types_1 = require("../types");
+const settings_1 = require("./settings");
 function ceilTo2(value) {
     return Math.ceil(value * 100) / 100;
 }
@@ -59,10 +60,12 @@ class HorseApiService {
             if (!message) {
                 message = `Requisição falhou com status ${status}`;
             }
+            console.error(`[HorseAPI] ${axiosError.config?.method?.toUpperCase()} ${axiosError.config?.url} -> ${status}: ${message}`, data);
             throw new types_1.AppError(message, status);
         }
         if (error instanceof types_1.AppError)
             throw error;
+        console.error('[HorseAPI] Erro inesperado:', error);
         throw new types_1.AppError('Erro inesperado', 500);
     }
     async login(data) {
@@ -296,10 +299,16 @@ class HorseApiService {
     async salvarContasReceber(contas) {
         try {
             const mapConta = (c) => {
-                const { lancamentoOrigemId, ...rest } = c;
+                const { lancamentoOrigemId, dataVencimento, clienteId, idCategoria, dataRecebimento, ...rest } = c;
                 return {
                     ...rest,
-                    ...(lancamentoOrigemId != null ? { lancamentoOrigemId, lancamento_origem_id: lancamentoOrigemId } : {}),
+                    codigo: rest.codigo ?? rest.id ?? 0,
+                    cliente_id: clienteId,
+                    data_vencimento: dataVencimento,
+                    id_categoria: idCategoria,
+                    recebido: false,
+                    data_recebimento: dataRecebimento,
+                    ...(lancamentoOrigemId != null ? { lancamento_origem_id: lancamentoOrigemId } : {}),
                 };
             };
             const mapped = contas.map(mapConta);
@@ -867,6 +876,62 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
+    async recalcularInsumos(insumoId) {
+        try {
+            const params = insumoId ? { id: insumoId } : {};
+            const res = await this.api.get('/insumoRecalcular', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarMarcas(params) {
+        try {
+            const res = await this.api.get('/marca', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarMarcas(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/marca', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirMarca(id) {
+        try {
+            const res = await this.api.delete('/marca', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarMigracoes() {
+        try {
+            const res = await this.api.get('/migracoes', { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async aplicarMigracao(nome) {
+        try {
+            const res = await this.api.post('/migracoes/aplicar', { nome }, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
     async listarComprasInsumo(params) {
         try {
             const res = await this.api.get('/compraInsumo', { params, headers: this.getAuthHeaders() });
@@ -876,7 +941,7 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
-    async salvarComprasInsumo(items) {
+    async salvarComprasInsumo(items, empresaId) {
         try {
             const payload = items.length === 1 ? items[0] : items;
             const res = await this.api.post('/compraInsumo', payload, { headers: this.getAuthHeaders() });
@@ -1016,9 +1081,27 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
-    async salvarVendasProduto(items) {
+    async salvarVendasProduto(items, empresaId) {
         try {
-            const payload = items.length === 1 ? items[0] : items;
+            const categoriaReceberId = empresaId ? (0, settings_1.getFinanceiroEmpresa)(empresaId)?.categoriaReceberVendaPadrao : undefined;
+            const enrichItem = (item) => {
+                const recebido = !!item.recebido;
+                const dataVenda = item.data_venda;
+                const dataVencimento = recebido
+                    ? dataVenda
+                    : (() => {
+                        const d = new Date(dataVenda + 'T12:00:00');
+                        d.setDate(d.getDate() + 30);
+                        return d.toISOString().slice(0, 10);
+                    })();
+                return {
+                    ...item,
+                    categoria_receber_id: categoriaReceberId,
+                    data_vencimento: dataVencimento,
+                    ...(recebido ? { data_recebimento: dataVenda } : {}),
+                };
+            };
+            const payload = items.length === 1 ? enrichItem(items[0]) : items.map(enrichItem);
             const res = await this.api.post('/vendaProduto', payload, { headers: this.getAuthHeaders() });
             return res.data;
         }
@@ -1121,7 +1204,7 @@ class HorseApiService {
     }
     async listarEmpresasPublic() {
         try {
-            const res = await this.api.get('/empresa');
+            const res = await this.api.get('/empresaPublic');
             return res.data;
         }
         catch (error) {
@@ -1186,7 +1269,29 @@ class HorseApiService {
     }
     async salvarModuloFormularios(data) {
         try {
-            const res = await this.api.post('/moduloFormulario', data, { headers: this.getAuthHeaders() });
+            const existing = await this.listarModuloFormularios({ modulo_id: data.modulo_id });
+            const existingMap = new Map();
+            for (const r of existing) {
+                if (r.formulario_id != null)
+                    existingMap.set(r.formulario_id, r);
+            }
+            const newSet = new Set(data.formularios);
+            const toDelete = existing.filter((r) => r.formulario_id != null && !newSet.has(r.formulario_id));
+            for (const r of toDelete) {
+                const id = r.id ?? r.codigo;
+                if (id)
+                    await this.api.delete('/moduloFormulario', { params: { id }, headers: this.getAuthHeaders() });
+            }
+            const toUpsert = data.formularios.map((fid) => {
+                const existingRecord = existingMap.get(fid);
+                return {
+                    id: existingRecord?.id ?? 0,
+                    modulo_id: data.modulo_id,
+                    formulario_id: fid,
+                    abertura: data.abertura === fid ? 1 : 0,
+                };
+            });
+            const res = await this.api.post('/moduloFormulario', toUpsert, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {
@@ -1219,6 +1324,34 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
+    async listarLancamentoAutomaticoConfig(params) {
+        try {
+            const res = await this.api.get('/lancamentoAutomaticoConfig', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarLancamentoAutomaticoConfig(items) {
+        try {
+            const payload = Array.isArray(items) ? items : [items];
+            const res = await this.api.post('/lancamentoAutomaticoConfig', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirLancamentoAutomaticoConfig(id) {
+        try {
+            const res = await this.api.delete('/lancamentoAutomaticoConfig', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
     async excluirEmpresaModulo(id) {
         try {
             const res = await this.api.delete('/empresaModulo', { params: { id }, headers: this.getAuthHeaders() });
@@ -1230,16 +1363,160 @@ class HorseApiService {
     }
     async salvarEmpresaModulos(data) {
         try {
-            const res = await this.api.post('/empresaModulo', data, { headers: this.getAuthHeaders() });
+            console.log('[salvarEmpresaModulos] data:', JSON.stringify(data));
+            const existing = await this.listarEmpresaModulos({ empresa_id: data.empresa_id });
+            console.log('[salvarEmpresaModulos] existing:', JSON.stringify(existing));
+            const existingMap = new Map();
+            if (Array.isArray(existing)) {
+                for (const r of existing) {
+                    if (r.modulo_id != null)
+                        existingMap.set(r.modulo_id, r);
+                }
+            }
+            else {
+                console.error('[salvarEmpresaModulos] existing nao e array:', typeof existing, existing);
+                throw new Error('Resposta inesperada do servidor: existing nao e array');
+            }
+            const newSet = new Set(data.modulos);
+            const toDelete = existing.filter((r) => r.modulo_id != null && !newSet.has(r.modulo_id));
+            console.log('[salvarEmpresaModulos] toDelete:', toDelete.length, 'toUpsert:', data.modulos.length);
+            for (const r of toDelete) {
+                const id = r.id ?? r.codigo;
+                if (id) {
+                    console.log('[salvarEmpresaModulos] deletando id:', id, 'empresa:', data.empresa_id);
+                    await this.api.delete('/empresaModulo', { params: { id, empresa_id: data.empresa_id }, headers: this.getAuthHeaders() });
+                }
+            }
+            const toUpsert = data.modulos.map((mid) => {
+                const existingRecord = existingMap.get(mid);
+                return {
+                    id: existingRecord?.id ?? 0,
+                    empresa_id: data.empresa_id,
+                    modulo_id: mid,
+                };
+            });
+            console.log('[salvarEmpresaModulos] toUpsert payload:', JSON.stringify(toUpsert));
+            const res = await this.api.post('/empresaModulo', toUpsert, { headers: this.getAuthHeaders() });
+            console.log('[salvarEmpresaModulos] POST /empresaModulo sucesso:', res.status);
+            return res.data;
+        }
+        catch (error) {
+            console.error('[salvarEmpresaModulos] catch error:', error);
+            if (error instanceof Error)
+                console.error('[salvarEmpresaModulos] stack:', error.stack);
+            return this.handleError(error);
+        }
+    }
+    async testEmpresaModulo(empresa_id, modulo_id) {
+        const body = [{ id: 0, empresa_id, modulo_id }];
+        const res = await this.api.post('/empresaModulo', body, { headers: this.getAuthHeaders() });
+        return { status: res.status, data: res.data };
+    }
+    async excluirEmpresa(id) {
+        try {
+            const res = await this.api.delete('/empresa', { params: { id }, headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {
             return this.handleError(error);
         }
     }
-    async excluirEmpresa(id) {
+    async limparDadosEmpresa(empresaId) {
         try {
-            const res = await this.api.delete('/empresa', { params: { id }, headers: this.getAuthHeaders() });
+            const res = await this.api.post('/empresa/limpar-dados', { empresa_id: empresaId }, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarPerdasInsumo(params) {
+        try {
+            const res = await this.api.get('/perdaInsumo', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarPerdasInsumo(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/perdaInsumo', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirPerdaInsumo(id) {
+        try {
+            const res = await this.api.delete('/perdaInsumo', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarPerdasProdutoFabricado(params) {
+        try {
+            const res = await this.api.get('/perdaProdutoFabricado', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarPerdasProdutoFabricado(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/perdaProdutoFabricado', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirPerdaProdutoFabricado(id) {
+        try {
+            const res = await this.api.delete('/perdaProdutoFabricado', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarUsoConsumo(params) {
+        try {
+            const res = await this.api.get('/usoConsumo', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarUsoConsumo(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/usoConsumo', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirUsoConsumo(id) {
+        try {
+            const res = await this.api.delete('/usoConsumo', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async atualizarSequencias() {
+        try {
+            const res = await this.api.post('/empresa/atualizar-sequencias', {}, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {

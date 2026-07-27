@@ -69,9 +69,9 @@ export function EmpresaModulos() {
       setModalOpen(false);
       setEditing(null);
       fetchData();
-      addToast('success', 'Vinculos salvos com sucesso');
+      addToast('success', 'Vínculos salvos com sucesso');
     } catch (err: unknown) {
-      let msg = err instanceof Error ? err.message : 'Erro ao salvar vinculos';
+      let msg = err instanceof Error ? err.message : 'Erro ao salvar vínculos';
       const axiosErr = err as { response?: { data?: { error?: string } } };
       if (axiosErr.response?.data?.error) msg = axiosErr.response.data.error;
       addToast('error', msg);
@@ -86,9 +86,9 @@ export function EmpresaModulos() {
       await api.delete(`/empresa-modulos?id=${confirmDelete}`);
       setConfirmDelete(null);
       fetchData();
-      addToast('success', 'Vinculo excluido com sucesso');
+      addToast('success', 'Vínculo excluído com sucesso');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao excluir vinculo';
+      const msg = err instanceof Error ? err.message : 'Erro ao excluir vínculo';
       addToast('error', msg);
     } finally {
       setDeleting(false);
@@ -98,12 +98,12 @@ export function EmpresaModulos() {
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
       id: 'codigo',
-      header: 'Codigo',
+      header: 'Código',
       enableSorting: true,
     }),
     columnHelper.accessor((row) => row.modulo_nome || getModuloNome(row.modulo_id), {
       id: 'modulo',
-      header: 'Modulo',
+      header: 'Módulo',
       enableSorting: true,
     }),
     columnHelper.accessor((row) => getEmpresaNome(row.empresa_id), {
@@ -113,7 +113,7 @@ export function EmpresaModulos() {
     }),
     columnHelper.display({
       id: 'acoes',
-      header: 'Acoes',
+      header: 'Ações',
       enableColumnFilter: false,
       enableSorting: false,
       cell: ({ row }) => (
@@ -139,7 +139,7 @@ export function EmpresaModulos() {
 
   return (
     <Layout>
-      <PageHeader title="Empresa x Modulo" subtitle="Vincule modulos as empresas">
+      <PageHeader title="Empresa x Módulo" subtitle="Vincule módulos as empresas">
         <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
           <Plus size={18} /> Novo Vinculo
         </Button>
@@ -151,10 +151,10 @@ export function EmpresaModulos() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={data} loading={loading} error={error} emptyMessage="Nenhum vinculo cadastrado" />
+        <DataTable columns={columns} data={data} loading={loading} error={error} emptyMessage="Nenhum vínculos cadastrado" />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title="Gerenciar Vinculos">
+      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title="Gerenciar Vínculos">
         <EmpresaModuloForm
           key={`em-form-${editing?.empresaId ?? 'new'}`}
           onSubmit={handleSubmit}
@@ -170,8 +170,8 @@ export function EmpresaModulos() {
         isOpen={confirmDelete !== null}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
-        title="Excluir Vinculo"
-        message="Tem certeza que deseja excluir este vinculo? Esta acao nao pode ser desfeita."
+        title="Excluir Vínculo"
+        message="Tem certeza que deseja excluir este vínculos? Esta ação não pode ser desfeita."
         variant="danger"
         confirmLabel="Excluir"
         loading={deleting}

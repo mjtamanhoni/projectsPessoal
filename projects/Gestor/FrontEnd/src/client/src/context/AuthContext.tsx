@@ -13,6 +13,7 @@ interface AuthContextType {
   irrestrito: boolean;
   homeRoute: string;
   empresaNome: string;
+  empresa: Empresa | null;
   login: (login: string, senha: string, pin?: string, empresa?: number) => Promise<void>;
   logout: () => void;
   temAcesso: (rota: string) => boolean;
@@ -43,16 +44,18 @@ async function fetchPermissions(): Promise<{ irrestrito: boolean; formularios: F
   return res.data as { irrestrito: boolean; formularios: FormularioPermissao[]; isSuperadmin?: boolean };
 }
 
-async function fetchEmpresaNome(empresaId: number): Promise<string> {
+async function fetchEmpresaData(empresaId: number): Promise<Empresa | null> {
   try {
     const res = await api.get('/auth/empresas');
     const empresas = res.data as Empresa[];
-    const empresa = empresas.find(e => e.id === empresaId || e.codigo === empresaId);
-    const nome = empresa?.fantasia || empresa?.razao_social || '';
-    if (nome) localStorage.setItem('empresaNome', nome);
-    return nome;
+    const empresa = empresas.find(e => e.id === empresaId || e.codigo === empresaId) ?? null;
+    if (empresa) {
+      const nome = empresa.fantasia || empresa.razao_social || '';
+      localStorage.setItem('empresaNome', nome);
+    }
+    return empresa;
   } catch {
-    return '';
+    return null;
   }
 }
 
@@ -96,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [permissoes, setPermissoes] = useState<FormularioPermissao[]>(() => loadPermissions().permissoes);
   const [irrestrito, setIrrestrito] = useState<boolean>(() => loadPermissions().irrestrito);
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [empresaNome, setEmpresaNome] = useState<string>(() => localStorage.getItem('empresaNome') || '');
   const [loading, setLoading] = useState(true);
 
@@ -150,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPermissoes([]);
     setIrrestrito(true);
     setEmpresaNome('');
+    setEmpresa(null);
     if (window.location.pathname !== '/login') {
       saveRedirectPath(window.location.pathname);
       window.location.href = `/login?expired=1&message=${encodeURIComponent(reason)}`;
@@ -201,7 +206,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(parsedUser);
         setIsSuperadmin(parsedUser.is_superadmin === true);
         initSessionTimer();
-        fetchEmpresaNome(parsedUser.empresaId).then(setEmpresaNome);
+        fetchEmpresaData(parsedUser.empresaId).then((emp) => {
+          setEmpresa(emp);
+          setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
+        });
         fetchPermissions()
           .then((data) => {
             setPermissoes(data.formularios);
@@ -256,7 +264,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(data));
     setUser(data);
     setIsSuperadmin(data.is_superadmin === true);
-    fetchEmpresaNome(data.empresaId).then(setEmpresaNome);
+    fetchEmpresaData(data.empresaId).then((emp) => {
+      setEmpresa(emp);
+      setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
+    });
     try {
       const permData = await fetchPermissions();
       setPermissoes(permData.formularios);
@@ -277,7 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [doLogout]);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, login, logout, temAcesso, temPermissao, loading }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, login, logout, temAcesso, temPermissao, loading }}>
       {children}
     </AuthContext.Provider>
   );

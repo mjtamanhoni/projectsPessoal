@@ -21,6 +21,7 @@ export interface Cliente {
   celular?: string;
   endereco?: string;
   email?: string;
+  cpf_cnpj?: string;
 }
 
 export interface Fornecedor {
@@ -122,15 +123,48 @@ export interface NumberSettings {
 export interface AppSettings {
   horseApi: HorseApiSettings;
   display: DisplaySettings;
-  logoBase64?: string;
-  logoPdfBase64?: string;
+  logoBase64?: string | null;
+  logoPdfBase64?: string | null;
   sessionTimeout?: number;
   financeiro?: FinanceiroSettings;
+  printer?: PrinterSettings;
+  empresaNome?: string;
+  empresaCnpj?: string;
+  empresaEndereco?: string;
+  empresaTelefone?: string;
+  rateLimit?: RateLimitSettings;
+}
+
+export interface RateLimitSettings {
+  max: number;
 }
 
 export interface FinanceiroSettings {
   categoriaReceberVendaPadrao?: number;
   categoriaPagarCompraPadrao?: number;
+}
+
+export interface PrinterSettings {
+  modelo: number;
+  porta: string;
+  deviceParams: string;
+  colunas: number;
+  espacoEntreLinhas: number;
+  linhasBuffer: number;
+  linhasPular: number;
+  cortarPapel: boolean;
+  controlePorta: boolean;
+  paginaCodigo: number;
+  barrasLargura: number;
+  barrasAltura: number;
+  barrasHRI: boolean;
+  qrcodeTipo: number;
+  qrcodeLarguraModulo: number;
+  qrcodeErrorLevel: number;
+  logoKC1: number;
+  logoKC2: number;
+  logoFatorX: number;
+  logoFatorY: number;
 }
 
 export interface ParcelasConfig {
@@ -218,21 +252,38 @@ export interface Insumo {
   unidade_medida: string;
   custo_medio?: number;
   ativo?: boolean;
+  id_fornecedor?: number;
+  id_marca?: number;
+  fornecedor_nome?: string;
+  marca_nome?: string;
+}
+
+export interface Marca {
+  codigo?: number;
+  id?: number;
+  nome: string;
+  ativo?: boolean;
+}
+
+export interface CompraInsumoItem {
+  insumo_id: number;
+  insumo_nome?: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
 }
 
 export interface CompraInsumo {
   codigo?: number;
   id?: number;
-  insumo_id: number;
-  insumo_nome?: string;
   fornecedor_id?: number;
   fornecedor_nome?: string;
-  quantidade: number;
-  valor_total: number;
-  valor_unitario?: number;
   data_compra: string;
+  valor_total: number;
   observacao?: string;
   pago?: boolean;
+  qtd_itens?: number;
+  itens?: CompraInsumoItem[];
 }
 
 export interface ProdutoFabricado {
@@ -377,6 +428,39 @@ export interface EmpresaModulo {
   empresa_id: number;
   modulo_id: number;
   modulo_nome?: string;
+}
+
+export interface PerdaInsumo {
+  codigo?: number;
+  id?: number;
+  insumo_id: number;
+  insumo_nome?: string;
+  quantidade: number;
+  data_perda: string;
+  motivo?: string;
+  usuario_id?: number;
+}
+
+export interface PerdaProdutoFabricado {
+  codigo?: number;
+  id?: number;
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  quantidade: number;
+  data_perda: string;
+  motivo?: string;
+  usuario_id?: number;
+}
+
+export interface UsoConsumo {
+  codigo?: number;
+  id?: number;
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  quantidade: number;
+  data_uso: string;
+  motivo?: string;
+  usuario_id?: number;
 }
 
 export interface DashboardData {

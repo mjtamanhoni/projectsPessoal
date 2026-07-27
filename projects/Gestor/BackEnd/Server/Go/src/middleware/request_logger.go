@@ -3,10 +3,12 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"gestor-server/database"
 	"gestor-server/logger"
 )
 
@@ -26,6 +28,24 @@ func RequestLogger(logStore *logger.LogStore) func(http.Handler) http.Handler {
 
 			start := time.Now()
 
+			jsonRecebido := ""
+			if r.Body != nil {
+				bodyBytes, _ := io.ReadAll(r.Body)
+				r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+				if len(bodyBytes) > 0 && bodyBytes[0] == '{' {
+					var compact bytes.Buffer
+					if json.Compact(&compact, bodyBytes) == nil {
+						jsonRecebido = compact.String()
+					} else {
+						jsonRecebido = string(bodyBytes)
+					}
+				}
+			}
+
+			ctx := database.InitScriptsContext(r.Context())
+			r = r.WithContext(ctx)
+
 			lw := &logWriter{ResponseWriter: w, body: &bytes.Buffer{}}
 			next.ServeHTTP(lw, r)
 
@@ -33,23 +53,32 @@ func RequestLogger(logStore *logger.LogStore) func(http.Handler) http.Handler {
 			status := lw.statusCode
 
 			msg := http.StatusText(status)
-			if status >= 400 && lw.body.Len() > 0 {
+			jsonRetornado := ""
+			if lw.body.Len() > 0 {
 				bodyStr := lw.body.String()
-				msg = extractErrorMessage(bodyStr)
+				if status >= 400 {
+					msg = extractErrorMessage(bodyStr)
+				}
+				if len(bodyStr) > 0 && (bodyStr[0] == '{' || bodyStr[0] == '[') {
+					jsonRetornado = bodyStr
+				}
 			}
 			if msg == "" {
 				msg = http.StatusText(status)
 			}
 
 			go logStore.Log(logger.LogEntry{
-				Hora:      start.Format("15:04:05"),
-				Metodo:    r.Method,
-				Rota:      r.URL.Path,
-				Status:    status,
-				Mensagem:  msg,
-				EmpresaID: claimsFromRequest(r),
-				UsuarioID: userIDFromRequest(r),
-				DuracaoMs: duration.Milliseconds(),
+				Hora:          start.Format("15:04:05"),
+				Metodo:        r.Method,
+				Rota:          r.URL.Path,
+				Status:        status,
+				Mensagem:      msg,
+				EmpresaID:     claimsFromRequest(r),
+				UsuarioID:     userIDFromRequest(r),
+				DuracaoMs:     duration.Milliseconds(),
+				JsonRecebido:  jsonRecebido,
+				JsonRetornado: jsonRetornado,
+				Scripts:       database.GetScripts(ctx),
 			})
 		})
 	}

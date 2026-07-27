@@ -3,8 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.DEFAULT_EMPRESA = void 0;
 exports.getSettings = getSettings;
 exports.saveSettings = saveSettings;
+exports.getEmpresaSettings = getEmpresaSettings;
+exports.saveEmpresaSettings = saveEmpresaSettings;
+exports.getFinanceiroEmpresa = getFinanceiroEmpresa;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const config_1 = require("../config");
@@ -23,36 +27,89 @@ function parseBaseUrl(url) {
     }
 }
 const envConnection = parseBaseUrl(config_1.config.horseApi.baseUrl);
-const DEFAULT_SETTINGS = {
-    horseApi: { host: envConnection.host, port: envConnection.port, protocol: envConnection.protocol },
+exports.DEFAULT_EMPRESA = {
     display: { grid: { defaultPageSize: 10, pageSizeOptions: [5, 10, 15, 20, 30, 50] }, number: { decimalPlaces: 4 } },
+    sessionTimeout: 30,
+    printer: {
+        modelo: 0,
+        porta: '',
+        deviceParams: '',
+        colunas: 48,
+        espacoEntreLinhas: 0,
+        linhasBuffer: 0,
+        linhasPular: 0,
+        cortarPapel: true,
+        controlePorta: false,
+        paginaCodigo: 0,
+        barrasLargura: 2,
+        barrasAltura: 100,
+        barrasHRI: true,
+        qrcodeTipo: 2,
+        qrcodeLarguraModulo: 6,
+        qrcodeErrorLevel: 2,
+        logoKC1: 0,
+        logoKC2: 0,
+        logoFatorX: 0,
+        logoFatorY: 0,
+    },
+};
+const DEFAULT_FILE = {
+    horseApi: { host: envConnection.host, port: envConnection.port, protocol: envConnection.protocol },
+    rateLimit: { max: 1000 },
+    empresa: {},
 };
 function ensureFile() {
     if (!fs_1.default.existsSync(SETTINGS_PATH)) {
         fs_1.default.mkdirSync(path_1.default.dirname(SETTINGS_PATH), { recursive: true });
-        fs_1.default.writeFileSync(SETTINGS_PATH, JSON.stringify(DEFAULT_SETTINGS, null, 2), 'utf-8');
+        fs_1.default.writeFileSync(SETTINGS_PATH, JSON.stringify(DEFAULT_FILE, null, 2), 'utf-8');
     }
 }
-function getSettings() {
+function readFile() {
     ensureFile();
     try {
         const raw = fs_1.default.readFileSync(SETTINGS_PATH, 'utf-8');
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+        const parsed = JSON.parse(raw);
+        return {
+            horseApi: { ...DEFAULT_FILE.horseApi, ...parsed.horseApi },
+            rateLimit: { ...DEFAULT_FILE.rateLimit, ...parsed.rateLimit },
+            empresa: { ...parsed.empresa },
+        };
     }
     catch {
-        return DEFAULT_SETTINGS;
+        return DEFAULT_FILE;
     }
 }
-function saveSettings(data) {
+function writeFile(data) {
     ensureFile();
-    const current = getSettings();
-    const merged = {
-        horseApi: { ...current.horseApi, ...data.horseApi },
-        display: { ...current.display, ...data.display, grid: { ...current.display.grid, ...data.display?.grid }, number: { ...(current.display.number ?? { decimalPlaces: 4 }), ...data.display?.number } },
-        logoBase64: data.logoBase64 ?? current.logoBase64,
-        logoPdfBase64: data.logoPdfBase64 ?? current.logoPdfBase64,
-    };
-    fs_1.default.writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2), 'utf-8');
-    return merged;
+    fs_1.default.writeFileSync(SETTINGS_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
+function getSettings() {
+    return readFile();
+}
+function saveSettings(data) {
+    const file = readFile();
+    if (data.horseApi) {
+        file.horseApi = { ...file.horseApi, ...data.horseApi };
+    }
+    if (data.rateLimit) {
+        file.rateLimit = { ...file.rateLimit, ...data.rateLimit };
+    }
+    writeFile(file);
+    return file;
+}
+function getEmpresaSettings(empresaId) {
+    const file = readFile();
+    const empresaKey = String(empresaId);
+    return { ...exports.DEFAULT_EMPRESA, ...file.empresa[empresaKey] };
+}
+function saveEmpresaSettings(empresaId, data) {
+    const file = readFile();
+    const empresaKey = String(empresaId);
+    file.empresa[empresaKey] = { ...file.empresa[empresaKey], ...data };
+    writeFile(file);
+    return { ...exports.DEFAULT_EMPRESA, ...file.empresa[empresaKey] };
+}
+function getFinanceiroEmpresa(empresaId) {
+    return getEmpresaSettings(empresaId).financeiro;
 }
 //# sourceMappingURL=settings.js.map

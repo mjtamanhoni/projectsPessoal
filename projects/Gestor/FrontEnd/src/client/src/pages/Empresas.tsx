@@ -31,6 +31,7 @@ export function Empresas() {
   const [fetchingOne, setFetchingOne] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
 
   const [vinculos, setVinculos] = useState<Record<number, EmpresaModulo[]>>({});
@@ -63,11 +64,11 @@ export function Empresas() {
     }),
     columnHelper.accessor((row) => row.id ?? row.codigo, {
       id: 'codigo',
-      header: 'Codigo',
+      header: 'Código',
       enableSorting: true,
     }),
     columnHelper.accessor('razao_social', {
-      header: 'Razao Social',
+      header: 'Razão Social',
       enableSorting: true,
     }),
     columnHelper.accessor('fantasia', {
@@ -122,16 +123,29 @@ export function Empresas() {
     }
   };
 
+  const openNew = () => {
+    setEditing(null);
+    setFormKey((k) => k + 1);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditing(null);
+  };
+
   const handleSubmit = async (data: Empresa) => {
     try {
       if (editing) {
         await update({ ...data, id: editing.id ?? editing.codigo });
+        closeModal();
+        addToast('success', 'Empresa atualizada com sucesso');
       } else {
         await create(data);
+        setFormKey((k) => k + 1);
+        refetch();
+        addToast('success', 'Empresa cadastrada com sucesso');
       }
-      setModalOpen(false);
-      setEditing(null);
-      addToast('success', editing ? 'Empresa atualizada com sucesso' : 'Empresa cadastrada com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar empresa';
       addToast('error', msg);
@@ -144,7 +158,7 @@ export function Empresas() {
     try {
       await remove(confirmDelete);
       setConfirmDelete(null);
-      addToast('success', 'Empresa excluida com sucesso');
+      addToast('success', 'Empresa excluída com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao excluir empresa';
       addToast('error', msg);
@@ -167,9 +181,9 @@ export function Empresas() {
       setEmModalOpen(false);
       setEmEmpresaId(null);
       fetchVinculos(emEmpresaId);
-      addToast('success', 'Vinculos salvos com sucesso');
+      addToast('success', 'Vínculos salvos com sucesso');
     } catch (err: unknown) {
-      let msg = err instanceof Error ? err.message : 'Erro ao salvar vinculos';
+      let msg = err instanceof Error ? err.message : 'Erro ao salvar vínculos';
       const axiosErr = err as { response?: { data?: { error?: string; detalhe?: unknown } } };
       if (axiosErr.response?.data?.error) msg = axiosErr.response.data.error;
       addToast('error', msg);
@@ -240,7 +254,7 @@ export function Empresas() {
     <Layout>
       <PageHeader title="Empresas" subtitle="Gerencie as empresas">
         <ShowForPermission rota="/empresas" acao={ACAO.INCLUIR}>
-          <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
+          <Button onClick={openNew}>
             <Plus size={18} /> Nova Empresa
           </Button>
         </ShowForPermission>
@@ -255,14 +269,14 @@ export function Empresas() {
         <DataTable columns={columns} data={empresas} loading={loading} error={error} emptyMessage="Nenhuma empresa cadastrada" renderSubComponent={renderSubComponent} />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Empresa' : 'Nova Empresa'}>
+      <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Empresa' : 'Nova Empresa'}>
         {fetchingOne ? (
           <Spinner />
         ) : (
           <EmpresaForm
-            key={`empresa-form-${editing?.id ?? editing?.codigo ?? 'new'}`}
+            key={`empresa-form-${editing?.id ?? editing?.codigo ?? `new-${formKey}`}`}
             onSubmit={handleSubmit}
-            onCancel={() => { setModalOpen(false); setEditing(null); }}
+            onCancel={closeModal}
             initial={editing}
           />
         )}
@@ -287,7 +301,7 @@ export function Empresas() {
               );
             })}
             {modulos.length === 0 && (
-              <p className="text-sm text-text-secondary">Nenhum modulo disponivel</p>
+              <p className="text-sm text-text-secondary">Nenhum modulo disponível</p>
             )}
           </div>
           <div className="flex justify-center gap-3 pt-2">
@@ -302,7 +316,7 @@ export function Empresas() {
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
         title="Excluir Empresa"
-        message="Tem certeza que deseja excluir esta empresa? Esta acao nao pode ser desfeita."
+        message="Tem certeza que deseja excluir esta empresa? Esta acão nao pode ser desfeita."
         variant="danger"
         confirmLabel="Excluir"
         loading={deleting}

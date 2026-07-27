@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -899,6 +899,62 @@ class HorseApiService {
     }
   }
 
+  async recalcularInsumos(insumoId?: string): Promise<unknown> {
+    try {
+      const params = insumoId ? { id: insumoId } : {};
+      const res = await this.api.get('/insumoRecalcular', { params, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarMarcas(params?: Record<string, unknown>): Promise<unknown[]> {
+    try {
+      const res = await this.api.get('/marca', { params, headers: this.getAuthHeaders() });
+      return res.data as unknown[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarMarcas(items: unknown[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/marca', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirMarca(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/marca', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarMigracoes(): Promise<unknown> {
+    try {
+      const res = await this.api.get('/migracoes', { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async aplicarMigracao(nome: string): Promise<unknown> {
+    try {
+      const res = await this.api.post('/migracoes/aplicar', { nome }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarComprasInsumo(params?: Record<string, unknown>): Promise<CompraInsumo[]> {
     try {
       const res = await this.api.get('/compraInsumo', { params, headers: this.getAuthHeaders() });
@@ -910,25 +966,7 @@ class HorseApiService {
 
   async salvarComprasInsumo(items: CompraInsumo[], empresaId?: number): Promise<unknown> {
     try {
-      const categoriaPagarId = empresaId ? getFinanceiroEmpresa(empresaId)?.categoriaPagarCompraPadrao : undefined;
-      const enrichItem = (item: CompraInsumo) => {
-        const pago = !!item.pago;
-        const dataCompra = item.data_compra;
-        const dataVencimento = pago
-          ? dataCompra
-          : (() => {
-              const d = new Date(dataCompra + 'T12:00:00');
-              d.setDate(d.getDate() + 30);
-              return d.toISOString().slice(0, 10);
-            })();
-        return {
-          ...item,
-          categoria_pagar_id: categoriaPagarId,
-          data_vencimento: dataVencimento,
-          ...(pago ? { data_pagamento: dataCompra } : {}),
-        };
-      };
-      const payload = items.length === 1 ? enrichItem(items[0]) : items.map(enrichItem);
+      const payload = items.length === 1 ? items[0] : items;
       const res = await this.api.post('/compraInsumo', payload, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
@@ -1405,6 +1443,90 @@ class HorseApiService {
   async limparDadosEmpresa(empresaId: number): Promise<unknown> {
     try {
       const res = await this.api.post('/empresa/limpar-dados', { empresa_id: empresaId }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarPerdasInsumo(params?: Record<string, unknown>): Promise<PerdaInsumo[]> {
+    try {
+      const res = await this.api.get('/perdaInsumo', { params, headers: this.getAuthHeaders() });
+      return res.data as PerdaInsumo[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarPerdasInsumo(items: PerdaInsumo[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/perdaInsumo', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirPerdaInsumo(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/perdaInsumo', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarPerdasProdutoFabricado(params?: Record<string, unknown>): Promise<PerdaProdutoFabricado[]> {
+    try {
+      const res = await this.api.get('/perdaProdutoFabricado', { params, headers: this.getAuthHeaders() });
+      return res.data as PerdaProdutoFabricado[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarPerdasProdutoFabricado(items: PerdaProdutoFabricado[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/perdaProdutoFabricado', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirPerdaProdutoFabricado(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/perdaProdutoFabricado', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarUsoConsumo(params?: Record<string, unknown>): Promise<UsoConsumo[]> {
+    try {
+      const res = await this.api.get('/usoConsumo', { params, headers: this.getAuthHeaders() });
+      return res.data as UsoConsumo[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarUsoConsumo(items: UsoConsumo[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/usoConsumo', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirUsoConsumo(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/usoConsumo', { params: { id }, headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);

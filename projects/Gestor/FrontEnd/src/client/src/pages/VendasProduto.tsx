@@ -12,9 +12,15 @@ import { Spinner } from '@/components/ui/Spinner';
 import type { VendaProduto, ProdutoFabricado, Cliente } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, RefreshCw, Printer, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { gerarTextoCupom, imprimirCupomSerial } from '@/lib/cupom';
+import { gerarPDFCupom } from '@/lib/cupom-pdf';
+import api from '@/lib/api';
+import { getCachedSettings } from '@/lib/settings';
+import { useAuth } from '@/context/AuthContext';
+import { viewPDF } from '@/lib/pdf';
 
 const columnHelper = createColumnHelper<VendaProduto>();
 
@@ -27,12 +33,83 @@ export function VendasProduto() {
   const [fetchingOne, setFetchingOne] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
+  const [cupomModalOpen, setCupomModalOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const { empresa } = useAuth();
   const { addToast } = useToast();
+
+  const handlePrintCupom = async (venda: VendaProduto) => {
+    setCupomVenda(venda);
+    setCupomModalOpen(true);
+  };
+
+  const handleThermalPrint = async (venda: VendaProduto) => {
+    const settings = getCachedSettings();
+    if (!settings?.printer || !settings.printer.porta) {
+      addToast('error', 'Impressora termica nao configurada. Va em Configuracoes > Impressao.');
+      return;
+    }
+    setPrinting(true);
+    try {
+      const cliente = clientes?.find((c) => c.id === venda.cliente_id || c.codigo === venda.cliente_id) ?? null;
+      const texto = gerarTextoCupom({
+        empresaNome: empresa?.fantasia || empresa?.razao_social || 'EMPRESA',
+        empresaCnpj: empresa?.cnpj_cpf || '',
+        empresaEndereco: empresa?.endereco || '',
+        empresaTelefone: empresa?.telefone || '',
+        venda,
+        cliente,
+        numeroCupom: venda.id ?? venda.codigo ?? 0,
+        formaPagamento: venda.recebido ? 'A VISTA' : 'CREDIARIO / PARCELADO',
+        parcelas: [],
+        desconto: 0,
+        logoBase64: null,
+      });
+      const textoImpressao = imprimirCupomSerial(texto);
+      await api.post('/print/cupom', {
+        texto: textoImpressao,
+        modelo: settings.printer.modelo,
+        porta: settings.printer.porta,
+        deviceParams: settings.printer.deviceParams,
+        colunas: settings.printer.colunas,
+        cortarPapel: settings.printer.cortarPapel,
+        espacoEntreLinhas: settings.printer.espacoEntreLinhas,
+        linhasBuffer: settings.printer.linhasBuffer,
+        linhasPular: settings.printer.linhasPular,
+      });
+      addToast('success', 'Cupom enviado para impressao');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao imprimir cupom';
+      addToast('error', msg);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const handleViewPdf = (venda: VendaProduto) => {
+    const settings = getCachedSettings();
+    const cliente = clientes?.find((c) => c.id === venda.cliente_id || c.codigo === venda.cliente_id) ?? null;
+    const doc = gerarPDFCupom({
+      empresaNome: empresa?.fantasia || empresa?.razao_social || 'EMPRESA',
+      empresaCnpj: empresa?.cnpj_cpf || '',
+      empresaEndereco: empresa?.endereco || '',
+      empresaTelefone: empresa?.telefone || '',
+      venda,
+      cliente,
+      numeroCupom: venda.id ?? venda.codigo ?? 0,
+      formaPagamento: venda.recebido ? 'A VISTA' : 'CREDIARIO / PARCELADO',
+      parcelas: [],
+      desconto: 0,
+      logoBase64: null,
+    });
+    viewPDF(doc);
+  };
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
       id: 'codigo',
-      header: 'Código',
+      header: 'Codigo',
       enableSorting: true,
       meta: { align: 'right' } as Record<string, string>,
     }),
@@ -79,11 +156,18 @@ export function VendasProduto() {
     }),
     columnHelper.display({
       id: 'acoes',
-      header: 'Ações',
+      header: 'Acoes',
       enableColumnFilter: false,
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
+          <button
+            onClick={() => handlePrintCupom(row.original)}
+            className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
+            title="Cupom"
+          >
+            <FileText size={16} className="text-text-secondary" />
+          </button>
           <ShowForPermission rota="/vendas-produto" acao={ACAO.EDITAR}>
             <button
               onClick={() => handleEdit(row.original)}
@@ -143,7 +227,7 @@ export function VendasProduto() {
     try {
       await remove(confirmDelete);
       setConfirmDelete(null);
-      addToast('success', 'Venda excluída com sucesso');
+      addToast('success', 'Venda excluida com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao excluir venda';
       addToast('error', msg);
@@ -186,12 +270,45 @@ export function VendasProduto() {
         )}
       </Modal>
 
+      <Modal isOpen={cupomModalOpen} onClose={() => { setCupomModalOpen(false); setCupomVenda(null); }} title="Cupom Nao Fiscal" maxWidth="max-w-3xl">
+        {cupomVenda && (
+          <div className="space-y-4">
+            <pre className="bg-gray-900 text-green-300 p-4 rounded-lg text-xs font-mono leading-tight overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap">
+              {(() => {
+                const cliente = clientes?.find((c) => c.id === cupomVenda.cliente_id || c.codigo === cupomVenda.cliente_id) ?? null;
+                return gerarTextoCupom({
+                  empresaNome: empresa?.fantasia || empresa?.razao_social || 'EMPRESA',
+                  empresaCnpj: empresa?.cnpj_cpf || '',
+                  empresaEndereco: empresa?.endereco || '',
+                  empresaTelefone: empresa?.telefone || '',
+                  venda: cupomVenda,
+                  cliente,
+                  numeroCupom: cupomVenda.id ?? cupomVenda.codigo ?? 0,
+                  formaPagamento: cupomVenda.recebido ? 'A VISTA' : 'CREDIARIO / PARCELADO',
+                  parcelas: [],
+                  desconto: 0,
+                  logoBase64: null,
+                });
+              })()}
+            </pre>
+            <div className="flex justify-center gap-3">
+              <Button variant="primary" onClick={() => handleThermalPrint(cupomVenda)} disabled={printing}>
+                <Printer size={16} /> {printing ? 'Imprimindo...' : 'Impressora Termica'}
+              </Button>
+              <Button variant="secondary" onClick={() => handleViewPdf(cupomVenda)}>
+                <FileText size={16} /> Visualizar PDF
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <ConfirmDialog
         isOpen={confirmDelete !== null}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
         title="Excluir Venda"
-        message="Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita."
+        message="Tem certeza que deseja excluir esta venda? Esta acao nao pode ser desfeita."
         variant="danger"
         confirmLabel="Excluir"
         loading={deleting}

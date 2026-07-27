@@ -4,15 +4,15 @@ import { getSettings, saveSettings, getEmpresaSettings, saveEmpresaSettings, DEF
 
 const router = Router();
 
-router.get('/', (req: Request, res: Response) => {
+router.get('/', authMiddleware, (req: Request, res: Response) => {
   const file = getSettings();
   const authReq = req as AuthRequest;
   const empresaId = authReq.empresaId;
   const empresaSettings = empresaId ? getEmpresaSettings(empresaId) : DEFAULT_EMPRESA;
-  res.json({ horseApi: file.horseApi, ...empresaSettings });
+  res.json({ horseApi: file.horseApi, rateLimit: file.rateLimit, ...empresaSettings });
 });
 
-router.put('/', (req: Request, res: Response) => {
+router.put('/', authMiddleware, (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
   const empresaId = authReq.empresaId;
   const body = req.body;

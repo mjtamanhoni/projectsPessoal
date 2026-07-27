@@ -40,6 +40,7 @@ export function FornecedorForm({ onSubmit, onCancel, initial }: FornecedorFormPr
           <Input 
             label="Nome *" 
             error={errors.nome?.message} 
+            autoFocus 
             {...field} 
           />
         )}

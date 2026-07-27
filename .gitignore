@@ -19,3 +19,5 @@ projects/Gestor/FrontEnd/docs/
 projects/Gestor/FrontEnd/src/server/node_modules/
 projects/Gestor/FrontEnd/src/client/node_modules/core-js/
 projects/Gestor/FrontEnd/src/client/node_modules/
+projects/Gestor/BackEnd/Server/Go/src/data/logs/
+*.jpeg

@@ -33,7 +33,7 @@ export function CategoriaForm({ onSubmit, onCancel, initial }: CategoriaFormProp
         name="nome"
         control={control}
         render={({ field }) => (
-          <Input label="Nome *" error={errors.nome?.message} {...field} />
+          <Input label="Nome *" error={errors.nome?.message} autoFocus {...field} />
         )}
       />
       <Controller

@@ -40,6 +40,7 @@ export function ClienteForm({ onSubmit, onCancel, initial }: ClienteFormProps) {
           <Input 
             label="Nome *" 
             error={errors.nome?.message} 
+            autoFocus 
             {...field} 
           />
         )}

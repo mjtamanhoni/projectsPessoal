@@ -89,9 +89,9 @@ export function Formularios() {
       }
       setModalOpen(false);
       setEditing(null);
-      addToast('success', editing ? 'Formulario atualizado com sucesso' : 'Formulario cadastrado com sucesso');
+      addToast('success', editing ? 'Formulário atualizado com sucesso' : 'Formulário cadastrado com sucesso');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar formulario';
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar formulário';
       addToast('error', msg);
     }
   };

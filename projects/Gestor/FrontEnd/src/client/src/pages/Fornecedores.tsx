@@ -24,6 +24,7 @@ export function Fornecedores() {
   const [fetchingOne, setFetchingOne] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
 
   const columns = [
@@ -76,6 +77,17 @@ export function Fornecedores() {
     }),
   ];
 
+  const openNew = () => {
+    setEditing(null);
+    setFormKey((k) => k + 1);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditing(null);
+  };
+
   const handleEdit = async (fornecedor: Fornecedor) => {
     const idToFetch = fornecedor.id || fornecedor.codigo;
     if (!idToFetch) return;
@@ -96,12 +108,14 @@ export function Fornecedores() {
     try {
       if (editing) {
         await update({ ...data, id: editing.id ?? editing.codigo });
+        closeModal();
+        addToast('success', 'Fornecedor atualizado com sucesso');
       } else {
         await create(data);
+        setFormKey((k) => k + 1);
+        refetch();
+        addToast('success', 'Fornecedor cadastrado com sucesso');
       }
-      setModalOpen(false);
-      setEditing(null);
-      addToast('success', editing ? 'Fornecedor atualizado com sucesso' : 'Fornecedor cadastrado com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar fornecedor';
       addToast('error', msg);
@@ -127,7 +141,7 @@ export function Fornecedores() {
     <Layout>
       <PageHeader title="Fornecedores" subtitle="Gerencie seus fornecedores">
         <ShowForPermission rota="/fornecedores" acao={ACAO.INCLUIR}>
-          <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
+          <Button onClick={openNew}>
             <Plus size={18} /> Novo Fornecedor
           </Button>
         </ShowForPermission>
@@ -142,14 +156,14 @@ export function Fornecedores() {
         <DataTable columns={columns} data={fornecedores} loading={loading} error={error} emptyMessage="Nenhum fornecedor cadastrado" />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Fornecedor' : 'Novo Fornecedor'}>
+      <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Fornecedor' : 'Novo Fornecedor'}>
         {fetchingOne ? (
           <Spinner />
         ) : (
           <FornecedorForm
-            key={`fornecedor-form-${editing?.id ?? editing?.codigo ?? 'new'}`}
+            key={`fornecedor-form-${editing?.id ?? editing?.codigo ?? `new-${formKey}`}`}
             onSubmit={handleSubmit}
-            onCancel={() => { setModalOpen(false); setEditing(null); }}
+            onCancel={closeModal}
             initial={editing}
           />
         )}

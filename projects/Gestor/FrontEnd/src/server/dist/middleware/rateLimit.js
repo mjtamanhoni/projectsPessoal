@@ -5,9 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authLimiter = exports.apiLimiter = void 0;
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const settings_1 = require("../services/settings");
 exports.apiLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
-    max: 1000,
+    max: () => (0, settings_1.getSettings)().rateLimit?.max ?? 1000,
     message: { error: 'Muitas requisições. Tente novamente em 15 minutos.' },
     standardHeaders: true,
     legacyHeaders: false,

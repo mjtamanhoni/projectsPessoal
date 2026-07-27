@@ -28,6 +28,7 @@ export function Categorias() {
   const [tipo, setTipo] = useState<'pagar' | 'receber'>('pagar');
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -119,18 +120,30 @@ export function Categorias() {
     }
   };
 
+  const openNew = () => {
+    setEditing(null);
+    setFormKey((k) => k + 1);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditing(null);
+  };
+
   const handleSubmit = async (data: Categoria) => {
     const endpoint = tipo === 'pagar' ? '/categorias/pagar' : '/categorias/receber';
     try {
       if (editing) {
         await api.post(endpoint, [{ ...data, id: editing.id ?? editing.codigo }]);
+        closeModal();
+        addToast('success', 'Categoria atualizada com sucesso');
       } else {
         await api.post(endpoint, [data]);
+        setFormKey((k) => k + 1);
+        fetchData();
+        addToast('success', 'Categoria cadastrada com sucesso');
       }
-      setModalOpen(false);
-      setEditing(null);
-      fetchData();
-      addToast('success', editing ? 'Categoria atualizada com sucesso' : 'Categoria cadastrada com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar categoria';
       addToast('error', msg);
@@ -160,7 +173,7 @@ export function Categorias() {
     <Layout>
       <PageHeader title="Categorias" subtitle="Gerencie suas categorias">
         <ShowForPermission rota="/categorias" acao={ACAO.INCLUIR}>
-          <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
+          <Button onClick={openNew}>
             <Plus size={18} /> Nova Categoria
           </Button>
         </ShowForPermission>
@@ -194,11 +207,11 @@ export function Categorias() {
         <DataTable columns={columns} data={categorias} loading={loading} error={error} emptyMessage="Nenhuma categoria cadastrada" />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Categoria' : 'Nova Categoria'}>
+      <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Categoria' : 'Nova Categoria'}>
         {fetchingOne ? (
           <Spinner />
         ) : (
-          <CategoriaForm key={`categoria-form-${editing?.id ?? editing?.codigo ?? 'new'}`} onSubmit={handleSubmit} onCancel={() => { setModalOpen(false); setEditing(null); }} initial={editing} tipo={tipo} />
+          <CategoriaForm key={`categoria-form-${editing?.id ?? editing?.codigo ?? `new-${formKey}`}`} onSubmit={handleSubmit} onCancel={closeModal} initial={editing} tipo={tipo} />
         )}
       </Modal>
 

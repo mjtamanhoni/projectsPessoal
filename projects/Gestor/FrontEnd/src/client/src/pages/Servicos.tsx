@@ -25,6 +25,7 @@ export function Servicos() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
 
   const columns = [
@@ -86,18 +87,25 @@ export function Servicos() {
     setModalOpen(true);
   };
 
+  const openNew = () => {
+    setEditing(null);
+    setEditingId(null);
+    setFormKey((k) => k + 1);
+    setModalOpen(true);
+  };
+
   const handleSubmit = async (data: Servico) => {
-    const isEdit = !!editingId;
     try {
       if (editingId) {
         await update({ ...data, id: editingId });
+        handleCloseModal();
+        addToast('success', 'Servico atualizado com sucesso');
       } else {
         await create(data);
+        setFormKey((k) => k + 1);
+        refetch();
+        addToast('success', 'Servico cadastrado com sucesso');
       }
-      setModalOpen(false);
-      setEditing(null);
-      setEditingId(null);
-      addToast('success', isEdit ? 'Servico atualizado com sucesso' : 'Servico cadastrado com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar servico';
       addToast('error', msg);
@@ -129,7 +137,7 @@ export function Servicos() {
     <Layout>
       <PageHeader title="Servicos" subtitle="Gerencie seus servicos">
         <ShowForPermission rota="/servicos" acao={ACAO.INCLUIR}>
-          <Button onClick={() => { setEditing(null); setEditingId(null); setModalOpen(true); }}>
+          <Button onClick={openNew}>
             <Plus size={18} /> Novo Servico
           </Button>
         </ShowForPermission>
@@ -146,7 +154,7 @@ export function Servicos() {
 
       <Modal isOpen={modalOpen} onClose={handleCloseModal} title={editingId ? 'Editar Servico' : 'Novo Servico'}>
         <ServicoForm
-          key={`servico-form-${editingId ?? 'new'}`}
+          key={`servico-form-${editingId ?? `new-${formKey}`}`}
           onSubmit={handleSubmit}
           onCancel={handleCloseModal}
           initial={editing}

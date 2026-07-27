@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -509,6 +510,8 @@ func rowsToMap(rows pgx.Rows) []map[string]interface{} {
 
 func convertPGValue(v interface{}) interface{} {
 	switch val := v.(type) {
+	case time.Time:
+		return val.Format("2006-01-02")
 	case pgtype.Time:
 		if !val.Valid {
 			return nil

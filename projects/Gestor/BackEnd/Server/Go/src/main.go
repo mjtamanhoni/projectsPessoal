@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -31,6 +32,10 @@ func main() {
 	middleware.SetJWTSecret(cfg.JWTSecret)
 
 	pool := database.Pool
+
+	if err := database.InitMigracoes(pool); err != nil {
+		log.Fatalf("Erro ao init migrations: %v", err)
+	}
 
 	basicCRUD := handlers.NewBasicCRUD(pool)
 	financeiro := &handlers.FinanceiroHandler{Pool: pool, BasicCRUD: basicCRUD}
@@ -72,8 +77,9 @@ func main() {
 		}
 		statusStr := r.URL.Query().Get("status")
 		empresaStr := r.URL.Query().Get("empresa_id")
+		metodoStr := r.URL.Query().Get("metodo")
 
-		data, err := logStore.ReadLog(anoMes)
+		data, err := logStore.ReadLog(anoMes, empresaStr)
 		if err != nil {
 			handlers.JsonError(w, "Arquivo de log não encontrado: "+anoMes, http.StatusNotFound)
 			return
@@ -97,13 +103,16 @@ func main() {
 		sorted := make([]map[string]interface{}, 0, len(dates))
 		for _, date := range dates {
 			entries := data[date]
-			if statusFilter > 0 || empresaFilter > 0 {
+			if statusFilter > 0 || empresaFilter > 0 || metodoStr != "" {
 				filtered := make([]gestorLogger.LogEntry, 0, len(entries))
 				for _, e := range entries {
 					if statusFilter > 0 && e.Status != statusFilter {
 						continue
 					}
 					if empresaFilter > 0 && e.EmpresaID != empresaFilter {
+						continue
+					}
+					if metodoStr != "" && !strings.EqualFold(e.Metodo, metodoStr) {
 						continue
 					}
 					filtered = append(filtered, e)
@@ -167,6 +176,17 @@ func main() {
   .data-header { font-size:.85rem; font-weight:600; color:#f8fafc; padding:10px; background:#1e293b; border-radius:6px; margin-bottom:0; }
   .vazio { text-align:center; padding:40px; color:#64748b; }
   .badge { display:inline-block; background:#334155; color:#94a3b8; padding:2px 8px; border-radius:4px; font-size:.75rem; }
+  .log-row { cursor:pointer; }
+  .log-details-row { display:none; }
+  .log-row.expanded + .log-details-row { display:table-row; }
+  .log-details { padding:8px 10px; background:#1e293b; border-radius:6px; }
+  .detail-label { font-size:.7rem; color:#94a3b8; margin:4px 0 2px; text-transform:uppercase; letter-spacing:.5px; }
+  .detail-json { background:#0f172a; color:#a78bfa; padding:6px 8px; border-radius:4px; font-size:.75rem; margin:2px 0 6px; white-space:pre-wrap; word-break:break-all; max-height:120px; overflow:auto; }
+  .detail-sql { background:#0f172a; padding:6px 8px; border-radius:4px; font-size:.75rem; margin:2px 0 4px; white-space:pre-wrap; word-break:break-all; max-height:80px; overflow:auto; }
+  .detail-sql.select { color:#22c55e; border-left:3px solid #22c55e; }
+  .detail-sql.insert { color:#3b82f6; border-left:3px solid #3b82f6; }
+  .detail-sql.update { color:#f59e0b; border-left:3px solid #f59e0b; }
+  .detail-sql.delete { color:#ef4444; border-left:3px solid #ef4444; }
   .refresh { margin-left:auto; }
   @media(max-width:768px) { .filtros { flex-direction:column; } .msg { max-width:200px; } }
 </style>
@@ -186,6 +206,14 @@ func main() {
 		}
 
 		fmt.Fprint(w, `</select></label>
+  <label>Método
+    <select id="filtro-metodo">
+      <option value="">Todos</option>
+      <option value="GET">GET</option>
+      <option value="POST">POST</option>
+      <option value="PUT">PUT</option>
+      <option value="DELETE">DELETE</option>
+    </select></label>
   <label>Status HTTP
     <select id="filtro-status">
       <option value="">Todos</option>
@@ -208,16 +236,20 @@ func main() {
 </div>
 <div id="resultado" class="loading">Carregando...</div>
 <script>
+function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 const params = new URLSearchParams(location.search);
 if (params.get("status")) document.getElementById("filtro-status").value = params.get("status");
 if (params.get("empresa_id")) document.getElementById("filtro-empresa").value = params.get("empresa_id");
+if (params.get("metodo")) document.getElementById("filtro-metodo").value = params.get("metodo");
 
 async function carregar() {
   const mes = document.getElementById("filtro-mes").value;
+  const metodo = document.getElementById("filtro-metodo").value;
   const status = document.getElementById("filtro-status").value;
   const empresa = document.getElementById("filtro-empresa").value;
   const url = new URL("/logs/json", location.origin);
   url.searchParams.set("mes", mes);
+  if (metodo) url.searchParams.set("metodo", metodo);
   if (status) url.searchParams.set("status", status);
   if (empresa) url.searchParams.set("empresa_id", empresa);
   const div = document.getElementById("resultado");
@@ -234,7 +266,18 @@ async function carregar() {
       html += '<table class="tabela"><thead><tr><th>Hora</th><th>Método</th><th>Rota</th><th>Status</th><th>Mensagem</th><th>Emp</th><th>Usuário</th><th>Duração</th></tr></thead><tbody>';
       dia.logs.forEach(e => {
         const stCls = e.status >= 500 ? 'status-5xx' : e.status >= 400 ? 'status-4xx' : e.status >= 300 ? 'status-3xx' : 'status-2xx';
-        html += '<tr><td class="data-label">' + e.hora + '</td><td class="metodo ' + e.metodo + '">' + e.metodo + '</td><td class="rota">' + e.rota + '</td><td><span class="status ' + stCls + '">' + e.status + '</span></td><td class="msg" title="' + e.mensagem.replace(/"/g,'&quot;') + '">' + e.mensagem + '</td><td><span class="badge">' + e.empresa_id + '</span></td><td><span class="badge">' + e.usuario_id + '</span></td><td class="data-label">' + e.duracao_ms + 'ms</td></tr>';
+	  const details = [];
+	  if (e.jsonRecebido) details.push('<div class="detail-label">Recebido</div><pre class="detail-json">' + esc(e.jsonRecebido) + '</pre>');
+	  if (e.jsonRetornado) details.push('<div class="detail-label">Retornado</div><pre class="detail-json">' + esc(e.jsonRetornado) + '</pre>');
+	  if (e.scripts && e.scripts.length) {
+	    details.push('<div class="detail-label">Scripts</div>');
+	    e.scripts.forEach(s => {
+	      const key = Object.keys(s)[0];
+	      details.push('<pre class="detail-sql ' + key + '">' + esc(s[key]) + '</pre>');
+	    });
+	  }
+	  const detailHtml = details.length ? '<div class="log-details">' + details.join('') + '</div>' : '';
+	  html += '<tr class="log-row" onclick="this.classList.toggle(\'expanded\')"><td class="data-label">' + e.hora + '</td><td class="metodo ' + e.metodo + '">' + e.metodo + '</td><td class="rota">' + e.rota + '</td><td><span class="status ' + stCls + '">' + e.status + '</span></td><td class="msg" title="' + esc(e.mensagem) + '">' + e.mensagem + '</td><td><span class="badge">' + e.empresa_id + '</span></td><td><span class="badge">' + e.usuario_id + '</span></td><td class="data-label">' + e.duracao_ms + 'ms</td></tr><tr class="log-details-row"><td colspan="8">' + detailHtml + '</td></tr>';
       });
       html += '</tbody></table></div>';
     });
@@ -341,6 +384,7 @@ carregar();
 		r.Get("/insumo", producao.InsumoListar)
 		r.Post("/insumo", producao.InsumoAtualizar)
 		r.Delete("/insumo", producao.InsumoExcluir)
+		r.Get("/insumoRecalcular", producao.InsumoRecalcular)
 
 		// Compra Insumo
 		r.Get("/compraInsumo", producao.CompraInsumoListar)
@@ -414,6 +458,30 @@ carregar();
 		r.Delete("/empresa", basicCRUD.EmpresaExcluir)
 		r.Post("/empresa/limpar-dados", basicCRUD.EmpresaLimparDados)
 		r.Post("/empresa/atualizar-sequencias", basicCRUD.EmpresaAtualizarSequencias)
+
+		// Marca
+		r.Get("/marca", basicCRUD.MarcaListar)
+		r.Post("/marca", basicCRUD.MarcaAtualizar)
+		r.Delete("/marca", basicCRUD.MarcaExcluir)
+
+		// Perda Insumo
+		r.Get("/perdaInsumo", producao.PerdaInsumoListar)
+		r.Post("/perdaInsumo", producao.PerdaInsumoAtualizar)
+		r.Delete("/perdaInsumo", producao.PerdaInsumoExcluir)
+
+		// Perda Produto Fabricado
+		r.Get("/perdaProdutoFabricado", producao.PerdaProdutoFabricadoListar)
+		r.Post("/perdaProdutoFabricado", producao.PerdaProdutoFabricadoAtualizar)
+		r.Delete("/perdaProdutoFabricado", producao.PerdaProdutoFabricadoExcluir)
+
+		// Uso Consumo
+		r.Get("/usoConsumo", producao.UsoConsumoListar)
+		r.Post("/usoConsumo", producao.UsoConsumoAtualizar)
+		r.Delete("/usoConsumo", producao.UsoConsumoExcluir)
+
+		// Migracoes
+		r.Get("/migracoes", handlers.MigracoesListar(pool))
+		r.Post("/migracoes/aplicar", handlers.MigracoesAplicar(pool))
 
 	})
 

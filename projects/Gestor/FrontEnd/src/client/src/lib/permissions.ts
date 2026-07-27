@@ -30,6 +30,7 @@ export const formRouteMap: Record<string, string> = {
   'Relatorio Formularios': '/relatorios/cadastros/formularios',
   'Empresas': '/empresas',
   'Insumos': '/insumos',
+  'Marcas': '/marcas',
   'Compras Insumo': '/compras-insumo',
   'Produtos Fabricados': '/produtos-fabricados',
   'Custos Adicionais': '/custos-adicionais',
@@ -49,6 +50,9 @@ export const formRouteMap: Record<string, string> = {
   'Relatorio Fabricacoes': '/relatorios/producao/fabricacoes',
   'Relatorio Vendas Produto': '/relatorios/producao/vendas-produto',
   'Lancamentos Automaticos': '/lancamento-automatico-config',
+  'Perdas Insumo': '/perdas-insumo',
+  'Perdas Produto': '/perdas-produto',
+  'Uso Consumo': '/uso-consumo',
 };
 
 export const routeFormMap: Record<string, string> = Object.fromEntries(

@@ -20,14 +20,13 @@ router.get('/empresas', async (_req, res) => {
 router.post('/login', rateLimit_1.authLimiter, (0, validate_1.validate)(schemas_1.loginBodySchema), async (req, res) => {
     try {
         const { login, senha, pin, empresa } = req.body;
-        const empresaId = empresa || 1;
         if (pin) {
-            const result = await horseApi_1.horseApi.login({ pin, empresa: empresaId });
-            res.json({ ...result, empresaId });
+            const result = await horseApi_1.horseApi.login({ pin, empresa });
+            res.json({ ...result, empresaId: empresa });
             return;
         }
-        const result = await horseApi_1.horseApi.login({ login, senha, empresa: empresaId });
-        res.json({ ...result, empresaId });
+        const result = await horseApi_1.horseApi.login({ login, senha, empresa });
+        res.json({ ...result, empresaId: empresa });
     }
     catch (error) {
         const status = error instanceof Error && 'status' in error ? error.status : 500;
@@ -38,15 +37,16 @@ router.post('/login', rateLimit_1.authLimiter, (0, validate_1.validate)(schemas_
 router.get('/permissoes', auth_1.authMiddleware, async (req, res) => {
     try {
         const data = await horseApi_1.horseApi.listarPermissoesUsuario(req.usuarioId);
+        const isSuperadmin = req.isSuperadmin ?? false;
         if (!data || !Array.isArray(data) || data.length === 0) {
-            res.json({ irrestrito: true, formularios: [] });
+            res.json({ irrestrito: true, formularios: [], isSuperadmin });
             return;
         }
-        res.json({ irrestrito: false, formularios: data });
+        res.json({ irrestrito: false, formularios: data, isSuperadmin });
     }
     catch (error) {
         console.error('[permissoes] Erro ao buscar permissoes:', error);
-        res.json({ irrestrito: true, formularios: [] });
+        res.json({ irrestrito: true, formularios: [], isSuperadmin: req.isSuperadmin ?? false });
     }
 });
 exports.default = router;

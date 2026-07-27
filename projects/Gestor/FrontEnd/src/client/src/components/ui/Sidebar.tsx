@@ -24,7 +24,7 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
   Geral: [
     {
       label: 'Cadastro',
-      forms: ['Clientes', 'Fornecedores', 'Usuarios'],
+      forms: ['Clientes', 'Fornecedores', 'Usuarios','Marcas'],
     },
     {
       label: 'Configuracoes',
@@ -42,11 +42,11 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
   Producao: [
     {
       label: 'Cadastro',
-      forms: ['Insumos', 'Produtos Fabricados', 'Receitas Ingredientes', 'Custos Adicionais'],
+      forms: ['Insumos', 'Marcas', 'Produtos Fabricados', 'Receitas Ingredientes', 'Custos Adicionais'],
     },
     {
       label: 'Movimento',
-      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Estoque Insumo', 'Estoque Produto Fabricado'],
+      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
     },
     {
       label: 'Relatorios',
@@ -56,11 +56,11 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
   'Producao V2': [
     {
       label: 'Cadastro',
-      forms: ['Insumos', 'Produtos Fabricados', 'Receitas Ingredientes', 'Custos Adicionais'],
+      forms: ['Insumos', 'Marcas', 'Produtos Fabricados', 'Receitas Ingredientes', 'Custos Adicionais'],
     },
     {
       label: 'Movimento',
-      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Estoque Insumo', 'Estoque Produto Fabricado'],
+      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
     },
     {
       label: 'Relatorios',
@@ -97,6 +97,17 @@ function ModuleForms({ module, collapsed }: { module: { nome: string; formulario
   const { menuData } = useModule();
   const { isSuperadmin } = useAuth();
   const subGroups = findSubGroups(module.nome);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    const map: Record<string, boolean> = {};
+    if (subGroups) {
+      for (const sg of subGroups) {
+        if (sg.label !== 'Configurações do Sistema' || isSuperadmin) {
+          map[sg.label] = true;
+        }
+      }
+    }
+    return map;
+  });
 
   const formByName = new Map<string, { id: number; nome: string }>();
   for (const f of module.formularios) {
@@ -169,16 +180,25 @@ function ModuleForms({ module, collapsed }: { module: { nome: string; formulario
       {subGroups.filter((sg) => sg.label !== 'Configurações do Sistema' || isSuperadmin).map((sg) => {
         const list = groupedForms.get(sg.label)!;
         if (list.length === 0) return null;
+        const isExpanded = expandedGroups[sg.label] ?? true;
         return (
           <div key={sg.label}>
-            {!collapsed && (
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted px-1 mb-1">{sg.label}</p>
+            {!collapsed ? (
+              <button
+                onClick={() => setExpandedGroups((prev) => ({ ...prev, [sg.label]: !prev[sg.label] }))}
+                className="flex items-center gap-1 w-full text-[10px] font-semibold uppercase tracking-wider text-text-muted px-1 mb-1 hover:text-text-primary transition-colors"
+              >
+                <span className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>▸</span>
+                {sg.label}
+              </button>
+            ) : null}
+            {isExpanded && (
+              <div className="space-y-0.5">
+                {list.map((f) => (
+                  <FormLink key={f.id} f={f} collapsed={collapsed} />
+                ))}
+              </div>
             )}
-            <div className="space-y-0.5">
-              {list.map((f) => (
-                <FormLink key={f.id} f={f} collapsed={collapsed} />
-              ))}
-            </div>
           </div>
         );
       })}

@@ -65,12 +65,12 @@ export function Abatimentos() {
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
       id: 'codigo',
-      header: 'Codigo',
+      header: 'Código',
       enableSorting: true,
       meta: { align: 'right' } as Record<string, string>,
     }),
     columnHelper.accessor('usuarioNome', {
-      header: 'Usuario',
+      header: 'Usuário',
       enableSorting: true,
     }),
     columnHelper.accessor('clienteNome', {
@@ -78,7 +78,7 @@ export function Abatimentos() {
       enableSorting: true,
     }),
     columnHelper.accessor('servicoNome', {
-      header: 'Servico',
+      header: 'Serviço',
       enableSorting: true,
     }),
     columnHelper.accessor('dataAbatimento', {
@@ -105,7 +105,7 @@ export function Abatimentos() {
       meta: { align: 'right' } as Record<string, string>,
     }),
     columnHelper.accessor('observacoes', {
-      header: 'Observacoes',
+      header: 'Observações',
       cell: (info) => info.getValue() || '-',
     }),
     columnHelper.display({
@@ -169,7 +169,7 @@ export function Abatimentos() {
     try {
       await remove(confirmDelete);
       setConfirmDelete(null);
-      addToast('success', 'Abatimento excluido com sucesso');
+      addToast('success', 'Abatimento excluído com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao excluir abatimento';
       addToast('error', msg);
@@ -253,7 +253,7 @@ export function Abatimentos() {
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
         title="Excluir Abatimento"
-        message="Tem certeza que deseja excluir este abatimento? Esta acao nao pode ser desfeita."
+        message="Tem certeza que deseja excluir este abatimento? Esta ação não pode ser desfeita."
         variant="danger"
         confirmLabel="Excluir"
         loading={deleting}

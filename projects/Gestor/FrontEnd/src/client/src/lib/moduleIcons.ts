@@ -3,7 +3,8 @@ import {
   Building, Link2, ShieldCheck, UserCog, Package, ShoppingCart,
   Factory, DollarSign, TrendingUp, List, Clock, Minus, BarChart3,
   LayoutDashboard, Settings, BookOpen, AlertTriangle, CirclePlus,
-  Cog, Calculator, LayoutGrid, Archive, type LucideIcon,
+  Cog, Calculator, LayoutGrid, Archive, Trash2, XCircle, Zap,
+  type LucideIcon,
 } from 'lucide-react';
 
 export interface ModuleIconInfo {
@@ -275,6 +276,21 @@ const moduleIconMap: Record<string, ModuleIconInfo> = {
     icon: DollarSign,
     color: '#16a34a',
     bgGradient: 'from-green-500/20 to-green-600/10',
+  },
+  'Perdas Insumo': {
+    icon: Trash2,
+    color: '#dc2626',
+    bgGradient: 'from-red-500/20 to-red-600/10',
+  },
+  'Perdas Produto': {
+    icon: XCircle,
+    color: '#ef4444',
+    bgGradient: 'from-red-400/20 to-red-500/10',
+  },
+  'Uso Consumo': {
+    icon: Zap,
+    color: '#eab308',
+    bgGradient: 'from-yellow-500/20 to-yellow-600/10',
   },
 };
 

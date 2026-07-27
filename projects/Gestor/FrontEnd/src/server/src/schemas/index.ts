@@ -151,20 +151,27 @@ export const insumoBodySchema = z.object({
   unidade_medida: z.string().min(1, 'Unidade de medida e obrigatoria').max(20),
   custo_medio: z.number().optional(),
   ativo: z.boolean().optional(),
+  id_fornecedor: z.union([z.number().int().positive(), z.null()]).optional(),
+  id_marca: z.union([z.number().int().positive(), z.null()]).optional(),
+});
+
+const compraInsumoItemSchema = z.object({
+  insumo_id: z.number().int().positive('Insumo e obrigatorio'),
+  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+  valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
+  valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
 });
 
 export const compraInsumoBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),
-  insumo_id: z.number().int().positive('Insumo e obrigatorio'),
   fornecedor_id: z.number().int().positive().optional(),
-  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
-  valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
-  valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
+  valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
   data_compra: z.string().min(1, 'Data e obrigatoria'),
   observacao: z.string().max(500).optional(),
   categoria_pagar_id: z.number().int().positive().optional(),
   pago: z.boolean().optional(),
+  itens: z.array(compraInsumoItemSchema).min(1, 'Adicione ao menos um item'),
 });
 
 export const produtoFabricadoBodySchema = z.object({
@@ -281,6 +288,33 @@ export const empresaModuloBodySchema = z.object({
 export const usuarioEmpresaBodySchema = z.object({
   usuario_id: z.number().int().positive('Usuario e obrigatorio'),
   empresas: z.array(z.number().int().positive()),
+});
+
+export const perdaInsumoBodySchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  insumo_id: z.number().int().positive('Insumo e obrigatorio'),
+  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+  data_perda: z.string().min(1, 'Data e obrigatoria'),
+  motivo: z.string().max(500).optional().or(z.literal('')),
+});
+
+export const perdaProdutoFabricadoBodySchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
+  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+  data_perda: z.string().min(1, 'Data e obrigatoria'),
+  motivo: z.string().max(500).optional().or(z.literal('')),
+});
+
+export const usoConsumoBodySchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
+  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+  data_uso: z.string().min(1, 'Data e obrigatoria'),
+  motivo: z.string().max(500).optional().or(z.literal('')),
 });
 
 export const loginBodySchema = z.object({

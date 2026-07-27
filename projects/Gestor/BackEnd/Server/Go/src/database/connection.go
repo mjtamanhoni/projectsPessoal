@@ -17,7 +17,7 @@ func Connect(cfg *config.Config) error {
 	)
 
 	var err error
-	Pool, err = pgxpool.New(context.Background(), dsn)
+	Pool, err = NewPoolWithTracer(dsn)
 	if err != nil {
 		return fmt.Errorf("unable to connect to database: %w", err)
 	}

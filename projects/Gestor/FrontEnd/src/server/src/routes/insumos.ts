@@ -28,6 +28,17 @@ router.post('/', authMiddleware, validate(insumoBodySchema), async (req: AuthReq
   }
 });
 
+router.get('/recalcular', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.query;
+    const result = await horseApi.recalcularInsumos(id ? String(id) : undefined);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
 router.delete('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.query;

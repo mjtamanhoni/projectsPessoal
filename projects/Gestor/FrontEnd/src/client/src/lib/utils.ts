@@ -58,6 +58,13 @@ export function formatQuantityInput(value: string, decimals: number = 4): string
   }).format(amount);
 }
 
+export function formatDecimals(value: number, decimals: number = 2): string {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
+
 export function parseQuantityInput(value: string, decimals: number = 4): number {
   const numbers = value.replace(/\D/g, '');
   if (!numbers) return 0;

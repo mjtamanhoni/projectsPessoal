@@ -169,6 +169,34 @@ func (h *BasicCRUD) ClienteExcluir(w http.ResponseWriter, r *http.Request) {
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Cliente excluído com sucesso"})
 }
 
+// --- Marca ---
+func (h *BasicCRUD) MarcaListar(w http.ResponseWriter, r *http.Request) {
+	h.Listar(w, r, "public", "marca", "", "id, empresa_id, nome, ativo", "")
+}
+
+func (h *BasicCRUD) MarcaAtualizar(w http.ResponseWriter, r *http.Request) {
+	h.genericUpsert(w, r, "public", "marca", []string{"nome", "ativo"})
+}
+
+func (h *BasicCRUD) MarcaExcluir(w http.ResponseWriter, r *http.Request) {
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	empresaID := middleware.GetEmpresaID(r)
+	if id == 0 {
+		jsonError(w, "ID não informado", http.StatusBadRequest)
+		return
+	}
+	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM marca WHERE id = $1 AND empresa_id = $2`, id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Marca excluída com sucesso"})
+}
+
 // --- Categoria Pagar ---
 func (h *BasicCRUD) CategoriaPagarListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
@@ -366,10 +394,10 @@ func (h *BasicCRUD) UsuarioAtualizar(w http.ResponseWriter, r *http.Request) {
 			vals = append(vals, isSuperadmin)
 			paramIdx++
 
-			vals = append(vals, id)
+			vals = append(vals, id, empresaID)
 			_, err = tx.Exec(r.Context(),
-				fmt.Sprintf("UPDATE usuario SET %s WHERE id = $%d",
-					strings.Join(setClauses, ", "), paramIdx), vals...)
+				fmt.Sprintf("UPDATE usuario SET %s WHERE id = $%d AND empresa_id = $%d",
+					strings.Join(setClauses, ", "), paramIdx, paramIdx+1), vals...)
 		}
 
 		if err != nil {
@@ -387,7 +415,8 @@ func (h *BasicCRUD) UsuarioExcluir(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "ID não informado", http.StatusBadRequest)
 		return
 	}
-	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM usuario WHERE id = $1`, id)
+	empresaID := middleware.GetEmpresaID(r)
+	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM usuario WHERE id = $1 AND empresa_id = $2`, id, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -410,9 +439,11 @@ func (h *BasicCRUD) UsuarioAlterarSenha(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	empresaID := middleware.GetEmpresaID(r)
+
 	var senhaHash string
 	err := h.Pool.QueryRow(r.Context(),
-		`SELECT senha FROM usuario WHERE id = $1`, body.ID).Scan(&senhaHash)
+		`SELECT senha FROM usuario WHERE id = $1 AND empresa_id = $2`, body.ID, empresaID).Scan(&senhaHash)
 	if err != nil {
 		jsonError(w, "Usuário não encontrado", http.StatusNotFound)
 		return
@@ -423,8 +454,8 @@ func (h *BasicCRUD) UsuarioAlterarSenha(w http.ResponseWriter, r *http.Request) 
 	}
 
 	_, err = h.Pool.Exec(r.Context(),
-		`UPDATE usuario SET senha = $1 WHERE id = $2`,
-		hashSenha(body.NovaSenha), body.ID)
+		`UPDATE usuario SET senha = $1 WHERE id = $2 AND empresa_id = $3`,
+		hashSenha(body.NovaSenha), body.ID, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -441,9 +472,10 @@ func (h *BasicCRUD) UsuarioAlterarPin(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "JSON inválido", http.StatusBadRequest)
 		return
 	}
+	empresaID := middleware.GetEmpresaID(r)
 	_, err := h.Pool.Exec(r.Context(),
-		`UPDATE usuario SET pin = $1 WHERE id = $2`,
-		hashSenha(body.NovoPin), body.ID)
+		`UPDATE usuario SET pin = $1 WHERE id = $2 AND empresa_id = $3`,
+		hashSenha(body.NovoPin), body.ID, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return

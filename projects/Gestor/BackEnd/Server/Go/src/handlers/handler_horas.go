@@ -27,9 +27,9 @@ func (h *HorasHandler) HorasTrabalhadasListar(w http.ResponseWriter, r *http.Req
 
 	query := `SELECT ht.*, u.nome as usuario_nome, cl.nome as cliente_nome, s.nome as servico_nome
 		FROM horas_trabalhadas ht
-		LEFT JOIN public.usuario u ON u.id = ht.usuario_id
-		LEFT JOIN public.cliente cl ON cl.id = ht.cliente_id
-		LEFT JOIN servico s ON s.id = ht.servico_id
+		LEFT JOIN public.usuario u ON u.id = ht.usuario_id AND u.empresa_id = ht.empresa_id
+		LEFT JOIN public.cliente cl ON cl.id = ht.cliente_id AND cl.empresa_id = ht.empresa_id
+		LEFT JOIN servico s ON s.id = ht.servico_id AND s.empresa_id = ht.empresa_id
 		WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -206,9 +206,9 @@ func (h *HorasHandler) HorasAbatidasListar(w http.ResponseWriter, r *http.Reques
 
 	query := `SELECT ha.*, u.nome as usuario_nome, c.nome as cliente_nome, s.nome as servico_nome
 		FROM horas_abatidas ha
-		LEFT JOIN public.usuario u ON u.id = ha.usuario_id
-		LEFT JOIN public.cliente c ON c.id = ha.cliente_id
-		LEFT JOIN servico s ON s.id = ha.servico_id
+		LEFT JOIN public.usuario u ON u.id = ha.usuario_id AND u.empresa_id = ha.empresa_id
+		LEFT JOIN public.cliente c ON c.id = ha.cliente_id AND c.empresa_id = ha.empresa_id
+		LEFT JOIN servico s ON s.id = ha.servico_id AND s.empresa_id = ha.empresa_id
 		WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -312,9 +312,9 @@ func (h *HorasHandler) HorasExcedidasListar(w http.ResponseWriter, r *http.Reque
 
 	query := `SELECT he.*, u.nome as usuario_nome, c.nome as cliente_nome, s.nome as servico_nome
 		FROM horas_excedidas he
-		LEFT JOIN public.usuario u ON u.id = he.usuario_id
-		LEFT JOIN public.cliente c ON c.id = he.cliente_id
-		LEFT JOIN servico s ON s.id = he.servico_id
+		LEFT JOIN public.usuario u ON u.id = he.usuario_id AND u.empresa_id = he.empresa_id
+		LEFT JOIN public.cliente c ON c.id = he.cliente_id AND c.empresa_id = he.empresa_id
+		LEFT JOIN servico s ON s.id = he.servico_id AND s.empresa_id = he.empresa_id
 		WHERE 1=1`
 	var args []interface{}
 	argN := 1
