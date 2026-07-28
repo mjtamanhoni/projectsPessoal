@@ -42,6 +42,7 @@ export function ComprasInsumo() {
       const itens = rows.map((row: any) => ({
         insumo_id: row.insumo_id,
         insumo_nome: row.insumo_nome,
+        marca_nome: row.marca_nome,
         quantidade: Number(row.quantidade),
         valor_unitario: Number(row.valor_unitario),
         valor_total: Number(row.item_valor_total ?? row.valor_total),
@@ -66,6 +67,7 @@ export function ComprasInsumo() {
         <thead>
           <tr className="text-text-secondary text-xs uppercase tracking-wider">
             <th className="text-left px-2 py-1 font-medium">Insumo</th>
+            <th className="text-left px-2 py-1 font-medium">Marca</th>
             <th className="text-right px-2 py-1 font-medium">Qtd.</th>
             <th className="text-right px-2 py-1 font-medium">Valor Unit.</th>
             <th className="text-right px-2 py-1 font-medium">Valor Total</th>
@@ -74,9 +76,11 @@ export function ComprasInsumo() {
         <tbody>
           {itens.map((item, i) => {
             const insumo = insumos.find((s) => (s.id ?? s.codigo) === item.insumo_id);
+            const marcaNome = item.marca_nome || insumo?.marca_nome || '-';
             return (
               <tr key={i} className="border-t border-border-primary/50">
                 <td className="px-2 py-1.5">{insumo?.nome ?? item.insumo_nome ?? `ID ${item.insumo_id}`}</td>
+                <td className="px-2 py-1.5">{marcaNome}</td>
                 <td className="text-right px-2 py-1.5">{item.quantidade.toFixed(getDecimalPlaces()).replace('.', ',')}</td>
                 <td className="text-right px-2 py-1.5">{formatDecimals(item.valor_unitario, 4)}</td>
                 <td className="text-right px-2 py-1.5 font-medium">{formatCurrency(item.valor_total)}</td>
@@ -169,6 +173,7 @@ export function ComprasInsumo() {
       const itens = rows.map((row: any) => ({
         insumo_id: row.insumo_id,
         insumo_nome: row.insumo_nome,
+        marca_nome: row.marca_nome,
         quantidade: Number(row.quantidade),
         valor_unitario: Number(row.valor_unitario),
         valor_total: Number(row.item_valor_total ?? row.valor_total),

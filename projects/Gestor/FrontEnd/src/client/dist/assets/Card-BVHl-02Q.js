@@ -1,1 +1,0 @@
-import{j as t}from"./boot-CZyBCGLT.js";function d({title:r,children:a,className:e="",onClick:s}){return t.jsxs("div",{className:`card p-6 ${s?"cursor-pointer hover:shadow-md transition-shadow":""} ${e}`,onClick:s,children:[r&&t.jsx("h3",{className:"text-lg font-semibold text-text-primary mb-4",children:r}),a]})}export{d as C};

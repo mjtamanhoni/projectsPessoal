@@ -5,6 +5,7 @@ import { useAppMode } from '@/context/AppModeContext';
 import { ModuleProvider } from '@/context/ModuleContext';
 import { Spinner } from '@/components/ui/Spinner';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { hasServerConfig } from '@/lib/serverConfig';
 
 const Login = lazy(() => import('@/pages/Login').then((m) => ({ default: m.Login })));
 const ModuloSelector = lazy(() => import('@/pages/ModuloSelector').then((m) => ({ default: m.ModuloSelector })));
@@ -54,6 +55,7 @@ const UsoConsumoPage = lazy(() => import('@/pages/UsoConsumo').then((m) => ({ de
 const RelatorioVendasProduto = lazy(() => import('@/pages/RelatorioVendasProduto').then((m) => ({ default: m.RelatorioVendasProduto })));
 const Marcas = lazy(() => import('@/pages/Marcas').then((m) => ({ default: m.Marcas })));
 const Help = lazy(() => import('@/pages/Help').then((m) => ({ default: m.Help })));
+const ServerConfigPage = lazy(() => import('@/pages/ServerConfig').then((m) => ({ default: m.ServerConfig })));
 
 const superadminRoutes = new Set([
   '/modulos',
@@ -102,6 +104,14 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <Navigate to="/" replace /> : <>{children}</>;
 }
 
+function ConfigGuard({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  if (!hasServerConfig() && location.pathname !== '/server-config') {
+    return <Navigate to="/server-config" replace />;
+  }
+  return <>{children}</>;
+}
+
 const SHARED = 1;
 const GESTOR = 2;
 const HORAS = 4;
@@ -116,10 +126,12 @@ export default function App() {
   const mode = useAppMode();
 
   return (
+    <ConfigGuard>
     <ModuleProvider>
       <Suspense fallback={<Spinner fullPage />}>
         <Routes>
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/server-config" element={<ServerConfigPage />} />
           <Route path="/" element={<Private><ModuloSelector /></Private>} />
           {routesFor(SHARED, mode) && <Route path="/dashboard" element={<Private><Dashboard /></Private>} />}
           {routesFor(SHARED, mode) && <Route path="/relatorios/cadastros/usuarios" element={<Private><RelatorioUsuarios /></Private>} />}
@@ -174,5 +186,6 @@ export default function App() {
         </Routes>
       </Suspense>
     </ModuleProvider>
+    </ConfigGuard>
   );
 }

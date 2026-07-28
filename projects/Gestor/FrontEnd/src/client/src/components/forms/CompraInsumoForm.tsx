@@ -171,6 +171,7 @@ export function CompraInsumoForm({ onSubmit, onCancel, initial, insumos, fornece
             <thead className="sticky top-0 bg-bg-primary">
               <tr className="bg-bg-muted">
                 <th className="text-left px-3 py-2 text-text-secondary font-medium">Insumo</th>
+                <th className="text-left px-3 py-2 text-text-secondary font-medium">Marca</th>
                 <th className="text-right px-3 py-2 text-text-secondary font-medium">Quantidade</th>
                 <th className="text-right px-3 py-2 text-text-secondary font-medium">Valor Unit.</th>
                 <th className="text-right px-3 py-2 text-text-secondary font-medium">Valor Total</th>
@@ -180,9 +181,11 @@ export function CompraInsumoForm({ onSubmit, onCancel, initial, insumos, fornece
             <tbody>
               {itens.map((item, idx) => {
                 const insumo = insumos.find((i) => (i.id ?? i.codigo) === item.insumo_id);
+                const marcaNome = item.marca_nome || insumo?.marca_nome || marcas.find((m) => (m.id ?? m.codigo) === insumo?.id_marca)?.nome || '-';
                 return (
                   <tr key={idx} className="border-t border-border-primary">
                     <td className="px-3 py-2">{insumo?.nome ?? `ID ${item.insumo_id}`}</td>
+                    <td className="px-3 py-2">{marcaNome}</td>
                     <td className="px-3 py-2 text-right">{item.quantidade.toFixed(4).replace('.', ',')}</td>
                     <td className="px-3 py-2 text-right">{formatDecimals(item.valor_unitario, 4)}</td>
                     <td className="px-3 py-2 text-right">{formatCurrency(item.valor_total)}</td>
@@ -196,7 +199,7 @@ export function CompraInsumoForm({ onSubmit, onCancel, initial, insumos, fornece
               })}
               {itens.length === 0 && (
                 <tr className="border-t border-border-primary">
-                  <td colSpan={5} className="px-3 py-4 text-center text-text-tertiary">Nenhum item adicionado</td>
+                  <td colSpan={6} className="px-3 py-4 text-center text-text-tertiary">Nenhum item adicionado</td>
                 </tr>
               )}
             </tbody>

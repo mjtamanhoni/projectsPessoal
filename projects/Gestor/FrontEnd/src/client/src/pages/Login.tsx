@@ -208,7 +208,15 @@ export function Login() {
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-border-subtle text-center">
+          <div className="mt-6 pt-4 border-t border-border-subtle text-center space-y-2">
+            <button
+              type="button"
+              onClick={() => navigate('/server-config')}
+              className="text-xs text-text-muted hover:text-accent-primary transition-colors flex items-center justify-center gap-1 mx-auto"
+            >
+              <Server size={12} />
+              Servidor do App
+            </button>
             <button
               type="button"
               onClick={openSettings}

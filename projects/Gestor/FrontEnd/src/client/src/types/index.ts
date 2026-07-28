@@ -268,6 +268,7 @@ export interface Marca {
 export interface CompraInsumoItem {
   insumo_id: number;
   insumo_nome?: string;
+  marca_nome?: string;
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
