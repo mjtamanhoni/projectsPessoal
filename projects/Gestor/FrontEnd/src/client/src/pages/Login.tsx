@@ -94,14 +94,21 @@ export function Login() {
       } else {
         await authLogin(login, senha, undefined, empresaId);
       }
-      const redirectTo = (() => {
-        try {
-          const val = localStorage.getItem('redirectAfterLogin');
-          localStorage.removeItem('redirectAfterLogin');
-          return val;
-        } catch { return null; }
-      })();
-      navigate(redirectTo || '/');
+      const settings = await fetchSettings().catch(() => null);
+      const hasInitialForm = settings?.display?.moduloInicialId && settings?.display?.formularioInicialId;
+      if (hasInitialForm) {
+        try { localStorage.removeItem('redirectAfterLogin'); } catch {}
+        navigate('/');
+      } else {
+        const redirectTo = (() => {
+          try {
+            const val = localStorage.getItem('redirectAfterLogin');
+            localStorage.removeItem('redirectAfterLogin');
+            return val;
+          } catch { return null; }
+        })();
+        navigate(redirectTo || '/');
+      }
     } catch (err: unknown) {
       const message = (() => {
         if (err && typeof err === 'object' && 'response' in err) {

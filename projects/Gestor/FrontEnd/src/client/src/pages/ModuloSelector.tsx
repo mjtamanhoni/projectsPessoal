@@ -5,6 +5,7 @@ import { useAppMode } from '@/context/AppModeContext';
 import { useAuth } from '@/context/AuthContext';
 import { getModuleIcon, getModuleImage } from '@/lib/moduleIcons';
 import { formRouteMap } from '@/lib/permissions';
+import { fetchSettings } from '@/lib/settings';
 import { Layout } from '@/components/ui/Layout';
 import { ArrowRight, RefreshCw, Loader2 } from 'lucide-react';
 
@@ -52,6 +53,32 @@ export function ModuloSelector() {
       if (route) navigate(route, { replace: true });
     }
   }, [menuLoading, menuData, appMode, selectModule, navigate]);
+
+  useEffect(() => {
+    if (menuLoading || !menuData.length) return;
+    if (!irrestrito) return;
+    if (appMode) return;
+    if (sessionStorage.getItem('moduloInicialRedirectDone')) return;
+
+    fetchSettings().then((settings) => {
+      const moduloId = settings?.display?.moduloInicialId;
+      const formularioId = settings?.display?.formularioInicialId;
+      if (!moduloId || !formularioId) return;
+
+      const mod = menuData.find((m) => m.id === moduloId);
+      if (!mod) return;
+
+      const target = mod.formularios.find((f) => f.id === formularioId);
+      if (!target) return;
+
+      const route = formRouteMap[target.nome];
+      if (!route) return;
+
+      sessionStorage.setItem('moduloInicialRedirectDone', '1');
+      selectModule(mod);
+      navigate(route, { replace: true });
+    }).catch(() => {});
+  }, [menuLoading, menuData, irrestrito, appMode, selectModule, navigate]);
 
   const handleSelect = (mod: typeof menuData[0]) => {
     selectModule(mod);

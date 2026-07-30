@@ -359,6 +359,8 @@ carregar();
 
 		// Dashboard
 		r.Get("/dashboard", financeiro.DashboardListar)
+		r.Get("/horasDashboard", horasHandler.HorasDashboardListar)
+		r.Get("/producaoDashboard", producao.ProducaoDashboardListar)
 
 		// Formulario
 		r.Get("/formulario", basicCRUD.FormularioListar)

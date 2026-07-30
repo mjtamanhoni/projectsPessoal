@@ -28,6 +28,8 @@ const Formularios = lazy(() => import('@/pages/Formularios').then((m) => ({ defa
 const Empresas = lazy(() => import('@/pages/Empresas').then((m) => ({ default: m.Empresas })));
 const UsuarioFormularios = lazy(() => import('@/pages/UsuarioFormularios').then((m) => ({ default: m.UsuarioFormularios })));
 const HorasTrabalhadas = lazy(() => import('@/pages/HorasTrabalhadas').then((m) => ({ default: m.HorasTrabalhadas })));
+const HorasDashboard = lazy(() => import('@/pages/HorasDashboard').then((m) => ({ default: m.HorasDashboard })));
+const ProducaoDashboard = lazy(() => import('@/pages/ProducaoDashboard').then((m) => ({ default: m.ProducaoDashboard })));
 const Abatimentos = lazy(() => import('@/pages/Abatimentos').then((m) => ({ default: m.Abatimentos })));
 const HorasExcedidas = lazy(() => import('@/pages/HorasExcedidas').then((m) => ({ default: m.HorasExcedidas })));
 const Servicos = lazy(() => import('@/pages/Servicos').then((m) => ({ default: m.Servicos })));
@@ -160,10 +162,12 @@ export default function App() {
           {routesFor(GESTOR, mode) && <Route path="/relatorios/cadastros/categorias" element={<Private><RelatorioCategorias /></Private>} />}
           {/* horas */}
           {routesFor(HORAS, mode) && <Route path="/horas-trabalhadas" element={<Private><HorasTrabalhadas /></Private>} />}
+          {routesFor(HORAS, mode) && <Route path="/horas-dashboard" element={<Private><HorasDashboard /></Private>} />}
           {routesFor(HORAS, mode) && <Route path="/excedidas" element={<Private><HorasExcedidas /></Private>} />}
           {routesFor(HORAS, mode) && <Route path="/abatimentos" element={<Private><Abatimentos /></Private>} />}
           {routesFor(HORAS, mode) && <Route path="/servicos" element={<Private><Servicos /></Private>} />}
           {/* producao */}
+          {routesFor(PRODUCAO, mode) && <Route path="/producao-dashboard" element={<Private><ProducaoDashboard /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/insumos" element={<Private><Insumos /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/marcas" element={<Private><Marcas /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/compras-insumo" element={<Private><ComprasInsumo /></Private>} />}

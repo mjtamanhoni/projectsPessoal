@@ -114,6 +114,8 @@ export interface GridSettings {
 export interface DisplaySettings {
   grid: GridSettings;
   number?: NumberSettings;
+  moduloInicialId?: number;
+  formularioInicialId?: number;
 }
 
 export interface NumberSettings {
@@ -390,6 +392,38 @@ export interface EstoqueProdutoFabricado {
   quantidade: number;
   data_atualizacao: string;
   observacao?: string;
+}
+
+export interface ProducaoDashboardData {
+  kpis: {
+    total_vendas: number;
+    qtd_vendida: number;
+    qtd_vendas: number;
+    total_compras: number;
+    qtd_compras: number;
+    qtd_fabricada: number;
+    custo_total: number;
+    qtd_fabricacoes: number;
+    lucro_bruto: number;
+    lucro_liquido: number;
+  };
+  mensal_vendas: { mes: number; valor: number; qtd: number; qtd_vendas: number }[];
+  mensal_compras: { mes: number; valor: number; qtd: number }[];
+  mensal_fabricacao: { mes: number; qtd_fabricada: number; custo_total: number; qtd: number }[];
+  diario_fabricacao: { dia: string; qtd_fabricada: number }[];
+  diario_vendas: { dia: string; valor: number }[];
+}
+
+export interface HorasDashboardData {
+  kpis: {
+    totalHoras: number;
+    totalValor: number;
+    totalAbatido: number;
+    diasTrabalhados: number;
+  };
+  diario: { dia: string; horas: number; valor: number }[];
+  mensal: { mes: number; horas: number; valor: number }[];
+  abatidoMensal: { mes: number; horas_abatidas: number }[];
 }
 
 export interface Empresa {

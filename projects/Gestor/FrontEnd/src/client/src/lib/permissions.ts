@@ -19,6 +19,8 @@ export const formRouteMap: Record<string, string> = {
   'Formularios': '/formularios',
   'Usuario x Formulario': '/usuario-formularios',
   'Usuarios': '/usuarios',
+  'Dashboard Horas': '/horas-dashboard',
+  'Dashboard Produção': '/producao-dashboard',
   'Horas Trabalhadas': '/horas-trabalhadas',
   'Horas Excedidas': '/excedidas',
   'Abatimentos': '/abatimentos',

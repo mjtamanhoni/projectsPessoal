@@ -1,4 +1,4 @@
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
 declare class HorseApiService {
     private api;
     private token;
@@ -36,6 +36,8 @@ declare class HorseApiService {
     receberConta(data: BaixaRequest): Promise<unknown>;
     estornarContaReceber(id: number): Promise<unknown>;
     obterDashboard(filtros?: DashboardFilters): Promise<DashboardData>;
+    obterProducaoDashboard(params?: Record<string, unknown>): Promise<ProducaoDashboardData>;
+    obterHorasDashboard(params?: Record<string, unknown>): Promise<HorasDashboardData>;
     listarUsuarios(params?: Record<string, unknown>): Promise<unknown[]>;
     salvarUsuarios(usuarios: unknown[]): Promise<unknown>;
     excluirUsuario(id: number): Promise<unknown>;

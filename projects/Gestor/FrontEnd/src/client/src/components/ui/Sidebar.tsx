@@ -130,8 +130,12 @@ function ModuleForms({ module, collapsed }: { module: { nome: string; formulario
   });
 
   if (!subGroups) {
+    const isHoras = module.nome === 'Horas Trabalhadas' || module.nome.toLowerCase().includes('horas');
+    const isProducao = module.nome === 'Producao' || module.nome.toLowerCase().includes('producao');
     return (
       <div className="space-y-0.5">
+        {isHoras && <FormLink key={-1} f={{ id: -1, nome: 'Dashboard Horas' }} collapsed={collapsed} />}
+        {isProducao && <FormLink key={-2} f={{ id: -2, nome: 'Dashboard Produção' }} collapsed={collapsed} />}
         {validForms.map((f) => (
           <FormLink key={f.id} f={f} collapsed={collapsed} />
         ))}

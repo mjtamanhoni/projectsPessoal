@@ -498,8 +498,8 @@ export const helpModules: HelpModule[] = [
       {
         name: 'Modulo x Formulario',
         purpose: 'Vinculo entre modulos e formularios, definindo quais formularios pertencem a cada modulo.',
-        howTo: 'Selecione um modulo e marque os formularios que fazem parte dele. Defina qual formulario sera a tela inicial (abertura) do modulo.',
-        tips: ['O formulario de abertura e o que abre automaticamente ao selecionar o modulo'],
+        howTo: 'Selecione um modulo e marque os formularios que fazem parte dele.',
+        tips: ['Configure o formulario inicial nas Configuracoes > Exibicao'],
       },
       {
         name: 'Empresa x Modulo',

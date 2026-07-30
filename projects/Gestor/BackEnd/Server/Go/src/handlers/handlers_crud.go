@@ -634,7 +634,7 @@ func (h *BasicCRUD) EmpresaAtualizarSequencias(w http.ResponseWriter, r *http.Re
 		"horas_abatidas", "horas_excedidas", "insumo", "produto_fabricado",
 		"receita_ingrediente", "custo_adicional_tipo", "fabricacao_custo_adicional",
 		"estoque_insumo", "estoque_produto_fabricado", "compra_insumo",
-		"fabricacao", "venda_produto", "usuario_formulario_permissao",
+		"fabricacao", "venda_produto", "venda_produto_item", "usuario_formulario_permissao",
 	}
 	tabelasGlobais := []string{
 		"formulario", "modulo", "modulo_formulario",
@@ -751,6 +751,7 @@ func (h *BasicCRUD) EmpresaLimparDados(w http.ResponseWriter, r *http.Request) {
 		"estoque_insumo",
 		"estoque_produto_fabricado",
 		"fabricacao_custo_adicional",
+		"venda_produto_item",
 		"venda_produto",
 		"receita_ingrediente",
 		"compra_insumo",

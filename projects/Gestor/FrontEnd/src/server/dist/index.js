@@ -23,6 +23,8 @@ const usuarioFormularios_1 = __importDefault(require("./routes/usuarioFormulario
 const horasTrabalhadas_1 = __importDefault(require("./routes/horasTrabalhadas"));
 const horasAbatidas_1 = __importDefault(require("./routes/horasAbatidas"));
 const horasExcedidas_1 = __importDefault(require("./routes/horasExcedidas"));
+const horasDashboard_1 = __importDefault(require("./routes/horasDashboard"));
+const producaoDashboard_1 = __importDefault(require("./routes/producaoDashboard"));
 const servicos_1 = __importDefault(require("./routes/servicos"));
 const permissoes_1 = __importDefault(require("./routes/permissoes"));
 const insumos_1 = __importDefault(require("./routes/insumos"));
@@ -71,6 +73,8 @@ app.use('/api/usuario-formularios', usuarioFormularios_1.default);
 app.use('/api/horas-trabalhadas', horasTrabalhadas_1.default);
 app.use('/api/horas-abatidas', horasAbatidas_1.default);
 app.use('/api/horas-excedidas', horasExcedidas_1.default);
+app.use('/api/horas-dashboard', horasDashboard_1.default);
+app.use('/api/producao-dashboard', producaoDashboard_1.default);
 app.use('/api/servicos', servicos_1.default);
 app.use('/api/permissoes', permissoes_1.default);
 app.use('/api/insumos', insumos_1.default);

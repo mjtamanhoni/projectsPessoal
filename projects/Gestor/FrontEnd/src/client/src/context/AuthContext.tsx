@@ -148,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('permissoes');
+    sessionStorage.removeItem('moduloInicialRedirectDone');
     localStorage.removeItem('empresaNome');
     setUser(null);
     setIsSuperadmin(false);
@@ -262,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = response.data as User;
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data));
+    sessionStorage.removeItem('moduloInicialRedirectDone');
     setUser(data);
     setIsSuperadmin(data.is_superadmin === true);
     fetchEmpresaData(data.empresaId).then((emp) => {

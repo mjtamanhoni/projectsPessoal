@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -476,6 +476,120 @@ class HorseApiService {
         status,
       },
     };
+  }
+
+  async obterProducaoDashboard(params?: Record<string, unknown>): Promise<ProducaoDashboardData> {
+    try {
+      const res = await this.api.get('/producaoDashboard', { params, headers: this.getAuthHeaders() });
+      const raw = res.data as Record<string, unknown>;
+      const kpisRaw = raw.kpis as Record<string, unknown> || {};
+      const mensalVendasRaw = raw.mensal_vendas as Record<string, unknown>[] || [];
+      const mensalComprasRaw = raw.mensal_compras as Record<string, unknown>[] || [];
+      const mensalFabricacaoRaw = raw.mensal_fabricacao as Record<string, unknown>[] || [];
+      const diarioFabricacaoRaw = raw.diario_fabricacao as Record<string, unknown>[] || [];
+      const diarioVendasRaw = raw.diario_vendas as Record<string, unknown>[] || [];
+      return {
+        kpis: {
+          total_vendas: Number(kpisRaw.total_vendas ?? 0),
+          qtd_vendida: Number(kpisRaw.qtd_vendida ?? 0),
+          qtd_vendas: Number(kpisRaw.qtd_vendas ?? 0),
+          total_compras: Number(kpisRaw.total_compras ?? 0),
+          qtd_compras: Number(kpisRaw.qtd_compras ?? 0),
+          qtd_fabricada: Number(kpisRaw.qtd_fabricada ?? 0),
+          custo_total: Number(kpisRaw.custo_total ?? 0),
+          qtd_fabricacoes: Number(kpisRaw.qtd_fabricacoes ?? 0),
+          lucro_bruto: Number(kpisRaw.lucro_bruto ?? 0),
+          lucro_liquido: Number(kpisRaw.lucro_liquido ?? 0),
+        },
+        mensal_vendas: mensalVendasRaw.map((m: Record<string, unknown>) => ({
+          mes: Number(m.mes ?? 0),
+          valor: Number(m.valor ?? 0),
+          qtd: Number(m.qtd ?? 0),
+          qtd_vendas: Number(m.qtd_vendas ?? 0),
+        })),
+        mensal_compras: mensalComprasRaw.map((m: Record<string, unknown>) => ({
+          mes: Number(m.mes ?? 0),
+          valor: Number(m.valor ?? 0),
+          qtd: Number(m.qtd ?? 0),
+        })),
+        mensal_fabricacao: mensalFabricacaoRaw.map((m: Record<string, unknown>) => ({
+          mes: Number(m.mes ?? 0),
+          qtd_fabricada: Number(m.qtd_fabricada ?? 0),
+          custo_total: Number(m.custo_total ?? 0),
+          qtd: Number(m.qtd ?? 0),
+        })),
+        diario_fabricacao: diarioFabricacaoRaw.map((d: Record<string, unknown>) => ({
+          dia: String(d.dia ?? ''),
+          qtd_fabricada: Number(d.qtd_fabricada ?? 0),
+        })),
+        diario_vendas: diarioVendasRaw.map((d: Record<string, unknown>) => ({
+          dia: String(d.dia ?? ''),
+          valor: Number(d.valor ?? 0),
+        })),
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        console.error('[ProducaoDashboard] erro HTTP:', status);
+      }
+      return {
+        kpis: {
+          total_vendas: 0, qtd_vendida: 0, qtd_vendas: 0,
+          total_compras: 0, qtd_compras: 0,
+          qtd_fabricada: 0, custo_total: 0, qtd_fabricacoes: 0,
+          lucro_bruto: 0, lucro_liquido: 0,
+        },
+        mensal_vendas: [],
+        mensal_compras: [],
+        mensal_fabricacao: [],
+        diario_fabricacao: [],
+        diario_vendas: [],
+      };
+    }
+  }
+
+  async obterHorasDashboard(params?: Record<string, unknown>): Promise<HorasDashboardData> {
+    try {
+      const res = await this.api.get('/horasDashboard', { params, headers: this.getAuthHeaders() });
+      const raw = res.data as Record<string, unknown>;
+      const kpisRaw = raw.kpis as Record<string, unknown> || {};
+      const diarioRaw = raw.diario as Record<string, unknown>[] || [];
+      const mensalRaw = raw.mensal as Record<string, unknown>[] || [];
+      const abatidoRaw = raw.abatido_mensal as Record<string, unknown>[] || [];
+      return {
+        kpis: {
+          totalHoras: Number(kpisRaw.total_horas ?? 0),
+          totalValor: Number(kpisRaw.total_valor ?? 0),
+          totalAbatido: Number(kpisRaw.total_abatido ?? 0),
+          diasTrabalhados: Number(kpisRaw.dias_trabalhados ?? 0),
+        },
+        diario: diarioRaw.map((d: Record<string, unknown>) => ({
+          dia: String(d.dia ?? ''),
+          horas: Number(d.horas ?? 0),
+          valor: Number(d.valor ?? 0),
+        })),
+        mensal: mensalRaw.map((m: Record<string, unknown>) => ({
+          mes: Number(m.mes ?? 0),
+          horas: Number(m.horas ?? 0),
+          valor: Number(m.valor ?? 0),
+        })),
+        abatidoMensal: abatidoRaw.map((a: Record<string, unknown>) => ({
+          mes: Number(a.mes ?? 0),
+          horas_abatidas: Number(a.horas_abatidas ?? 0),
+        })),
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        console.error('[HorasDashboard] erro HTTP:', status);
+      }
+      return {
+        kpis: { totalHoras: 0, totalValor: 0, totalAbatido: 0, diasTrabalhados: 0 },
+        diario: [],
+        mensal: [],
+        abatidoMensal: [],
+      };
+    }
   }
 
   async listarUsuarios(params?: Record<string, unknown>): Promise<unknown[]> {

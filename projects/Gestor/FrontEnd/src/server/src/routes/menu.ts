@@ -7,6 +7,7 @@ const router = Router();
 
 const formOrdem: Record<string, string[]> = {
   Producao: [
+    'Dashboard Produção',
     'Insumos',
     'Compras Insumo',
     'Estoque Insumo',

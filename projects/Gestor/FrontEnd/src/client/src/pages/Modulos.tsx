@@ -38,7 +38,6 @@ export function Modulos() {
   const [vfModalOpen, setVfModalOpen] = useState(false);
   const [vfModuloId, setVfModuloId] = useState<number | null>(null);
   const [vfSelected, setVfSelected] = useState<number[]>([]);
-  const [vfAbertura, setVfAbertura] = useState<number>(0);
 
   const fetchVinculos = useCallback(async (moduloId: number) => {
     if (loadingVinculos.has(moduloId)) return;
@@ -149,17 +148,15 @@ export function Modulos() {
     const current = vinculos[moduloId] || [];
     setVfModuloId(moduloId);
     setVfSelected(current.map((v) => v.formulario_id));
-    setVfAbertura(current.find((v) => v.abertura === 1)?.formulario_id || 0);
     setVfModalOpen(true);
   };
 
   const handleVfSubmit = async () => {
     if (!vfModuloId) return;
     try {
-      await api.post('/modulo-formularios', { modulo_id: vfModuloId, formularios: vfSelected, abertura: vfAbertura || undefined });
+      await api.post('/modulo-formularios', { modulo_id: vfModuloId, formularios: vfSelected });
       setVfModalOpen(false);
       setVfModuloId(null);
-      setVfAbertura(0);
       fetchVinculos(vfModuloId);
       addToast('success', 'Vinculos salvos com sucesso');
     } catch (err: unknown) {
@@ -263,7 +260,7 @@ export function Modulos() {
         )}
       </Modal>
 
-      <Modal isOpen={vfModalOpen} onClose={() => { setVfModalOpen(false); setVfModuloId(null); setVfAbertura(0); }} title="Vincular Formularios">
+      <Modal isOpen={vfModalOpen} onClose={() => { setVfModalOpen(false); setVfModuloId(null); }} title="Vincular Formularios">
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">Selecione os formularios que fazem parte deste modulo:</p>
           <div className="max-h-60 overflow-y-auto border border-border-primary rounded-lg p-3 space-y-1">
@@ -281,18 +278,6 @@ export function Modulos() {
                     />
                     <span className="text-sm text-text-primary">{f.nome}</span>
                   </label>
-                  {checked && (
-                    <label className="flex items-center gap-1 cursor-pointer text-xs text-text-muted shrink-0">
-                      <input
-                        type="radio"
-                        name="vf-abertura"
-                        checked={vfAbertura === fid}
-                        onChange={() => fid && setVfAbertura(fid)}
-                        className="accent-accent-primary"
-                      />
-                      Abertura
-                    </label>
-                  )}
                 </div>
               );
             })}
@@ -301,7 +286,7 @@ export function Modulos() {
             )}
           </div>
           <div className="flex justify-center gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => { setVfModalOpen(false); setVfModuloId(null); setVfAbertura(0); }}>Cancelar</Button>
+            <Button type="button" variant="secondary" onClick={() => { setVfModalOpen(false); setVfModuloId(null); }}>Cancelar</Button>
             <Button type="button" onClick={handleVfSubmit}><Plus size={16} /> Salvar</Button>
           </div>
         </div>

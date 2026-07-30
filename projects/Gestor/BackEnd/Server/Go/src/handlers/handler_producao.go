@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -721,9 +723,15 @@ func (h *ProducaoHandler) VendaProdutoListar(w http.ResponseWriter, r *http.Requ
 	dataInicial := r.URL.Query().Get("data_inicial")
 	dataFinal := r.URL.Query().Get("data_final")
 
-	query := `SELECT vp.*, pf.nome as produto_nome, c.nome as cliente_nome
+	query := `SELECT vp.id, vp.empresa_id, vp.cliente_id, vp.data_venda,
+			vp.observacao, vp.usuario_id, vp.status,
+			vp.created_at,
+			vpi.id as item_id, vpi.produto_fabricado_id,
+			vpi.quantidade, vpi.valor_unitario, vpi.valor_total,
+			pf.nome as produto_nome, c.nome as cliente_nome
 		FROM venda_produto vp
-		LEFT JOIN produto_fabricado pf ON pf.id = vp.produto_fabricado_id AND pf.empresa_id = vp.empresa_id
+		LEFT JOIN venda_produto_item vpi ON vpi.venda_id = vp.id AND vpi.empresa_id = vp.empresa_id
+		LEFT JOIN produto_fabricado pf ON pf.id = vpi.produto_fabricado_id AND pf.empresa_id = vpi.empresa_id
 		LEFT JOIN public.cliente c ON c.id = vp.cliente_id AND c.empresa_id = vp.empresa_id
 		WHERE 1=1`
 	var args []interface{}
@@ -732,7 +740,7 @@ func (h *ProducaoHandler) VendaProdutoListar(w http.ResponseWriter, r *http.Requ
 		query += fmt.Sprintf(" AND vp.id = $%d", argN); argN++; args = append(args, id)
 	}
 	if produtoFabricadoID > 0 {
-		query += fmt.Sprintf(" AND vp.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+		query += fmt.Sprintf(" AND vpi.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
 	}
 	if clienteID > 0 {
 		query += fmt.Sprintf(" AND vp.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
@@ -784,34 +792,42 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 			}
 		}
 
-		isNew := false
 		if id == 0 {
-			isNew = true
 			id, err = database.GerarID(r.Context(), tx, empresaID, "venda_produto")
 			if err != nil {
 				jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
-			err = tx.QueryRow(r.Context(), `
-				INSERT INTO venda_produto (id, empresa_id, produto_fabricado_id, cliente_id,
-					usuario_id, quantidade, valor_unitario, valor_total, data_venda, observacao)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::date,$10) RETURNING id`,
-				id, empresaID, produtoFabricadoID, clienteID, usuarioID,
-				quantidade, valorUnitario, valorTotal, dataVenda, observacao).Scan(&id)
-		} else {
-			_, err = tx.Exec(r.Context(), `
-				UPDATE venda_produto SET produto_fabricado_id=$1,
-					cliente_id=$2, quantidade=$3, valor_unitario=$4,
-					valor_total=$5, data_venda=$6::date, observacao=$7
-				WHERE id=$8 AND empresa_id=$9`,
-				produtoFabricadoID, clienteID, quantidade, valorUnitario, valorTotal, dataVenda, observacao, id, empresaID)
-		}
-		if err != nil {
-			jsonError(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 
-		if isNew {
+			_, err = tx.Exec(r.Context(), `
+				INSERT INTO venda_produto (id, empresa_id, cliente_id,
+					usuario_id, valor_total, data_venda, observacao)
+				VALUES ($1,$2,$3,$4,$5,$6::date,$7)`,
+				id, empresaID, clienteID, usuarioID,
+				valorTotal, dataVenda, observacao)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			var itemID int
+			itemID, err = database.GerarID(r.Context(), tx, empresaID, "venda_produto_item")
+			if err != nil {
+				jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			_, err = tx.Exec(r.Context(), `
+				INSERT INTO venda_produto_item (id, empresa_id, venda_id,
+					produto_fabricado_id, cliente_id, quantidade, valor_unitario, valor_total)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+				itemID, empresaID, id, produtoFabricadoID, clienteID,
+				quantidade, valorUnitario, valorTotal)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
 			// Remove from inventory
 			err = atualizarEstoqueProdutoFabricado(r.Context(), tx, produtoFabricadoID, empresaID, -quantidade, dataVenda, usuarioID)
 			if err != nil {
@@ -825,7 +841,6 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 				`SELECT nome FROM produto_fabricado WHERE id = $1 AND empresa_id = $2`,
 				produtoFabricadoID, empresaID).Scan(&produtoNome)
 
-			// Look up config for venda_produto
 			vencimento := dataVenda
 			descricao := fmt.Sprintf("Venda: %s x %.2f", produtoNome, quantidade)
 			catID := categoriaReceberID
@@ -865,11 +880,22 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 					`UPDATE contas_receber SET id_categoria = $1 WHERE id = $2`,
 					catID, crID)
 			}
+		} else {
+			_, err = tx.Exec(r.Context(), `
+				UPDATE venda_produto SET cliente_id=$1,
+					valor_total=$2, data_venda=$3::date, observacao=$4
+				WHERE id=$5 AND empresa_id=$6`,
+				clienteID, valorTotal, dataVenda, observacao, id, empresaID)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
-			// Update contas_receber_id on venda
-			_, err = tx.Exec(r.Context(),
-				`UPDATE venda_produto SET contas_receber_id = $1 WHERE id = $2`,
-				crID, id)
+			_, err = tx.Exec(r.Context(), `
+				UPDATE venda_produto_item SET produto_fabricado_id=$1,
+					cliente_id=$2, quantidade=$3, valor_unitario=$4, valor_total=$5
+				WHERE venda_id=$6 AND empresa_id=$7`,
+				produtoFabricadoID, clienteID, quantidade, valorUnitario, valorTotal, id, empresaID)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -882,7 +908,42 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 }
 
 func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Request) {
-	h.BasicCRUD.Excluir(w, r, "venda_produto")
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	empresaID := middleware.GetEmpresaID(r)
+	if id == 0 {
+		jsonError(w, "ID não informado", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	_, err = tx.Exec(r.Context(),
+		`DELETE FROM venda_produto_item WHERE venda_id = $1 AND empresa_id = $2`,
+		id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tag, err := tx.Exec(r.Context(),
+		`DELETE FROM venda_produto WHERE id = $1 AND empresa_id = $2`,
+		id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+
+	tx.Commit(r.Context())
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluído com sucesso"})
 }
 
 // --- Fabricacao Custo Adicional ---
@@ -1606,4 +1667,177 @@ func recalcularCustoMedio(ctx context.Context, tx pgx.Tx, insumoID, empresaID in
 		WHERE i.id = $1 AND i.empresa_id = $2
 	`, insumoID, empresaID)
 	return err
+}
+
+func (h *ProducaoHandler) ProducaoDashboardListar(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaID(r)
+
+	now := time.Now()
+	anoStr := r.URL.Query().Get("ano")
+	mesStr := r.URL.Query().Get("mes")
+
+	ano := now.Year()
+	mes := int(now.Month())
+
+	if anoStr != "" {
+		if a, err := strconv.Atoi(anoStr); err == nil && a > 0 {
+			ano = a
+		}
+	}
+	if mesStr != "" {
+		if m, err := strconv.Atoi(mesStr); err == nil && m >= 1 && m <= 12 {
+			mes = m
+		}
+	}
+
+	var totalVendas, qtdVendida, qtdVendas float64
+	err := h.Pool.QueryRow(r.Context(), `
+		SELECT COALESCE(SUM(vp.valor_total), 0),
+			COALESCE(SUM(COALESCE(vpi.qtd_total, 0)), 0),
+			COALESCE(COUNT(DISTINCT vp.id), 0)
+		FROM venda_produto vp
+		LEFT JOIN LATERAL (
+			SELECT SUM(vpi2.quantidade) as qtd_total
+			FROM venda_produto_item vpi2
+			WHERE vpi2.venda_id = vp.id AND vpi2.empresa_id = vp.empresa_id
+		) vpi ON true
+		WHERE vp.empresa_id = $1
+			AND EXTRACT(YEAR FROM vp.data_venda) = $2
+			AND EXTRACT(MONTH FROM vp.data_venda) = $3
+	`, empresaID, ano, mes).Scan(&totalVendas, &qtdVendida, &qtdVendas)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var totalCompras, qtdCompras float64
+	err = h.Pool.QueryRow(r.Context(), `
+		SELECT COALESCE(SUM(ci.valor_total), 0),
+			COALESCE(COUNT(DISTINCT ci.id), 0)
+		FROM compra_insumo ci
+		WHERE ci.empresa_id = $1
+			AND EXTRACT(YEAR FROM ci.data_compra) = $2
+			AND EXTRACT(MONTH FROM ci.data_compra) = $3
+	`, empresaID, ano, mes).Scan(&totalCompras, &qtdCompras)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var qtdFabricada, custoTotal, qtdFabricacoes float64
+	err = h.Pool.QueryRow(r.Context(), `
+		SELECT COALESCE(SUM(f.quantidade_produzida), 0),
+			COALESCE(SUM(f.custo_total), 0),
+			COALESCE(COUNT(DISTINCT f.id), 0)
+		FROM fabricacao f
+		WHERE f.empresa_id = $1
+			AND EXTRACT(YEAR FROM f.data_fabricacao) = $2
+			AND EXTRACT(MONTH FROM f.data_fabricacao) = $3
+	`, empresaID, ano, mes).Scan(&qtdFabricada, &custoTotal, &qtdFabricacoes)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	mensalVendasRows, err := h.Pool.Query(r.Context(), `
+		SELECT EXTRACT(MONTH FROM vp.data_venda) AS mes,
+			SUM(vp.valor_total) AS valor,
+			SUM(COALESCE(vpi.qtd_total, 0)) AS qtd,
+			COUNT(DISTINCT vp.id) AS qtd_vendas
+		FROM venda_produto vp
+		LEFT JOIN LATERAL (
+			SELECT SUM(vpi2.quantidade) as qtd_total
+			FROM venda_produto_item vpi2
+			WHERE vpi2.venda_id = vp.id AND vpi2.empresa_id = vp.empresa_id
+		) vpi ON true
+		WHERE vp.empresa_id = $1 AND EXTRACT(YEAR FROM vp.data_venda) = $2
+		GROUP BY EXTRACT(MONTH FROM vp.data_venda) ORDER BY mes
+	`, empresaID, ano)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	mensalVendas := rowsToMap(mensalVendasRows)
+
+	mensalComprasRows, err := h.Pool.Query(r.Context(), `
+		SELECT EXTRACT(MONTH FROM ci.data_compra) AS mes,
+			SUM(ci.valor_total) AS valor,
+			COUNT(DISTINCT ci.id) AS qtd
+		FROM compra_insumo ci
+		WHERE ci.empresa_id = $1 AND EXTRACT(YEAR FROM ci.data_compra) = $2
+		GROUP BY EXTRACT(MONTH FROM ci.data_compra) ORDER BY mes
+	`, empresaID, ano)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	mensalCompras := rowsToMap(mensalComprasRows)
+
+	mensalFabricacaoRows, err := h.Pool.Query(r.Context(), `
+		SELECT EXTRACT(MONTH FROM f.data_fabricacao) AS mes,
+			SUM(f.quantidade_produzida) AS qtd_fabricada,
+			SUM(f.custo_total) AS custo_total,
+			COUNT(DISTINCT f.id) AS qtd
+		FROM fabricacao f
+		WHERE f.empresa_id = $1 AND EXTRACT(YEAR FROM f.data_fabricacao) = $2
+		GROUP BY EXTRACT(MONTH FROM f.data_fabricacao) ORDER BY mes
+	`, empresaID, ano)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	mensalFabricacao := rowsToMap(mensalFabricacaoRows)
+
+	diarioFabricacaoRows, err := h.Pool.Query(r.Context(), `
+		SELECT f.data_fabricacao AS dia,
+			SUM(f.quantidade_produzida) AS qtd_fabricada
+		FROM fabricacao f
+		WHERE f.empresa_id = $1
+			AND EXTRACT(YEAR FROM f.data_fabricacao) = $2
+			AND EXTRACT(MONTH FROM f.data_fabricacao) = $3
+		GROUP BY f.data_fabricacao ORDER BY f.data_fabricacao
+	`, empresaID, ano, mes)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	diarioFabricacao := rowsToMap(diarioFabricacaoRows)
+
+	diarioVendasRows, err := h.Pool.Query(r.Context(), `
+		SELECT vp.data_venda AS dia,
+			SUM(vp.valor_total) AS valor
+		FROM venda_produto vp
+		WHERE vp.empresa_id = $1
+			AND EXTRACT(YEAR FROM vp.data_venda) = $2
+			AND EXTRACT(MONTH FROM vp.data_venda) = $3
+		GROUP BY vp.data_venda ORDER BY vp.data_venda
+	`, empresaID, ano, mes)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	diarioVendas := rowsToMap(diarioVendasRows)
+
+	kpis := map[string]interface{}{
+		"total_vendas":    totalVendas,
+		"qtd_vendida":     qtdVendida,
+		"qtd_vendas":      qtdVendas,
+		"total_compras":   totalCompras,
+		"qtd_compras":     qtdCompras,
+		"qtd_fabricada":   qtdFabricada,
+		"custo_total":     custoTotal,
+		"qtd_fabricacoes": qtdFabricacoes,
+		"lucro_bruto":     totalVendas - custoTotal,
+		"lucro_liquido":   totalVendas - totalCompras - custoTotal,
+	}
+
+	result := map[string]interface{}{
+		"kpis":              kpis,
+		"mensal_vendas":     mensalVendas,
+		"mensal_compras":    mensalCompras,
+		"mensal_fabricacao": mensalFabricacao,
+		"diario_fabricacao":  diarioFabricacao,
+		"diario_vendas":     diarioVendas,
+	}
+	jsonSuccess(w, result)
 }

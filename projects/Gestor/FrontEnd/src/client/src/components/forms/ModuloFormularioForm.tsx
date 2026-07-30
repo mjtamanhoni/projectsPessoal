@@ -4,28 +4,25 @@ import { Plus } from 'lucide-react';
 import type { Modulo, Formulario } from '@/types';
 
 interface ModuloFormularioFormProps {
-  onSubmit: (data: { modulo_id: number; formularios: number[]; abertura?: number }) => void;
+  onSubmit: (data: { modulo_id: number; formularios: number[] }) => void;
   onCancel: () => void;
   modulos: Modulo[];
   formularios: Formulario[];
   initialFormularios?: number[];
   initialModuloId?: number;
-  initialAbertura?: number;
 }
 
-export function ModuloFormularioForm({ onSubmit, onCancel, modulos, formularios, initialFormularios, initialModuloId, initialAbertura }: ModuloFormularioFormProps) {
+export function ModuloFormularioForm({ onSubmit, onCancel, modulos, formularios, initialFormularios, initialModuloId }: ModuloFormularioFormProps) {
   const [moduloId, setModuloId] = useState(initialModuloId || 0);
   const [selectedFormularios, setSelectedFormularios] = useState<number[]>(initialFormularios || []);
-  const [abertura, setAbertura] = useState<number>(initialAbertura || 0);
 
   useEffect(() => {
     if (initialFormularios) setSelectedFormularios(initialFormularios);
     if (initialModuloId) setModuloId(initialModuloId);
-    if (initialAbertura) setAbertura(initialAbertura);
-  }, [initialFormularios, initialModuloId, initialAbertura]);
+  }, [initialFormularios, initialModuloId]);
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit({ modulo_id: moduloId, formularios: selectedFormularios, abertura: abertura || undefined }); }} className="space-y-4">
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit({ modulo_id: moduloId, formularios: selectedFormularios }); }} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-1">Modulo *</label>
         <select
@@ -52,28 +49,12 @@ export function ModuloFormularioForm({ onSubmit, onCancel, modulos, formularios,
                   type="checkbox"
                   checked={checked}
                   onChange={() => {
-                    if (checked) {
-                      setSelectedFormularios((prev) => prev.filter((x) => x !== fid));
-                      if (abertura === fid) setAbertura(0);
-                    } else {
-                      setSelectedFormularios((prev) => [...prev, fid!]);
-                    }
+                    if (checked) setSelectedFormularios((prev) => prev.filter((x) => x !== fid));
+                    else setSelectedFormularios((prev) => [...prev, fid!]);
                   }}
                   className="rounded border-border-subtle"
                 />
                 <span className="text-sm text-text-primary flex-1">{f.nome}</span>
-                {checked && (
-                  <label className="flex items-center gap-1 text-xs text-text-muted cursor-pointer shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="radio"
-                      name="abertura"
-                      checked={abertura === fid}
-                      onChange={() => setAbertura(fid!)}
-                      className="w-3.5 h-3.5 text-accent-primary"
-                    />
-                    Abertura
-                  </label>
-                )}
               </label>
             );
           })}

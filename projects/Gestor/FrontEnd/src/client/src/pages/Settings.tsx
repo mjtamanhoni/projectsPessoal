@@ -10,6 +10,7 @@ import { Save, Server, Monitor, Loader2, ImageIcon, Trash2, DollarSign, AlertTri
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
+import type { ModuleItem } from '@/context/ModuleContext';
 
 
 type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'logomarcas' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes';
@@ -28,6 +29,7 @@ export function Settings() {
   const [atualizandoSeq, setAtualizandoSeq] = useState(false);
   const [resultadoSeq, setResultadoSeq] = useState<string | null>(null);
   const [migracoes, setMigracoes] = useState<{ nome: string; aplicada: boolean; aplicada_em?: string }[] | null>(null);
+  const [modulos, setModulos] = useState<ModuleItem[]>([]);
   const [aplicando, setAplicando] = useState<string | null>(null);
   const [msgMigracao, setMsgMigracao] = useState<{ tipo: string; texto: string } | null>(null);
   const { addToast } = useToast();
@@ -60,6 +62,7 @@ export function Settings() {
       setCategoriasReceber((r.data as Categoria[]) ?? []);
     }).catch(() => {});
     api.get<Empresa[]>('/empresas').then((r) => setEmpresas(r.data ?? [])).catch(() => {});
+    api.get('/auth/menu').then((r) => setModulos(r.data as ModuleItem[])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -271,6 +274,60 @@ export function Settings() {
                     className="input-field w-32"
                   />
                   <span className="text-sm text-text-secondary">casas decimais</span>
+                </div>
+              </div>
+              <div className="border-t border-border pt-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-1">Módulo Inicial</h3>
+                <p className="text-xs text-text-secondary mb-3">Após o login, redirecionar automaticamente para o módulo e formulário selecionados</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="label-field">Módulo</label>
+                    <select
+                      value={settings.display?.moduloInicialId ?? ''}
+                      onChange={(e) => {
+                        const modId = e.target.value ? Number(e.target.value) : undefined;
+                        setSettings({
+                          ...settings,
+                          display: {
+                            ...(settings.display ?? { grid: { defaultPageSize: 10, pageSizeOptions: [5, 10, 15, 20, 30, 50] }, number: { decimalPlaces: 4 } }),
+                            moduloInicialId: modId,
+                            formularioInicialId: undefined,
+                          },
+                        });
+                      }}
+                      className="input-field"
+                    >
+                      <option value="">Nenhum (selecionar manualmente)</option>
+                      {modulos.map((mod) => (
+                        <option key={mod.id} value={mod.id}>{mod.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="label-field">Formulário</label>
+                    <select
+                      value={settings.display?.formularioInicialId ?? ''}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          display: {
+                            ...(settings.display ?? { grid: { defaultPageSize: 10, pageSizeOptions: [5, 10, 15, 20, 30, 50] }, number: { decimalPlaces: 4 } }),
+                            moduloInicialId: settings.display?.moduloInicialId,
+                            formularioInicialId: e.target.value ? Number(e.target.value) : undefined,
+                          },
+                        })
+                      }
+                      className="input-field"
+                      disabled={!settings.display?.moduloInicialId}
+                    >
+                      <option value="">Nenhum (formulário padrão do módulo)</option>
+                      {modulos
+                        .find((m) => m.id === settings.display?.moduloInicialId)
+                        ?.formularios.map((f) => (
+                          <option key={f.id} value={f.id}>{f.nome}</option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>

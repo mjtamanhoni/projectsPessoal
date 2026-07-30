@@ -51,8 +51,6 @@ export function ModuloFormularios() {
 
   const getModuloNome = (id: number) => modulos.find((m) => (m.id ?? m.codigo) === id)?.nome || '-';
 
-  const [abertura, setAbertura] = useState<number>(0);
-
   const handleEdit = async (item: ModuloFormulario) => {
     const moduloId = item.modulo_id;
     const res = await api.get('/modulo-formularios', { params: { modulo_id: moduloId } });
@@ -61,16 +59,14 @@ export function ModuloFormularios() {
       moduloId,
       formularios: list.map((f) => f.formulario_id),
     });
-    setAbertura(list.find((f) => f.abertura === 1)?.formulario_id || 0);
     setModalOpen(true);
   };
 
-  const handleSubmit = async (data: { modulo_id: number; formularios: number[]; abertura?: number }) => {
+  const handleSubmit = async (data: { modulo_id: number; formularios: number[] }) => {
     try {
       await api.post('/modulo-formularios', data);
       setModalOpen(false);
       setEditing(null);
-      setAbertura(0);
       fetchData();
       addToast('success', 'Vinculos salvos com sucesso');
     } catch (err: unknown) {
@@ -154,16 +150,15 @@ export function ModuloFormularios() {
         <DataTable columns={groupedColumns} data={data} loading={loading} error={error} emptyMessage="Nenhum vinculo cadastrado" />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); setAbertura(0); }} title="Gerenciar Vinculos">
+      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title="Gerenciar Vinculos">
         <ModuloFormularioForm
           key={`mf-form-${editing?.moduloId ?? 'new'}`}
           onSubmit={handleSubmit}
-          onCancel={() => { setModalOpen(false); setEditing(null); setAbertura(0); }}
+          onCancel={() => { setModalOpen(false); setEditing(null); }}
           modulos={modulos}
           formularios={formularios}
           initialModuloId={editing?.moduloId}
           initialFormularios={editing?.formularios}
-          initialAbertura={abertura || undefined}
         />
       </Modal>
 

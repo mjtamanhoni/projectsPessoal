@@ -6,6 +6,7 @@ const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 const formOrdem = {
     Producao: [
+        'Dashboard Produção',
         'Insumos',
         'Compras Insumo',
         'Estoque Insumo',

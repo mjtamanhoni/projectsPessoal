@@ -3,6 +3,8 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -405,4 +407,118 @@ func (h *HorasHandler) HorasExcedidasAtualizar(w http.ResponseWriter, r *http.Re
 
 func (h *HorasHandler) HorasExcedidasExcluir(w http.ResponseWriter, r *http.Request) {
 	h.BasicCRUD.Excluir(w, r, "horas_excedidas")
+}
+
+func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaID(r)
+
+	now := time.Now()
+	anoStr := r.URL.Query().Get("ano")
+	mesStr := r.URL.Query().Get("mes")
+
+	ano := now.Year()
+	mes := int(now.Month())
+
+	if anoStr != "" {
+		if a, err := strconv.Atoi(anoStr); err == nil && a > 0 {
+			ano = a
+		}
+	}
+	if mesStr != "" {
+		if m, err := strconv.Atoi(mesStr); err == nil && m >= 1 && m <= 12 {
+			mes = m
+		}
+	}
+
+	var totalHoras, totalValor, totalAbatido float64
+	var diasTrabalhados int
+
+	err := h.Pool.QueryRow(r.Context(), `
+		SELECT COALESCE(SUM(ht.quantidade_horas), 0),
+			COALESCE(SUM(ht.total_horas), 0),
+			COALESCE(COUNT(DISTINCT ht.data_servico), 0)
+		FROM horas_trabalhadas ht
+		WHERE ht.empresa_id = $1
+			AND EXTRACT(YEAR FROM ht.data_servico) = $2
+			AND EXTRACT(MONTH FROM ht.data_servico) = $3
+	`, empresaID, ano, mes).Scan(&totalHoras, &totalValor, &diasTrabalhados)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = h.Pool.QueryRow(r.Context(), `
+		SELECT COALESCE(SUM(ha.quantidade_horas), 0)
+		FROM horas_abatidas ha
+		WHERE ha.empresa_id = $1
+			AND EXTRACT(YEAR FROM ha.data_abatimento) = $2
+			AND EXTRACT(MONTH FROM ha.data_abatimento) = $3
+	`, empresaID, ano, mes).Scan(&totalAbatido)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	dailyRows, err := h.Pool.Query(r.Context(), `
+		SELECT ht.data_servico AS dia,
+			SUM(ht.quantidade_horas) AS horas,
+			SUM(ht.total_horas) AS valor
+		FROM horas_trabalhadas ht
+		WHERE ht.empresa_id = $1
+			AND EXTRACT(YEAR FROM ht.data_servico) = $2
+			AND EXTRACT(MONTH FROM ht.data_servico) = $3
+		GROUP BY ht.data_servico
+		ORDER BY ht.data_servico
+	`, empresaID, ano, mes)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	dailyData := rowsToMap(dailyRows)
+
+	monthlyRows, err := h.Pool.Query(r.Context(), `
+		SELECT EXTRACT(MONTH FROM ht.data_servico) AS mes,
+			SUM(ht.quantidade_horas) AS horas,
+			SUM(ht.total_horas) AS valor
+		FROM horas_trabalhadas ht
+		WHERE ht.empresa_id = $1
+			AND EXTRACT(YEAR FROM ht.data_servico) = $2
+		GROUP BY EXTRACT(MONTH FROM ht.data_servico)
+		ORDER BY mes
+	`, empresaID, ano)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	monthlyData := rowsToMap(monthlyRows)
+
+	abatidoRows, err := h.Pool.Query(r.Context(), `
+		SELECT EXTRACT(MONTH FROM ha.data_abatimento) AS mes,
+			SUM(ha.quantidade_horas) AS horas_abatidas
+		FROM horas_abatidas ha
+		WHERE ha.empresa_id = $1
+			AND EXTRACT(YEAR FROM ha.data_abatimento) = $2
+		GROUP BY EXTRACT(MONTH FROM ha.data_abatimento)
+		ORDER BY mes
+	`, empresaID, ano)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	abatidoData := rowsToMap(abatidoRows)
+
+	kpis := map[string]interface{}{
+		"total_horas":      totalHoras,
+		"total_valor":      totalValor,
+		"total_abatido":    totalAbatido,
+		"dias_trabalhados": diasTrabalhados,
+	}
+
+	result := map[string]interface{}{
+		"kpis":           kpis,
+		"diario":         dailyData,
+		"mensal":         monthlyData,
+		"abatido_mensal": abatidoData,
+	}
+	jsonSuccess(w, result)
 }
