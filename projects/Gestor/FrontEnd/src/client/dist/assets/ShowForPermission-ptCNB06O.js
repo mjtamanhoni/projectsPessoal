@@ -1,0 +1,1 @@
+import{u as m,j as s}from"./boot-C-BvVGzM.js";function u({rota:r,acao:t,children:e,fallback:n=null}){const{temPermissao:o}=m();return o(r,t)?s.jsx(s.Fragment,{children:e}):s.jsx(s.Fragment,{children:n})}export{u as S};

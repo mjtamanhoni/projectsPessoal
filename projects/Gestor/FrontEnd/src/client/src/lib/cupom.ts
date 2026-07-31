@@ -97,44 +97,46 @@ export function gerarTextoCupom(data: CupomData): string {
   linhas.push(padCentral('Obrigado pela preferencia!', 48));
   linhas.push(padCentral('Este documento nao substitui a', 48));
   linhas.push(padCentral('Nota Fiscal Eletronica.', 48));
-  linhas.push(SEP);
-  linhas.push('');
-  linhas.push(padCentral(CORTE, 48));
-  linhas.push('');
+  if (!venda.recebido) {
+    linhas.push(SEP);
+    linhas.push('');
+    linhas.push(padCentral(CORTE, 48));
+    linhas.push('');
 
-  // --- VIA DA LOJA ---
-  linhas.push(SEP);
-  linhas.push(padCentral(empresaNome, 48));
-  linhas.push(SEP);
-  linhas.push(padCentral('VIA DA LOJA', 48));
-  linhas.push(SEP);
-  linhas.push(`DATA/HORA: ${dataHora}    CUPOM N: ${String(numeroCupom).padStart(5, '0')}`);
-  linhas.push(`${padEsquerda('VALOR TOTAL DO PEDIDO:', 36)} ${formatValor(total).padStart(10, ' ')}`);
-  if (desconto && desconto > 0) {
-    linhas.push(`${padEsquerda('DESCONTO:', 36)} ${formatValor(desconto).padStart(10, ' ')}`);
-  }
-  linhas.push(SEP_L);
-  linhas.push(padCentral('DADOS DO CLIENTE', 48));
-  linhas.push(SEP_L);
-  linhas.push(`NOME: ${cliente?.nome || 'CONSUMIDOR FINAL'}`);
-  if (cliente?.cpf_cnpj) linhas.push(`CPF/CNPJ: ${cliente.cpf_cnpj}`);
-  if (cliente?.endereco) linhas.push(`ENDERECO: ${cliente.endereco}`);
-  if (cliente?.telefone) linhas.push(`TELEFONE: ${cliente.telefone}`);
-  linhas.push(SEP);
-  if (parcelas.length > 0) {
-    linhas.push(padCentral('DADOS DO PARCELAMENTO', 48));
+    // --- VIA DO CREDIARIO (somente venda nao paga) ---
+    linhas.push(SEP);
+    linhas.push(padCentral(empresaNome, 48));
+    linhas.push(SEP);
+    linhas.push(padCentral('VIA DO CREDIARIO', 48));
+    linhas.push(SEP);
+    linhas.push(`DATA/HORA: ${dataHora}    CUPOM N: ${String(numeroCupom).padStart(5, '0')}`);
+    linhas.push(`${padEsquerda('VALOR TOTAL DO PEDIDO:', 36)} ${formatValor(total).padStart(10, ' ')}`);
+    if (desconto && desconto > 0) {
+      linhas.push(`${padEsquerda('DESCONTO:', 36)} ${formatValor(desconto).padStart(10, ' ')}`);
+    }
     linhas.push(SEP_L);
-    linhas.push('PARCELA    VENCIMENTO                 VALOR (R$)');
-    parcelas.forEach((p) => {
-      const label = `${String(p.numero).padStart(2, '0')}/${String(p.total).padStart(2, '0')}`;
-      linhas.push(`${padEsquerda(label, 12)} ${padEsquerda(p.vencimento, 28)} ${formatValor(p.valor).padStart(10, ' ')}`);
-    });
+    linhas.push(padCentral('DADOS DO CLIENTE', 48));
+    linhas.push(SEP_L);
+    linhas.push(`NOME: ${cliente?.nome || 'CONSUMIDOR FINAL'}`);
+    if (cliente?.cpf_cnpj) linhas.push(`CPF/CNPJ: ${cliente.cpf_cnpj}`);
+    if (cliente?.endereco) linhas.push(`ENDERECO: ${cliente.endereco}`);
+    if (cliente?.telefone) linhas.push(`TELEFONE: ${cliente.telefone}`);
+    linhas.push(SEP);
+    if (parcelas.length > 0) {
+      linhas.push(padCentral('DADOS DO PARCELAMENTO', 48));
+      linhas.push(SEP_L);
+      linhas.push('PARCELA    VENCIMENTO                 VALOR (R$)');
+      parcelas.forEach((p) => {
+        const label = `${String(p.numero).padStart(2, '0')}/${String(p.total).padStart(2, '0')}`;
+        linhas.push(`${padEsquerda(label, 12)} ${padEsquerda(p.vencimento, 28)} ${formatValor(p.valor).padStart(10, ' ')}`);
+      });
+      linhas.push(SEP);
+    }
+    linhas.push('');
+    linhas.push(SEP_L);
+    linhas.push(padCentral('ASSINATURA DO CLIENTE', 48));
     linhas.push(SEP);
   }
-  linhas.push('');
-  linhas.push(SEP_L);
-  linhas.push(padCentral('ASSINATURA DO CLIENTE', 48));
-  linhas.push(SEP);
 
   return linhas.join('\n');
 }

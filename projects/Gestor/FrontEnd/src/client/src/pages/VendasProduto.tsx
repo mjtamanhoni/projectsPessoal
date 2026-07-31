@@ -207,14 +207,27 @@ export function VendasProduto() {
 
   const handleSubmit = async (data: VendaProduto) => {
     try {
+      let vendaSalva: VendaProduto | null = null;
       if (editing) {
         await update({ ...data, id: editing.id ?? editing.codigo });
       } else {
-        await create(data);
+        const resp = (await create(data)) as { codigo?: number; contas_receber_id?: number } | null | undefined;
+        vendaSalva = {
+          ...data,
+          codigo: resp?.codigo ?? data.codigo,
+          id: resp?.codigo ?? data.codigo,
+          contas_receber_id: resp?.contas_receber_id ?? data.contas_receber_id,
+          produto_nome: produtos?.find((p) => p.id === data.produto_fabricado_id || p.codigo === data.produto_fabricado_id)?.nome,
+          cliente_nome: clientes?.find((c) => c.id === data.cliente_id || c.codigo === data.cliente_id)?.nome,
+        };
       }
       setModalOpen(false);
       setEditing(null);
       addToast('success', editing ? 'Venda atualizada com sucesso' : 'Venda cadastrada com sucesso');
+      if (vendaSalva) {
+        setCupomVenda(vendaSalva);
+        setCupomModalOpen(true);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar venda';
       addToast('error', msg);

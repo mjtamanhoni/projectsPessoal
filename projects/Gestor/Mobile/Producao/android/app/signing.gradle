@@ -1,0 +1,15 @@
+android {
+    signingConfigs {
+        release {
+            storeFile file("release.keystore")
+            storePassword "gestor123"
+            keyAlias "producao"
+            keyPassword "gestor123"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}
