@@ -1,4 +1,4 @@
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
 declare class HorseApiService {
     private api;
     private token;
@@ -88,6 +88,15 @@ declare class HorseApiService {
     listarVendasProduto(params?: Record<string, unknown>): Promise<VendaProduto[]>;
     salvarVendasProduto(items: VendaProduto[], empresaId?: number): Promise<unknown>;
     excluirVendaProduto(id: number): Promise<unknown>;
+    listarEncomendas(params?: Record<string, unknown>): Promise<Encomenda[]>;
+    salvarEncomendas(items: Encomenda[], empresaId?: number): Promise<unknown>;
+    excluirEncomenda(id: number): Promise<unknown>;
+    gerarVendaDeEncomenda(data: {
+        id: number;
+        data_venda: string;
+        recebido?: boolean;
+        categoria_receber_id?: number;
+    }): Promise<unknown>;
     listarFabricacoesCustoAdicional(params?: Record<string, unknown>): Promise<FabricacaoCustoAdicional[]>;
     salvarFabricacoesCustoAdicional(items: FabricacaoCustoAdicional[]): Promise<unknown>;
     excluirFabricacaoCustoAdicional(id: number): Promise<unknown>;

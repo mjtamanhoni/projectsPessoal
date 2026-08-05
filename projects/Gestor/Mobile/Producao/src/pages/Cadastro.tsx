@@ -6,13 +6,14 @@ export default function Cadastro() {
       titulo="Cadastro"
       subtitulo="Gerencie registros do sistema"
       items={[
-        { icon: '📦', bg: '#65a30d', label: 'Insumos', destino: '/em-breve?t=Insumos' },
-        { icon: '🏷️', bg: '#6366f1', label: 'Marcas', destino: '/em-breve?t=Marcas' },
-        { icon: '🏭', bg: '#a855f7', label: 'Produtos Fabricados', destino: '/em-breve?t=Produtos Fabricados' },
-        { icon: '📋', bg: '#0ea5e9', label: 'Receitas Ingredientes', destino: '/em-breve?t=Receitas Ingredientes' },
-        { icon: '➕', bg: '#f43f5e', label: 'Custos Adicionais', destino: '/em-breve?t=Custos Adicionais' },
-        { icon: '👥', bg: '#2563eb', label: 'Clientes', destino: '/em-breve?t=Clientes' },
-        { icon: '🏢', bg: '#f97316', label: 'Fornecedores', destino: '/em-breve?t=Fornecedores' },
+        { icon: '📦', bg: '#65a30d', label: 'Insumos', destino: '/insumos' },
+        { icon: '🛒', bg: '#f97316', label: 'Compras Insumo', destino: '/compras-insumo' },
+        { icon: '🏷️', bg: '#6366f1', label: 'Marcas', destino: '/marcas' },
+        { icon: '🏭', bg: '#a855f7', label: 'Produtos Fabricados', destino: '/produtos-fabricados' },
+        { icon: '📋', bg: '#0ea5e9', label: 'Receitas Ingredientes', destino: '/produtos-fabricados' },
+        { icon: '➕', bg: '#f43f5e', label: 'Custos Adicionais', destino: '/custos-adicionais' },
+        { icon: '👥', bg: '#2563eb', label: 'Clientes', destino: '/clientes' },
+        { icon: '🏢', bg: '#f97316', label: 'Fornecedores', destino: '/fornecedores' },
       ]}
     />
   );

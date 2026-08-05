@@ -48,11 +48,7 @@ router.post('/', authMiddleware, validate(horaTrabalhadaBodySchema), async (req:
         data_final: ultimoDiaMes,
       });
 
-      const jaPossuiExcedente = entradasMesAtual.some(
-        (h) => h.observacoes?.includes('Horas excedentes do mes anterior')
-      );
-
-      if (entradasMesAtual.length === 0 && !jaPossuiExcedente) {
+      if (entradasMesAtual.length === 0) {
         console.log('[HorasTrabalhadas] Primeiro lancamento do mes, verificando horas excedentes...');
 
         const entradasMesAnterior = await horseApi.listarHorasTrabalhadas({
@@ -82,7 +78,26 @@ router.post('/', authMiddleware, validate(horaTrabalhadaBodySchema), async (req:
         };
         const horasMinimas = parseIntervalToDecimal(servico?.horasMinimas ?? '0');
 
-        const excedidasAnterior = await horseApi.listarHorasExcedidas({
+        const mesSaldoAnterior = mesAnterior === 1 ? 12 : mesAnterior - 1;
+        const anoSaldoAnterior = mesAnterior === 1 ? anoAnterior - 1 : anoAnterior;
+
+        const excedidasSaldoAnterior = await horseApi.listarHorasExcedidas({
+          usuario_id: primeiraHora.usuarioId,
+          cliente_id: primeiraHora.clienteId,
+          servico_id: primeiraHora.servicoId,
+          mes_origem: mesSaldoAnterior,
+          ano_origem: anoSaldoAnterior,
+        });
+
+        const saldoAcumuladoAnterior = excedidasSaldoAnterior.length > 0 ? excedidasSaldoAnterior[0].deltaHoras : 0;
+
+        const totalHorasExcedidas = totalHorasTrabalhadas - totalHorasAbatidas - horasMinimas;
+
+        const novoSaldo = saldoAcumuladoAnterior + totalHorasExcedidas;
+
+        console.log(`[HorasTrabalhadas] Saldo acumulado (${String(mesSaldoAnterior).padStart(2, '0')}/${anoSaldoAnterior}): ${saldoAcumuladoAnterior}, Excedidas (${String(mesAnterior).padStart(2, '0')}/${anoAnterior}): ${totalHorasExcedidas}, Novo saldo: ${novoSaldo}`);
+
+        const excedidasMesRef = await horseApi.listarHorasExcedidas({
           usuario_id: primeiraHora.usuarioId,
           cliente_id: primeiraHora.clienteId,
           servico_id: primeiraHora.servicoId,
@@ -90,19 +105,14 @@ router.post('/', authMiddleware, validate(horaTrabalhadaBodySchema), async (req:
           ano_origem: anoAnterior,
         });
 
-        const saldoAcumuladoAnterior = excedidasAnterior.length > 0 ? excedidasAnterior[0].deltaHoras : 0;
-
-        const novoAcumulado = (saldoAcumuladoAnterior + totalHorasTrabalhadas) - (totalHorasAbatidas + horasMinimas);
-
-        console.log(`[HorasTrabalhadas] Acumulado anterior: ${saldoAcumuladoAnterior}, Trabalhadas: ${totalHorasTrabalhadas}, Abatidas: ${totalHorasAbatidas}, Minimas: ${horasMinimas}, Novo acumulado: ${novoAcumulado}`);
-
         const acumulado: HoraExcedida = {
+          ...(excedidasMesRef.length > 0 ? { id: excedidasMesRef[0].id } : {}),
           usuarioId: Number(primeiraHora.usuarioId),
           clienteId: Number(primeiraHora.clienteId),
           servicoId: Number(primeiraHora.servicoId),
           mesOrigem: mesAnterior,
           anoOrigem: anoAnterior,
-          deltaHoras: novoAcumulado,
+          deltaHoras: novoSaldo,
         };
 
         console.log('[HorasTrabalhadas] Registrando acumulado:', JSON.stringify(acumulado));

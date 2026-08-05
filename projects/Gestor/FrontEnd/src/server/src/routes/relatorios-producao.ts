@@ -53,7 +53,7 @@ router.get('/produtos-fabricados', authMiddleware, async (_req: AuthRequest, res
   try {
     const [produtos, vendas, estoques, receitas, insumos] = await Promise.all([
       horseApi.listarProdutosFabricados(),
-      horseApi.listarVendasProduto(),
+      horseApi.listarVendasProduto({ detalhado: '1' }),
       horseApi.listarEstoqueProdutoFabricado(),
       horseApi.listarReceitasIngrediente(),
       horseApi.listarInsumos(),
@@ -65,9 +65,9 @@ router.get('/produtos-fabricados', authMiddleware, async (_req: AuthRequest, res
     }
 
     const vendaPorProduto = new Map<number, Array<{ data_venda: string; quantidade: number; valor_unitario: number }>>();
-    for (const v of vendas as Array<{ produto_fabricado_id: number; data_venda: string; quantidade: number; valor_unitario: number }>) {
+    for (const v of vendas as unknown as Array<{ produto_fabricado_id: number; data_venda: string; quantidade: number; valor_unitario: number }>) {
       const list = vendaPorProduto.get(v.produto_fabricado_id) || [];
-      list.push(v);
+      list.push({ data_venda: v.data_venda, quantidade: v.quantidade, valor_unitario: v.valor_unitario });
       vendaPorProduto.set(v.produto_fabricado_id, list);
     }
 
@@ -243,7 +243,7 @@ router.get('/fabricacoes', authMiddleware, async (req: AuthRequest, res: Respons
 router.get('/vendas-produto', authMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     const [vendas, produtos, clientes] = await Promise.all([
-      horseApi.listarVendasProduto(),
+      horseApi.listarVendasProduto({ detalhado: '1' }),
       horseApi.listarProdutosFabricados(),
       horseApi.listarClientes(),
     ]);
@@ -262,7 +262,7 @@ router.get('/vendas-produto', authMiddleware, async (_req: AuthRequest, res: Res
       id?: number; codigo?: number; data_venda: string;
       produto_fabricado_id: number; produto_nome?: string;
       cliente_id: number; cliente_nome?: string;
-      quantidade: number; valor_unitario: number; valor_total: number;
+      quantidade: number; valor_unitario: number; item_valor_total?: number; valor_total: number;
     }>).map((v) => ({
       id: v.id ?? v.codigo ?? 0,
       data_venda: v.data_venda,
@@ -272,7 +272,7 @@ router.get('/vendas-produto', authMiddleware, async (_req: AuthRequest, res: Res
       cliente_nome: v.cliente_nome || clienteMap.get(v.cliente_id) || 'Desconhecido',
       quantidade: v.quantidade,
       valor_unitario: v.valor_unitario,
-      valor_total: v.valor_total,
+      valor_total: v.item_valor_total ?? v.valor_total,
     }));
 
     res.json(result);

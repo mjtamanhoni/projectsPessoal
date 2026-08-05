@@ -402,21 +402,30 @@ export interface FabricacaoCustoAdicional {
   valor: number;
 }
 
-export interface VendaProduto {
-  codigo?: number;
+export interface VendaProdutoItem {
+  item_id?: number;
   id?: number;
   produto_fabricado_id: number;
   produto_nome?: string;
-  cliente_id: number;
-  cliente_nome?: string;
-  usuario_id: number;
   quantidade: number;
   valor_unitario: number;
+  valor_total: number;
+}
+
+export interface VendaProduto {
+  codigo?: number;
+  id?: number;
+  cliente_id: number;
+  cliente_nome?: string;
+  usuario_id?: number;
   valor_total: number;
   data_venda: string;
   contas_receber_id?: number;
   observacao?: string;
+  categoria_receber_id?: number;
   recebido?: boolean;
+  qtd_itens?: number;
+  itens?: VendaProdutoItem[];
 }
 
 export interface EncomendaItem {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getServerConfig, setServerConfig, testServer, extrairErro } from '../api';
+import BackButton from '../components/BackButton';
 
 export default function ServerConfig() {
   const navigate = useNavigate();
@@ -31,13 +32,12 @@ export default function ServerConfig() {
 
   return (
     <div className="screen">
-      <button className="menu-back" onClick={() => navigate(-1)}>
-        ←
-      </button>
+      <div className="screen-topbar" />
+      <BackButton onClick={() => navigate(-1)} />
       <div className="dashboard-title" style={{ left: 42, top: 26 }}>
         Servidor do App
       </div>
-      <div className="dashboard-subtitle" style={{ left: 42, top: 48 }}>
+      <div className="dashboard-subtitle" style={{ left: 42, top: 58 }}>
         Atual: {cfg.host}:{cfg.port}
       </div>
 

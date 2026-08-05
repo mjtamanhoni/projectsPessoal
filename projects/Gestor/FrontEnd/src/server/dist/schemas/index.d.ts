@@ -190,17 +190,40 @@ export declare const fabricacaoBodySchema: z.ZodObject<{
 export declare const vendaProdutoBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;
     id: z.ZodOptional<z.ZodNumber>;
-    produto_fabricado_id: z.ZodNumber;
     cliente_id: z.ZodNumber;
-    usuario_id: z.ZodNumber;
-    quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
-    valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
-    valor_total: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+    valor_total: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
     data_venda: z.ZodString;
     contas_receber_id: z.ZodOptional<z.ZodNumber>;
     observacao: z.ZodOptional<z.ZodString>;
     categoria_receber_id: z.ZodOptional<z.ZodNumber>;
     recebido: z.ZodOptional<z.ZodBoolean>;
+    itens: z.ZodArray<z.ZodObject<{
+        produto_fabricado_id: z.ZodNumber;
+        quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+        valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+        valor_total: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const encomendaBodySchema: z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    cliente_id: z.ZodNumber;
+    valor_total: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
+    data_encomenda: z.ZodString;
+    observacao: z.ZodOptional<z.ZodString>;
+    itens: z.ZodArray<z.ZodObject<{
+        produto_fabricado_id: z.ZodNumber;
+        quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+        valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+        valor_total: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const encomendaBaixaSchema: z.ZodObject<{
+    id: z.ZodNumber;
+    id_encomenda: z.ZodOptional<z.ZodNumber>;
+    data_venda: z.ZodString;
+    recebido: z.ZodOptional<z.ZodBoolean>;
+    categoria_receber_id: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const fabricacaoCustoAdicionalBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;

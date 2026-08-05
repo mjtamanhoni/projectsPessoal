@@ -1,29 +1,9 @@
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Plus } from 'lucide-react';
-import { z } from 'zod';
-import type { VendaProduto, ProdutoFabricado, Cliente } from '@/types';
-import { useAuth } from '@/context/AuthContext';
-import { useState, useCallback } from 'react';
-import { formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
-
-const vendaProdutoSchema = z.object({
-  codigo: z.number().int().positive().optional(),
-  id: z.number().int().positive().optional(),
-  produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
-  cliente_id: z.number().int().positive('Cliente e obrigatorio'),
-  usuario_id: z.number().int().positive(),
-  quantidade: z.number().refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
-  valor_unitario: z.number().refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
-  valor_total: z.number().refine((v) => v > 0, 'Valor total deve ser maior que zero'),
-  data_venda: z.string().min(1, 'Data e obrigatoria'),
-  observacao: z.string().max(500).optional().or(z.literal('')),
-  recebido: z.boolean().optional(),
-});
-
-type VendaProdutoInput = z.infer<typeof vendaProdutoSchema>;
+import { Plus, Trash2 } from 'lucide-react';
+import type { VendaProduto, VendaProdutoItem, ProdutoFabricado, Cliente } from '@/types';
+import { formatCurrency, formatCurrencyInput, formatQuantityInput, formatDecimals, parseCurrencyInput } from '@/lib/utils';
 
 interface VendaProdutoFormProps {
   onSubmit: (data: VendaProduto) => void;
@@ -34,192 +14,195 @@ interface VendaProdutoFormProps {
 }
 
 export function VendaProdutoForm({ onSubmit, onCancel, initial, produtos, clientes }: VendaProdutoFormProps) {
-  const { user } = useAuth();
-  const { handleSubmit, formState: { errors }, control, setValue, watch } = useForm<VendaProdutoInput>({
-    resolver: zodResolver(vendaProdutoSchema),
-    defaultValues: initial ? {
-      produto_fabricado_id: initial.produto_fabricado_id || undefined as unknown as number,
-      cliente_id: initial.cliente_id || undefined as unknown as number,
-      usuario_id: initial.usuario_id || undefined as unknown as number,
-      quantidade: Number(initial.quantidade) || undefined as unknown as number,
-      valor_unitario: Number(initial.valor_unitario) || undefined as unknown as number,
-      valor_total: Number(initial.valor_total) || undefined as unknown as number,
-      data_venda: initial.data_venda || '',
-      observacao: initial.observacao || '',
-      recebido: initial.recebido ?? false,
-    } : {
-      produto_fabricado_id: undefined as unknown as number,
-      cliente_id: undefined as unknown as number,
-      usuario_id: user?.id || undefined as unknown as number,
-      quantidade: undefined as unknown as number,
-      valor_unitario: undefined as unknown as number,
-      valor_total: undefined as unknown as number,
-      data_venda: new Date().toISOString().slice(0, 10),
-      observacao: '',
-      recebido: true,
-    },
-  });
+  const [clienteId, setClienteId] = useState<number>(initial?.cliente_id ?? 0);
+  const [dataVenda, setDataVenda] = useState(initial?.data_venda ?? new Date().toISOString().slice(0, 10));
+  const [observacao, setObservacao] = useState(initial?.observacao ?? '');
+  const [recebido, setRecebido] = useState(initial?.recebido ?? true);
 
-  const quantidade = watch('quantidade');
-  const valor_unitario = watch('valor_unitario');
+  const [itens, setItens] = useState<VendaProdutoItem[]>(initial?.itens ?? []);
+  const [selectedProduto, setSelectedProduto] = useState<number | ''>('');
+  const produtoRef = useRef<HTMLSelectElement>(null);
+  const qtdRef = useRef<HTMLInputElement>(null);
+  const [itemQtd, setItemQtd] = useState('');
+  const [itemUnitRaw, setItemUnitRaw] = useState('');
 
-  const [vuRaw, setVuRaw] = useState(() =>
-    initial?.valor_unitario != null ? formatCurrencyInput(Number(initial.valor_unitario).toFixed(2)) : ''
-  );
-  const [vtRaw, setVtRaw] = useState(() =>
-    initial?.valor_total != null ? formatCurrencyInput(Number(initial.valor_total).toFixed(2)) : ''
-  );
+  const total = itens.reduce((acc, item) => acc + item.valor_total, 0);
+  const qtdNum = itemQtd.replace(/\D/g, '');
+  const qtdParsed = qtdNum ? parseInt(qtdNum, 10) / 100 : 0;
+  const unitParsed = parseCurrencyInput(itemUnitRaw);
+  const totalPreview = qtdParsed > 0 && unitParsed > 0 ? formatCurrency(qtdParsed * unitParsed) : '';
 
-  const calcValorTotal = useCallback((qty: number, unitVal: number) => {
-    if (qty > 0 && unitVal > 0) {
-      const total = qty * unitVal;
-      setValue('valor_total', parseFloat(total.toFixed(2)));
-      setVtRaw(formatCurrencyInput(total.toFixed(2)));
-    } else {
-      setValue('valor_total', undefined as unknown as number);
-      setVtRaw('');
-    }
-  }, [setValue]);
+  const addItem = () => {
+    const produtoId = typeof selectedProduto === 'number' ? selectedProduto : 0;
+    if (!produtoId) return;
+    const qtd = qtdParsed;
+    const vrUnit = unitParsed;
+    if (qtd <= 0 || vrUnit <= 0) return;
+    const vrTotal = qtd * vrUnit;
+    const produto = produtos.find((p) => (p.id ?? p.codigo) === produtoId);
+    setItens([...itens, { produto_fabricado_id: produtoId, produto_nome: produto?.nome, quantidade: qtd, valor_unitario: vrUnit, valor_total: vrTotal }]);
+    setSelectedProduto('');
+    setItemQtd('');
+    setItemUnitRaw('');
+    produtoRef.current?.focus();
+  };
 
-  const onFormSubmit = (data: VendaProdutoInput) => {
-    onSubmit(data as unknown as VendaProduto);
+  const removeItem = (idx: number) => {
+    setItens(itens.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (itens.length === 0) return;
+    onSubmit({
+      id: initial?.id ?? initial?.codigo,
+      cliente_id: clienteId,
+      data_venda: dataVenda,
+      observacao,
+      recebido,
+      valor_total: total,
+      itens,
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-      <Controller
-        name="produto_fabricado_id"
-        control={control}
-        render={({ field }) => (
-          <div className="space-y-1.5">
-            <label className="label-field">Produto *</label>
-            <select className="input-field" value={field.value || ''} onChange={(e) => field.onChange(Number(e.target.value))}>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-1.5">
+          <label className="label-field">Cliente *</label>
+          <select className="input-field" value={clienteId} onChange={(e) => setClienteId(Number(e.target.value))}>
+            <option value={0}>Selecione...</option>
+            {clientes.map((c) => <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>{c.nome}</option>)}
+          </select>
+        </div>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <Input label="Data da Venda *" type="date" value={dataVenda} onChange={(e) => setDataVenda(e.target.value)} />
+          </div>
+          <div className="pb-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="recebido"
+                checked={recebido}
+                onChange={(e) => setRecebido(e.target.checked)}
+                className="rounded border-border-subtle"
+              />
+              <label htmlFor="recebido" className="text-sm text-text-secondary whitespace-nowrap">Venda já foi recebida?</label>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="label-field">Observacao</label>
+          <textarea className="input-field min-h-[60px]" value={observacao} onChange={(e) => setObservacao(e.target.value)} />
+        </div>
+      </div>
+
+      <hr className="border-border-primary" />
+
+      <div className="space-y-1.5">
+        <label className="label-field font-semibold">Itens da Venda</label>
+
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <label className="label-field text-xs">Produto</label>
+            <select
+              ref={produtoRef}
+              className="input-field text-sm"
+              value={selectedProduto}
+              onChange={(e) => {
+                setSelectedProduto(e.target.value ? Number(e.target.value) : '');
+                if (e.target.value) qtdRef.current?.focus();
+              }}
+            >
               <option value="">Selecione...</option>
               {produtos.map((p) => <option key={p.id ?? p.codigo} value={p.id ?? p.codigo}>{p.nome}</option>)}
             </select>
-            {errors.produto_fabricado_id && (
-              <p className="text-xs text-accent-red mt-1">{errors.produto_fabricado_id.message}</p>
-            )}
           </div>
-        )}
-      />
-      <Controller
-        name="cliente_id"
-        control={control}
-        render={({ field }) => (
-          <div className="space-y-1.5">
-            <label className="label-field">Cliente *</label>
-            <select className="input-field" value={field.value || ''} onChange={(e) => field.onChange(Number(e.target.value))}>
-              <option value="">Selecione...</option>
-              {clientes.map((c) => <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>{c.nome}</option>)}
-            </select>
-            {errors.cliente_id && (
-              <p className="text-xs text-accent-red mt-1">{errors.cliente_id.message}</p>
-            )}
+          <div className="flex items-end gap-3">
+            <div className="w-32">
+              <label className="label-field text-xs">Quantidade</label>
+              <input
+                ref={qtdRef}
+                type="text"
+                inputMode="decimal"
+                className="input-field text-sm"
+                placeholder="0,00"
+                value={itemQtd}
+                onChange={(e) => setItemQtd(formatQuantityInput(e.target.value, 2))}
+              />
+            </div>
+            <div className="w-36">
+              <label className="label-field text-xs">Valor Unitário</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                className="input-field text-sm"
+                placeholder="0,00"
+                value={itemUnitRaw}
+                onChange={(e) => setItemUnitRaw(formatCurrencyInput(e.target.value))}
+              />
+            </div>
+            <div className="w-36">
+              <label className="label-field text-xs">Valor Total</label>
+              <input
+                type="text"
+                className="input-field text-sm bg-bg-muted text-text-secondary"
+                placeholder="0,00"
+                value={totalPreview}
+                readOnly
+                tabIndex={-1}
+              />
+            </div>
+            <div>
+              <Button type="button" variant="secondary" onClick={addItem}>
+                <Plus size={14} /> Adicionar
+              </Button>
+            </div>
           </div>
-        )}
-      />
-      <Controller
-        name="quantidade"
-        control={control}
-        render={({ field }) => (
-          <Input
-            label="Quantidade *"
-            type="number"
-            step="any"
-            error={errors.quantidade?.message}
-            {...field}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              field.onChange(val);
-              const uVal = typeof valor_unitario === 'number' ? valor_unitario : parseCurrencyInput(vuRaw);
-              calcValorTotal(val, isNaN(uVal) ? 0 : uVal);
-            }}
-          />
-        )}
-      />
-      <Controller
-        name="valor_unitario"
-        control={control}
-        render={({ field }) => (
-          <Input
-            label="Valor Unitario *"
-            type="text"
-            inputMode="numeric"
-            placeholder="0,00"
-            error={errors.valor_unitario?.message}
-            value={vuRaw}
-            onChange={(e) => {
-              const formatted = formatCurrencyInput(e.target.value);
-              setVuRaw(formatted);
-              const num = parseCurrencyInput(formatted);
-              if (num > 0) {
-                field.onChange(num);
-                const qty = typeof quantidade === 'number' ? quantidade : 0;
-                calcValorTotal(qty, num);
-              }
-            }}
-            onBlur={() => {
-              if (!vuRaw) { field.onChange(undefined as unknown as number); return; }
-              const num = parseCurrencyInput(vuRaw);
-              if (num > 0) {
-                field.onChange(num);
-                setVuRaw(formatCurrencyInput(String(Math.round(num * 100))));
-              }
-            }}
-          />
-        )}
-      />
-      <Controller
-        name="valor_total"
-        control={control}
-        render={({ field }) => (
-          <Input
-            label="Valor Total *"
-            type="text"
-            placeholder="0,00"
-            error={errors.valor_total?.message}
-            value={vtRaw}
-            disabled
-          />
-        )}
-      />
-      <Controller
-        name="data_venda"
-        control={control}
-        render={({ field }) => (
-          <Input label="Data da Venda *" type="date" error={errors.data_venda?.message} {...field} />
-        )}
-      />
-      <Controller
-        name="observacao"
-        control={control}
-        render={({ field }) => (
-          <div className="space-y-1.5">
-            <label className="label-field">Observacao</label>
-            <textarea className="input-field min-h-[80px]" {...field} />
-          </div>
-        )}
-      />
-      <Controller
-        name="recebido"
-        control={control}
-        render={({ field }) => (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="recebido"
-              checked={field.value ?? false}
-              onChange={(e) => field.onChange(e.target.checked)}
-              className="rounded border-border-subtle"
-            />
-            <label htmlFor="recebido" className="text-sm text-text-secondary">Venda já recebida?</label>
-          </div>
-        )}
-      />
-      <div className="flex justify-center gap-3 pt-4">
+        </div>
+
+        <div className="border border-border-primary rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-bg-primary">
+              <tr className="bg-bg-muted">
+                <th className="text-left px-3 py-2 text-text-secondary font-medium">Produto</th>
+                <th className="text-right px-3 py-2 text-text-secondary font-medium">Quantidade</th>
+                <th className="text-right px-3 py-2 text-text-secondary font-medium">Valor Unit.</th>
+                <th className="text-right px-3 py-2 text-text-secondary font-medium">Valor Total</th>
+                <th className="px-3 py-2 w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {itens.map((item, idx) => {
+                const produto = produtos.find((p) => (p.id ?? p.codigo) === item.produto_fabricado_id);
+                return (
+                  <tr key={idx} className="border-t border-border-primary">
+                    <td className="px-3 py-2">{produto?.nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id}`}</td>
+                    <td className="px-3 py-2 text-right">{item.quantidade.toFixed(2).replace('.', ',')}</td>
+                    <td className="px-3 py-2 text-right">{formatDecimals(item.valor_unitario, 2)}</td>
+                    <td className="px-3 py-2 text-right">{formatCurrency(item.valor_total)}</td>
+                    <td className="px-3 py-2 text-center">
+                      <button type="button" onClick={() => removeItem(idx)} className="p-1 rounded hover:bg-bg-muted transition-colors">
+                        <Trash2 size={14} className="text-accent-red" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {itens.length === 0 && (
+                <tr className="border-t border-border-primary">
+                  <td colSpan={5} className="px-3 py-4 text-center text-text-tertiary">Nenhum item adicionado</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex justify-center gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
-        <Button type="submit"><Plus size={16} /> Salvar</Button>
+        <Button type="submit" disabled={itens.length === 0}><Plus size={16} /> Salvar Venda</Button>
       </div>
     </form>
   );

@@ -1197,25 +1197,22 @@ class HorseApiService {
     }
     async salvarVendasProduto(items, empresaId) {
         try {
-            const categoriaReceberId = empresaId ? (0, settings_1.getFinanceiroEmpresa)(empresaId)?.categoriaReceberVendaPadrao : undefined;
-            const enrichItem = (item) => {
-                const recebido = !!item.recebido;
-                const dataVenda = item.data_venda;
-                const dataVencimento = recebido
-                    ? dataVenda
-                    : (() => {
-                        const d = new Date(dataVenda + 'T12:00:00');
-                        d.setDate(d.getDate() + 30);
-                        return d.toISOString().slice(0, 10);
-                    })();
-                return {
-                    ...item,
-                    categoria_receber_id: categoriaReceberId,
-                    data_vencimento: dataVencimento,
-                    ...(recebido ? { data_recebimento: dataVenda } : {}),
-                };
+            const header = (Array.isArray(items) ? items : [items])[0] ?? {};
+            const categoriaReceberPadrao = empresaId ? (0, settings_1.getFinanceiroEmpresa)(empresaId)?.categoriaReceberVendaPadrao : undefined;
+            const payload = {
+                id: header.id ?? header.codigo ?? 0,
+                cliente_id: header.cliente_id,
+                data_venda: header.data_venda,
+                observacao: header.observacao ?? '',
+                recebido: header.recebido ?? true,
+                categoria_receber_id: header.categoria_receber_id ?? categoriaReceberPadrao ?? 0,
+                itens: (header.itens ?? []).map((i) => ({
+                    produto_fabricado_id: i.produto_fabricado_id,
+                    quantidade: Number(i.quantidade),
+                    valor_unitario: Number(i.valor_unitario),
+                    valor_total: Number(i.valor_total),
+                })),
             };
-            const payload = items.length === 1 ? enrichItem(items[0]) : items.map(enrichItem);
             const res = await this.api.post('/vendaProduto', payload, { headers: this.getAuthHeaders() });
             return res.data;
         }
@@ -1226,6 +1223,55 @@ class HorseApiService {
     async excluirVendaProduto(id) {
         try {
             const res = await this.api.delete('/vendaProduto', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarEncomendas(params) {
+        try {
+            const res = await this.api.get('/encomenda', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarEncomendas(items, empresaId) {
+        try {
+            const header = (Array.isArray(items) ? items : [items])[0] ?? {};
+            const payload = {
+                id: header.id ?? header.codigo ?? 0,
+                cliente_id: header.cliente_id,
+                data_encomenda: header.data_encomenda,
+                observacao: header.observacao ?? '',
+                itens: (header.itens ?? []).map((i) => ({
+                    produto_fabricado_id: i.produto_fabricado_id,
+                    quantidade: Number(i.quantidade),
+                    valor_unitario: Number(i.valor_unitario),
+                    valor_total: Number(i.valor_total),
+                })),
+            };
+            const res = await this.api.post('/encomenda', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirEncomenda(id) {
+        try {
+            const res = await this.api.delete('/encomenda', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async gerarVendaDeEncomenda(data) {
+        try {
+            const res = await this.api.post('/encomenda/gerarVenda', data, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {

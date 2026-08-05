@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { LogoBox } from '../components/auth';
+import BackButton from '../components/BackButton';
 
 const BOTOES = [
   { label: 'CADASTRO', destino: '/cadastro' },
@@ -26,9 +27,7 @@ export default function MenuPrincipal() {
 
   return (
     <div className="screen">
-      <button className="menu-back" onClick={() => navigate('/dashboard')}>
-        ←
-      </button>
+      <BackButton onClick={() => navigate('/dashboard')} />
       <LogoBox />
       <div className="auth-title">Oficina de Sabores</div>
       <div className="auth-subtitle">Menu Principal</div>

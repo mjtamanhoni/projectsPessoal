@@ -1220,25 +1220,22 @@ class HorseApiService {
 
   async salvarVendasProduto(items: VendaProduto[], empresaId?: number): Promise<unknown> {
     try {
-      const categoriaReceberId = empresaId ? getFinanceiroEmpresa(empresaId)?.categoriaReceberVendaPadrao : undefined;
-      const enrichItem = (item: VendaProduto) => {
-        const recebido = !!item.recebido;
-        const dataVenda = item.data_venda;
-        const dataVencimento = recebido
-          ? dataVenda
-          : (() => {
-              const d = new Date(dataVenda + 'T12:00:00');
-              d.setDate(d.getDate() + 30);
-              return d.toISOString().slice(0, 10);
-            })();
-        return {
-          ...item,
-          categoria_receber_id: categoriaReceberId,
-          data_vencimento: dataVencimento,
-          ...(recebido ? { data_recebimento: dataVenda } : {}),
-        };
+      const header = (Array.isArray(items) ? items : [items])[0] ?? {} as VendaProduto;
+      const categoriaReceberPadrao = empresaId ? getFinanceiroEmpresa(empresaId)?.categoriaReceberVendaPadrao : undefined;
+      const payload = {
+        id: header.id ?? header.codigo ?? 0,
+        cliente_id: header.cliente_id,
+        data_venda: header.data_venda,
+        observacao: header.observacao ?? '',
+        recebido: header.recebido ?? true,
+        categoria_receber_id: header.categoria_receber_id ?? categoriaReceberPadrao ?? 0,
+        itens: (header.itens ?? []).map((i) => ({
+          produto_fabricado_id: i.produto_fabricado_id,
+          quantidade: Number(i.quantidade),
+          valor_unitario: Number(i.valor_unitario),
+          valor_total: Number(i.valor_total),
+        })),
       };
-      const payload = items.length === 1 ? enrichItem(items[0]) : items.map(enrichItem);
       const res = await this.api.post('/vendaProduto', payload, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {

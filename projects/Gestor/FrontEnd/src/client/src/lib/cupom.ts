@@ -42,7 +42,8 @@ const CORTE = '- - - - - - - - - CORTE AQUI - - - - - - - - - - -';
 
 export function gerarTextoCupom(data: CupomData): string {
   const { empresaNome, empresaCnpj, empresaEndereco, empresaTelefone, venda, cliente, numeroCupom, formaPagamento, parcelas, desconto } = data;
-  const qtdTotal = venda.quantidade;
+  const itens = venda.itens ?? [];
+  const qtdTotal = itens.reduce((acc, i) => acc + Number(i.quantidade), 0);
   const subtotal = venda.valor_total + (desconto ?? 0);
   const total = venda.valor_total;
   const dataHora = new Date().toLocaleString('pt-BR');
@@ -61,26 +62,38 @@ export function gerarTextoCupom(data: CupomData): string {
   linhas.push(SEP_L);
   linhas.push(padCentral('VIA DO CLIENTE', 48));
   linhas.push(SEP);
-  linhas.push(`DATA/HORA: ${dataHora}    CUPOM N: ${String(numeroCupom).padStart(5, '0')}`);
+  linhas.push(`DATA/HORA: ${dataHora}   CUPOM N: ${String(numeroCupom).padStart(5, '0')}`);
   linhas.push(`CLIENTE: ${cliente?.nome || 'CONSUMIDOR FINAL'}`);
   linhas.push(SEP);
-  linhas.push('COD  DESCRICAO             QTD  UN  VL.UN    VL.TOT');
+  linhas.push(`${padEsquerda('COD', 3)}  ${padEsquerda('DESCRICAO', 20)} ${padEsquerda('QTD', 3)} ${padEsquerda('UN', 2)} ${padDireita('VL.UN', 7)} ${padDireita('VL.TOT', 7)}`);
   linhas.push(SEP);
-  const codStr = String(venda.codigo ?? venda.id ?? '').padStart(3, '0');
-  const desc = (venda.produto_nome ?? '').padEnd(22, ' ').slice(0, 22);
-  const qtd = String(qtdTotal).padStart(3, ' ');
-  const un = 'UN';
-  const vu = venda.valor_unitario.toFixed(2).replace('.', ',').padStart(7, ' ');
-  const vt = venda.valor_total.toFixed(2).replace('.', ',').padStart(8, ' ');
-  linhas.push(` ${codStr}  ${desc} ${qtd}  ${un} ${vu} ${vt}`);
+  if (itens.length > 0) {
+    itens.forEach((item, idx) => {
+      const codStr = String(idx + 1).padStart(3, '0');
+      const desc = (item.produto_nome ?? '').padEnd(20, ' ').slice(0, 20);
+      const qtd = String(Number(item.quantidade)).padStart(3, ' ');
+      const un = 'UN';
+      const vu = Number(item.valor_unitario).toFixed(2).replace('.', ',').padStart(7, ' ');
+      const vt = Number(item.valor_total).toFixed(2).replace('.', ',').padStart(7, ' ');
+      linhas.push(`${padEsquerda(codStr, 3)}  ${padEsquerda(desc, 20)} ${qtd} ${un} ${vu} ${vt}`);
+    });
+  } else {
+    const codStr = String(venda.codigo ?? venda.id ?? '').padStart(3, '0');
+    const desc = 'ITEM'.padEnd(20, ' ').slice(0, 20);
+    const qtd = String(qtdTotal).padStart(3, ' ');
+    const un = 'UN';
+    const vu = (0).toFixed(2).replace('.', ',').padStart(7, ' ');
+    const vt = total.toFixed(2).replace('.', ',').padStart(7, ' ');
+    linhas.push(`${padEsquerda(codStr, 3)}  ${padEsquerda(desc, 20)} ${qtd} ${un} ${vu} ${vt}`);
+  }
   linhas.push(SEP);
-  linhas.push(`${padEsquerda('QUANTIDADE TOTAL DE ITENS:', 36)} ${String(qtdTotal).padStart(10, ' ')}`);
-  linhas.push(`${padEsquerda('SUBTOTAL:', 36)} ${formatValor(subtotal).padStart(10, ' ')}`);
+  linhas.push(`${padEsquerda('QUANTIDADE TOTAL DE ITENS:', 37)} ${String(qtdTotal).padStart(10, ' ')}`);
+  linhas.push(`${padEsquerda('SUBTOTAL:', 37)} ${formatValor(subtotal).padStart(10, ' ')}`);
   if (desconto && desconto > 0) {
-    linhas.push(`${padEsquerda('DESCONTO:', 36)} ${formatValor(desconto).padStart(10, ' ')}`);
+    linhas.push(`${padEsquerda('DESCONTO:', 37)} ${formatValor(desconto).padStart(10, ' ')}`);
   }
   linhas.push(SEP_L);
-  linhas.push(`${padEsquerda('TOTAL A PAGAR:', 36)} ${formatValor(total).padStart(10, ' ')}`);
+  linhas.push(`${padEsquerda('TOTAL A PAGAR:', 37)} ${formatValor(total).padStart(10, ' ')}`);
   linhas.push(SEP);
   linhas.push(`FORMA DE PAGAMENTO: ${formaPagamento}`);
   linhas.push(SEP);
@@ -109,10 +122,10 @@ export function gerarTextoCupom(data: CupomData): string {
     linhas.push(SEP);
     linhas.push(padCentral('VIA DO CREDIARIO', 48));
     linhas.push(SEP);
-    linhas.push(`DATA/HORA: ${dataHora}    CUPOM N: ${String(numeroCupom).padStart(5, '0')}`);
-    linhas.push(`${padEsquerda('VALOR TOTAL DO PEDIDO:', 36)} ${formatValor(total).padStart(10, ' ')}`);
+    linhas.push(`DATA/HORA: ${dataHora}   CUPOM N: ${String(numeroCupom).padStart(5, '0')}`);
+    linhas.push(`${padEsquerda('VALOR TOTAL DO PEDIDO:', 37)} ${formatValor(total).padStart(10, ' ')}`);
     if (desconto && desconto > 0) {
-      linhas.push(`${padEsquerda('DESCONTO:', 36)} ${formatValor(desconto).padStart(10, ' ')}`);
+      linhas.push(`${padEsquerda('DESCONTO:', 37)} ${formatValor(desconto).padStart(10, ' ')}`);
     }
     linhas.push(SEP_L);
     linhas.push(padCentral('DADOS DO CLIENTE', 48));

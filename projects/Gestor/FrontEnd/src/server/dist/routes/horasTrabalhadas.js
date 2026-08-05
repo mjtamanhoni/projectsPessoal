@@ -40,8 +40,7 @@ router.post('/', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.horaT
                 data_inicial: primeiroDiaMes,
                 data_final: ultimoDiaMes,
             });
-            const jaPossuiExcedente = entradasMesAtual.some((h) => h.observacoes?.includes('Horas excedentes do mes anterior'));
-            if (entradasMesAtual.length === 0 && !jaPossuiExcedente) {
+            if (entradasMesAtual.length === 0) {
                 console.log('[HorasTrabalhadas] Primeiro lancamento do mes, verificando horas excedentes...');
                 const entradasMesAnterior = await horseApi_1.horseApi.listarHorasTrabalhadas({
                     usuario_id: primeiraHora.usuarioId,
@@ -66,23 +65,34 @@ router.post('/', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.horaT
                     return Number(match[1]) + Number(match[2]) / 60 + Number(match[3]) / 3600;
                 };
                 const horasMinimas = parseIntervalToDecimal(servico?.horasMinimas ?? '0');
-                const excedidasAnterior = await horseApi_1.horseApi.listarHorasExcedidas({
+                const mesSaldoAnterior = mesAnterior === 1 ? 12 : mesAnterior - 1;
+                const anoSaldoAnterior = mesAnterior === 1 ? anoAnterior - 1 : anoAnterior;
+                const excedidasSaldoAnterior = await horseApi_1.horseApi.listarHorasExcedidas({
+                    usuario_id: primeiraHora.usuarioId,
+                    cliente_id: primeiraHora.clienteId,
+                    servico_id: primeiraHora.servicoId,
+                    mes_origem: mesSaldoAnterior,
+                    ano_origem: anoSaldoAnterior,
+                });
+                const saldoAcumuladoAnterior = excedidasSaldoAnterior.length > 0 ? excedidasSaldoAnterior[0].deltaHoras : 0;
+                const totalHorasExcedidas = totalHorasTrabalhadas - totalHorasAbatidas - horasMinimas;
+                const novoSaldo = saldoAcumuladoAnterior + totalHorasExcedidas;
+                console.log(`[HorasTrabalhadas] Saldo acumulado (${String(mesSaldoAnterior).padStart(2, '0')}/${anoSaldoAnterior}): ${saldoAcumuladoAnterior}, Excedidas (${String(mesAnterior).padStart(2, '0')}/${anoAnterior}): ${totalHorasExcedidas}, Novo saldo: ${novoSaldo}`);
+                const excedidasMesRef = await horseApi_1.horseApi.listarHorasExcedidas({
                     usuario_id: primeiraHora.usuarioId,
                     cliente_id: primeiraHora.clienteId,
                     servico_id: primeiraHora.servicoId,
                     mes_origem: mesAnterior,
                     ano_origem: anoAnterior,
                 });
-                const saldoAcumuladoAnterior = excedidasAnterior.length > 0 ? excedidasAnterior[0].deltaHoras : 0;
-                const novoAcumulado = (saldoAcumuladoAnterior + totalHorasTrabalhadas) - (totalHorasAbatidas + horasMinimas);
-                console.log(`[HorasTrabalhadas] Acumulado anterior: ${saldoAcumuladoAnterior}, Trabalhadas: ${totalHorasTrabalhadas}, Abatidas: ${totalHorasAbatidas}, Minimas: ${horasMinimas}, Novo acumulado: ${novoAcumulado}`);
                 const acumulado = {
+                    ...(excedidasMesRef.length > 0 ? { id: excedidasMesRef[0].id } : {}),
                     usuarioId: Number(primeiraHora.usuarioId),
                     clienteId: Number(primeiraHora.clienteId),
                     servicoId: Number(primeiraHora.servicoId),
                     mesOrigem: mesAnterior,
                     anoOrigem: anoAnterior,
-                    deltaHoras: novoAcumulado,
+                    deltaHoras: novoSaldo,
                 };
                 console.log('[HorasTrabalhadas] Registrando acumulado:', JSON.stringify(acumulado));
                 await horseApi_1.horseApi.salvarHorasExcedidas([acumulado]);

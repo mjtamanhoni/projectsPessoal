@@ -5,7 +5,7 @@
     "protocol": "http"
   },
   "rateLimit": {
-    "max": 1000
+    "max": 10000
   },
   "empresa": {
     "1": {

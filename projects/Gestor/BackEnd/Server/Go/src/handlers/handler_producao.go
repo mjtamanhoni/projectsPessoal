@@ -391,7 +391,7 @@ func (h *ProducaoHandler) CompraInsumoAtualizar(w http.ResponseWriter, r *http.R
 			descricao = buildDescricao(config.DescricaoTemplate, map[string]string{
 				"{nome}": "insumos",
 			})
-			if dataCompra != "" && config.DiasVencimento > 0 {
+			if !pago && dataCompra != "" && config.DiasVencimento > 0 {
 				tx.QueryRow(r.Context(),
 					`SELECT ($1::date + $2::integer)::text`,
 					dataCompra, config.DiasVencimento).Scan(&vencimento)
@@ -408,10 +408,10 @@ func (h *ProducaoHandler) CompraInsumoAtualizar(w http.ResponseWriter, r *http.R
 			err = tx.QueryRow(r.Context(), `
 				INSERT INTO contas_pagar (id, empresa_id, usuario_id, fornecedor_id,
 					descricao, valor, data_vencimento, id_categoria, pago, lancamento_origem_id)
-				VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,false,$9)
+				VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,$9,$10)
 				RETURNING id
 			`, ctID, empresaID, usuarioID, fornecedorID,
-				descricao, totalValor, vencimento, catID, id).Scan(&ctID)
+				descricao, totalValor, vencimento, catID, pago, id).Scan(&ctID)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -723,34 +723,69 @@ func (h *ProducaoHandler) VendaProdutoListar(w http.ResponseWriter, r *http.Requ
 	dataInicial := r.URL.Query().Get("data_inicial")
 	dataFinal := r.URL.Query().Get("data_final")
 
-	query := `SELECT vp.id, vp.empresa_id, vp.cliente_id, vp.data_venda,
-			vp.observacao, vp.usuario_id, vp.status,
-			vp.created_at,
-			vpi.id as item_id, vpi.produto_fabricado_id,
-			vpi.quantidade, vpi.valor_unitario, vpi.valor_total,
-			pf.nome as produto_nome, c.nome as cliente_nome
-		FROM venda_produto vp
-		LEFT JOIN venda_produto_item vpi ON vpi.venda_id = vp.id AND vpi.empresa_id = vp.empresa_id
-		LEFT JOIN produto_fabricado pf ON pf.id = vpi.produto_fabricado_id AND pf.empresa_id = vpi.empresa_id
-		LEFT JOIN public.cliente c ON c.id = vp.cliente_id AND c.empresa_id = vp.empresa_id
-		WHERE 1=1`
+	var query string
 	var args []interface{}
 	argN := 1
-	if id > 0 {
-		query += fmt.Sprintf(" AND vp.id = $%d", argN); argN++; args = append(args, id)
+
+	if id > 0 || r.URL.Query().Get("detalhado") == "1" {
+		// Detail list: header + itens (same as compra_insumo pattern)
+		query = `SELECT vp.id, vp.empresa_id, vp.cliente_id, vp.data_venda,
+			vp.valor_total, vp.observacao, vp.usuario_id, vp.status, vp.created_at,
+			c.nome as cliente_nome,
+			CASE WHEN vp.status = 2 THEN true ELSE false END as recebido,
+			vpi.id as item_id, vpi.produto_fabricado_id, vpi.quantidade,
+			vpi.valor_unitario, vpi.valor_total as item_valor_total,
+			pf.nome as produto_nome
+			FROM venda_produto vp
+			JOIN venda_produto_item vpi ON vpi.venda_id = vp.id AND vpi.empresa_id = vp.empresa_id
+			LEFT JOIN public.cliente c ON c.id = vp.cliente_id AND c.empresa_id = vp.empresa_id
+			LEFT JOIN produto_fabricado pf ON pf.id = vpi.produto_fabricado_id AND pf.empresa_id = vpi.empresa_id
+			WHERE 1=1`
+		if id > 0 {
+			query += fmt.Sprintf(" AND vp.id = $%d", argN); argN++; args = append(args, id)
+		}
+		if produtoFabricadoID > 0 {
+			query += fmt.Sprintf(" AND vpi.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+		}
+		if clienteID > 0 {
+			query += fmt.Sprintf(" AND vp.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
+		}
+		if dataInicial != "" && dataFinal != "" {
+			query += fmt.Sprintf(" AND vp.data_venda BETWEEN $%d::date AND $%d::date", argN, argN+1)
+			argN += 2; args = append(args, dataInicial, dataFinal)
+		}
+		query += fmt.Sprintf(" AND (vp.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += " ORDER BY vp.id, vpi.id"
+	} else {
+		// Summary list: one row per venda with header data and aggregates
+		query = `SELECT vp.id, vp.empresa_id, vp.cliente_id, vp.data_venda,
+			vp.valor_total, vp.observacao, vp.usuario_id, vp.status, vp.created_at,
+			c.nome as cliente_nome,
+			CASE WHEN vp.status = 2 THEN true ELSE false END as recebido,
+			COALESCE(agg.qtd_itens, 0) as qtd_itens
+			FROM venda_produto vp
+			LEFT JOIN public.cliente c ON c.id = vp.cliente_id AND c.empresa_id = vp.empresa_id
+			LEFT JOIN LATERAL (
+				SELECT COUNT(*) as qtd_itens, SUM(vpi.valor_total) as total_valor
+				FROM venda_produto_item vpi
+				WHERE vpi.venda_id = vp.id AND vpi.empresa_id = vp.empresa_id
+			) agg ON true
+			WHERE 1=1`
+		if produtoFabricadoID > 0 {
+			query += ` AND EXISTS (SELECT 1 FROM venda_produto_item vpi3 WHERE vpi3.venda_id = vp.id AND vpi3.empresa_id = vp.empresa_id AND vpi3.produto_fabricado_id = $` + fmt.Sprintf("%d", argN) + `)`
+			argN++; args = append(args, produtoFabricadoID)
+		}
+		if clienteID > 0 {
+			query += fmt.Sprintf(" AND vp.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
+		}
+		if dataInicial != "" && dataFinal != "" {
+			query += fmt.Sprintf(" AND vp.data_venda BETWEEN $%d::date AND $%d::date", argN, argN+1)
+			argN += 2; args = append(args, dataInicial, dataFinal)
+		}
+		query += fmt.Sprintf(" AND (vp.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += " ORDER BY vp.id"
 	}
-	if produtoFabricadoID > 0 {
-		query += fmt.Sprintf(" AND vpi.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
-	}
-	if clienteID > 0 {
-		query += fmt.Sprintf(" AND vp.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
-	}
-	if dataInicial != "" && dataFinal != "" {
-		query += fmt.Sprintf(" AND vp.data_venda BETWEEN $%d::date AND $%d::date", argN, argN+1)
-		argN += 2; args = append(args, dataInicial, dataFinal)
-	}
-	query += fmt.Sprintf(" AND vp.empresa_id = $%d", argN); args = append(args, empresaID)
-	query += " ORDER BY vp.id"
+
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -765,6 +800,12 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+
+	header := items[0]
 	empresaID := middleware.GetEmpresaID(r)
 	usuarioID := middleware.GetUserID(r)
 
@@ -775,136 +816,191 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 	}
 	defer tx.Rollback(r.Context())
 
-	for _, item := range items {
-		id := getID(item)
-		produtoFabricadoID := getInt(item, "produto_fabricado_id")
-		clienteID := getInt(item, "cliente_id")
-		quantidade := getFloat(item, "quantidade")
-		valorUnitario := getFloat(item, "valor_unitario")
-		valorTotal := getFloat(item, "valor_total")
-		dataVenda := getStr(item, "data_venda")
-		observacao := getStr(item, "observacao")
-		categoriaReceberID := getInt(item, "categoria_receber_id")
-		recebido := false
-		if v, ok := item["recebido"]; ok && v != nil {
-			if b, ok := v.(bool); ok {
-				recebido = b
+	id := getID(header)
+	clienteID := getInt(header, "cliente_id")
+	dataVenda := getStr(header, "data_venda")
+	observacao := getStr(header, "observacao")
+	categoriaReceberID := getInt(header, "categoria_receber_id")
+	recebido := true
+	if v, ok := header["recebido"]; ok && v != nil {
+		if b, ok := v.(bool); ok {
+			recebido = b
+		}
+	}
+	status := 1
+	if recebido {
+		status = 2
+	}
+
+	rawItens, ok := header["itens"]
+	if !ok {
+		jsonError(w, "itens não informados", http.StatusBadRequest)
+		return
+	}
+	itensArr, ok := rawItens.([]interface{})
+	if !ok {
+		jsonError(w, "itens deve ser um array", http.StatusBadRequest)
+		return
+	}
+
+	isNew := id == 0
+
+	if isNew {
+		id, err = database.GerarID(r.Context(), tx, empresaID, "venda_produto")
+		if err != nil {
+			jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO venda_produto (id, empresa_id, cliente_id,
+				data_venda, valor_total, observacao, usuario_id, status)
+			VALUES ($1,$2,$3,$4::date,0,$5,$6,$7)`,
+			id, empresaID, clienteID, dataVenda, observacao, usuarioID, status)
+	} else {
+		_, err = tx.Exec(r.Context(), `
+			UPDATE venda_produto SET cliente_id=$1,
+				data_venda=$2::date, observacao=$3, status=$4
+			WHERE id=$5 AND empresa_id=$6`,
+			clienteID, dataVenda, observacao, status, id, empresaID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Restore old items to inventory before deleting
+		oldRows, err := tx.Query(r.Context(),
+			`SELECT produto_fabricado_id, quantidade FROM venda_produto_item WHERE venda_id = $1 AND empresa_id = $2`,
+			id, empresaID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		type oldItem struct {
+			produtoFabricadoID int
+			quantidade         float64
+		}
+		var oldItems []oldItem
+		for oldRows.Next() {
+			var o oldItem
+			oldRows.Scan(&o.produtoFabricadoID, &o.quantidade)
+			oldItems = append(oldItems, o)
+		}
+		oldRows.Close()
+		for _, o := range oldItems {
+			err = atualizarEstoqueProdutoFabricado(r.Context(), tx, o.produtoFabricadoID, empresaID, o.quantidade, dataVenda, usuarioID)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 		}
 
-		if id == 0 {
-			id, err = database.GerarID(r.Context(), tx, empresaID, "venda_produto")
-			if err != nil {
-				jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
+		_, err = tx.Exec(r.Context(),
+			`DELETE FROM venda_produto_item WHERE venda_id = $1 AND empresa_id = $2`,
+			id, empresaID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 
-			_, err = tx.Exec(r.Context(), `
-				INSERT INTO venda_produto (id, empresa_id, cliente_id,
-					usuario_id, valor_total, data_venda, observacao)
-				VALUES ($1,$2,$3,$4,$5,$6::date,$7)`,
-				id, empresaID, clienteID, usuarioID,
-				valorTotal, dataVenda, observacao)
-			if err != nil {
-				jsonError(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+	var totalValor float64
+	primeiroNome := ""
+	for _, rawItem := range itensArr {
+		item, ok := rawItem.(map[string]interface{})
+		if !ok {
+			continue
+		}
 
-			var itemID int
-			itemID, err = database.GerarID(r.Context(), tx, empresaID, "venda_produto_item")
-			if err != nil {
-				jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
+		produtoFabricadoID := getInt(item, "produto_fabricado_id")
+		quantidade := getFloat(item, "quantidade")
+		valorUnitario := getFloat(item, "valor_unitario")
+		valorTotalItem := quantidade * valorUnitario
 
-			_, err = tx.Exec(r.Context(), `
-				INSERT INTO venda_produto_item (id, empresa_id, venda_id,
-					produto_fabricado_id, cliente_id, quantidade, valor_unitario, valor_total)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-				itemID, empresaID, id, produtoFabricadoID, clienteID,
-				quantidade, valorUnitario, valorTotal)
-			if err != nil {
-				jsonError(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		itemID, err := database.GerarID(r.Context(), tx, empresaID, "venda_produto_item")
+		if err != nil {
+			jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO venda_produto_item (id, empresa_id, venda_id, produto_fabricado_id,
+				cliente_id, quantidade, valor_unitario, valor_total)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+			itemID, empresaID, id, produtoFabricadoID, clienteID,
+			quantidade, valorUnitario, valorTotalItem)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-			// Remove from inventory
-			err = atualizarEstoqueProdutoFabricado(r.Context(), tx, produtoFabricadoID, empresaID, -quantidade, dataVenda, usuarioID)
-			if err != nil {
-				jsonError(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		err = atualizarEstoqueProdutoFabricado(r.Context(), tx, produtoFabricadoID, empresaID, -quantidade, dataVenda, usuarioID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-			// Generate contas_receber
-			var produtoNome string
+		if primeiroNome == "" {
 			tx.QueryRow(r.Context(),
 				`SELECT nome FROM produto_fabricado WHERE id = $1 AND empresa_id = $2`,
-				produtoFabricadoID, empresaID).Scan(&produtoNome)
+				produtoFabricadoID, empresaID).Scan(&primeiroNome)
+		}
 
-			vencimento := dataVenda
-			descricao := fmt.Sprintf("Venda: %s x %.2f", produtoNome, quantidade)
-			catID := categoriaReceberID
-			config, errCfg := queryLancamentoConfig(r.Context(), h.Pool, empresaID, "venda_produto")
-			if errCfg == nil && config != nil {
-				catID = config.CategoriaID
-				descricao = buildDescricao(config.DescricaoTemplate, map[string]string{
-					"{nome}": produtoNome, "{quantidade}": fmt.Sprintf("%.2f", quantidade),
-				})
-				if dataVenda != "" && config.DiasVencimento > 0 {
-					tx.QueryRow(r.Context(),
-						`SELECT ($1::date + $2::integer)::text`,
-						dataVenda, config.DiasVencimento).Scan(&vencimento)
-				}
-			}
+		totalValor += valorTotalItem
+	}
 
-			var crID int
-			crID, err = database.GerarID(r.Context(), tx, empresaID, "contas_receber")
-			if err != nil {
-				jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			err = tx.QueryRow(r.Context(), `
-				INSERT INTO contas_receber (id, empresa_id, usuario_id, cliente_id, descricao,
-					valor, data_vencimento, recebido, lancamento_origem_id)
-				VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,$9)
-				RETURNING id
-			`, crID, empresaID, usuarioID, clienteID,
-				descricao, valorTotal, vencimento, recebido, id).Scan(&crID)
-			if err != nil {
-				jsonError(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+	// Update header's valor_total
+	_, err = tx.Exec(r.Context(),
+		`UPDATE venda_produto SET valor_total = $1 WHERE id = $2 AND empresa_id = $3`,
+		totalValor, id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-			if catID > 0 {
-				tx.Exec(r.Context(),
-					`UPDATE contas_receber SET id_categoria = $1 WHERE id = $2`,
-					catID, crID)
+	// Generate contas_receber for new sales
+	if isNew && clienteID > 0 {
+		vencimento := dataVenda
+		descricao := "Venda de produtos"
+		if primeiroNome != "" {
+			descricao = fmt.Sprintf("Venda: %s", primeiroNome)
+			if len(itensArr) > 1 {
+				descricao = fmt.Sprintf("Venda: %s e mais %d item(ns)", primeiroNome, len(itensArr)-1)
 			}
-		} else {
-			_, err = tx.Exec(r.Context(), `
-				UPDATE venda_produto SET cliente_id=$1,
-					valor_total=$2, data_venda=$3::date, observacao=$4
-				WHERE id=$5 AND empresa_id=$6`,
-				clienteID, valorTotal, dataVenda, observacao, id, empresaID)
-			if err != nil {
-				jsonError(w, err.Error(), http.StatusInternalServerError)
-				return
+		}
+		catID := categoriaReceberID
+		config, errCfg := queryLancamentoConfig(r.Context(), h.Pool, empresaID, "venda_produto")
+		if errCfg == nil && config != nil {
+			catID = config.CategoriaID
+			descricao = buildDescricao(config.DescricaoTemplate, map[string]string{
+				"{nome}": primeiroNome, "{quantidade}": fmt.Sprintf("%.2f", totalValor),
+			})
+			if !recebido && dataVenda != "" && config.DiasVencimento > 0 {
+				tx.QueryRow(r.Context(),
+					`SELECT ($1::date + $2::integer)::text`,
+					dataVenda, config.DiasVencimento).Scan(&vencimento)
 			}
+		}
 
-			_, err = tx.Exec(r.Context(), `
-				UPDATE venda_produto_item SET produto_fabricado_id=$1,
-					cliente_id=$2, quantidade=$3, valor_unitario=$4, valor_total=$5
-				WHERE venda_id=$6 AND empresa_id=$7`,
-				produtoFabricadoID, clienteID, quantidade, valorUnitario, valorTotal, id, empresaID)
-			if err != nil {
-				jsonError(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		var crID int
+		crID, err = database.GerarID(r.Context(), tx, empresaID, "contas_receber")
+		if err != nil {
+			jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = tx.QueryRow(r.Context(), `
+			INSERT INTO contas_receber (id, empresa_id, usuario_id, cliente_id, descricao,
+				valor, data_vencimento, recebido, id_categoria, lancamento_origem_id)
+			VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,$9,$10)
+			RETURNING id
+		`, crID, empresaID, usuarioID, clienteID,
+			descricao, totalValor, vencimento, recebido, catID, id).Scan(&crID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Venda salva com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Venda salva com sucesso", "codigo": id, "id": id})
 }
 
 func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Request) {
@@ -921,6 +1017,34 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 		return
 	}
 	defer tx.Rollback(r.Context())
+
+	var dataVenda string
+	err = tx.QueryRow(r.Context(),
+		`SELECT data_venda::text FROM venda_produto WHERE id = $1 AND empresa_id = $2`,
+		id, empresaID).Scan(&dataVenda)
+	if err != nil {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+
+	type oldItem struct {
+		produtoFabricadoID int
+		quantidade         float64
+	}
+	var oldItems []oldItem
+	oldRows, err := tx.Query(r.Context(),
+		`SELECT produto_fabricado_id, quantidade FROM venda_produto_item WHERE venda_id = $1 AND empresa_id = $2`,
+		id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for oldRows.Next() {
+		var o oldItem
+		oldRows.Scan(&o.produtoFabricadoID, &o.quantidade)
+		oldItems = append(oldItems, o)
+	}
+	oldRows.Close()
 
 	_, err = tx.Exec(r.Context(),
 		`DELETE FROM venda_produto_item WHERE venda_id = $1 AND empresa_id = $2`,
@@ -942,8 +1066,17 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	usuarioID := middleware.GetUserID(r)
+	for _, o := range oldItems {
+		err = atualizarEstoqueProdutoFabricado(r.Context(), tx, o.produtoFabricadoID, empresaID, o.quantidade, dataVenda, usuarioID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Venda excluída com sucesso"})
 }
 
 // --- Encomenda ---

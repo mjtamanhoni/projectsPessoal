@@ -16,6 +16,7 @@ const formOrdem = {
         'Fabricacoes',
         'Estoque Produto Fabricado',
         'Vendas Produto',
+        'Encomendas',
         'Relatorio Insumos',
         'Relatorio Produtos Fabricados',
         'Relatorio Fabricacoes',

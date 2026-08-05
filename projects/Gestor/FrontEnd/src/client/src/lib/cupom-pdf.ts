@@ -7,10 +7,15 @@ export function gerarPDFCupom(data: CupomData): jsPDF {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 297] });
   const pageWidth = 80;
   const margin = 3;
+  const cols = 48;
+  const rightEdge = pageWidth - margin;
+  const usableWidth = rightEdge - margin;
+  const charWidth = usableWidth / cols;
+  const fontSize = charWidth / (0.6 * (25.4 / 72));
   let y = margin;
 
-  doc.setFontSize(8);
   doc.setFont('courier', 'normal');
+  doc.setFontSize(fontSize);
 
   linhas.forEach((linha) => {
     if (y > 280) {
@@ -18,17 +23,16 @@ export function gerarPDFCupom(data: CupomData): jsPDF {
       y = margin;
     }
 
-    const ehSep = linha.startsWith('=');
-    const ehSepL = linha.startsWith('-');
-
-    if (ehSep || ehSepL) {
-      doc.setFontSize(6);
-      doc.text(linha, margin, y);
-      doc.setFontSize(8);
+    const ehSepDupla = linha.startsWith('=');
+    const ehSepSimples = !linha.includes('CORTE') && linha.startsWith('-');
+    if (ehSepDupla || ehSepSimples) {
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(ehSepDupla ? 0.2 : 0.1);
+      doc.line(margin, y - 1, rightEdge, y - 1);
     } else if (linha.includes('CORTE AQUI')) {
-      doc.setFontSize(6);
+      doc.setFontSize(fontSize * 0.85);
       doc.text(linha, margin, y);
-      doc.setFontSize(8);
+      doc.setFontSize(fontSize);
     } else {
       doc.text(linha, margin, y);
     }

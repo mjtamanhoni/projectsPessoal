@@ -14,6 +14,140 @@ export interface LoginResponse {
   is_superadmin: boolean;
 }
 
+export interface Fornecedor {
+  id?: number;
+  nome: string;
+  telefone?: string;
+  celular?: string;
+  endereco?: string;
+  email?: string;
+  cnpj_cpf?: string;
+}
+
+export interface Cliente {
+  id?: number;
+  nome: string;
+  telefone?: string;
+  celular?: string;
+  endereco?: string;
+  email?: string;
+  cnpj_cpf?: string;
+}
+
+export interface Marca {
+  id?: number;
+  nome: string;
+  ativo?: boolean;
+}
+
+export interface CustoAdicionalTipo {
+  id?: number;
+  nome: string;
+  ativo?: boolean;
+}
+
+export interface Fabricacao {
+  id?: number;
+  codigo?: number;
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  quantidade_produzida: number;
+  data_fabricacao: string;
+  custo_insumos?: number;
+  custo_adicional_total?: number;
+  custo_total?: number;
+  custo_unitario?: number;
+  observacao?: string;
+}
+
+export interface FabricacaoCustoAdicional {
+  id?: number;
+  codigo?: number;
+  fabricacao_id: number;
+  custo_adicional_tipo_id: number;
+  custo_adicional_nome?: string;
+  valor: number;
+}
+
+export interface ProdutoFabricado {
+  id?: number;
+  nome: string;
+  descricao?: string;
+  rendimento?: number;
+  unidade_medida: string;
+  custo_unitario?: number;
+  margem_lucro?: number;
+  valor_venda_sugerido?: number;
+  ativo?: boolean;
+}
+
+export interface ReceitaIngrediente {
+  id?: number;
+  produto_fabricado_id: number;
+  insumo_id: number;
+  quantidade: number;
+  insumo_nome?: string;
+  insumo_ativo?: boolean;
+  insumo_unidade_medida?: string;
+  insumo_custo_medio?: number;
+  produto_nome?: string;
+}
+
+export interface Insumo {
+  id?: number;
+  nome: string;
+  unidade_medida: string;
+  custo_medio?: number;
+  ativo?: boolean;
+  id_fornecedor?: number | null;
+  id_marca?: number | null;
+  fornecedor_nome?: string;
+  marca_nome?: string;
+}
+
+export interface CompraInsumoItem {
+  insumo_id: number;
+  insumo_nome?: string;
+  marca_nome?: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+}
+
+export interface CompraInsumo {
+  id?: number;
+  codigo?: number;
+  fornecedor_id?: number;
+  fornecedor_nome?: string;
+  data_compra: string;
+  valor_total?: number;
+  observacao?: string;
+  pago?: boolean;
+  qtd_itens?: number;
+  itens?: CompraInsumoItem[];
+}
+
+export interface VendaProdutoItem {
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+}
+
+export interface VendaProduto {
+  id?: number;
+  codigo?: number;
+  cliente_id?: number;
+  cliente_nome?: string;
+  data_venda: string;
+  valor_total?: number;
+  observacao?: string;
+  recebido?: boolean;
+  qtd_itens?: number;
+  itens?: VendaProdutoItem[];
+}
+
 export interface EncomendaItem {
   id?: number;
   produto_fabricado_id: number;
@@ -38,8 +172,57 @@ export interface Encomenda {
   itens?: EncomendaItem[];
 }
 
-export interface DashboardData {
-  kpis: {
+export interface EstoqueInsumo {
+  id?: number;
+  insumo_id: number;
+  insumo_nome?: string;
+  unidade_medida?: string;
+  quantidade: number;
+  data_atualizacao: string;
+  observacao?: string;
+}
+
+export interface EstoqueProdutoFabricado {
+  id?: number;
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  unidade_medida?: string;
+  quantidade: number;
+  data_atualizacao: string;
+  observacao?: string;
+}
+
+export interface PerdaInsumo {
+  id?: number;
+  codigo?: number;
+  insumo_id: number;
+  insumo_nome?: string;
+  quantidade: number;
+  data_perda: string;
+  motivo?: string;
+}
+
+export interface PerdaProdutoFabricado {
+  id?: number;
+  codigo?: number;
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  quantidade: number;
+  data_perda: string;
+  motivo?: string;
+}
+
+export interface UsoConsumo {
+  id?: number;
+  codigo?: number;
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  quantidade: number;
+  data_uso: string;
+  motivo?: string;
+}
+
+export interface DashboardData {  kpis: {
     total_vendas: number;
     qtd_vendida: number;
     qtd_vendas: number;
@@ -204,6 +387,71 @@ export async function testServer(host: string, port: number): Promise<void> {
   }
 }
 
+export async function listarInsumos(): Promise<Insumo[]> {
+  const res = await request('/insumo', {}, true);
+  return (await parseResponse(res)) as Insumo[];
+}
+
+export async function listarComprasInsumo(): Promise<CompraInsumo[]> {
+  const res = await request('/compraInsumo', {}, true);
+  return (await parseResponse(res)) as CompraInsumo[];
+}
+
+export async function listarCompraInsumoItens(id: number): Promise<CompraInsumoItem[]> {
+  const res = await request(`/compraInsumo?id=${id}`, {}, true);
+  const rows = (await parseResponse(res)) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    insumo_id: Number(row.insumo_id) || 0,
+    insumo_nome: row.insumo_nome ? String(row.insumo_nome) : undefined,
+    marca_nome: row.marca_nome ? String(row.marca_nome) : undefined,
+    quantidade: Number(row.quantidade) || 0,
+    valor_unitario: Number(row.valor_unitario) || 0,
+    valor_total: Number(row.item_valor_total ?? row.valor_total) || 0,
+  }));
+}
+
+export async function salvarCompraInsumo(data: CompraInsumo): Promise<void> {
+  const res = await request('/compraInsumo', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirCompraInsumo(id: number): Promise<void> {
+  const res = await request(`/compraInsumo?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarVendasProduto(): Promise<VendaProduto[]> {
+  const res = await request('/vendaProduto', {}, true);
+  return (await parseResponse(res)) as VendaProduto[];
+}
+
+export async function listarVendaProdutoItens(id: number): Promise<VendaProdutoItem[]> {
+  const res = await request(`/vendaProduto?id=${id}`, {}, true);
+  const rows = (await parseResponse(res)) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    produto_fabricado_id: Number(row.produto_fabricado_id) || 0,
+    produto_nome: row.produto_nome ? String(row.produto_nome) : undefined,
+    quantidade: Number(row.quantidade) || 0,
+    valor_unitario: Number(row.valor_unitario) || 0,
+    valor_total: Number(row.item_valor_total ?? row.valor_total) || 0,
+  }));
+}
+
+export async function salvarVendaProduto(data: VendaProduto): Promise<{ id?: number; codigo?: number } | null> {
+  const res = await request('/vendaProduto', { method: 'POST', body: JSON.stringify(data) }, true);
+  const parsed = (await parseResponse(res)) as Record<string, unknown> | null;
+  if (!parsed) return null;
+  return {
+    id: parsed.id != null ? Number(parsed.id) : undefined,
+    codigo: parsed.codigo != null ? Number(parsed.codigo) : undefined,
+  };
+}
+
+export async function excluirVendaProduto(id: number): Promise<void> {
+  const res = await request(`/vendaProduto?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
 export async function listarEncomendas(): Promise<Encomenda[]> {
   const res = await request('/encomenda', {}, true);
   return (await parseResponse(res)) as Encomenda[];
@@ -244,4 +492,210 @@ export async function gerarVendaDeEncomenda(input: {
 }): Promise<{ venda_id?: number; mensagem?: string } | null> {
   const res = await request('/encomenda/gerarVenda', { method: 'POST', body: JSON.stringify(input) }, true);
   return (await parseResponse(res)) as { venda_id?: number; mensagem?: string } | null;
+}
+
+export async function listarEstoqueInsumos(): Promise<EstoqueInsumo[]> {
+  const res = await request('/estoqueInsumo', {}, true);
+  return (await parseResponse(res)) as EstoqueInsumo[];
+}
+
+export async function salvarEstoqueInsumo(data: EstoqueInsumo): Promise<void> {
+  const res = await request('/estoqueInsumo', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirEstoqueInsumo(id: number): Promise<void> {
+  const res = await request(`/estoqueInsumo?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarEstoqueProdutos(): Promise<EstoqueProdutoFabricado[]> {
+  const res = await request('/estoqueProdutoFabricado', {}, true);
+  return (await parseResponse(res)) as EstoqueProdutoFabricado[];
+}
+
+export async function salvarEstoqueProduto(data: EstoqueProdutoFabricado): Promise<void> {
+  const res = await request('/estoqueProdutoFabricado', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirEstoqueProduto(id: number): Promise<void> {
+  const res = await request(`/estoqueProdutoFabricado?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarPerdasInsumo(): Promise<PerdaInsumo[]> {
+  const res = await request('/perdaInsumo', {}, true);
+  return (await parseResponse(res)) as PerdaInsumo[];
+}
+
+export async function salvarPerdaInsumo(data: PerdaInsumo): Promise<void> {
+  const res = await request('/perdaInsumo', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirPerdaInsumo(id: number): Promise<void> {
+  const res = await request(`/perdaInsumo?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarPerdasProduto(): Promise<PerdaProdutoFabricado[]> {
+  const res = await request('/perdaProdutoFabricado', {}, true);
+  return (await parseResponse(res)) as PerdaProdutoFabricado[];
+}
+
+export async function salvarPerdaProduto(data: PerdaProdutoFabricado): Promise<void> {
+  const res = await request('/perdaProdutoFabricado', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirPerdaProduto(id: number): Promise<void> {
+  const res = await request(`/perdaProdutoFabricado?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarUsoConsumos(): Promise<UsoConsumo[]> {
+  const res = await request('/usoConsumo', {}, true);
+  return (await parseResponse(res)) as UsoConsumo[];
+}
+
+export async function salvarUsoConsumo(data: UsoConsumo): Promise<void> {
+  const res = await request('/usoConsumo', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirUsoConsumo(id: number): Promise<void> {
+  const res = await request(`/usoConsumo?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function salvarInsumo(data: Insumo): Promise<void> {
+  const res = await request('/insumo', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirInsumo(id: number): Promise<void> {
+  const res = await request(`/insumo?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarFornecedores(): Promise<Fornecedor[]> {
+  const res = await request('/fornecedor', {}, true);
+  return (await parseResponse(res)) as Fornecedor[];
+}
+
+export async function listarMarcas(): Promise<Marca[]> {
+  const res = await request('/marca', {}, true);
+  return (await parseResponse(res)) as Marca[];
+}
+
+export async function salvarMarca(data: Marca): Promise<void> {
+  const res = await request('/marca', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirMarca(id: number): Promise<void> {
+  const res = await request(`/marca?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarClientes(): Promise<Cliente[]> {
+  const res = await request('/cliente', {}, true);
+  return (await parseResponse(res)) as Cliente[];
+}
+
+export async function salvarCliente(data: Cliente): Promise<void> {
+  const res = await request('/cliente', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirCliente(id: number): Promise<void> {
+  const res = await request(`/cliente?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function salvarFornecedor(data: Fornecedor): Promise<void> {
+  const res = await request('/fornecedor', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirFornecedor(id: number): Promise<void> {
+  const res = await request(`/fornecedor?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarProdutosFabricados(): Promise<ProdutoFabricado[]> {
+  const res = await request('/produtoFabricado', {}, true);
+  return (await parseResponse(res)) as ProdutoFabricado[];
+}
+
+export async function salvarProdutoFabricado(data: ProdutoFabricado): Promise<void> {
+  const res = await request('/produtoFabricado', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirProdutoFabricado(id: number): Promise<void> {
+  const res = await request(`/produtoFabricado?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarReceitasIngrediente(produtoFabricadoId?: number): Promise<ReceitaIngrediente[]> {
+  const q = produtoFabricadoId ? `?produto_fabricado_id=${produtoFabricadoId}` : '';
+  const res = await request(`/receitaIngrediente${q}`, {}, true);
+  return (await parseResponse(res)) as ReceitaIngrediente[];
+}
+
+export async function salvarReceitaIngrediente(data: ReceitaIngrediente): Promise<void> {
+  const res = await request('/receitaIngrediente', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirReceitaIngrediente(id: number): Promise<void> {
+  const res = await request(`/receitaIngrediente?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarCustosAdicionaisTipo(): Promise<CustoAdicionalTipo[]> {
+  const res = await request('/custoAdicionalTipo', {}, true);
+  return (await parseResponse(res)) as CustoAdicionalTipo[];
+}
+
+export async function salvarCustoAdicionalTipo(data: CustoAdicionalTipo): Promise<void> {
+  const res = await request('/custoAdicionalTipo', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirCustoAdicionalTipo(id: number): Promise<void> {
+  const res = await request(`/custoAdicionalTipo?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarFabricacoes(): Promise<Fabricacao[]> {
+  const res = await request('/fabricacao', {}, true);
+  return (await parseResponse(res)) as Fabricacao[];
+}
+
+export async function salvarFabricacao(data: Fabricacao): Promise<void> {
+  const res = await request('/fabricacao', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirFabricacao(id: number): Promise<void> {
+  const res = await request(`/fabricacao?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarCustosAdicionaisFabricacao(fabricacaoId: number): Promise<FabricacaoCustoAdicional[]> {
+  const res = await request(`/fabricacaoCustoAdicional?fabricacao_id=${fabricacaoId}`, {}, true);
+  return (await parseResponse(res)) as FabricacaoCustoAdicional[];
+}
+
+export async function salvarCustoAdicionalFabricacao(data: FabricacaoCustoAdicional): Promise<void> {
+  const res = await request('/fabricacaoCustoAdicional', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirCustoAdicionalFabricacao(id: number): Promise<void> {
+  const res = await request(`/fabricacaoCustoAdicional?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
 }

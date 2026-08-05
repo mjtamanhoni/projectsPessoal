@@ -47,7 +47,7 @@ router.get('/produtos-fabricados', auth_1.authMiddleware, async (_req, res) => {
     try {
         const [produtos, vendas, estoques, receitas, insumos] = await Promise.all([
             horseApi_1.horseApi.listarProdutosFabricados(),
-            horseApi_1.horseApi.listarVendasProduto(),
+            horseApi_1.horseApi.listarVendasProduto({ detalhado: '1' }),
             horseApi_1.horseApi.listarEstoqueProdutoFabricado(),
             horseApi_1.horseApi.listarReceitasIngrediente(),
             horseApi_1.horseApi.listarInsumos(),
@@ -59,7 +59,7 @@ router.get('/produtos-fabricados', auth_1.authMiddleware, async (_req, res) => {
         const vendaPorProduto = new Map();
         for (const v of vendas) {
             const list = vendaPorProduto.get(v.produto_fabricado_id) || [];
-            list.push(v);
+            list.push({ data_venda: v.data_venda, quantidade: v.quantidade, valor_unitario: v.valor_unitario });
             vendaPorProduto.set(v.produto_fabricado_id, list);
         }
         const estoqueMap = new Map();
@@ -217,7 +217,7 @@ router.get('/fabricacoes', auth_1.authMiddleware, async (req, res) => {
 router.get('/vendas-produto', auth_1.authMiddleware, async (_req, res) => {
     try {
         const [vendas, produtos, clientes] = await Promise.all([
-            horseApi_1.horseApi.listarVendasProduto(),
+            horseApi_1.horseApi.listarVendasProduto({ detalhado: '1' }),
             horseApi_1.horseApi.listarProdutosFabricados(),
             horseApi_1.horseApi.listarClientes(),
         ]);
@@ -238,7 +238,7 @@ router.get('/vendas-produto', auth_1.authMiddleware, async (_req, res) => {
             cliente_nome: v.cliente_nome || clienteMap.get(v.cliente_id) || 'Desconhecido',
             quantidade: v.quantidade,
             valor_unitario: v.valor_unitario,
-            valor_total: v.valor_total,
+            valor_total: v.item_valor_total ?? v.valor_total,
         }));
         res.json(result);
     }

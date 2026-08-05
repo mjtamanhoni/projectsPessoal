@@ -39,6 +39,7 @@ const receitas_ingredientes_1 = __importDefault(require("./routes/receitas-ingre
 const custos_adicionais_tipo_1 = __importDefault(require("./routes/custos-adicionais-tipo"));
 const fabricacoes_1 = __importDefault(require("./routes/fabricacoes"));
 const vendas_produto_1 = __importDefault(require("./routes/vendas-produto"));
+const encomendas_1 = __importDefault(require("./routes/encomendas"));
 const fabricacao_custos_adicionais_1 = __importDefault(require("./routes/fabricacao-custos-adicionais"));
 const estoque_insumo_1 = __importDefault(require("./routes/estoque-insumo"));
 const estoque_produto_1 = __importDefault(require("./routes/estoque-produto"));
@@ -86,6 +87,7 @@ app.use('/api/receitas-ingredientes', receitas_ingredientes_1.default);
 app.use('/api/custos-adicionais-tipo', custos_adicionais_tipo_1.default);
 app.use('/api/fabricacoes', fabricacoes_1.default);
 app.use('/api/vendas-produto', vendas_produto_1.default);
+app.use('/api/encomendas', encomendas_1.default);
 app.use('/api/fabricacao-custos-adicionais', fabricacao_custos_adicionais_1.default);
 app.use('/api/estoque-insumo', estoque_insumo_1.default);
 app.use('/api/estoque-produto', estoque_produto_1.default);
