@@ -212,6 +212,11 @@ const moduleIconMap: Record<string, ModuleIconInfo> = {
     color: '#16a34a',
     bgGradient: 'from-green-500/20 to-green-600/10',
   },
+  'Encomendas': {
+    icon: ClipboardList,
+    color: '#059669',
+    bgGradient: 'from-emerald-500/20 to-emerald-600/10',
+  },
   'Receitas Ingredientes': {
     icon: List,
     color: '#0ea5e9',

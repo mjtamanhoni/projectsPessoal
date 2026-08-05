@@ -418,6 +418,12 @@ carregar();
 		r.Post("/vendaProduto", producao.VendaProdutoAtualizar)
 		r.Delete("/vendaProduto", producao.VendaProdutoExcluir)
 
+		// Encomenda
+		r.Get("/encomenda", producao.EncomendaListar)
+		r.Post("/encomenda", producao.EncomendaAtualizar)
+		r.Delete("/encomenda", producao.EncomendaExcluir)
+		r.Post("/encomenda/gerarVenda", producao.EncomendaGerarVenda)
+
 		// Fabricacao Custo Adicional
 		r.Get("/fabricacaoCustoAdicional", producao.FabricacaoCustoAdicionalListar)
 		r.Post("/fabricacaoCustoAdicional", producao.FabricacaoCustoAdicionalAtualizar)

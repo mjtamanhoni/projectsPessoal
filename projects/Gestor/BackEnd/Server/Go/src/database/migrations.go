@@ -148,6 +148,46 @@ var Migracoes = []Migracao{
 		`,
 	},
 	{
+		Nome: "006_criar_encomenda",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='encomenda') THEN
+					CREATE TABLE encomenda (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						cliente_id INTEGER NOT NULL,
+						data_encomenda DATE NOT NULL,
+						valor_total NUMERIC NOT NULL DEFAULT 0,
+						observacao TEXT,
+						usuario_id INTEGER NOT NULL,
+						status SMALLINT NOT NULL DEFAULT 1,
+						created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+						PRIMARY KEY (empresa_id, id)
+					);
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='encomenda_item') THEN
+					CREATE TABLE encomenda_item (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						encomenda_id INTEGER NOT NULL,
+						produto_fabricado_id INTEGER NOT NULL,
+						cliente_id INTEGER,
+						quantidade NUMERIC NOT NULL,
+						valor_unitario NUMERIC NOT NULL,
+						valor_total NUMERIC NOT NULL,
+						PRIMARY KEY (empresa_id, id)
+					);
+					ALTER TABLE encomenda_item ADD CONSTRAINT encomenda_item_encomenda_fk
+						FOREIGN KEY (empresa_id, encomenda_id) REFERENCES encomenda(empresa_id, id) ON DELETE CASCADE;
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encomenda' AND column_name='venda_id') THEN
+					ALTER TABLE encomenda ADD COLUMN venda_id INTEGER;
+				END IF;
+			END $$;
+		`,
+	},
+	{
 		Nome: "004_restruturar_venda_produto",
 		SQLUp: `
 			DO $$

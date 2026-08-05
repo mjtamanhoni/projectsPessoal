@@ -946,6 +946,480 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluído com sucesso"})
 }
 
+// --- Encomenda ---
+func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaID(r)
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	produtoFabricadoID := parseInt(r.URL.Query().Get("produto_fabricado_id"), 0)
+	clienteID := parseInt(r.URL.Query().Get("cliente_id"), 0)
+	dataInicial := r.URL.Query().Get("data_inicial")
+	dataFinal := r.URL.Query().Get("data_final")
+
+	var query string
+	var args []interface{}
+	argN := 1
+
+	if id > 0 || r.URL.Query().Get("detalhado") == "1" {
+		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda,
+			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
+			c.nome as cliente_nome,
+			CASE WHEN e.status = 2 THEN true ELSE false END as baixado,
+			ei.id as item_id, ei.produto_fabricado_id, ei.quantidade,
+			ei.valor_unitario, ei.valor_total as item_valor_total,
+			pf.nome as produto_nome
+			FROM encomenda e
+			JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
+			LEFT JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
+			LEFT JOIN produto_fabricado pf ON pf.id = ei.produto_fabricado_id AND pf.empresa_id = ei.empresa_id
+			WHERE 1=1`
+		if id > 0 {
+			query += fmt.Sprintf(" AND e.id = $%d", argN); argN++; args = append(args, id)
+		}
+		if produtoFabricadoID > 0 {
+			query += fmt.Sprintf(" AND ei.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+		}
+		if clienteID > 0 {
+			query += fmt.Sprintf(" AND e.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
+		}
+		if dataInicial != "" && dataFinal != "" {
+			query += fmt.Sprintf(" AND e.data_encomenda BETWEEN $%d::date AND $%d::date", argN, argN+1)
+			argN += 2; args = append(args, dataInicial, dataFinal)
+		}
+		query += fmt.Sprintf(" AND (e.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += " ORDER BY e.id, ei.id"
+	} else {
+		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda,
+			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
+			c.nome as cliente_nome,
+			CASE WHEN e.status = 2 THEN true ELSE false END as baixado,
+			COALESCE(agg.qtd_itens, 0) as qtd_itens
+			FROM encomenda e
+			LEFT JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
+			LEFT JOIN LATERAL (
+				SELECT COUNT(*) as qtd_itens, SUM(ei.valor_total) as total_valor
+				FROM encomenda_item ei
+				WHERE ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
+			) agg ON true
+			WHERE 1=1`
+		if produtoFabricadoID > 0 {
+			query += ` AND EXISTS (SELECT 1 FROM encomenda_item ei3 WHERE ei3.encomenda_id = e.id AND ei3.empresa_id = e.empresa_id AND ei3.produto_fabricado_id = $` + fmt.Sprintf("%d", argN) + `)`
+			argN++; args = append(args, produtoFabricadoID)
+		}
+		if clienteID > 0 {
+			query += fmt.Sprintf(" AND e.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
+		}
+		if dataInicial != "" && dataFinal != "" {
+			query += fmt.Sprintf(" AND e.data_encomenda BETWEEN $%d::date AND $%d::date", argN, argN+1)
+			argN += 2; args = append(args, dataInicial, dataFinal)
+		}
+		query += fmt.Sprintf(" AND (e.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += " ORDER BY e.id"
+	}
+
+	rows, err := h.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonSuccess(w, rowsToMap(rows))
+}
+
+func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+
+	header := items[0]
+	empresaID := middleware.GetEmpresaID(r)
+	usuarioID := middleware.GetUserID(r)
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	id := getID(header)
+	clienteID := getInt(header, "cliente_id")
+	dataEncomenda := getStr(header, "data_encomenda")
+	observacao := getStr(header, "observacao")
+
+	rawItens, ok := header["itens"]
+	if !ok {
+		jsonError(w, "itens não informados", http.StatusBadRequest)
+		return
+	}
+	itensArr, ok := rawItens.([]interface{})
+	if !ok {
+		jsonError(w, "itens deve ser um array", http.StatusBadRequest)
+		return
+	}
+
+	isNew := id == 0
+
+	if isNew {
+		id, err = database.GerarID(r.Context(), tx, empresaID, "encomenda")
+		if err != nil {
+			jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO encomenda (id, empresa_id, cliente_id,
+				data_encomenda, valor_total, observacao, usuario_id, status)
+			VALUES ($1,$2,$3,$4::date,0,$5,$6,1)`,
+			id, empresaID, clienteID, dataEncomenda, observacao, usuarioID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		var status int
+		err = tx.QueryRow(r.Context(),
+			`SELECT status FROM encomenda WHERE id = $1 AND empresa_id = $2`,
+			id, empresaID).Scan(&status)
+		if err != nil {
+			jsonError(w, "Registro não encontrado", http.StatusNotFound)
+			return
+		}
+		if status == 2 {
+			jsonError(w, "Encomenda já baixada, não é possível editar", http.StatusBadRequest)
+			return
+		}
+
+		_, err = tx.Exec(r.Context(), `
+			UPDATE encomenda SET cliente_id=$1,
+				data_encomenda=$2::date, observacao=$3
+			WHERE id=$4 AND empresa_id=$5`,
+			clienteID, dataEncomenda, observacao, id, empresaID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, err = tx.Exec(r.Context(),
+			`DELETE FROM encomenda_item WHERE encomenda_id = $1 AND empresa_id = $2`,
+			id, empresaID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	var totalValor float64
+	for _, rawItem := range itensArr {
+		item, ok := rawItem.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		produtoFabricadoID := getInt(item, "produto_fabricado_id")
+		quantidade := getFloat(item, "quantidade")
+		valorUnitario := getFloat(item, "valor_unitario")
+		valorTotalItem := quantidade * valorUnitario
+
+		itemID, err := database.GerarID(r.Context(), tx, empresaID, "encomenda_item")
+		if err != nil {
+			jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id,
+				cliente_id, quantidade, valor_unitario, valor_total)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+			itemID, empresaID, id, produtoFabricadoID, clienteID,
+			quantidade, valorUnitario, valorTotalItem)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		totalValor += valorTotalItem
+	}
+
+	_, err = tx.Exec(r.Context(),
+		`UPDATE encomenda SET valor_total = $1 WHERE id = $2 AND empresa_id = $3`,
+		totalValor, id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tx.Commit(r.Context())
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Encomenda salva com sucesso", "codigo": id, "id": id})
+}
+
+func (h *ProducaoHandler) EncomendaExcluir(w http.ResponseWriter, r *http.Request) {
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	empresaID := middleware.GetEmpresaID(r)
+	if id == 0 {
+		jsonError(w, "ID não informado", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var status int
+	err = tx.QueryRow(r.Context(),
+		`SELECT status FROM encomenda WHERE id = $1 AND empresa_id = $2`,
+		id, empresaID).Scan(&status)
+	if err != nil {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+	if status == 2 {
+		jsonError(w, "Encomenda já baixada, não é possível excluir", http.StatusBadRequest)
+		return
+	}
+
+	_, err = tx.Exec(r.Context(),
+		`DELETE FROM encomenda_item WHERE encomenda_id = $1 AND empresa_id = $2`,
+		id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tag, err := tx.Exec(r.Context(),
+		`DELETE FROM encomenda WHERE id = $1 AND empresa_id = $2`,
+		id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+
+	tx.Commit(r.Context())
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Encomenda excluída com sucesso"})
+}
+
+// EncomendaGerarVenda baixa a encomenda (status = 2) e gera uma venda de produto
+// a partir dos itens da encomenda, com baixa de estoque e contas a receber.
+func (h *ProducaoHandler) EncomendaGerarVenda(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+
+	header := items[0]
+	empresaID := middleware.GetEmpresaID(r)
+	usuarioID := middleware.GetUserID(r)
+
+	encomendaID := getID(header)
+	if encomendaID == 0 {
+		encomendaID = getInt(header, "id_encomenda")
+	}
+	if encomendaID == 0 {
+		jsonError(w, "ID da encomenda não informado", http.StatusBadRequest)
+		return
+	}
+
+	dataVenda := getStr(header, "data_venda")
+	if dataVenda == "" {
+		dataVenda = time.Now().Format("2006-01-02")
+	}
+	recebido := true
+	if v, ok := header["recebido"]; ok && v != nil {
+		if b, ok := v.(bool); ok {
+			recebido = b
+		}
+	}
+	categoriaReceberID := getInt(header, "categoria_receber_id")
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var clienteID, status int
+	var observacao string
+	err = tx.QueryRow(r.Context(),
+		`SELECT cliente_id, observacao, status FROM encomenda
+		 WHERE id = $1 AND empresa_id = $2 FOR UPDATE`,
+		encomendaID, empresaID).Scan(&clienteID, &observacao, &status)
+	if err != nil {
+		jsonError(w, "Encomenda não encontrada", http.StatusNotFound)
+		return
+	}
+	if status == 2 {
+		jsonError(w, "Encomenda já baixada", http.StatusBadRequest)
+		return
+	}
+
+	type encomendaItem struct {
+		produtoFabricadoID int
+		quantidade         float64
+		valorUnitario      float64
+	}
+	var encomendaItens []encomendaItem
+	itemRows, err := tx.Query(r.Context(),
+		`SELECT produto_fabricado_id, quantidade, valor_unitario FROM encomenda_item
+		 WHERE encomenda_id = $1 AND empresa_id = $2`,
+		encomendaID, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for itemRows.Next() {
+		var it encomendaItem
+		itemRows.Scan(&it.produtoFabricadoID, &it.quantidade, &it.valorUnitario)
+		encomendaItens = append(encomendaItens, it)
+	}
+	itemRows.Close()
+	if len(encomendaItens) == 0 {
+		jsonError(w, "Encomenda sem itens, não é possível gerar venda", http.StatusBadRequest)
+		return
+	}
+
+	// Cria a venda de produto
+	vendaID, err := database.GerarID(r.Context(), tx, empresaID, "venda_produto")
+	if err != nil {
+		jsonError(w, "Erro ao gerar ID da venda: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	vendaStatus := 1
+	if recebido {
+		vendaStatus = 2
+	}
+	observacaoVenda := fmt.Sprintf("Venda da encomenda #%d", encomendaID)
+	if observacao != "" {
+		observacaoVenda = fmt.Sprintf("Encomenda #%d - %s", encomendaID, observacao)
+	}
+	_, err = tx.Exec(r.Context(), `
+		INSERT INTO venda_produto (id, empresa_id, cliente_id,
+			data_venda, valor_total, observacao, usuario_id, status)
+		VALUES ($1,$2,$3,$4::date,0,$5,$6,$7)`,
+		vendaID, empresaID, clienteID, dataVenda, observacaoVenda, usuarioID, vendaStatus)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var totalValor float64
+	primeiroNome := ""
+	for _, it := range encomendaItens {
+		itemID, err := database.GerarID(r.Context(), tx, empresaID, "venda_produto_item")
+		if err != nil {
+			jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		valorTotalItem := it.quantidade * it.valorUnitario
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO venda_produto_item (id, empresa_id, venda_id, produto_fabricado_id,
+				cliente_id, quantidade, valor_unitario, valor_total)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+			itemID, empresaID, vendaID, it.produtoFabricadoID, clienteID,
+			it.quantidade, it.valorUnitario, valorTotalItem)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = atualizarEstoqueProdutoFabricado(r.Context(), tx, it.produtoFabricadoID, empresaID, -it.quantidade, dataVenda, usuarioID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if primeiroNome == "" {
+			tx.QueryRow(r.Context(),
+				`SELECT nome FROM produto_fabricado WHERE id = $1 AND empresa_id = $2`,
+				it.produtoFabricadoID, empresaID).Scan(&primeiroNome)
+		}
+
+		totalValor += valorTotalItem
+	}
+
+	_, err = tx.Exec(r.Context(),
+		`UPDATE venda_produto SET valor_total = $1 WHERE id = $2 AND empresa_id = $3`,
+		totalValor, vendaID, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Gera contas a receber da venda
+	if clienteID > 0 {
+		vencimento := dataVenda
+		descricao := "Venda de produtos"
+		if primeiroNome != "" {
+			descricao = fmt.Sprintf("Venda: %s", primeiroNome)
+			if len(encomendaItens) > 1 {
+				descricao = fmt.Sprintf("Venda: %s e mais %d item(ns)", primeiroNome, len(encomendaItens)-1)
+			}
+		}
+		catID := categoriaReceberID
+		config, errCfg := queryLancamentoConfig(r.Context(), h.Pool, empresaID, "venda_produto")
+		if errCfg == nil && config != nil {
+			catID = config.CategoriaID
+			descricao = buildDescricao(config.DescricaoTemplate, map[string]string{
+				"{nome}": primeiroNome, "{quantidade}": fmt.Sprintf("%.2f", totalValor),
+			})
+			if !recebido && dataVenda != "" && config.DiasVencimento > 0 {
+				tx.QueryRow(r.Context(),
+					`SELECT ($1::date + $2::integer)::text`,
+					dataVenda, config.DiasVencimento).Scan(&vencimento)
+			}
+		}
+
+		var crID int
+		crID, err = database.GerarID(r.Context(), tx, empresaID, "contas_receber")
+		if err != nil {
+			jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = tx.QueryRow(r.Context(), `
+			INSERT INTO contas_receber (id, empresa_id, usuario_id, cliente_id, descricao,
+				valor, data_vencimento, recebido, id_categoria, lancamento_origem_id)
+			VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,$9,$10)
+			RETURNING id
+		`, crID, empresaID, usuarioID, clienteID,
+			descricao, totalValor, vencimento, recebido, catID, vendaID).Scan(&crID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Baixa a encomenda
+	_, err = tx.Exec(r.Context(),
+		`UPDATE encomenda SET status = 2, venda_id = $1 WHERE id = $2 AND empresa_id = $3`,
+		vendaID, encomendaID, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tx.Commit(r.Context())
+	jsonSuccess(w, map[string]interface{}{
+		"mensagem": "Venda gerada com sucesso",
+		"venda_id": vendaID,
+		"id":       vendaID,
+		"codigo":   vendaID,
+	})
+}
+
 // --- Fabricacao Custo Adicional ---
 func (h *ProducaoHandler) FabricacaoCustoAdicionalListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)

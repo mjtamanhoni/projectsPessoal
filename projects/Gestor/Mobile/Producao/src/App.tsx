@@ -10,6 +10,7 @@ import Movimento from './pages/Movimento';
 import Relatorios from './pages/Relatorios';
 import Ajuda from './pages/Ajuda';
 import EmBreve from './pages/EmBreve';
+import Encomendas from './pages/Encomendas';
 import ServerConfig from './pages/ServerConfig';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -131,6 +132,15 @@ function Router() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/encomendas"
+        element={
+          <RequireAuth>
+            <Encomendas />
+          </RequireAuth>
+        }
+      />
+
       <Route path="*" element={<Navigate to={autenticado ? '/dashboard' : '/login'} replace />} />
     </Routes>
   );

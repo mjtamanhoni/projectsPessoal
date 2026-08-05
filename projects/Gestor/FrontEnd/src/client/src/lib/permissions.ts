@@ -38,6 +38,7 @@ export const formRouteMap: Record<string, string> = {
   'Custos Adicionais': '/custos-adicionais',
   'Fabricacoes': '/fabricacoes',
   'Vendas Produto': '/vendas-produto',
+  'Encomendas': '/encomendas',
   'Receitas Ingredientes': '/receitas-ingredientes',
   'Custos Fab.': '/fabricacao-custos-adicionais',
   'Estoque Insumo': '/estoque-insumo',

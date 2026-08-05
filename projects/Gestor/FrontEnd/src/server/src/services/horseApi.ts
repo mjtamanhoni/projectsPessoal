@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -1249,6 +1249,55 @@ class HorseApiService {
   async excluirVendaProduto(id: number): Promise<unknown> {
     try {
       const res = await this.api.delete('/vendaProduto', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarEncomendas(params?: Record<string, unknown>): Promise<Encomenda[]> {
+    try {
+      const res = await this.api.get('/encomenda', { params, headers: this.getAuthHeaders() });
+      return res.data as Encomenda[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarEncomendas(items: Encomenda[], empresaId?: number): Promise<unknown> {
+    try {
+      const header = (Array.isArray(items) ? items : [items])[0] ?? {} as Encomenda;
+      const payload = {
+        id: header.id ?? header.codigo ?? 0,
+        cliente_id: header.cliente_id,
+        data_encomenda: header.data_encomenda,
+        observacao: header.observacao ?? '',
+        itens: (header.itens ?? []).map((i) => ({
+          produto_fabricado_id: i.produto_fabricado_id,
+          quantidade: Number(i.quantidade),
+          valor_unitario: Number(i.valor_unitario),
+          valor_total: Number(i.valor_total),
+        })),
+      };
+      const res = await this.api.post('/encomenda', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirEncomenda(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/encomenda', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async gerarVendaDeEncomenda(data: { id: number; data_venda: string; recebido?: boolean; categoria_receber_id?: number }): Promise<unknown> {
+    try {
+      const res = await this.api.post('/encomenda/gerarVenda', data, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);

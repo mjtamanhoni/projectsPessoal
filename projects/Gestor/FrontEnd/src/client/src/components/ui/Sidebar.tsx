@@ -46,7 +46,7 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
     },
     {
       label: 'Movimento',
-      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
+      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Encomendas', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
     },
     {
       label: 'Relatorios',
@@ -60,7 +60,7 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
     },
     {
       label: 'Movimento',
-      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
+      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Encomendas', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
     },
     {
       label: 'Relatorios',

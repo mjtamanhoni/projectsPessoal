@@ -227,6 +227,31 @@ export const vendaProdutoBodySchema = z.object({
   recebido: z.boolean().optional(),
 });
 
+const encomendaItemSchema = z.object({
+  produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
+  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+  valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
+  valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
+});
+
+export const encomendaBodySchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  cliente_id: z.number().int().positive('Cliente e obrigatorio'),
+  valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
+  data_encomenda: z.string().min(1, 'Data e obrigatoria'),
+  observacao: z.string().max(500).optional(),
+  itens: z.array(encomendaItemSchema).min(1, 'Adicione ao menos um item'),
+});
+
+export const encomendaBaixaSchema = z.object({
+  id: z.number().int().positive('Encomenda e obrigatoria'),
+  id_encomenda: z.number().int().positive().optional(),
+  data_venda: z.string().min(1, 'Data da venda e obrigatoria'),
+  recebido: z.boolean().optional(),
+  categoria_receber_id: z.number().int().positive().optional(),
+});
+
 export const fabricacaoCustoAdicionalBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),

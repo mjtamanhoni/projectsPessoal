@@ -14,6 +14,30 @@ export interface LoginResponse {
   is_superadmin: boolean;
 }
 
+export interface EncomendaItem {
+  id?: number;
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+}
+
+export interface Encomenda {
+  id?: number;
+  codigo?: number;
+  cliente_id?: number;
+  cliente_nome?: string;
+  data_encomenda: string;
+  valor_total?: number;
+  observacao?: string;
+  status?: number;
+  baixado?: boolean;
+  venda_id?: number;
+  qtd_itens?: number;
+  itens?: EncomendaItem[];
+}
+
 export interface DashboardData {
   kpis: {
     total_vendas: number;
@@ -178,4 +202,46 @@ export async function testServer(host: string, port: number): Promise<void> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function listarEncomendas(): Promise<Encomenda[]> {
+  const res = await request('/encomenda', {}, true);
+  return (await parseResponse(res)) as Encomenda[];
+}
+
+export async function listarEncomendaItens(id: number): Promise<EncomendaItem[]> {
+  const res = await request(`/encomenda?id=${id}`, {}, true);
+  const rows = (await parseResponse(res)) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    id: row.item_id != null ? Number(row.item_id) : undefined,
+    produto_fabricado_id: Number(row.produto_fabricado_id) || 0,
+    produto_nome: row.produto_nome ? String(row.produto_nome) : undefined,
+    quantidade: Number(row.quantidade) || 0,
+    valor_unitario: Number(row.valor_unitario) || 0,
+    valor_total: Number(row.item_valor_total ?? row.valor_total) || 0,
+  }));
+}
+
+export async function salvarEncomenda(data: Encomenda): Promise<{ id?: number; codigo?: number } | null> {
+  const res = await request('/encomenda', { method: 'POST', body: JSON.stringify(data) }, true);
+  const parsed = (await parseResponse(res)) as Record<string, unknown> | null;
+  if (!parsed) return null;
+  return {
+    id: parsed.id != null ? Number(parsed.id) : undefined,
+    codigo: parsed.codigo != null ? Number(parsed.codigo) : undefined,
+  };
+}
+
+export async function excluirEncomenda(id: number): Promise<void> {
+  const res = await request(`/encomenda?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function gerarVendaDeEncomenda(input: {
+  id_encomenda: number;
+  data_venda?: string;
+  recebido?: boolean;
+}): Promise<{ venda_id?: number; mensagem?: string } | null> {
+  const res = await request('/encomenda/gerarVenda', { method: 'POST', body: JSON.stringify(input) }, true);
+  return (await parseResponse(res)) as { venda_id?: number; mensagem?: string } | null;
 }

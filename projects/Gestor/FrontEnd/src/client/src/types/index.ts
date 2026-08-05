@@ -374,6 +374,32 @@ export interface VendaProduto {
   recebido?: boolean;
 }
 
+export interface EncomendaItem {
+  item_id?: number;
+  id?: number;
+  produto_fabricado_id: number;
+  produto_nome?: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+}
+
+export interface Encomenda {
+  codigo?: number;
+  id?: number;
+  cliente_id: number;
+  cliente_nome?: string;
+  usuario_id?: number;
+  valor_total: number;
+  data_encomenda: string;
+  observacao?: string;
+  status?: number;
+  baixado?: boolean;
+  venda_id?: number;
+  qtd_itens?: number;
+  itens?: EncomendaItem[];
+}
+
 export interface EstoqueInsumo {
   codigo?: number;
   id?: number;
