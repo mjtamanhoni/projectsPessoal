@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import { z } from 'zod';
 import type { Insumo, Fornecedor, Marca } from '@/types';
@@ -112,12 +113,12 @@ export function InsumoForm({ onSubmit, onCancel, initial }: InsumoFormProps) {
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Fornecedor</label>
-              <select className="input-field" {...field} value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}>
-                <option value="">Selecione...</option>
-                {fornecedores.map((f) => (
-                  <option key={f.id ?? f.codigo} value={f.id ?? f.codigo}>{f.nome}</option>
-                ))}
-              </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={fornecedores.map((f) => ({ value: (f.id ?? f.codigo)!, label: f.nome }))}
+              title="Selecionar Fornecedor"
+            />
             {errors.id_fornecedor && (
               <p className="text-xs text-accent-red mt-1">{errors.id_fornecedor.message}</p>
             )}
@@ -130,12 +131,12 @@ export function InsumoForm({ onSubmit, onCancel, initial }: InsumoFormProps) {
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Marca</label>
-            <select className="input-field" {...field} value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}>
-              <option value="">Selecione...</option>
-              {marcas.map((m) => (
-                <option key={m.id ?? m.codigo} value={m.id ?? m.codigo}>{m.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={marcas.map((m) => ({ value: (m.id ?? m.codigo)!, label: m.nome }))}
+              title="Selecionar Marca"
+            />
             {errors.id_marca && (
               <p className="text-xs text-accent-red mt-1">{errors.id_marca.message}</p>
             )}

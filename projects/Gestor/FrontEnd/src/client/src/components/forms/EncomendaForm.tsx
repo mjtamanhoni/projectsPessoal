@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Encomenda, EncomendaItem, ProdutoFabricado, Cliente } from '@/types';
 import { formatCurrency, formatCurrencyInput, formatQuantityInput, formatDecimals, parseCurrencyInput } from '@/lib/utils';
@@ -20,7 +21,6 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
 
   const [itens, setItens] = useState<EncomendaItem[]>(initial?.itens ?? []);
   const [selectedProduto, setSelectedProduto] = useState<number | ''>('');
-  const produtoRef = useRef<HTMLSelectElement>(null);
   const qtdRef = useRef<HTMLInputElement>(null);
   const [itemQtd, setItemQtd] = useState('');
   const [itemUnitRaw, setItemUnitRaw] = useState('');
@@ -43,7 +43,7 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
     setSelectedProduto('');
     setItemQtd('');
     setItemUnitRaw('');
-    produtoRef.current?.focus();
+    qtdRef.current?.focus();
   };
 
   const removeItem = (idx: number) => {
@@ -68,10 +68,12 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
       <div className="grid grid-cols-1 gap-4">
         <div className="space-y-1.5">
           <label className="label-field">Cliente *</label>
-          <select className="input-field" value={clienteId} onChange={(e) => setClienteId(Number(e.target.value))}>
-            <option value={0}>Selecione...</option>
-            {clientes.map((c) => <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>{c.nome}</option>)}
-          </select>
+          <RegistroSelect<number>
+            value={clienteId || null}
+            onChange={setClienteId}
+            options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
+            title="Selecionar Cliente"
+          />
         </div>
         <div className="flex items-end gap-3">
           <div className="flex-1">
@@ -92,18 +94,15 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
         <div className="space-y-2">
           <div className="space-y-1">
             <label className="label-field text-xs">Produto</label>
-            <select
-              ref={produtoRef}
-              className="input-field text-sm"
-              value={selectedProduto}
-              onChange={(e) => {
-                setSelectedProduto(e.target.value ? Number(e.target.value) : '');
-                if (e.target.value) qtdRef.current?.focus();
+            <RegistroSelect<number>
+              value={typeof selectedProduto === 'number' ? selectedProduto : null}
+              onChange={(v) => {
+                setSelectedProduto(v);
+                qtdRef.current?.focus();
               }}
-            >
-              <option value="">Selecione...</option>
-              {produtos.map((p) => <option key={p.id ?? p.codigo} value={p.id ?? p.codigo}>{p.nome}</option>)}
-            </select>
+              options={produtos.map((p) => ({ value: (p.id ?? p.codigo)!, label: p.nome }))}
+              title="Selecionar Produto"
+            />
           </div>
           <div className="flex items-end gap-3">
             <div className="w-32">

@@ -2,6 +2,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import { z } from 'zod';
 import type { FabricacaoCustoAdicional, CustoAdicionalTipo } from '@/types';
@@ -54,10 +55,12 @@ export function FabricacaoCustoAdicionalForm({ onSubmit, onCancel, initial, fabr
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Tipo de Custo *</label>
-            <select className="input-field" value={field.value ?? ''} onChange={(e) => field.onChange(Number(e.target.value))}>
-              <option value="">Selecione...</option>
-              {tiposCusto.map((t) => <option key={t.id ?? t.codigo} value={t.id ?? t.codigo}>{t.nome}</option>)}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={tiposCusto.map((t) => ({ value: (t.id ?? t.codigo)!, label: t.nome }))}
+              title="Selecionar Tipo de Custo"
+            />
             {errors.custo_adicional_tipo_id && (
               <p className="text-xs text-accent-red mt-1">{errors.custo_adicional_tipo_id.message}</p>
             )}

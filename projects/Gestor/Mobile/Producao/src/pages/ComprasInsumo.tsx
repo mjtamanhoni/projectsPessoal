@@ -214,7 +214,7 @@ export default function ComprasInsumo() {
   return (
     <div className="screen">
       <div className="screen-topbar" />
-      <BackButton onClick={() => navigate('/cadastro')} />
+      <BackButton onClick={() => navigate(-1)} />
       <div className="dashboard-title" style={{ left: 42, top: 24 }}>
         Compras Insumo
       </div>

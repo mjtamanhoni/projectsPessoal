@@ -2,6 +2,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import { z } from 'zod';
 import type { ReceitaIngrediente, ProdutoFabricado, Insumo } from '@/types';
@@ -78,10 +79,12 @@ export function ReceitaIngredienteForm({ onSubmit, onCancel, initial }: ReceitaI
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Produto Fabricado *</label>
-            <select className="input-field" value={field.value ?? ''} onChange={(e) => field.onChange(Number(e.target.value))}>
-              <option value="">Selecione...</option>
-              {produtos.map((p) => <option key={p.id ?? p.codigo} value={p.id ?? p.codigo}>{p.nome}</option>)}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={produtos.map((p) => ({ value: (p.id ?? p.codigo)!, label: p.nome }))}
+              title="Selecionar Produto Fabricado"
+            />
             {errors.produto_fabricado_id && (
               <p className="text-xs text-accent-red mt-1">{errors.produto_fabricado_id.message}</p>
             )}
@@ -94,10 +97,12 @@ export function ReceitaIngredienteForm({ onSubmit, onCancel, initial }: ReceitaI
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Insumo *</label>
-            <select className="input-field" value={field.value ?? ''} onChange={(e) => field.onChange(Number(e.target.value))}>
-              <option value="">Selecione...</option>
-              {insumos.map((i) => <option key={i.id ?? i.codigo} value={i.id ?? i.codigo}>{i.nome}</option>)}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={insumos.map((i) => ({ value: (i.id ?? i.codigo)!, label: i.nome, sub: i.unidade_medida || undefined }))}
+              title="Selecionar Insumo"
+            />
             {errors.insumo_id && (
               <p className="text-xs text-accent-red mt-1">{errors.insumo_id.message}</p>
             )}

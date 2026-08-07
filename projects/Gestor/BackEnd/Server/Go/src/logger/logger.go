@@ -20,6 +20,7 @@ type LogEntry struct {
 	EmpresaID     int                 `json:"empresa_id"`
 	UsuarioID     int                 `json:"usuario_id"`
 	DuracaoMs     int64               `json:"duracao_ms"`
+	IP            string              `json:"ip,omitempty"`
 	JsonRecebido  string              `json:"jsonRecebido,omitempty"`
 	JsonRetornado string              `json:"jsonRetornado,omitempty"`
 	Scripts       []map[string]string `json:"scripts,omitempty"`

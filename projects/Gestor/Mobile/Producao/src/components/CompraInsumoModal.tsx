@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { mascaraMoeda, numeroParaDecimal } from '../format';
 import type { CompraInsumo, CompraInsumoItem, Fornecedor, Insumo, Marca } from '../api';
+import SeletorRegistro, { CampoSeletor } from './SeletorRegistro';
 
 const QTD_CASAS = 4;
 const VALOR_CASAS = 2;
@@ -31,6 +32,7 @@ export default function CompraInsumoModal({ titulo, inicial, insumos, fornecedor
   const [itemTotal, setItemTotal] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [picker, setPicker] = useState<'fornecedor' | 'insumo' | null>(null);
 
   const qtdParsed = itemQtd ? Number(itemQtd.replace(/\D/g, '')) / 10000 : 0;
   const totalParsed = itemTotal ? Number(itemTotal.replace(/\D/g, '')) / 100 : 0;
@@ -111,19 +113,11 @@ export default function CompraInsumoModal({ titulo, inicial, insumos, fornecedor
           <div className="modal-label" style={{ top: 6 }}>
             Fornecedor
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 22 }}
-            value={fornecedorId}
-            onChange={(e) => setFornecedorId(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {fornecedores.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome}
-              </option>
-            ))}
-          </select>
+            texto={fornecedores.find((f) => String(f.id) === fornecedorId)?.nome}
+            aoAbrir={() => setPicker('fornecedor')}
+          />
 
           <div className="modal-label" style={{ top: 62 }}>
             Data da Compra *
@@ -161,23 +155,11 @@ export default function CompraInsumoModal({ titulo, inicial, insumos, fornecedor
           <div className="modal-label" style={{ top: 264 }}>
             Insumo
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 280 }}
-            value={selectedInsumo}
-            onChange={(e) => setSelectedInsumo(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {insumos.map((i) => {
-              const mn = marcaNome(i);
-              return (
-                <option key={i.id} value={i.id}>
-                  {i.nome}
-                  {mn ? ` (${mn})` : ''}
-                </option>
-              );
-            })}
-          </select>
+            texto={insumos.find((i) => String(i.id) === selectedInsumo)?.nome}
+            aoAbrir={() => setPicker('insumo')}
+          />
 
           <div className="modal-label" style={{ top: 324 }}>
             Quantidade
@@ -255,7 +237,7 @@ export default function CompraInsumoModal({ titulo, inicial, insumos, fornecedor
             const mn = item.marca_nome || marcaNome(insumo) || '—';
             return (
               <div key={idx}>
-                <div className="compra-sub-row compra-item" style={{ position: 'absolute', left: 20, top: itemTop(idx), padding: 0 }}>
+<div className="compra-sub-row compra-item" style={{ position: 'absolute', left: 20, top: itemTop(idx), padding: 0 }}>
                   <span className="col-insumo">{insumo?.nome ?? item.insumo_nome ?? `ID ${item.insumo_id}`}</span>
                   <span className="col-marca compra-item-muted">{mn}</span>
                   <span className="col-qtd">{numeroParaDecimal(item.quantidade, QTD_CASAS)}</span>
@@ -301,6 +283,38 @@ export default function CompraInsumoModal({ titulo, inicial, insumos, fornecedor
           </div>
         </div>
       </div>
+
+      {picker === 'fornecedor' && (
+        <SeletorRegistro<Fornecedor>
+          titulo="Selecionar Fornecedor"
+          placeholder="Buscar fornecedor por nome..."
+          registros={fornecedores}
+          rotulo={(f) => f.nome}
+          aoSelecionar={(f) => {
+            setFornecedorId(String(f.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
+
+      {picker === 'insumo' && (
+        <SeletorRegistro<Insumo>
+          titulo="Selecionar Insumo"
+          placeholder="Buscar insumo por nome..."
+          registros={insumos}
+          rotulo={(i) => i.nome}
+          subtitulo={(i) => {
+            const extra = [i.unidade_medida, marcaNome(i)].filter(Boolean).join(' • ');
+            return extra || undefined;
+          }}
+          aoSelecionar={(i) => {
+            setSelectedInsumo(String(i.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }

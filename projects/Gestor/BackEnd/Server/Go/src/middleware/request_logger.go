@@ -76,6 +76,7 @@ func RequestLogger(logStore *logger.LogStore) func(http.Handler) http.Handler {
 				EmpresaID:     claimsFromRequest(r),
 				UsuarioID:     userIDFromRequest(r),
 				DuracaoMs:     duration.Milliseconds(),
+				IP:            r.RemoteAddr,
 				JsonRecebido:  jsonRecebido,
 				JsonRetornado: jsonRetornado,
 				Scripts:       database.GetScripts(ctx),

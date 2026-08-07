@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatCurrencyInput, parseCurrencyInput, gerarParcelas, type ParcelasConfig } from '@/lib/utils';
 import type { ContaPagar } from '@/types';
@@ -255,10 +256,12 @@ export function ContaPagarForm({ onSubmit, onCancel, initial, fornecedores, cate
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Fornecedor *</label>
-            <select className="input-field" {...field}>
-              <option value="">Selecione...</option>
-              {fornecedores.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
-            </select>
+            <RegistroSelect<string>
+              value={field.value || null}
+              onChange={field.onChange}
+              options={fornecedores.map((f) => ({ value: String(f.id), label: f.nome }))}
+              title="Selecionar Fornecedor"
+            />
             {errors.fornecedorId && (
               <p className="text-xs text-accent-red mt-1">{errors.fornecedorId.message}</p>
             )}
@@ -272,10 +275,12 @@ export function ContaPagarForm({ onSubmit, onCancel, initial, fornecedores, cate
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Categoria</label>
-            <select className="input-field" {...field}>
-              <option value="">Selecione...</option>
-              {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            <RegistroSelect<string>
+              value={field.value || null}
+              onChange={field.onChange}
+              options={categorias.map((c) => ({ value: String(c.id), label: c.nome }))}
+              title="Selecionar Categoria"
+            />
           </div>
         )}
       />

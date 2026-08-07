@@ -21,12 +21,12 @@ router.post('/login', rateLimit_1.authLimiter, (0, validate_1.validate)(schemas_
     try {
         const { login, senha, pin, empresa } = req.body;
         if (pin) {
-            const result = await horseApi_1.horseApi.login({ pin, empresa });
-            res.json({ ...result, empresaId: empresa });
+            const result = await horseApi_1.horseApi.login({ pin, empresa: Number(empresa) || 1 });
+            res.json({ ...result, empresaId: result.empresa ?? empresa });
             return;
         }
         const result = await horseApi_1.horseApi.login({ login, senha, empresa });
-        res.json({ ...result, empresaId: empresa });
+        res.json({ ...result, empresaId: result.empresa ?? empresa });
     }
     catch (error) {
         const status = error instanceof Error && 'status' in error ? error.status : 500;

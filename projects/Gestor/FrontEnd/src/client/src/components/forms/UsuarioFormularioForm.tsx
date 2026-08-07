@@ -2,6 +2,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import { usuarioFormularioSchema, type UsuarioFormularioInput } from '@/schemas';
 import type { UsuarioFormulario } from '@/types';
@@ -34,16 +35,12 @@ export function UsuarioFormularioForm({ onSubmit, onCancel, initial, usuarios = 
         render={({ field }) => (
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">Usuario *</label>
-            <select
-              value={field.value || ''}
-              onChange={(e) => field.onChange(Number(e.target.value))}
-              className="w-full px-3 py-2 text-sm border border-border-primary rounded-lg bg-background-primary text-text-primary outline-none focus:border-accent-primary transition-colors"
-            >
-              <option value="">Selecione um usuario</option>
-              {usuarios.map((u) => (
-                <option key={u.id} value={u.id}>{u.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value || null}
+              onChange={(v) => field.onChange(v)}
+              options={usuarios.map((u) => ({ value: (u.id ?? 0)! , label: u.nome }))}
+              title="Selecionar Usuario"
+            />
             {errors.usuarioId && <p className="text-xs text-accent-red mt-1">{errors.usuarioId.message}</p>}
           </div>
         )}
@@ -55,16 +52,12 @@ export function UsuarioFormularioForm({ onSubmit, onCancel, initial, usuarios = 
         render={({ field }) => (
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">Formulario *</label>
-            <select
-              value={field.value || ''}
-              onChange={(e) => field.onChange(Number(e.target.value))}
-              className="w-full px-3 py-2 text-sm border border-border-primary rounded-lg bg-background-primary text-text-primary outline-none focus:border-accent-primary transition-colors"
-            >
-              <option value="">Selecione um formulario</option>
-              {formularios.map((f) => (
-                <option key={f.id} value={f.id}>{f.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value || null}
+              onChange={(v) => field.onChange(v)}
+              options={formularios.map((f) => ({ value: (f.id ?? 0)!, label: f.nome }))}
+              title="Selecionar Formulario"
+            />
             {errors.formularioId && <p className="text-xs text-accent-red mt-1">{errors.formularioId.message}</p>}
           </div>
         )}

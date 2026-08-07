@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { HoraAbatidaForm } from '@/components/forms/HoraAbatidaForm';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
@@ -187,16 +188,13 @@ export function Abatimentos() {
   return (
     <Layout>
       <PageHeader title="Abatimentos de Horas" subtitle="Registre abatimentos sobre o saldo de horas">
-        <select
-          value={filtroUsuarioId ?? ''}
-          onChange={(e) => setFiltroUsuarioId(e.target.value ? Number(e.target.value) : undefined)}
-          className="px-3 py-1.5 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-        >
-          <option value="">Todos os usuarios</option>
-          {usuarios.map((u) => (
-            <option key={u.id ?? u.codigo} value={u.id ?? u.codigo}>{u.nome}</option>
-          ))}
-        </select>
+        <RegistroSelect<number>
+          value={filtroUsuarioId ?? null}
+          onChange={(v) => setFiltroUsuarioId(v)}
+          options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
+          title="Filtro por Usuario"
+          placeholder="Todos os usuarios"
+        />
         <ShowForPermission rota="/abatimentos" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setEditingId(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Abatimento

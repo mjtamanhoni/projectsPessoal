@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { PerdaInsumo, Insumo } from '@/types';
 
@@ -42,20 +43,12 @@ export function PerdaInsumoForm({ onSubmit, onCancel, initial }: PerdaInsumoForm
         render={({ field }) => (
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">Insumo *</label>
-            <select
-              {...field}
-              value={field.value ?? ''}
-              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-              className="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
-              autoFocus
-            >
-              <option value="">Selecione um insumo</option>
-              {insumos.map((insumo) => (
-                <option key={insumo.id ?? insumo.codigo} value={insumo.id ?? insumo.codigo}>
-                  {insumo.nome}
-                </option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={insumos.map((insumo) => ({ value: (insumo.id ?? insumo.codigo)!, label: insumo.nome }))}
+              title="Selecionar Insumo"
+            />
             {errors.insumo_id && <span className="text-xs text-accent-red">{errors.insumo_id.message}</span>}
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { mascaraMoeda, numeroParaDecimal } from '../format';
 import type { ProdutoFabricado, UsoConsumo } from '../api';
+import SeletorRegistro, { CampoSeletor } from './SeletorRegistro';
 
 const QTD_CASAS = 4;
 
@@ -21,6 +22,7 @@ export default function UsoConsumoModal({ titulo, inicial, produtos, onCancel, o
   const [motivo, setMotivo] = useState(inicial?.motivo ?? '');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [picker, setPicker] = useState<'produto' | null>(null);
 
   const qtdParsed = quantidade ? Number(quantidade.replace(/\D/g, '')) / 10000 : 0;
 
@@ -67,19 +69,11 @@ export default function UsoConsumoModal({ titulo, inicial, produtos, onCancel, o
           <div className="modal-label" style={{ top: 6 }}>
             Produto *
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 22 }}
-            value={produtoId}
-            onChange={(e) => setProdutoId(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {produtos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
+            texto={produtos.find((p) => String(p.id) === produtoId)?.nome}
+            aoAbrir={() => setPicker('produto')}
+          />
 
           <div className="modal-label" style={{ top: 62 }}>
             Quantidade Consumida *
@@ -127,6 +121,20 @@ export default function UsoConsumoModal({ titulo, inicial, produtos, onCancel, o
           </button>
         </div>
       </div>
+
+      {picker === 'produto' && (
+        <SeletorRegistro<ProdutoFabricado>
+          titulo="Selecionar Produto"
+          placeholder="Buscar produto por nome..."
+          registros={produtos}
+          rotulo={(p) => p.nome}
+          aoSelecionar={(p) => {
+            setProdutoId(String(p.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }

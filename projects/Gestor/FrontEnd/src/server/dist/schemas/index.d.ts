@@ -308,6 +308,6 @@ export declare const loginBodySchema: z.ZodObject<{
     login: z.ZodOptional<z.ZodString>;
     senha: z.ZodOptional<z.ZodString>;
     pin: z.ZodOptional<z.ZodString>;
-    empresa: z.ZodNumber;
+    empresa: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>>;
 }, z.core.$strip>;
 //# sourceMappingURL=index.d.ts.map

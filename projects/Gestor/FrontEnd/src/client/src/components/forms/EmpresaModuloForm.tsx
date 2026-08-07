@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import type { Empresa, Modulo } from '@/types';
 
@@ -31,16 +32,12 @@ export function EmpresaModuloForm({ onSubmit, onCancel, empresas, modulos, initi
     <form onSubmit={(e) => { e.preventDefault(); onSubmit({ empresa_id: empresaId, modulos: selectedModulos }); }} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-1">Empresa *</label>
-        <select
-          value={empresaId || ''}
-          onChange={(e) => setEmpresaId(Number(e.target.value))}
-          className="w-full px-3 py-2 text-sm border border-border-primary rounded-lg bg-background-primary text-text-primary outline-none focus:border-accent-primary transition-colors"
-        >
-          <option value="">Selecione uma empresa</option>
-          {empresas.map((e) => (
-            <option key={e.id ?? e.codigo} value={e.id ?? e.codigo}>{e.razao_social}</option>
-          ))}
-        </select>
+        <RegistroSelect<number>
+          value={empresaId || null}
+          onChange={setEmpresaId}
+          options={empresas.map((e) => ({ value: (e.id ?? e.codigo)!, label: e.razao_social }))}
+          title="Selecionar Empresa"
+        />
       </div>
 
       <div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import type { ContaPagar, ContaReceber, Cliente, Fornecedor, Categoria } from '@/types';
@@ -409,21 +410,23 @@ function RelacaoContasReceber() {
           </div>
           <div>
             <label className="block text-sm text-text-secondary mb-1">Cliente</label>
-            <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className="px-3 py-2 border border-border-primary rounded-lg bg-background-primary text-text-primary text-sm">
-              <option value="">Todos</option>
-              {clientes.map((c) => (
-                <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>{c.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<string>
+              value={clienteId || undefined}
+              onChange={setClienteId}
+              options={clientes.map((c) => ({ value: String(c.id ?? c.codigo), label: c.nome }))}
+              title="Selecionar Cliente"
+              placeholder="Todos"
+            />
           </div>
           <div>
             <label className="block text-sm text-text-secondary mb-1">Categoria</label>
-            <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="px-3 py-2 border border-border-primary rounded-lg bg-background-primary text-text-primary text-sm">
-              <option value="">Todos</option>
-              {categorias.map((c) => (
-                <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>{c.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<string>
+              value={categoriaId || undefined}
+              onChange={setCategoriaId}
+              options={categorias.map((c) => ({ value: String(c.id ?? c.codigo), label: c.nome }))}
+              title="Selecionar Categoria"
+              placeholder="Todos"
+            />
           </div>
           <button onClick={() => { setDataInicio(range.inicio); setDataFim(range.fim); setStatus('ambos'); setClienteId(''); setCategoriaId(''); }} className="px-4 py-2 text-sm text-text-secondary border border-border-primary rounded-lg hover:bg-background-hover transition-colors">Limpar</button>
           <button onClick={fetchData} className="px-4 py-2 text-sm bg-accent-primary text-white rounded-lg hover:bg-accent-hover transition-colors">Filtrar</button>
@@ -586,21 +589,23 @@ function RelacaoContasPagar() {
           </div>
           <div>
             <label className="block text-sm text-text-secondary mb-1">Fornecedor</label>
-            <select value={fornecedorId} onChange={(e) => setFornecedorId(e.target.value)} className="px-3 py-2 border border-border-primary rounded-lg bg-background-primary text-text-primary text-sm">
-              <option value="">Todos</option>
-              {fornecedores.map((f) => (
-                <option key={f.id ?? f.codigo} value={f.id ?? f.codigo}>{f.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<string>
+              value={fornecedorId || undefined}
+              onChange={setFornecedorId}
+              options={fornecedores.map((f) => ({ value: String(f.id ?? f.codigo), label: f.nome }))}
+              title="Selecionar Fornecedor"
+              placeholder="Todos"
+            />
           </div>
           <div>
             <label className="block text-sm text-text-secondary mb-1">Categoria</label>
-            <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="px-3 py-2 border border-border-primary rounded-lg bg-background-primary text-text-primary text-sm">
-              <option value="">Todos</option>
-              {categorias.map((c) => (
-                <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>{c.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<string>
+              value={categoriaId || undefined}
+              onChange={setCategoriaId}
+              options={categorias.map((c) => ({ value: String(c.id ?? c.codigo), label: c.nome }))}
+              title="Selecionar Categoria"
+              placeholder="Todos"
+            />
           </div>
           <button onClick={() => { setDataInicio(range.inicio); setDataFim(range.fim); setStatus('ambos'); setFornecedorId(''); setCategoriaId(''); }} className="px-4 py-2 text-sm text-text-secondary border border-border-primary rounded-lg hover:bg-background-hover transition-colors">Limpar</button>
           <button onClick={fetchData} className="px-4 py-2 text-sm bg-accent-primary text-white rounded-lg hover:bg-accent-hover transition-colors">Filtrar</button>

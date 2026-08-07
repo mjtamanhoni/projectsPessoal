@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Plus } from 'lucide-react';
 import { empresaSchema, type EmpresaInput } from '@/schemas';
+import { formatCpfCnpj, formatPhone, formatCelular } from '@/lib/utils';
 import type { Empresa } from '@/types';
 
 interface EmpresaFormProps {
@@ -59,7 +60,15 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
           name="cnpj_cpf"
           control={control}
           render={({ field }) => (
-            <Input label="CNPJ/CPF" error={errors.cnpj_cpf?.message} {...field} />
+            <Input
+              label="CNPJ/CPF"
+              error={errors.cnpj_cpf?.message}
+              placeholder="CPF ou CNPJ"
+              {...field}
+              onChange={(e) => {
+                field.onChange(formatCpfCnpj(e.target.value));
+              }}
+            />
           )}
         />
         <Controller
@@ -89,14 +98,30 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
           name="telefone"
           control={control}
           render={({ field }) => (
-            <Input label="Telefone" error={errors.telefone?.message} {...field} />
+            <Input
+              label="Telefone"
+              error={errors.telefone?.message}
+              placeholder="(XX) XXXX-XXXX"
+              {...field}
+              onChange={(e) => {
+                field.onChange(formatPhone(e.target.value));
+              }}
+            />
           )}
         />
         <Controller
           name="celular"
           control={control}
           render={({ field }) => (
-            <Input label="Celular" error={errors.celular?.message} {...field} />
+            <Input
+              label="Celular"
+              error={errors.celular?.message}
+              placeholder="(XX) XXXXX-XXXX"
+              {...field}
+              onChange={(e) => {
+                field.onChange(formatCelular(e.target.value));
+              }}
+            />
           )}
         />
       </div>

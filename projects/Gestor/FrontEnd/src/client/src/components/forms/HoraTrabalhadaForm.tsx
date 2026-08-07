@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Spinner } from '@/components/ui/Spinner';
 import { Save } from 'lucide-react';
 import { horaTrabalhadaSchema, type HoraTrabalhadaInput } from '@/schemas';
@@ -132,19 +133,12 @@ export function HoraTrabalhadaForm({ onSubmit, onCancel, initial, focusDate }: H
         render={({ field }) => (
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">Usuario *</label>
-            <select
-              {...field}
-              value={field.value || ''}
-              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-              className="w-full px-3 py-2 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            >
-              <option value="">Selecione um usuario</option>
-              {usuarios.map((u) => (
-                <option key={u.id ?? u.codigo} value={u.id ?? u.codigo}>
-                  {u.nome}
-                </option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
+              title="Selecionar Usuario"
+            />
             {errors.usuarioId && <p className="text-xs text-accent-red mt-1">{errors.usuarioId.message}</p>}
           </div>
         )}
@@ -156,19 +150,16 @@ export function HoraTrabalhadaForm({ onSubmit, onCancel, initial, focusDate }: H
         render={({ field }) => (
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">Servico *</label>
-            <select
-              {...field}
-              value={field.value || ''}
-              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-              className="w-full px-3 py-2 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            >
-              <option value="">Selecione um servico</option>
-              {servicos.map((s) => (
-                <option key={s.id ?? s.codigo} value={s.id ?? s.codigo}>
-                  {s.nome} - R$ {Number(s.valorHora).toFixed(2)}/h
-                </option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={servicos.map((s) => ({
+                value: (s.id ?? s.codigo)!,
+                label: s.nome,
+                sub: `R$ ${Number(s.valorHora).toFixed(2)}/h`,
+              }))}
+              title="Selecionar Servico"
+            />
             {errors.servicoId && <p className="text-xs text-accent-red mt-1">{errors.servicoId.message}</p>}
           </div>
         )}
@@ -247,19 +238,12 @@ export function HoraTrabalhadaForm({ onSubmit, onCancel, initial, focusDate }: H
         render={({ field }) => (
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">Cliente</label>
-            <select
-              {...field}
-              value={field.value || ''}
-              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-              className="w-full px-3 py-2 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            >
-              <option value="">Selecione um cliente</option>
-              {clientes.map((c) => (
-                <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
+              title="Selecionar Cliente"
+            />
             {errors.clienteId && <p className="text-xs text-accent-red mt-1">{errors.clienteId.message}</p>}
           </div>
         )}

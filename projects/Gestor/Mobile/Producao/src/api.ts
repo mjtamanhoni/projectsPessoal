@@ -1,7 +1,16 @@
+import { aguarde, aguardePronto } from './aguarde';
+
 export interface EmpresaPublic {
   id: number;
   razao_social: string;
   fantasia: string;
+  cnpj_cpf?: string;
+  inscricao_estadual_identidade?: string;
+  regime_tributario?: string;
+  endereco?: string;
+  telefone?: string;
+  celular?: string;
+  email?: string;
 }
 
 export interface LoginResponse {
@@ -242,9 +251,17 @@ export interface DashboardData {  kpis: {
 }
 
 const SERVER_KEY = 'producao.server';
+const SERVERS_KEY = 'producao.servers';
 const TOKEN_KEY = 'producao.token';
+const REQUEST_TIMEOUT_MS = 6000;
 
-export function getServerConfig(): { host: string; port: number } {
+export interface ServerEndpoint {
+  host: string;
+  port: number;
+}
+
+let ultimoServidor: ServerEndpoint | null = null;
+function getServerConfigLegacy(): { host: string; port: number } {
   try {
     const raw = localStorage.getItem(SERVER_KEY);
     if (raw) {
@@ -257,8 +274,41 @@ export function getServerConfig(): { host: string; port: number } {
   return { host: 'localhost', port: 9000 };
 }
 
+export function getServerConfig(): { host: string; port: number } {
+  return getServerList()[0];
+}
+
 export function setServerConfig(host: string, port: number) {
   localStorage.setItem(SERVER_KEY, JSON.stringify({ host, port }));
+}
+
+export function getServerList(): ServerEndpoint[] {
+  try {
+    const raw = localStorage.getItem(SERVERS_KEY);
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list) && list.length > 0) {
+        const valid = list
+          .filter((s) => s && s.host)
+          .map((s) => ({ host: String(s.host), port: Number(s.port) || 9000 }));
+        if (valid.length > 0) return valid;
+      }
+    }
+  } catch {
+    /* ignora */
+  }
+  return [getServerConfigLegacy()];
+}
+
+export function setServerList(list: ServerEndpoint[]) {
+  const valid = list
+    .filter((s) => s && s.host.trim())
+    .map((s) => ({ host: s.host.trim(), port: Number(s.port) || 9000 }));
+  if (valid.length === 0) return;
+  localStorage.setItem(SERVERS_KEY, JSON.stringify(valid));
+  const first = valid[0];
+  localStorage.setItem(SERVER_KEY, JSON.stringify({ host: first.host, port: first.port }));
+  ultimoServidor = null;
 }
 
 export function getBaseURL(): string {
@@ -274,10 +324,33 @@ async function request(path: string, options: RequestInit = {}, autenticado = fa
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  let res: Response;
+  aguarde(descricaoOperacao(path, options));
+
+  const servers = getServerList();
+  const ordem = ultimoServidor
+    ? [ultimoServidor, ...servers.filter((s) => !(s.host === ultimoServidor?.host && s.port === ultimoServidor?.port))]
+    : servers;
+
+  let res: Response | null = null;
+
   try {
-    res = await fetch(getBaseURL() + path, { ...options, headers });
-  } catch {
+    for (const srv of ordem) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        res = await fetch(`http://${srv.host}:${srv.port}${path}`, { ...options, headers, signal: controller.signal });
+        clearTimeout(timer);
+        ultimoServidor = srv;
+        break;
+      } catch {
+        clearTimeout(timer);
+      }
+    }
+  } finally {
+    aguardePronto();
+  }
+
+  if (!res) {
     const { host, port } = getServerConfig();
     throw new Error(
       `Não foi possível conectar ao servidor (${host}:${port}). Configure o endereço em "Configurações do Servidor".`
@@ -291,6 +364,18 @@ async function request(path: string, options: RequestInit = {}, autenticado = fa
     window.dispatchEvent(new CustomEvent('producao:unauthorized'));
   }
   return res;
+}
+
+function descricaoOperacao(path: string, options: RequestInit): string {
+  const metodo = (options.method ?? 'GET').toUpperCase();
+  if (metodo === 'POST') {
+    if (path.includes('/login')) return 'Entrando no sistema...';
+    return 'Salvando dados...';
+  }
+  if (metodo === 'DELETE') return 'Excluindo registro...';
+  if (path.includes('Dashboard')) return 'Carregando relatórios...';
+  if (path.includes('Relatorio')) return 'Gerando relatório...';
+  return 'Carregando dados...';
 }
 
 async function parseResponse(res: Response): Promise<unknown> {

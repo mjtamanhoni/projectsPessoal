@@ -2,6 +2,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import { z } from 'zod';
 import type { EstoqueInsumo, Insumo } from '@/types';
@@ -56,10 +57,12 @@ export function EstoqueInsumoForm({ onSubmit, onCancel, initial, insumos }: Esto
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Insumo *</label>
-            <select className="input-field" value={field.value || ''} onChange={(e) => field.onChange(Number(e.target.value))}>
-              <option value="">Selecione...</option>
-              {insumos.map((i) => <option key={i.id ?? i.codigo} value={i.id ?? i.codigo}>{i.nome}</option>)}
-            </select>
+            <RegistroSelect<number>
+              value={field.value || null}
+              onChange={(v) => field.onChange(v)}
+              options={insumos.map((i) => ({ value: (i.id ?? i.codigo)!, label: i.nome }))}
+              title="Selecionar Insumo"
+            />
             {errors.insumo_id && (
               <p className="text-xs text-accent-red mt-1">{errors.insumo_id.message}</p>
             )}

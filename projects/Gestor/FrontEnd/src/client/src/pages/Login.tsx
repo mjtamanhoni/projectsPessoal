@@ -1,24 +1,20 @@
-import { useState, FormEvent, useEffect, useCallback } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { LogIn, KeyRound, Settings, Server, Loader2, Save, Building } from 'lucide-react';
+import { LogIn, Settings, Server, Loader2, Save } from 'lucide-react';
 import { fetchSettings, saveSettings } from '@/lib/settings';
-import api from '@/lib/api';
-import type { AppSettings, Empresa } from '@/types';
+import { formatCpfCnpj } from '@/lib/utils';
+import type { AppSettings } from '@/types';
 
 export function Login() {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
-  const [pin, setPin] = useState('');
-  const [usePin, setUsePin] = useState(false);
+  const [cnpjCpf, setCnpjCpf] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [empresaId, setEmpresaId] = useState<number>(0);
-  const [loadingEmpresas, setLoadingEmpresas] = useState(true);
   const { login: authLogin } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -37,22 +33,17 @@ export function Login() {
   }, [searchParams]);
 
   useEffect(() => {
-    const fetchEmpresas = async () => {
-      setLoadingEmpresas(true);
-      try {
-        const res = await api.get('/auth/empresas');
-        const data = res.data as Empresa[];
-        setEmpresas(data);
-        if (data.length > 0) {
-          setEmpresaId(data[0].id ?? data[0].codigo ?? 0);
-        }
-      } catch {
-        setEmpresas([]);
-      } finally {
-        setLoadingEmpresas(false);
-      }
-    };
-    fetchEmpresas();
+    try {
+      const lastLogin = localStorage.getItem('lastLogin');
+      if (lastLogin) setLogin(lastLogin);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      const last = localStorage.getItem('lastCnpjCpf');
+      if (last) setCnpjCpf(last);
+    } catch {}
   }, []);
 
   const openSettings = async () => {
@@ -89,11 +80,11 @@ export function Login() {
     setLoading(true);
 
     try {
-      if (usePin) {
-        await authLogin('', '', pin, empresaId);
-      } else {
-        await authLogin(login, senha, undefined, empresaId);
-      }
+      await authLogin(login, senha, undefined, cnpjCpf);
+      try {
+        localStorage.setItem('lastLogin', login);
+        localStorage.setItem('lastCnpjCpf', cnpjCpf);
+      } catch {}
       const settings = await fetchSettings().catch(() => null);
       const hasInitialForm = settings?.display?.moduloInicialId && settings?.display?.formularioInicialId;
       if (hasInitialForm) {
@@ -143,76 +134,35 @@ export function Login() {
             )}
 
             <div className="space-y-1.5">
-              <label className="label-field">Empresa</label>
-              {loadingEmpresas ? (
-                <div className="flex items-center gap-2 text-sm text-text-muted">
-                  <Loader2 size={14} className="animate-spin" />
-                  Carregando empresas...
-                </div>
-              ) : empresas.length > 0 ? (
-                <select
-                  value={empresaId}
-                  onChange={(e) => setEmpresaId(Number(e.target.value))}
-                  className="input-field"
-                >
-                  {empresas.map((emp) => (
-                    <option key={emp.id ?? emp.codigo} value={emp.id ?? emp.codigo}>
-                      {emp.razao_social}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  label="Codigo da Empresa"
-                  value={empresaId || ''}
-                  onChange={(e) => setEmpresaId(Number(e.target.value))}
-                  placeholder="Digite o codigo da empresa"
-                  type="number"
-                />
-              )}
-            </div>
-
-            {usePin ? (
               <Input
-                label="PIN"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="Digite seu PIN"
+                label="CNPJ/CPF da Empresa"
+                value={cnpjCpf}
+                onChange={(e) => setCnpjCpf(formatCpfCnpj(e.target.value))}
+                placeholder="Digite o CNPJ/CPF da empresa"
                 required
               />
-            ) : (
-              <>
-                <Input
-                  label="Login"
-                  value={login}
-                  onChange={(e) => setLogin(e.target.value)}
-                  placeholder="Digite seu usuário ou email"
-                  required
-                />
+            </div>
 
-                <Input
-                  label="Senha"
-                  type="password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="Digite sua senha"
-                  required
-                />
-              </>
-            )}
+            <Input
+              label="Login"
+              value={login}
+              onChange={(e) => setLogin(e.target.value)}
+              placeholder="Digite seu usuário ou email"
+              required
+            />
+
+            <Input
+              label="Senha"
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              placeholder="Digite sua senha"
+              required
+            />
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
-
-            <button
-              type="button"
-              onClick={() => setUsePin(!usePin)}
-              className="w-full text-sm text-accent-primary hover:text-accent-primary/80 transition-colors flex items-center justify-center gap-1"
-            >
-              <KeyRound size={14} />
-              {usePin ? 'Usar login e senha' : 'Entrar com PIN'}
-            </button>
           </form>
 
           <div className="mt-6 pt-4 border-t border-border-subtle text-center space-y-2">

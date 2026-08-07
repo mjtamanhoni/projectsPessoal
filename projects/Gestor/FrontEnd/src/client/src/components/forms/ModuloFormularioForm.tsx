@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import type { Modulo, Formulario } from '@/types';
 
@@ -25,16 +26,12 @@ export function ModuloFormularioForm({ onSubmit, onCancel, modulos, formularios,
     <form onSubmit={(e) => { e.preventDefault(); onSubmit({ modulo_id: moduloId, formularios: selectedFormularios }); }} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-1">Modulo *</label>
-        <select
-          value={moduloId || ''}
-          onChange={(e) => setModuloId(Number(e.target.value))}
-          className="w-full px-3 py-2 text-sm border border-border-primary rounded-lg bg-background-primary text-text-primary outline-none focus:border-accent-primary transition-colors"
-        >
-          <option value="">Selecione um modulo</option>
-          {modulos.map((m) => (
-            <option key={m.id ?? m.codigo} value={m.id ?? m.codigo}>{m.nome}</option>
-          ))}
-        </select>
+        <RegistroSelect<number>
+          value={moduloId || null}
+          onChange={setModuloId}
+          options={modulos.map((m) => ({ value: (m.id ?? m.codigo)!, label: m.nome }))}
+          title="Selecionar Modulo"
+        />
       </div>
 
       <div>

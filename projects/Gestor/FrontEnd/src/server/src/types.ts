@@ -2,7 +2,7 @@ export interface LoginRequest {
   login?: string;
   senha?: string;
   pin?: string;
-  empresa?: number;
+  empresa?: number | string;
 }
 
 export interface LoginResponse {
@@ -11,6 +11,8 @@ export interface LoginResponse {
   email: string;
   token: string;
   empresaId: number;
+  empresa?: number;
+  empresa_info?: Record<string, unknown>;
   is_superadmin?: boolean;
 }
 

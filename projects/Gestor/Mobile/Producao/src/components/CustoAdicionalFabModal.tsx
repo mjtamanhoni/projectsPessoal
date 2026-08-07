@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { mascaraMoeda } from '../format';
 import type { CustoAdicionalTipo, FabricacaoCustoAdicional } from '../api';
+import SeletorRegistro, { CampoSeletor } from './SeletorRegistro';
 
 const VALOR_CASAS = 2;
 
@@ -18,6 +19,7 @@ export default function CustoAdicionalFabModal({ titulo, inicial, fabricacaoId, 
   const [valor, setValor] = useState(inicial?.valor ? inicial.valor.toFixed(VALOR_CASAS).replace('.', ',') : '');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [picker, setPicker] = useState<'tipo' | null>(null);
 
   const valorParsed = valor ? Number(valor.replace(/\./g, '').replace(',', '.')) : 0;
 
@@ -59,19 +61,11 @@ export default function CustoAdicionalFabModal({ titulo, inicial, fabricacaoId, 
           <div className="modal-label" style={{ top: 6 }}>
             Tipo de Custo *
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 22 }}
-            value={tipoId}
-            onChange={(e) => setTipoId(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {tiposCusto.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nome}
-              </option>
-            ))}
-          </select>
+            texto={tiposCusto.find((t) => String(t.id) === tipoId)?.nome}
+            aoAbrir={() => setPicker('tipo')}
+          />
 
           <div className="modal-label" style={{ top: 62 }}>
             Valor (R$) *
@@ -103,6 +97,20 @@ export default function CustoAdicionalFabModal({ titulo, inicial, fabricacaoId, 
           </div>
         </div>
       </div>
+
+      {picker === 'tipo' && (
+        <SeletorRegistro<CustoAdicionalTipo>
+          titulo="Selecionar Tipo de Custo"
+          placeholder="Buscar tipo de custo..."
+          registros={tiposCusto}
+          rotulo={(t) => t.nome}
+          aoSelecionar={(t) => {
+            setTipoId(String(t.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }

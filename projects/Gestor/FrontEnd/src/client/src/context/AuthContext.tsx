@@ -14,7 +14,7 @@ interface AuthContextType {
   homeRoute: string;
   empresaNome: string;
   empresa: Empresa | null;
-  login: (login: string, senha: string, pin?: string, empresa?: number) => Promise<void>;
+  login: (login: string, senha: string, pin?: string, empresa?: number | string) => Promise<void>;
   logout: () => void;
   temAcesso: (rota: string) => boolean;
   temPermissao: (rota: string, acao: string) => boolean;
@@ -42,6 +42,17 @@ function loadPermissions(): { permissoes: FormularioPermissao[]; irrestrito: boo
 async function fetchPermissions(): Promise<{ irrestrito: boolean; formularios: FormularioPermissao[]; isSuperadmin?: boolean }> {
   const res = await api.get('/auth/permissoes');
   return res.data as { irrestrito: boolean; formularios: FormularioPermissao[]; isSuperadmin?: boolean };
+}
+
+function extractEmpresa(data: unknown): Empresa | null {
+  const info = (data as { empresa_info?: unknown }).empresa_info;
+  if (info && typeof info === 'object' && 'razao_social' in info) {
+    const emp = info as Empresa;
+    const nome = emp.fantasia || emp.razao_social || '';
+    if (nome) localStorage.setItem('empresaNome', nome);
+    return emp;
+  }
+  return null;
 }
 
 async function fetchEmpresaData(empresaId: number): Promise<Empresa | null> {
@@ -202,30 +213,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData) as User;
-        setUser(parsedUser);
-        setIsSuperadmin(parsedUser.is_superadmin === true);
-        initSessionTimer();
-        fetchEmpresaData(parsedUser.empresaId).then((emp) => {
+      (async () => {
+        try {
+          const parsedUser = JSON.parse(userData) as User;
+          setUser(parsedUser);
+          setIsSuperadmin(parsedUser.is_superadmin === true);
+          initSessionTimer();
+          const emp = extractEmpresa(parsedUser) ?? await fetchEmpresaData(parsedUser.empresaId);
           setEmpresa(emp);
           setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
-        });
-        fetchPermissions()
-          .then((data) => {
-            setPermissoes(data.formularios);
-            setIrrestrito(data.irrestrito);
-            if (data.isSuperadmin !== undefined) {
-              setIsSuperadmin(data.isSuperadmin);
-            }
-            localStorage.setItem('permissoes', JSON.stringify({ permissoes: data.formularios, irrestrito: data.irrestrito }));
-          })
-          .catch(() => {});
-      } catch {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('permissoes');
-      }
+          fetchPermissions()
+            .then((data) => {
+              setPermissoes(data.formularios);
+              setIrrestrito(data.irrestrito);
+              if (data.isSuperadmin !== undefined) {
+                setIsSuperadmin(data.isSuperadmin);
+              }
+              localStorage.setItem('permissoes', JSON.stringify({ permissoes: data.formularios, irrestrito: data.irrestrito }));
+            })
+            .catch(() => {});
+        } catch {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('permissoes');
+        }
+      })();
     }
     setLoading(false);
     return () => clearSessionTimer();
@@ -257,8 +269,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [clearSessionTimer, startSessionTimer]);
 
-  const login = useCallback(async (login: string, senha: string, pin?: string, empresa?: number) => {
-    const body = pin ? { pin, empresa: empresa || 1 } : { login, senha, empresa: empresa || 1 };
+  const login = useCallback(async (login: string, senha: string, pin?: string, empresa?: number | string) => {
+    const body = pin
+      ? { pin, empresa: Number(empresa) || 1 }
+      : { login, senha, empresa: empresa || undefined };
     const response = await api.post('/auth/login', body);
     const data = response.data as User;
     localStorage.setItem('token', data.token);
@@ -266,10 +280,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem('moduloInicialRedirectDone');
     setUser(data);
     setIsSuperadmin(data.is_superadmin === true);
-    fetchEmpresaData(data.empresaId).then((emp) => {
-      setEmpresa(emp);
-      setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
-    });
+    const emp = extractEmpresa(data) ?? await fetchEmpresaData(data.empresaId);
+    setEmpresa(emp);
+    setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
     try {
       const permData = await fetchPermissions();
       setPermissoes(permData.formularios);

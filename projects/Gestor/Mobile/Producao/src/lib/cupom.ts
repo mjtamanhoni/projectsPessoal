@@ -5,6 +5,7 @@ export interface CupomData {
   empresaCnpj: string;
   empresaEndereco: string;
   empresaTelefone: string;
+  empresaEmail: string;
   venda: VendaProduto;
   cliente: Cliente | null;
   numeroCupom: number;
@@ -41,7 +42,7 @@ const SEP_L = '-'.repeat(48);
 const CORTE = '- - - - - - - - - CORTE AQUI - - - - - - - - - - -';
 
 export function gerarTextoCupom(data: CupomData): string {
-  const { empresaNome, empresaCnpj, empresaEndereco, empresaTelefone, venda, cliente, numeroCupom, formaPagamento, parcelas, desconto } = data;
+  const { empresaNome, empresaCnpj, empresaEndereco, empresaTelefone, empresaEmail, venda, cliente, numeroCupom, formaPagamento, parcelas, desconto } = data;
   const itens = venda.itens ?? [];
   const qtdTotal = itens.reduce((acc, i) => acc + Number(i.quantidade), 0);
   const total = venda.valor_total ?? 0;
@@ -56,6 +57,7 @@ export function gerarTextoCupom(data: CupomData): string {
   linhas.push(padCentral(`CNPJ: ${empresaCnpj}`, 48));
   if (empresaEndereco) linhas.push(padCentral(empresaEndereco, 48));
   linhas.push(padCentral(`Tel: ${empresaTelefone}`, 48));
+  if (empresaEmail) linhas.push(padCentral(empresaEmail, 48));
   linhas.push(SEP);
   linhas.push(padCentral('** DOCUMENTO AUXILIAR **', 48));
   linhas.push(padCentral('(SEM VALOR FISCAL)', 48));

@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+def getBuildDateCode() {
+    def fmt = new java.text.SimpleDateFormat('yyyyMMddHH')
+    return Integer.parseInt(fmt.format(new Date())) as int
+}
+
+def getBuildDateName() {
+    def fmt = new java.text.SimpleDateFormat('yyyy.MM.dd HH:mm')
+    return fmt.format(new Date())
+}
+
 android {
     namespace "com.conesoft.producao"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +17,8 @@ android {
         applicationId "com.conesoft.producao"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.5"
+        versionCode getBuildDateCode()
+        versionName getBuildDateName()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

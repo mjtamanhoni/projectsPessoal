@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { mascaraMoeda, numeroParaDecimal } from '../format';
 import type { VendaProduto, VendaProdutoItem, Cliente, ProdutoFabricado } from '../api';
+import SeletorRegistro, { CampoSeletor } from './SeletorRegistro';
 
 const QTD_CASAS = 2;
 const VALOR_CASAS = 2;
@@ -30,6 +31,7 @@ export default function VendaProdutoModal({ titulo, inicial, clientes, produtos,
   const [itemUnit, setItemUnit] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [picker, setPicker] = useState<'cliente' | 'produto' | null>(null);
 
   const qtdParsed = itemQtd ? Number(itemQtd.replace(/\D/g, '')) / 100 : 0;
   const unitParsed = itemUnit ? Number(itemUnit.replace(/\D/g, '')) / 100 : 0;
@@ -106,19 +108,11 @@ export default function VendaProdutoModal({ titulo, inicial, clientes, produtos,
           <div className="modal-label" style={{ top: 6 }}>
             Cliente
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 22 }}
-            value={clienteId}
-            onChange={(e) => setClienteId(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
+            texto={clientes.find((c) => c.id === Number(clienteId))?.nome}
+            aoAbrir={() => setPicker('cliente')}
+          />
 
           <div className="modal-label" style={{ top: 62 }}>
             Data da Venda *
@@ -156,19 +150,11 @@ export default function VendaProdutoModal({ titulo, inicial, clientes, produtos,
           <div className="modal-label" style={{ top: 264 }}>
             Produto
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 280 }}
-            value={selectedProduto}
-            onChange={(e) => setSelectedProduto(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {produtos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
+            texto={produtos.find((p) => String(p.id) === selectedProduto)?.nome}
+            aoAbrir={() => setPicker('produto')}
+          />
 
           <div className="modal-label" style={{ top: 324 }}>
             Quantidade
@@ -290,6 +276,34 @@ export default function VendaProdutoModal({ titulo, inicial, clientes, produtos,
           </div>
         </div>
       </div>
+
+      {picker === 'cliente' && (
+        <SeletorRegistro<Cliente>
+          titulo="Selecionar Cliente"
+          placeholder="Buscar cliente por nome..."
+          registros={clientes}
+          rotulo={(c) => c.nome}
+          aoSelecionar={(c) => {
+            setClienteId(String(c.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
+
+      {picker === 'produto' && (
+        <SeletorRegistro<ProdutoFabricado>
+          titulo="Selecionar Produto"
+          placeholder="Buscar produto por nome..."
+          registros={produtos}
+          rotulo={(p) => p.nome}
+          aoSelecionar={(p) => {
+            setSelectedProduto(String(p.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }

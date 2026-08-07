@@ -520,7 +520,10 @@ func (h *BasicCRUD) ServicoExcluir(w http.ResponseWriter, r *http.Request) {
 
 // --- Empresa Pública ---
 func (h *BasicCRUD) EmpresaListarPublico(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.Pool.Query(r.Context(), `SELECT id, razao_social, fantasia FROM public.empresa ORDER BY id`)
+	rows, err := h.Pool.Query(r.Context(), `SELECT e.id, e.razao_social, e.fantasia,
+		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
+		e.endereco, e.telefone, e.celular, e.email
+		FROM public.empresa e ORDER BY e.id`)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return

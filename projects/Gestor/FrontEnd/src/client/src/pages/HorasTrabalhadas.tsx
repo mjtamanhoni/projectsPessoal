@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { HoraTrabalhadaForm } from '@/components/forms/HoraTrabalhadaForm';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
@@ -690,6 +691,11 @@ export function HorasTrabalhadas() {
     <Layout>
       <PageHeader title="Horas Trabalhadas" subtitle="Gerencie horas trabalhadas">
         <ShowForPermission rota="/horas-trabalhadas" acao={ACAO.EXPORTAR}>
+          <Button variant="secondary" onClick={() => refetch()}>
+            <RefreshCw size={18} /> Atualizar
+          </Button>
+        </ShowForPermission>
+        <ShowForPermission rota="/horas-trabalhadas" acao={ACAO.EXPORTAR}>
           <Button variant="secondary" onClick={handleExportPdf}>
             <FileDown size={18} /> Gerar PDF
           </Button>
@@ -734,48 +740,36 @@ export function HorasTrabalhadas() {
           <div className="flex items-center gap-2">
             <User size={16} className="text-text-secondary" />
             <label className="text-sm text-text-secondary">Usuario:</label>
-            <select
-              value={filtroUsuarioId ?? ''}
-              onChange={(e) => setFiltroUsuarioId(e.target.value ? Number(e.target.value) : undefined)}
-              className="px-3 py-1.5 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            >
-              <option value="">Todos</option>
-              {usuarios.map((u) => (
-                <option key={u.id ?? u.codigo} value={u.id ?? u.codigo}>{u.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={filtroUsuarioId ?? null}
+              onChange={(v) => setFiltroUsuarioId(v)}
+              options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
+              title="Filtro por Usuario"
+              placeholder="Todos os usuarios"
+            />
           </div>
           <div className="flex items-center gap-2">
             <Users size={16} className="text-text-secondary" />
             <label className="text-sm text-text-secondary">Cliente:</label>
-            <select
-              value={filtroClienteId ?? ''}
-              onChange={(e) => setFiltroClienteId(e.target.value ? Number(e.target.value) : undefined)}
-              className="px-3 py-1.5 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            >
-              <option value="">Todos</option>
-              {clientes.map((c) => (
-                <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>{c.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={filtroClienteId ?? null}
+              onChange={(v) => setFiltroClienteId(v)}
+              options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
+              title="Filtro por Cliente"
+              placeholder="Todos os clientes"
+            />
           </div>
           <div className="flex items-center gap-2">
             <Wrench size={16} className="text-text-secondary" />
             <label className="text-sm text-text-secondary">Servico:</label>
-            <select
-              value={filtroServicoId ?? ''}
-              onChange={(e) => setFiltroServicoId(e.target.value ? Number(e.target.value) : undefined)}
-              className="px-3 py-1.5 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            >
-              <option value="">Todos</option>
-              {servicos.map((s) => (
-                <option key={s.id ?? s.codigo} value={s.id ?? s.codigo}>{s.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={filtroServicoId ?? null}
+              onChange={(v) => setFiltroServicoId(v)}
+              options={servicos.map((s) => ({ value: (s.id ?? s.codigo)!, label: s.nome }))}
+              title="Filtro por Servico"
+              placeholder="Todos os servicos"
+            />
           </div>
-          <Button variant="secondary" onClick={() => refetch()}>
-            <RefreshCw size={16} />
-          </Button>
         </div>
       </Card>
 
@@ -858,10 +852,8 @@ export function HorasTrabalhadas() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        <div className="xl:col-span-2">
-          <Card>
-            <div className="flex items-center justify-between mb-4">
+      <Card className="mb-6">
+        <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-heading font-bold text-foreground-primary">Lancamentos</h2>
               {selectedDay && (
                 <button
@@ -873,12 +865,11 @@ export function HorasTrabalhadas() {
               )}
             </div>
             <DataTable columns={columns} data={horasFiltradas} loading={loading} error={error} emptyMessage="Nenhum lancamento encontrado no periodo" />
-          </Card>
-        </div>
+      </Card>
 
-        <div>
-          <Card>
-            <div className="flex items-center justify-between mb-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <Card>
+          <div className="flex items-center justify-between mb-4">
               <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors">
                 <ChevronLeft size={18} className="text-text-secondary" />
               </button>
@@ -1003,9 +994,9 @@ export function HorasTrabalhadas() {
             </div>
           </Card>
 
-          <Card className="mt-6">
-            <h3 className="text-lg font-heading font-bold text-foreground-primary mb-4">Variacao Diaria de Valor</h3>
-            <div className="h-48">
+        <Card>
+          <h3 className="text-lg font-heading font-bold text-foreground-primary mb-4">Variacao Diaria de Valor</h3>
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#D6DDD0" />
@@ -1019,8 +1010,7 @@ export function HorasTrabalhadas() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </Card>
-        </div>
+        </Card>
       </div>
 
       <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Hora Trabalhada' : 'Nova Hora Trabalhada'}>

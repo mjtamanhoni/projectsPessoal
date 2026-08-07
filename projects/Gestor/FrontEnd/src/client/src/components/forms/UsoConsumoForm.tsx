@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { UsoConsumo, ProdutoFabricado } from '@/types';
 
@@ -42,20 +43,12 @@ export function UsoConsumoForm({ onSubmit, onCancel, initial }: UsoConsumoFormPr
         render={({ field }) => (
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">Produto *</label>
-            <select
-              {...field}
-              value={field.value ?? ''}
-              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-              className="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
-              autoFocus
-            >
-              <option value="">Selecione um produto</option>
-              {produtos.map((produto) => (
-                <option key={produto.id ?? produto.codigo} value={produto.id ?? produto.codigo}>
-                  {produto.nome}
-                </option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              options={produtos.map((produto) => ({ value: (produto.id ?? produto.codigo)!, label: produto.nome }))}
+              title="Selecionar Produto"
+            />
             {errors.produto_fabricado_id && <span className="text-xs text-accent-red">{errors.produto_fabricado_id.message}</span>}
           </div>
         )}

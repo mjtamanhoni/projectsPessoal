@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/context/ToastContext';
 import { fetchSettings, saveSettings } from '@/lib/settings';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { AppSettings, Categoria, Empresa } from '@/types';
 import { Save, Server, Monitor, Loader2, ImageIcon, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check } from 'lucide-react';
@@ -282,10 +283,9 @@ export function Settings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="label-field">Módulo</label>
-                    <select
-                      value={settings.display?.moduloInicialId ?? ''}
-                      onChange={(e) => {
-                        const modId = e.target.value ? Number(e.target.value) : undefined;
+                    <RegistroSelect<number>
+                      value={settings.display?.moduloInicialId ?? null}
+                      onChange={(modId) => {
                         setSettings({
                           ...settings,
                           display: {
@@ -295,41 +295,33 @@ export function Settings() {
                           },
                         });
                       }}
-                      className="input-field"
-                    >
-                      <option value="">Nenhum (selecionar manualmente)</option>
-                      {modulos.map((mod) => (
-                        <option key={mod.id} value={mod.id}>{mod.nome}</option>
-                      ))}
-                    </select>
+                      options={modulos.map((mod) => ({ value: mod.id, label: mod.nome }))}
+                      title="Selecionar Módulo Inicial"
+                      placeholder="Nenhum (selecionar manualmente)"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="label-field">Formulário</label>
-                    <select
-                      value={settings.display?.formularioInicialId ?? ''}
-                      onChange={(e) =>
+                    <RegistroSelect<number>
+                      value={settings.display?.formularioInicialId ?? null}
+                      onChange={(formId) =>
                         setSettings({
                           ...settings,
                           display: {
                             ...(settings.display ?? { grid: { defaultPageSize: 10, pageSizeOptions: [5, 10, 15, 20, 30, 50] }, number: { decimalPlaces: 4 } }),
                             moduloInicialId: settings.display?.moduloInicialId,
-                            formularioInicialId: e.target.value ? Number(e.target.value) : undefined,
+                            formularioInicialId: formId,
                           },
                         })
                       }
-                      className="input-field"
+                      options={(modulos.find((m) => m.id === settings.display?.moduloInicialId)?.formularios ?? []).map((f) => ({ value: f.id, label: f.nome }))}
+                      title="Selecionar Formulário Inicial"
+                      placeholder="Nenhum (formulário padrão do módulo)"
                       disabled={!settings.display?.moduloInicialId}
-                    >
-                      <option value="">Nenhum (formulário padrão do módulo)</option>
-                      {modulos
-                        .find((m) => m.id === settings.display?.moduloInicialId)
-                        ?.formularios.map((f) => (
-                          <option key={f.id} value={f.id}>{f.nome}</option>
-                        ))}
-                    </select>
-                  </div>
+                    />
                 </div>
               </div>
+            </div>
             </div>
           </Card>
         )}
@@ -346,50 +338,34 @@ export function Settings() {
               <div className="space-y-1.5">
                 <label className="label-field">Categoria padrão para contas a receber (venda)</label>
                 <p className="text-xs text-text-secondary">Ao registrar uma venda, a conta a receber será criada com esta categoria</p>
-                <select
-                  value={settings.financeiro?.categoriaReceberVendaPadrao ?? ''}
-                  onChange={(e) =>
+                <RegistroSelect<number>
+                  value={settings.financeiro?.categoriaReceberVendaPadrao ?? null}
+                  onChange={(catId) =>
                     setSettings({
                       ...settings,
-                      financeiro: {
-                        ...settings.financeiro,
-                        categoriaReceberVendaPadrao: e.target.value ? Number(e.target.value) : undefined,
-                      },
+                      financeiro: { ...settings.financeiro, categoriaReceberVendaPadrao: catId },
                     })
                   }
-                  className="input-field"
-                >
-                  <option value="">Sem categoria padrão</option>
-                  {categoriasReceber.map((cat) => (
-                    <option key={cat.id ?? cat.codigo} value={cat.id ?? cat.codigo}>
-                      {cat.nome}
-                    </option>
-                  ))}
-                </select>
+                  options={categoriasReceber.map((cat) => ({ value: (cat.id ?? cat.codigo)!, label: cat.nome }))}
+                  title="Categoria padrão (venda)"
+                  placeholder="Sem categoria padrão"
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="label-field">Categoria padrão para contas a pagar (compra)</label>
                 <p className="text-xs text-text-secondary">Ao registrar uma compra de insumo, a conta a pagar será criada com esta categoria</p>
-                <select
-                  value={settings.financeiro?.categoriaPagarCompraPadrao ?? ''}
-                  onChange={(e) =>
+                <RegistroSelect<number>
+                  value={settings.financeiro?.categoriaPagarCompraPadrao ?? null}
+                  onChange={(catId) =>
                     setSettings({
                       ...settings,
-                      financeiro: {
-                        ...settings.financeiro,
-                        categoriaPagarCompraPadrao: e.target.value ? Number(e.target.value) : undefined,
-                      },
+                      financeiro: { ...settings.financeiro, categoriaPagarCompraPadrao: catId },
                     })
                   }
-                  className="input-field"
-                >
-                  <option value="">Sem categoria padrão</option>
-                  {categoriasPagar.map((cat) => (
-                    <option key={cat.id ?? cat.codigo} value={cat.id ?? cat.codigo}>
-                      {cat.nome}
-                    </option>
-                  ))}
-                </select>
+                  options={categoriasPagar.map((cat) => ({ value: (cat.id ?? cat.codigo)!, label: cat.nome }))}
+                  title="Categoria padrão (compra)"
+                  placeholder="Sem categoria padrão"
+                />
               </div>
             </div>
           </Card>
@@ -717,18 +693,13 @@ export function Settings() {
               </p>
               <div className="space-y-1.5">
                 <label className="label-field">Selecione a empresa</label>
-                <select
-                  value={empresaLimpeza}
-                  onChange={(e) => setEmpresaLimpeza(Number(e.target.value))}
-                  className="input-field"
-                >
-                  <option value={0}>Selecione...</option>
-                  {empresas.map((emp) => (
-                    <option key={emp.id ?? emp.codigo} value={emp.id ?? emp.codigo}>
-                      {emp.razao_social}
-                    </option>
-                  ))}
-                </select>
+                <RegistroSelect<number>
+                  value={empresaLimpeza || null}
+                  onChange={setEmpresaLimpeza}
+                  options={empresas.map((emp) => ({ value: (emp.id ?? emp.codigo)!, label: emp.razao_social }))}
+                  title="Selecionar Empresa"
+                  placeholder="Selecione..."
+                />
               </div>
               <div className="flex gap-3 pt-2">
                 <Button

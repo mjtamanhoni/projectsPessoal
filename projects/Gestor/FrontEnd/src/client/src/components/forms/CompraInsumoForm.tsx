@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompraInsumo, CompraInsumoItem, Insumo, Fornecedor, Marca } from '@/types';
 import { formatCurrency, formatCurrencyInput, formatQuantityInput, formatDecimals, parseCurrencyInput } from '@/lib/utils';
@@ -23,7 +24,6 @@ export function CompraInsumoForm({ onSubmit, onCancel, initial, insumos, fornece
 
   const [itens, setItens] = useState<CompraInsumoItem[]>(initial?.itens ?? []);
   const [selectedInsumo, setSelectedInsumo] = useState<number | ''>('');
-  const insumoRef = useRef<HTMLSelectElement>(null);
   const qtdRef = useRef<HTMLInputElement>(null);
   const [itemQtd, setItemQtd] = useState('');
   const [itemTotalRaw, setItemTotalRaw] = useState('');
@@ -46,7 +46,7 @@ export function CompraInsumoForm({ onSubmit, onCancel, initial, insumos, fornece
     setSelectedInsumo('');
     setItemQtd('');
     setItemTotalRaw('');
-    insumoRef.current?.focus();
+    qtdRef.current?.focus();
   };
 
   const removeItem = (idx: number) => {
@@ -72,10 +72,12 @@ export function CompraInsumoForm({ onSubmit, onCancel, initial, insumos, fornece
       <div className="grid grid-cols-1 gap-4">
         <div className="space-y-1.5">
           <label className="label-field">Fornecedor</label>
-          <select className="input-field" value={fornecedorId} onChange={(e) => setFornecedorId(Number(e.target.value))}>
-            <option value={0}>Selecione...</option>
-            {fornecedores.map((f) => <option key={f.id ?? f.codigo} value={f.id ?? f.codigo}>{f.nome}</option>)}
-          </select>
+          <RegistroSelect<number>
+            value={fornecedorId || null}
+            onChange={setFornecedorId}
+            options={fornecedores.map((f) => ({ value: (f.id ?? f.codigo)!, label: f.nome }))}
+            title="Selecionar Fornecedor"
+          />
         </div>
         <div className="flex items-end gap-3">
           <div className="flex-1">
@@ -108,21 +110,18 @@ export function CompraInsumoForm({ onSubmit, onCancel, initial, insumos, fornece
         <div className="space-y-2">
           <div className="space-y-1">
             <label className="label-field text-xs">Insumo</label>
-            <select
-              ref={insumoRef}
-              className="input-field text-sm"
-              value={selectedInsumo}
-              onChange={(e) => {
-                setSelectedInsumo(e.target.value ? Number(e.target.value) : '');
-                if (e.target.value) qtdRef.current?.focus();
+            <RegistroSelect<number>
+              value={typeof selectedInsumo === 'number' ? selectedInsumo : null}
+              onChange={(v) => {
+                setSelectedInsumo(v);
+                qtdRef.current?.focus();
               }}
-            >
-              <option value="">Selecione...</option>
-              {insumos.map((i) => {
+              options={insumos.map((i) => {
                 const marcaNome = i.marca_nome || marcas.find((m) => (m.id ?? m.codigo) === i.id_marca)?.nome;
-                return <option key={i.id ?? i.codigo} value={i.id ?? i.codigo}>{i.nome}{marcaNome ? ` (${marcaNome})` : ''}</option>;
+                return { value: (i.id ?? i.codigo)!, label: i.nome, sub: marcaNome || undefined };
               })}
-            </select>
+              title="Selecionar Insumo"
+            />
           </div>
           <div className="flex items-end gap-3">
             <div className="w-32">

@@ -2,6 +2,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import { z } from 'zod';
 import type { LancamentoAutomaticoConfig, Categoria } from '@/types';
@@ -92,12 +93,12 @@ export function LancamentoAutomaticoConfigForm({ onSubmit, onCancel, initial, ca
         render={({ field }) => (
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">Categoria *</label>
-            <select className="input-field" value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}>
-              <option value="">Selecione...</option>
-              {categorias.map((c) => (
-                <option key={c.id ?? c.codigo} value={c.id ?? c.codigo}>{c.nome}</option>
-              ))}
-            </select>
+            <RegistroSelect<number>
+              value={field.value || null}
+              onChange={(v) => field.onChange(v)}
+              options={categorias.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
+              title="Selecionar Categoria"
+            />
             {errors.categoria_id && <p className="text-xs text-red-500 mt-0.5">{errors.categoria_id.message}</p>}
           </div>
         )}

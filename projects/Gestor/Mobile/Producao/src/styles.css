@@ -741,6 +741,127 @@ body {
   color: #c0392b;
 }
 
+/* Seletor de registro (pesquisa) */
+
+.sel-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 390px;
+  height: 100%;
+  background: #faf9f7;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+}
+
+.sel-header {
+  flex-shrink: 0;
+  position: relative;
+  padding: 16px 16px 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0ec;
+}
+
+.sel-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1b1f1c;
+  margin-bottom: 12px;
+}
+
+.sel-close {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  border: none;
+  background: none;
+  font-size: 18px;
+  font-weight: 700;
+  color: #6b706c;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.sel-search-box {
+  position: relative;
+}
+
+.sel-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 11px;
+  font-size: 14px;
+  color: #9ca09d;
+  pointer-events: none;
+}
+
+.sel-search {
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #d6ddd0;
+  background: #f9f8f6;
+  padding: 0 12px 0 34px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #1b1f1c;
+  outline: none;
+}
+
+.sel-search:focus {
+  border-color: #2d5e3a;
+}
+
+.sel-count {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #9ca09d;
+}
+
+.sel-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 24px;
+}
+
+.sel-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0f0ec;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.sel-row:active {
+  background: #f5f3ee;
+}
+
+.sel-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1b1f1c;
+}
+
+.sel-row-sub {
+  font-size: 12px;
+  color: #9ca09d;
+  margin-top: 2px;
+}
+
+.sel-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #9ca09d;
+}
+
 .modal-btn {
   position: absolute;
   top: 342px;
@@ -769,6 +890,62 @@ body {
 .modal-btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* Aguarde */
+
+.aguarde-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 390px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aguarde-card {
+  width: 260px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #d6ddd0;
+  padding: 28px 20px 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.aguarde-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 4px solid #e2e8e2;
+  border-top-color: #2d5e3a;
+  animation: aguarde-girar 0.9s linear infinite;
+}
+
+@keyframes aguarde-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.aguarde-titulo {
+  margin-top: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1b1f1c;
+}
+
+.aguarde-msg {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b706c;
+  text-align: center;
+  line-height: 1.5;
 }
 
 /* Confirm */

@@ -1,34 +1,59 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getServerConfig, setServerConfig, testServer, extrairErro } from '../api';
+import {
+  getServerList,
+  setServerList,
+  testServer,
+  type ServerEndpoint,
+} from '../api';
 import BackButton from '../components/BackButton';
 
 export default function ServerConfig() {
   const navigate = useNavigate();
-  const cfg = getServerConfig();
-  const [host, setHost] = useState(cfg.host);
-  const [port, setPort] = useState(String(cfg.port));
+  const [servers, setServers] = useState<ServerEndpoint[]>(() => getServerList());
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [testando, setTestando] = useState(false);
 
+  const atualizar = (i: number, campo: 'host' | 'port', valor: string) => {
+    setServers((prev) =>
+      prev.map((s, idx) =>
+        idx === i ? { ...s, [campo]: campo === 'port' ? valor.replace(/\D/g, '') : valor } : s
+      )
+    );
+  };
+
+  const adicionar = () => setServers((prev) => [...prev, { host: '', port: 9000 }]);
+  const remover = (i: number) => setServers((prev) => prev.filter((_, idx) => idx !== i));
+
   const testar = async () => {
     setStatus(null);
-    if (!host.trim()) {
-      setStatus({ ok: false, msg: 'Informe o host do servidor' });
+    const validos = servers
+      .map((s) => ({ host: s.host.trim(), port: Number(s.port) || 9000 }))
+      .filter((s) => s.host);
+    if (validos.length === 0) {
+      setStatus({ ok: false, msg: 'Informe pelo menos um servidor' });
       return;
     }
-    const p = parseInt(port || '9000', 10);
     setTestando(true);
-    try {
-      await testServer(host.trim(), p);
-      setServerConfig(host.trim(), p);
-      setStatus({ ok: true, msg: `Conectado! Configuração salva (${host.trim()}:${p})` });
-    } catch (e) {
-      setStatus({ ok: false, msg: extrairErro(e) });
-    } finally {
-      setTestando(false);
+    const resultados: string[] = [];
+    for (const s of validos) {
+      try {
+        await testServer(s.host, s.port);
+        resultados.push(`✓ ${s.host}:${s.port}`);
+      } catch {
+        resultados.push(`✗ ${s.host}:${s.port}`);
+      }
     }
+    setServerList(validos);
+    const ok = resultados.filter((r) => r.startsWith('✓')).length;
+    setStatus({
+      ok: ok > 0,
+      msg: `${resultados.join('  ')}  (${ok}/${resultados.length} acessíveis)`,
+    });
+    setTestando(false);
   };
+
+  const altura = 120 + servers.length * 70;
 
   return (
     <div className="screen">
@@ -38,33 +63,66 @@ export default function ServerConfig() {
         Servidor do App
       </div>
       <div className="dashboard-subtitle" style={{ left: 42, top: 58 }}>
-        Atual: {cfg.host}:{cfg.port}
+        Lista com fallback automático
       </div>
 
-      <div className="auth-card" style={{ top: 90, height: 220 }}>
-        <div className="field-label" style={{ top: 18 }}>
-          Host / IP
-        </div>
-        <input
-          className="field-input"
-          style={{ top: 38 }}
-          placeholder="ex: 192.168.0.10"
-          value={host}
-          onChange={(e) => setHost(e.target.value)}
-        />
-
-        <div className="field-label" style={{ top: 100 }}>
-          Porta
-        </div>
-        <input
-          className="field-input"
-          style={{ top: 120 }}
-          type="tel"
-          inputMode="numeric"
-          placeholder="9000"
-          value={port}
-          onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))}
-        />
+      <div className="auth-card" style={{ top: 90, height: altura, overflow: 'hidden' }}>
+        {servers.map((s, i) => (
+          <div key={i} style={{ position: 'relative' }}>
+            <div className="field-label" style={{ top: 18 + i * 70, width: 210 }}>
+              Servidor {i + 1}{' '}
+              {i === 0 && <span style={{ fontSize: 10, color: '#888' }}>(principal)</span>}
+            </div>
+            <input
+              className="field-input"
+              style={{ top: 38 + i * 70, width: 250 }}
+              placeholder="ex: 192.168.0.10"
+              value={s.host}
+              onChange={(e) => atualizar(i, 'host', e.target.value)}
+            />
+            <input
+              className="field-input"
+              style={{ top: 38 + i * 70, left: 260, width: 80 }}
+              type="tel"
+              inputMode="numeric"
+              placeholder="9000"
+              value={String(s.port)}
+              onChange={(e) => atualizar(i, 'port', e.target.value)}
+            />
+            <button
+              onClick={() => remover(i)}
+              disabled={servers.length <= 1}
+              style={{
+                position: 'absolute',
+                top: 42 + i * 70,
+                left: 350,
+                border: 'none',
+                background: 'transparent',
+                color: servers.length <= 1 ? '#bbb' : '#c0392b',
+                fontSize: 18,
+                cursor: servers.length <= 1 ? 'default' : 'pointer',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={adicionar}
+          style={{
+            position: 'absolute',
+            left: 20,
+            top: 40 + servers.length * 70,
+            border: 'none',
+            background: 'transparent',
+            color: '#2563eb',
+            fontSize: 13,
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          + Adicionar servidor
+        </button>
       </div>
 
       {status && (
@@ -72,7 +130,7 @@ export default function ServerConfig() {
           style={{
             position: 'absolute',
             left: 20,
-            top: 320,
+            top: 240 + servers.length * 70,
             width: 350,
             textAlign: 'center',
             fontSize: 11,
@@ -83,7 +141,7 @@ export default function ServerConfig() {
         </div>
       )}
 
-      <button className="green-button" style={{ top: 360 }} onClick={testar} disabled={testando}>
+      <button className="green-button" style={{ top: 280 + servers.length * 70 }} onClick={testar} disabled={testando}>
         {testando ? 'Testando...' : 'Testar e Salvar'}
       </button>
     </div>

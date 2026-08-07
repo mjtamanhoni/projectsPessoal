@@ -31,6 +31,7 @@ import ProdutosFabricados from './pages/ProdutosFabricados';
 import Ingredientes from './pages/Ingredientes';
 import Fabricacoes from './pages/Fabricacoes';
 import ServerConfig from './pages/ServerConfig';
+import Aguarde from './components/Aguarde';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { autenticado } = useAuth();
@@ -58,7 +59,7 @@ function Router() {
   useEffect(() => {
     localStorage.removeItem('producao.token');
     localStorage.removeItem('producao.user');
-    localStorage.removeItem('producao.empresaNome');
+    localStorage.removeItem('producao.empresa');
     navigate('/login', { replace: true });
     setBoot(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -321,6 +322,7 @@ export default function App() {
     <AuthProvider>
       <HashRouter>
         <Router />
+        <Aguarde />
       </HashRouter>
     </AuthProvider>
   );

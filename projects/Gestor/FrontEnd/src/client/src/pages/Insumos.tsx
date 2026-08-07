@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { InsumoForm } from '@/components/forms/InsumoForm';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
@@ -212,17 +213,15 @@ export function Insumos() {
             <hr className="border-border-primary" />
             <div className="space-y-2">
               <label className="label-field text-sm">Recalcular apenas um insumo:</label>
-              <select
-                className="input-field"
-                value={recalcInsumoId}
-                onChange={(e) => setRecalcInsumoId(e.target.value ? Number(e.target.value) : '')}
-              >
-                <option value="">Selecione...</option>
-                {insumos.map((i) => {
+              <RegistroSelect<number>
+                value={typeof recalcInsumoId === 'number' ? recalcInsumoId : null}
+                onChange={(v) => setRecalcInsumoId(v)}
+                options={insumos.map((i) => {
                   const marcaNome = i.marca_nome || marcas.find((m) => (m.id ?? m.codigo) === i.id_marca)?.nome;
-                  return <option key={i.id ?? i.codigo} value={i.id ?? i.codigo}>{i.nome}{marcaNome ? ` (${marcaNome})` : ''}</option>;
+                  return { value: (i.id ?? i.codigo)!, label: i.nome, sub: marcaNome || undefined };
                 })}
-              </select>
+                title="Selecionar Insumo"
+              />
               <Button
                 onClick={() => handleRecalcular(false)}
                 disabled={recalcLoading || !recalcInsumoId}

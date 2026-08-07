@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { mascaraMoeda, decimalParaNumero, numeroParaDecimal } from '../format';
 import type { Fornecedor, Insumo, Marca } from '../api';
+import SeletorRegistro, { CampoSeletor } from './SeletorRegistro';
 
 const UNIDADES = ['kg', 'L', 'un', 'g', 'ml'];
 const CUSTO_CASAS = 2;
@@ -23,6 +24,7 @@ export default function InsumoModal({ titulo, inicial, fornecedores, marcas, onC
   const [ativo, setAtivo] = useState(inicial?.ativo ?? true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [picker, setPicker] = useState<'fornecedor' | 'marca' | null>(null);
 
   const salvar = async () => {
     setErro('');
@@ -117,36 +119,20 @@ export default function InsumoModal({ titulo, inicial, fornecedores, marcas, onC
           <div className="modal-label" style={{ top: 174 }}>
             Fornecedor
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 190 }}
-            value={fornecedor}
-            onChange={(e) => setFornecedor(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {fornecedores.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome}
-              </option>
-            ))}
-          </select>
+            texto={fornecedores.find((f) => String(f.id) === fornecedor)?.nome}
+            aoAbrir={() => setPicker('fornecedor')}
+          />
 
           <div className="modal-label" style={{ top: 230 }}>
             Marca
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 246 }}
-            value={marca}
-            onChange={(e) => setMarca(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {marcas.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nome}
-              </option>
-            ))}
-          </select>
+            texto={marcas.find((m) => String(m.id) === marca)?.nome}
+            aoAbrir={() => setPicker('marca')}
+          />
 
           <div className="modal-check-row" style={{ top: 288 }}>
             <div className={`modal-checkbox ${ativo ? 'checked' : ''}`} onClick={() => setAtivo(!ativo)}>
@@ -165,6 +151,34 @@ export default function InsumoModal({ titulo, inicial, fornecedores, marcas, onC
           </button>
         </div>
       </div>
+
+      {picker === 'fornecedor' && (
+        <SeletorRegistro<Fornecedor>
+          titulo="Selecionar Fornecedor"
+          placeholder="Buscar fornecedor por nome..."
+          registros={fornecedores}
+          rotulo={(f) => f.nome}
+          aoSelecionar={(f) => {
+            setFornecedor(String(f.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
+
+      {picker === 'marca' && (
+        <SeletorRegistro<Marca>
+          titulo="Selecionar Marca"
+          placeholder="Buscar marca por nome..."
+          registros={marcas}
+          rotulo={(m) => m.nome}
+          aoSelecionar={(m) => {
+            setMarca(String(m.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }

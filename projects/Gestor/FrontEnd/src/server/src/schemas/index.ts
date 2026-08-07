@@ -350,7 +350,7 @@ export const loginBodySchema = z.object({
   login: z.string().min(1).max(200).optional(),
   senha: z.string().min(1).max(100).optional(),
   pin: z.string().min(4).max(10).optional(),
-  empresa: z.number().int().positive('Selecione uma empresa'),
+  empresa: z.union([z.number().int().positive(), z.string().min(1)]).optional(),
 }).refine(
   (data) => {
     if (data.pin) return true;

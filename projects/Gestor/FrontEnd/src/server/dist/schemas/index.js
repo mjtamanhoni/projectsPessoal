@@ -313,7 +313,7 @@ exports.loginBodySchema = zod_1.z.object({
     login: zod_1.z.string().min(1).max(200).optional(),
     senha: zod_1.z.string().min(1).max(100).optional(),
     pin: zod_1.z.string().min(4).max(10).optional(),
-    empresa: zod_1.z.number().int().positive('Selecione uma empresa'),
+    empresa: zod_1.z.union([zod_1.z.number().int().positive(), zod_1.z.string().min(1)]).optional(),
 }).refine((data) => {
     if (data.pin)
         return true;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { mascaraMoeda, decimalParaNumero, numeroParaDecimal } from '../format';
 import type { Insumo, ProdutoFabricado, ReceitaIngrediente } from '../api';
+import SeletorRegistro, { CampoSeletor } from './SeletorRegistro';
 
 const QTD_CASAS = 3;
 const CUSTO_CASAS = 2;
@@ -21,6 +22,7 @@ export default function IngredienteModal({ titulo, inicial, produtos, insumos, o
   const [custo, setCusto] = useState(numeroParaDecimal(inicial?.insumo_custo_medio, CUSTO_CASAS));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [picker, setPicker] = useState<'produto' | 'insumo' | null>(null);
 
   const insumoSel = insumos.find((i) => String(i.id) === insumo);
 
@@ -78,36 +80,20 @@ export default function IngredienteModal({ titulo, inicial, produtos, insumos, o
           <div className="modal-label" style={{ top: 6 }}>
             Produto *
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 22 }}
-            value={produto}
-            onChange={(e) => setProduto(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {produtos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
+            texto={produtos.find((p) => String(p.id) === produto)?.nome}
+            aoAbrir={() => setPicker('produto')}
+          />
 
           <div className="modal-label" style={{ top: 72 }}>
             Insumo *
           </div>
-          <select
-            className="modal-input modal-select"
+          <CampoSeletor
             style={{ top: 88 }}
-            value={insumo}
-            onChange={(e) => selecionarInsumo(e.target.value)}
-          >
-            <option value="">Selecione...</option>
-            {insumos.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.nome}
-              </option>
-            ))}
-          </select>
+            texto={insumos.find((i) => String(i.id) === insumo)?.nome}
+            aoAbrir={() => setPicker('insumo')}
+          />
           {insumoSel && (
             <div className="modal-hint" style={{ top: 128 }}>
               Unidade: {insumoSel.unidade_medida}
@@ -168,6 +154,35 @@ export default function IngredienteModal({ titulo, inicial, produtos, insumos, o
           </button>
         </div>
       </div>
+
+      {picker === 'produto' && (
+        <SeletorRegistro<ProdutoFabricado>
+          titulo="Selecionar Produto"
+          placeholder="Buscar produto por nome..."
+          registros={produtos}
+          rotulo={(p) => p.nome}
+          aoSelecionar={(p) => {
+            setProduto(String(p.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
+
+      {picker === 'insumo' && (
+        <SeletorRegistro<Insumo>
+          titulo="Selecionar Insumo"
+          placeholder="Buscar insumo por nome..."
+          registros={insumos}
+          rotulo={(i) => i.nome}
+          subtitulo={(i) => i.unidade_medida}
+          aoSelecionar={(i) => {
+            selecionarInsumo(String(i.id));
+            setPicker(null);
+          }}
+          fechar={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }

@@ -45,7 +45,7 @@ type ExpandState = Record<number, VendaProdutoItem[] | 'loading'>;
 
 export default function VendasProduto() {
   const navigate = useNavigate();
-  const { empresaNome } = useAuth();
+  const { empresaNome, empresa } = useAuth();
   const [vendas, setVendas] = useState<VendaProduto[]>([]);
   const [produtos, setProdutos] = useState<ProdutoFabricado[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -154,10 +154,11 @@ export default function VendasProduto() {
       const cliente = clientes.find((c) => c.id === cupomVenda.cliente_id) ?? null;
       const numero = cupomVenda.id ?? cupomVenda.codigo ?? 0;
       const doc = gerarPDFCupom({
-        empresaNome: empresaNome || 'MARCOS JOSE TAMANHONI',
-        empresaCnpj: '56.134.688/0001-57',
-        empresaEndereco: '',
-        empresaTelefone: '(27) 9 8833-7323',
+        empresaNome: empresa?.fantasia || empresa?.razao_social || empresaNome || 'MARCOS JOSE TAMANHONI',
+        empresaCnpj: empresa?.cnpj_cpf || '56.134.688/0001-57',
+        empresaEndereco: empresa?.endereco || '',
+        empresaTelefone: empresa?.celular || empresa?.telefone || '(27) 9 8833-7323',
+        empresaEmail: empresa?.email || '',
         venda: cupomVenda,
         cliente,
         numeroCupom: numero,

@@ -22,13 +22,13 @@ router.post('/login', authLimiter, validate(loginBodySchema), async (req: Reques
     const { login, senha, pin, empresa } = req.body;
 
     if (pin) {
-      const result = await horseApi.login({ pin, empresa });
-      res.json({ ...result, empresaId: empresa });
+      const result = await horseApi.login({ pin, empresa: Number(empresa) || 1 });
+      res.json({ ...result, empresaId: result.empresa ?? empresa });
       return;
     }
 
     const result = await horseApi.login({ login, senha, empresa });
-    res.json({ ...result, empresaId: empresa });
+    res.json({ ...result, empresaId: result.empresa ?? empresa });
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
     const message = error instanceof Error ? error.message : 'Erro interno do servidor';

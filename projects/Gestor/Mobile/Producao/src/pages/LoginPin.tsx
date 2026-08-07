@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth';
+import { getUltimoLogin, useAuth } from '../auth';
 import { extrairErro, listarEmpresas, type EmpresaPublic } from '../api';
 import { LogoBox, AuthTitle, EmpresaField, AuthFooter } from '../components/auth';
 
@@ -20,9 +20,21 @@ export default function LoginPin() {
     listarEmpresas()
       .then((lista) => {
         setEmpresas(lista);
-        if (lista.length > 0) setEmpresaId(lista[0].id);
+        const ultimo = getUltimoLogin();
+        if (ultimo?.tipo === 'login') {
+          navigate('/login', { replace: true });
+          return;
+        }
+        if (lista.length > 0) {
+          if (ultimo?.empresaId && lista.some((e) => e.id === ultimo.empresaId)) {
+            setEmpresaId(ultimo.empresaId);
+          } else {
+            setEmpresaId(lista[0].id);
+          }
+        }
       })
       .catch(() => setEmpresas([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const nomeEmpresa = (id: number) => {
@@ -38,9 +50,10 @@ export default function LoginPin() {
       return;
     }
     const emp = empresas.length > 0 ? empresaId || empresas[0].id : parseInt(codigo || '1', 10);
+    const empData = empresas.find((x) => x.id === emp) ?? { id: emp, razao_social: nomeEmpresa(emp), fantasia: '' };
     setLoading(true);
     try {
-      await loginPin(emp, valor, nomeEmpresa(emp));
+      await loginPin(emp, valor, empData);
       navigate('/dashboard');
     } catch (e) {
       setErro(extrairErro(e));

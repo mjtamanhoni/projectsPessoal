@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatCurrencyInput, parseCurrencyInput, gerarParcelas, type ParcelasConfig } from '@/lib/utils';
 import type { ContaReceber } from '@/types';
@@ -257,10 +258,12 @@ export function ContaReceberForm({ onSubmit, onCancel, initial, clientes, catego
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Cliente *</label>
-            <select className="input-field" {...field}>
-              <option value="">Selecione...</option>
-              {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            <RegistroSelect<string>
+              value={field.value || null}
+              onChange={field.onChange}
+              options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
+              title="Selecionar Cliente"
+            />
             {errors.clienteId && (
               <p className="text-xs text-accent-red mt-1">{errors.clienteId.message}</p>
             )}
@@ -274,10 +277,12 @@ export function ContaReceberForm({ onSubmit, onCancel, initial, clientes, catego
         render={({ field }) => (
           <div className="space-y-1.5">
             <label className="label-field">Categoria</label>
-            <select className="input-field" {...field}>
-              <option value="">Selecione...</option>
-              {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            <RegistroSelect<string>
+              value={field.value || null}
+              onChange={field.onChange}
+              options={categorias.map((c) => ({ value: String(c.id), label: c.nome }))}
+              title="Selecionar Categoria"
+            />
           </div>
         )}
       />

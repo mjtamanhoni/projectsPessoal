@@ -1,16 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
+import { useApi } from '@/hooks/useApi';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
 import {
-  Clock, TrendingUp, TrendingDown, DollarSign, Calendar, Activity, ChevronLeft, ChevronRight, Loader2,
+  Clock, TrendingUp, TrendingDown, DollarSign, Calendar, Activity, ChevronLeft, ChevronRight, Loader2, RefreshCw,
 } from 'lucide-react';
 import api from '@/lib/api';
-import type { HorasDashboardData } from '@/types';
+import type { HorasDashboardData, HoraExcedida } from '@/types';
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -99,7 +101,17 @@ export function HorasDashboard() {
   });
 
   const kpis = data?.kpis;
-  const saldoFinal = (kpis?.totalHoras ?? 0) - (kpis?.totalAbatido ?? 0);
+  const { data: excedidas } = useApi<HoraExcedida>('/horas-excedidas');
+
+  const saldoAcumulado = useMemo(() => {
+    if (!excedidas) return 0;
+    const prevMonth = mes === 1 ? 12 : mes - 1;
+    const prevYear = mes === 1 ? ano - 1 : ano;
+    const record = excedidas.find((e) => e.anoOrigem === prevYear && e.mesOrigem === prevMonth);
+    return record ? record.deltaHoras : 0;
+  }, [excedidas, mes, ano]);
+
+  const saldoFinal = (kpis?.totalHoras ?? 0) + saldoAcumulado;
 
   const chartTooltipStyle = {
     contentStyle: { backgroundColor: '#FFFFFF', border: '1px solid #D6DDD0', borderRadius: '8px', fontSize: 12 },
@@ -136,6 +148,9 @@ export function HorasDashboard() {
             <ChevronRight size={18} className="text-text-secondary" />
           </button>
         </Card>
+        <Button variant="secondary" onClick={() => fetchData()} title="Atualizar dados">
+          <RefreshCw size={16} />
+        </Button>
       </div>
 
       {loading ? (
@@ -154,7 +169,7 @@ export function HorasDashboard() {
                 <div className="p-2 bg-blue-100 rounded-lg"><Activity size={18} className="text-blue-600" /></div>
                 <span className="text-xs font-medium text-text-secondary">Saldo Acumulado</span>
               </div>
-              <p className="text-lg font-semibold text-text-primary">{formatHoras(kpis?.totalHoras ?? 0)}</p>
+              <p className="text-lg font-semibold text-text-primary">{saldoAcumulado >= 0 ? '+' : ''}{formatHoras(saldoAcumulado)}</p>
             </Card>
             <Card>
               <div className="flex items-center gap-3 mb-2">
