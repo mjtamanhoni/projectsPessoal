@@ -299,6 +299,8 @@ export interface ProdutoFabricado {
   custo_unitario?: number;
   margem_lucro?: number;
   valor_venda_sugerido?: number;
+  preco?: number;
+  foto?: string;
   ativo?: boolean;
 }
 
@@ -473,6 +475,7 @@ export interface Empresa {
   telefone?: string;
   celular?: string;
   email?: string;
+  chave_pix?: string;
 }
 
 export interface Modulo {

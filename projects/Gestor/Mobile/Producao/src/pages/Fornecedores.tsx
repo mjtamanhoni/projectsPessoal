@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { excluirFornecedor, extrairErro, listarFornecedores, salvarFornecedor, type Fornecedor } from '../api';
 import PessoaModal from '../components/PessoaModal';
+import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
@@ -94,20 +95,14 @@ export default function Fornecedores() {
                   <div className="insumo-det">
                     {f.telefone || f.celular || '—'} &nbsp;•&nbsp; {f.email || '—'}
                   </div>
-                  <button
-                    className="row-btn"
-                    style={{ top: 16, color: '#6b706c', fontSize: 18 }}
-                    onClick={() => abrirEditar(f)}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="row-btn"
-                    style={{ top: 44, color: '#dc2626', fontSize: 16 }}
-                    onClick={() => setConfirmDelete(f)}
-                  >
-                    🗑
-                  </button>
+                  <RowMenu
+                    style={{ top: 12, height: 32 }}
+                    fontSize={19}
+                    opcoes={[
+                      { rotulo: 'Editar', onPress: () => abrirEditar(f) },
+                      { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(f) },
+                    ]}
+                  />
                 </div>
                 <div className="row-sep" />
               </div>

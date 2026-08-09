@@ -2,12 +2,17 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Plus } from 'lucide-react';
+import { Plus, ImageIcon, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 import type { ProdutoFabricado } from '@/types';
-import { useState } from 'react';
-import { formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
+import { useRef, useState } from 'react';
+import { formatCurrencyInput, parseCurrencyInput, fotoUrl } from '@/lib/utils';
 import { getDecimalPlaces } from '@/lib/settings';
+
+export interface FotoPayload {
+  dataUrl?: string;
+  remover?: boolean;
+}
 
 const produtoFabricadoSchema = z.object({
   codigo: z.number().int().positive().optional(),
@@ -19,6 +24,7 @@ const produtoFabricadoSchema = z.object({
   custo_unitario: z.union([z.number().min(0), z.literal(''), z.undefined()]).optional(),
   margem_lucro: z.union([z.number().min(0, 'Margem de lucro nao pode ser negativa'), z.literal(''), z.undefined()]).optional(),
   valor_venda_sugerido: z.union([z.number().min(0), z.literal(''), z.undefined()]).optional(),
+  preco: z.union([z.number().min(0), z.literal(''), z.undefined()]).optional(),
   ativo: z.boolean().optional(),
 });
 
@@ -33,7 +39,7 @@ const UNIDADES_MEDIDA = [
 ];
 
 interface ProdutoFabricadoFormProps {
-  onSubmit: (data: ProdutoFabricado) => void;
+  onSubmit: (data: ProdutoFabricado, foto?: FotoPayload) => void;
   onCancel: () => void;
   initial?: ProdutoFabricado | null;
 }
@@ -50,13 +56,53 @@ function filterDecimal(raw: string): string {
   return raw.replace(/[^0-9,]/g, '');
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function dataUrlPeso(dataUrl: string): number {
+  const idx = dataUrl.indexOf(',');
+  return Math.round((dataUrl.length - (idx + 1)) * 0.75);
+}
+
+function comprimirImagem(src: string, maxDim = 1400): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        let { width, height } = img;
+        const scale = Math.min(1, maxDim / Math.max(width, height));
+        width = Math.max(1, Math.round(width * scale));
+        height = Math.max(1, Math.round(height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas indisponivel'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      } catch {
+        reject(new Error('Nao foi possivel processar esta imagem (URL externa bloqueada). Baixe a imagem para o computador e envie por arquivo.'));
+      }
+    };
+    img.onerror = () => reject(new Error('Nao foi possivel carregar a imagem'));
+    img.src = src;
+  });
+}
+
 const DP_6 = 6;
 const DP_2 = 2;
 
 export function ProdutoFabricadoForm({ onSubmit, onCancel, initial }: ProdutoFabricadoFormProps) {
   const dp = getDecimalPlaces();
 
-  const { handleSubmit, formState: { errors }, control, setValue, watch } = useForm<ProdutoFabricadoInput>({
+  const { handleSubmit, formState: { errors }, control, setValue } = useForm<ProdutoFabricadoInput>({
     resolver: zodResolver(produtoFabricadoSchema),
     defaultValues: initial ? {
       nome: initial.nome || '',
@@ -66,6 +112,7 @@ export function ProdutoFabricadoForm({ onSubmit, onCancel, initial }: ProdutoFab
       custo_unitario: initial.custo_unitario ?? '' as unknown as number,
       margem_lucro: initial.margem_lucro ?? '' as unknown as number,
       valor_venda_sugerido: initial.valor_venda_sugerido ?? '' as unknown as number,
+      preco: initial.preco ?? '' as unknown as number,
       ativo: initial.ativo ?? true,
     } : {
       nome: '',
@@ -75,6 +122,7 @@ export function ProdutoFabricadoForm({ onSubmit, onCancel, initial }: ProdutoFab
       custo_unitario: '' as unknown as number,
       margem_lucro: '' as unknown as number,
       valor_venda_sugerido: '' as unknown as number,
+      preco: '' as unknown as number,
       ativo: true,
     },
   });
@@ -91,6 +139,20 @@ export function ProdutoFabricadoForm({ onSubmit, onCancel, initial }: ProdutoFab
   const [vvsRaw, setVvsRaw] = useState(() =>
     initial?.valor_venda_sugerido != null ? formatCurrencyInput(Number(initial.valor_venda_sugerido).toFixed(DP_2)) : ''
   );
+  const [precoRaw, setPrecoRaw] = useState(() =>
+    initial?.preco != null ? formatCurrencyInput(Number(initial.preco).toFixed(DP_2)) : ''
+  );
+
+  const [fotoPreview, setFotoPreview] = useState<string | null>(
+    initial?.foto ? fotoUrl(initial.foto) : null
+  );
+  const [fotoOrigem, setFotoOrigem] = useState<number | null>(null);
+  const [fotoDataUrl, setFotoDataUrl] = useState<string | null>(null);
+  const [fotoRemovida, setFotoRemovida] = useState(false);
+  const [fotoProcessando, setFotoProcessando] = useState(false);
+  const [fotoErro, setFotoErro] = useState('');
+  const [urlFoto, setUrlFoto] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const calcValorVenda = (custo: number, margem: number) => {
     if (custo > 0 && margem >= 0) {
@@ -109,7 +171,50 @@ export function ProdutoFabricadoForm({ onSubmit, onCancel, initial }: ProdutoFab
   };
 
   const onFormSubmit = (data: ProdutoFabricadoInput) => {
-    onSubmit(data as ProdutoFabricado);
+    const fotoPayload: FotoPayload = fotoRemovida
+      ? { remover: true }
+      : fotoDataUrl
+        ? { dataUrl: fotoDataUrl }
+        : {};
+    onSubmit(data as ProdutoFabricado, Object.keys(fotoPayload).length > 0 ? fotoPayload : undefined);
+  };
+
+  const processarImagem = async (src: string, pesoOriginal: number) => {
+    setFotoProcessando(true);
+    setFotoErro('');
+    try {
+      const dataUrl = await comprimirImagem(src);
+      setFotoDataUrl(dataUrl);
+      setFotoPreview(dataUrl);
+      setFotoRemovida(false);
+      setFotoOrigem(pesoOriginal > 0 ? pesoOriginal : null);
+    } catch (e) {
+      setFotoErro(e instanceof Error ? e.message : 'Erro ao processar imagem');
+    } finally {
+      setFotoProcessando(false);
+    }
+  };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setFotoPreview(objectUrl);
+    void processarImagem(objectUrl, file.size);
+    e.target.value = '';
+  };
+
+  const carregarUrl = () => {
+    const url = urlFoto.trim();
+    if (!url) return;
+    void processarImagem(url, 0);
+  };
+
+  const removerFoto = () => {
+    setFotoPreview(null);
+    setFotoDataUrl(null);
+    setFotoRemovida(true);
+    setFotoOrigem(null);
   };
 
   return (
@@ -273,6 +378,84 @@ export function ProdutoFabricadoForm({ onSubmit, onCancel, initial }: ProdutoFab
           />
         )}
       />
+      <Controller
+        name="preco"
+        control={control}
+        render={({ field }) => (
+          <Input
+            label="Preco (usado nos cards de venda/encomenda)"
+            type="text"
+            inputMode="decimal"
+            placeholder="0,00"
+            error={errors.preco?.message}
+            value={precoRaw}
+            onChange={(e) => {
+              const formatted = formatCurrencyInput(e.target.value);
+              setPrecoRaw(formatted);
+              const num = parseCurrencyInput(formatted);
+              if (num > 0) {
+                field.onChange(num);
+              }
+            }}
+            onBlur={() => {
+              if (!precoRaw) { field.onChange(undefined as unknown as undefined); return; }
+              const num = parseCurrencyInput(precoRaw);
+              if (num > 0) {
+                field.onChange(num);
+                setPrecoRaw(formatCurrencyInput(String(Math.round(num * 100))));
+              }
+            }}
+          />
+        )}
+      />
+
+      <div className="space-y-2 rounded-lg border border-border-primary p-3">
+        <label className="label-field">Foto do Produto</label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>
+            <ImageIcon size={14} /> Computador
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleFile}
+          />
+          <input
+            type="text"
+            className="input-field flex-1 min-w-[140px] text-sm"
+            placeholder="ou cole o link da imagem (online)"
+            value={urlFoto}
+            onChange={(e) => setUrlFoto(e.target.value)}
+          />
+          <Button type="button" variant="secondary" onClick={carregarUrl}>
+            Carregar
+          </Button>
+          {fotoPreview && (
+            <Button type="button" variant="danger" onClick={removerFoto}>
+              <Trash2 size={14} /> Remover
+            </Button>
+          )}
+        </div>
+        {fotoProcessando && <p className="text-xs text-text-tertiary">Processando imagem...</p>}
+        {fotoOrigem != null && fotoOrigem > 300 * 1024 && (
+          <p className="text-xs text-accent-red">
+            Imagem grande ({formatBytes(fotoOrigem)}). A foto sera otimizada automaticamente ao salvar.
+          </p>
+        )}
+        {fotoErro && <p className="text-xs text-accent-red">{fotoErro}</p>}
+        {fotoPreview && (
+          <div className="flex items-center gap-3">
+            <img src={fotoPreview} alt="Foto do produto" className="h-24 w-24 rounded-lg border border-border-subtle object-contain bg-bg-muted" />
+            <div className="text-xs text-text-tertiary space-y-0.5">
+              <p>Foto carregada com sucesso.</p>
+              {fotoDataUrl && <p>Peso final: {formatBytes(dataUrlPeso(fotoDataUrl))}</p>}
+            </div>
+          </div>
+        )}
+      </div>
+
       <Controller
         name="ativo"
         control={control}

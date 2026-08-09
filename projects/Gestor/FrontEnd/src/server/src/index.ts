@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import axios from 'axios';
 import { config } from './config';
 import { requestLogger } from './middleware/logger';
 import { apiLimiter } from './middleware/rateLimit';
@@ -57,6 +58,23 @@ app.use(apiLimiter);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/uploads/*', async (req, res) => {
+  const url = req.originalUrl.replace(/^\/api\/uploads/, '');
+  try {
+    const upstream = await axios.get(`${config.horseApi.baseUrl}/uploads${url}`, {
+      responseType: 'arraybuffer',
+      timeout: 10000,
+    });
+    res.set('Content-Type', String(upstream.headers['content-type'] ?? 'application/octet-stream'));
+    res.set('Content-Length', upstream.data.length);
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.send(upstream.data);
+  } catch (error) {
+    const status = axios.isAxiosError(error) ? (error.response?.status ?? 502) : 502;
+    res.status(status).json({ error: 'Imagem não encontrada' });
+  }
 });
 
 app.use('/api/auth', authRoutes);

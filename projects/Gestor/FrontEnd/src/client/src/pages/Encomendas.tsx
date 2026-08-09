@@ -13,6 +13,7 @@ import type { Encomenda, EncomendaItem, ProdutoFabricado, Cliente } from '@/type
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw, Download } from 'lucide-react';
+import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDecimals } from '@/lib/utils';
 import api from '@/lib/api';
@@ -182,47 +183,26 @@ export function Encomendas() {
       cell: ({ row }) => {
         const id = row.original.id ?? row.original.codigo;
         const baixada = !!row.original.baixado;
-        if (!id) {
-          return (
-            <div className="flex justify-end gap-1">
-              <span className="text-text-tertiary text-xs">—</span>
-            </div>
-          );
-        }
-        if (baixada) {
-          return (
-            <div className="flex justify-end gap-1">
-              <span className="text-text-tertiary text-xs">—</span>
-            </div>
-          );
+        if (!id || baixada) {
+          return null;
         }
         return (
-          <div className="flex justify-end gap-1">
-            <ShowForPermission rota="/encomendas" acao={ACAO.BAIXAR}>
-              <button
-                onClick={() => { setBaixar({ id, cliente: row.original.cliente_nome }); setBaixarData(new Date().toISOString().slice(0, 10)); setBaixarRecebido(true); }}
-                className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-                title="Baixar encomenda e gerar venda"
-              >
-                <Download size={16} className="text-accent-green" />
-              </button>
-            </ShowForPermission>
-            <ShowForPermission rota="/encomendas" acao={ACAO.EDITAR}>
-              <button
-                onClick={() => handleEdit(row.original)}
-                className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-              >
-                <Edit2 size={16} className="text-text-secondary" />
-              </button>
-            </ShowForPermission>
-            <ShowForPermission rota="/encomendas" acao={ACAO.EXCLUIR}>
-              <button
-                onClick={() => setConfirmDelete(id)}
-                className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-              >
-                <Trash2 size={16} className="text-accent-red" />
-              </button>
-            </ShowForPermission>
+          <div className="flex justify-end">
+            <RowActions
+              rota="/encomendas"
+              onEdit={() => handleEdit(row.original)}
+              onDelete={() => setConfirmDelete(id)}
+              extras={[
+                {
+                  rotulo: 'Baixar Encomenda',
+                  icone: Download,
+                  cor: '#16a34a',
+                  onClick: () => { setBaixar({ id, cliente: row.original.cliente_nome }); setBaixarData(new Date().toISOString().slice(0, 10)); setBaixarRecebido(true); },
+                  permissaoRota: '/encomendas',
+                  permissaoAcao: ACAO.BAIXAR,
+                },
+              ]}
+            />
           </div>
         );
       },

@@ -188,6 +188,31 @@ var Migracoes = []Migracao{
 		`,
 	},
 	{
+		Nome: "007_produto_fabricado_foto_preco",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produto_fabricado' AND column_name='foto') THEN
+					ALTER TABLE produto_fabricado ADD COLUMN foto VARCHAR(255);
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produto_fabricado' AND column_name='preco') THEN
+					ALTER TABLE produto_fabricado ADD COLUMN preco NUMERIC(12,2);
+				END IF;
+			END $$;
+		`,
+	},
+	{
+		Nome: "008_empresa_chave_pix",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='empresa' AND column_name='chave_pix') THEN
+					ALTER TABLE public.empresa ADD COLUMN chave_pix VARCHAR(255);
+				END IF;
+			END $$;
+		`,
+	},
+	{
 		Nome: "004_restruturar_venda_produto",
 		SQLUp: `
 			DO $$

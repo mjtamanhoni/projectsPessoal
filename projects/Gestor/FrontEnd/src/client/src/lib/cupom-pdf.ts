@@ -39,5 +39,23 @@ export function gerarPDFCupom(data: CupomData): jsPDF {
     y += 4;
   });
 
+  if (data.pixQrBase64) {
+    y += 2;
+    if (y + 40 > 280) {
+      doc.addPage([80, 297]);
+      y = margin;
+    }
+    const qrSize = 38;
+    const qrX = (pageWidth - qrSize) / 2;
+    try {
+      doc.addImage(data.pixQrBase64, 'PNG', qrX, y, qrSize, qrSize);
+      y += qrSize + 3;
+      doc.setFontSize(fontSize);
+      doc.text('PAGUE COM PIX', (pageWidth - doc.getTextWidth('PAGUE COM PIX')) / 2, y);
+    } catch {
+      /* QR indisponivel no PDF */
+    }
+  }
+
   return doc;
 }

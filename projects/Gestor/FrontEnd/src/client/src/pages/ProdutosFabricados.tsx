@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+﻿import { useState, useCallback, useEffect, useRef } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
-import { ProdutoFabricadoForm } from '@/components/forms/ProdutoFabricadoForm';
+import { ProdutoFabricadoForm, FotoPayload } from '@/components/forms/ProdutoFabricadoForm';
 import { ReceitaIngredienteForm } from '@/components/forms/ReceitaIngredienteForm';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
@@ -15,6 +15,7 @@ import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RowActions } from '@/components/ui/RowActions';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
 
@@ -164,6 +165,14 @@ export function ProdutosFabricados() {
       },
       meta: { align: 'right' } as Record<string, string>,
     }),
+    columnHelper.accessor('preco', {
+      header: 'Preco',
+      cell: (info) => {
+        const value = info.getValue();
+        return value != null ? formatCurrency(Number(value)) : '-';
+      },
+      meta: { align: 'right' } as Record<string, string>,
+    }),
     columnHelper.display({
       id: 'acoes',
       header: '',
@@ -171,17 +180,12 @@ export function ProdutosFabricados() {
       enableSorting: false,
       size: 60,
       cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-0.5">
-          <ShowForPermission rota="/produtos-fabricados" acao={ACAO.EDITAR}>
-            <button onClick={() => handleEdit(row.original)} className="p-1 rounded hover:bg-bg-muted transition-colors">
-              <Edit2 size={14} className="text-text-secondary" />
-            </button>
-          </ShowForPermission>
-          <ShowForPermission rota="/produtos-fabricados" acao={ACAO.EXCLUIR}>
-            <button onClick={() => setConfirmDelete(row.original.id ?? row.original.codigo!)} className="p-1 rounded hover:bg-bg-muted transition-colors">
-              <Trash2 size={14} className="text-accent-red" />
-            </button>
-          </ShowForPermission>
+        <div className="flex justify-end">
+          <RowActions
+            rota="/produtos-fabricados"
+            onEdit={() => handleEdit(row.original)}
+            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+          />
         </div>
       ),
     }),
@@ -203,12 +207,20 @@ export function ProdutosFabricados() {
     }
   };
 
-  const handleSubmit = async (data: ProdutoFabricado) => {
+  const handleSubmit = async (data: ProdutoFabricado, foto?: FotoPayload) => {
     try {
-      if (editing) {
-        await update({ ...data, id: editing.id ?? editing.codigo });
-      } else {
-        await create(data);
+      let produtoId = editing?.id ?? editing?.codigo;
+      const res = editing
+        ? await update({ ...data, id: editing.id ?? editing.codigo })
+        : await create(data);
+      const ids = (res as { ids?: number[] } | undefined)?.ids;
+      if (ids && ids.length > 0) produtoId = ids[0];
+      if (produtoId && foto) {
+        if (foto.dataUrl) {
+          await api.post('/produtos-fabricados/foto', { id: produtoId, foto: foto.dataUrl });
+        } else if (foto.remover) {
+          await api.post('/produtos-fabricados/foto', { id: produtoId, foto: '' });
+        }
       }
       setModalOpen(false);
       setEditing(null);

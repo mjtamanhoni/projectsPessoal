@@ -90,6 +90,7 @@ export const empresaSchema = z.object({
   telefone: z.string().max(20).optional().or(z.literal('')),
   celular: z.string().max(20).optional().or(z.literal('')),
   email: z.string().email('Email invalido').max(200).optional().or(z.literal('')),
+  chave_pix: z.string().max(255).optional().or(z.literal('')),
 });
 
 export const loginSchema = z.object({

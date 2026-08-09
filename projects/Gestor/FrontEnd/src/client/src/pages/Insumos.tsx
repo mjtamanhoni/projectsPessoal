@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +15,7 @@ import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw, RotateCcw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RowActions } from '@/components/ui/RowActions';
 import api from '@/lib/api';
 
 const columnHelper = createColumnHelper<Insumo>();
@@ -80,24 +81,19 @@ export function Insumos() {
     }),
     columnHelper.display({
       id: 'acoes',
-      header: 'Ações',
+      header: '',
       enableColumnFilter: false,
       enableSorting: false,
+      size: 60,
       cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-0.5">
-          <ShowForPermission rota="/insumos" acao={ACAO.EDITAR}>
-            <button onClick={() => handleEdit(row.original)} className="p-1 rounded hover:bg-bg-muted transition-colors">
-              <Edit2 size={14} className="text-text-secondary" />
-            </button>
-          </ShowForPermission>
-          <ShowForPermission rota="/insumos" acao={ACAO.EXCLUIR}>
-            <button onClick={() => setConfirmDelete(row.original.id ?? row.original.codigo!)} className="p-1 rounded hover:bg-bg-muted transition-colors">
-              <Trash2 size={14} className="text-accent-red" />
-            </button>
-          </ShowForPermission>
+        <div className="flex justify-end">
+          <RowActions
+            rota="/insumos"
+            onEdit={() => handleEdit(row.original)}
+            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+          />
         </div>
       ),
-      size: 60,
     }),
   ];
 

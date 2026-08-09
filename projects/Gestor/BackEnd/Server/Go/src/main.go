@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -291,6 +292,11 @@ carregar();
 </body>
 </html>`)
 	})
+	// Uploads estáticos (fotos de produtos)
+	uploadsDir := cfg.FotosDir
+	os.MkdirAll(uploadsDir, 0755)
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
+
 	// JWT-protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.JWTAuth)
@@ -397,6 +403,9 @@ carregar();
 		r.Get("/produtoFabricado", producao.ProdutoFabricadoListar)
 		r.Post("/produtoFabricado", producao.ProdutoFabricadoAtualizar)
 		r.Delete("/produtoFabricado", producao.ProdutoFabricadoExcluir)
+
+		// Foto do Produto Fabricado
+		r.Post("/produtoFoto", producao.ProdutoFotoSalvar)
 
 		// Receita Ingrediente
 		r.Get("/receitaIngrediente", producao.ReceitaIngredienteListar)

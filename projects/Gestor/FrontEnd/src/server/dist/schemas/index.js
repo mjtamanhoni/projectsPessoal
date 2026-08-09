@@ -167,6 +167,8 @@ exports.produtoFabricadoBodySchema = zod_1.z.object({
     custo_unitario: zod_1.z.number().optional(),
     margem_lucro: zod_1.z.number().optional(),
     valor_venda_sugerido: zod_1.z.number().optional(),
+    preco: zod_1.z.number().optional(),
+    foto: zod_1.z.string().optional(),
     ativo: zod_1.z.boolean().optional(),
 });
 exports.receitaIngredienteBodySchema = zod_1.z.object({
@@ -265,6 +267,7 @@ exports.empresaBodySchema = zod_1.z.object({
     telefone: zod_1.z.string().max(20).optional().or(zod_1.z.literal('')),
     celular: zod_1.z.string().max(20).optional().or(zod_1.z.literal('')),
     email: zod_1.z.string().email('Email invalido').max(200).optional().or(zod_1.z.literal('')),
+    chave_pix: zod_1.z.string().max(255).optional().or(zod_1.z.literal('')),
 });
 exports.moduloBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),

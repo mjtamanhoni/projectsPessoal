@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const path_1 = __importDefault(require("path"));
+const axios_1 = __importDefault(require("axios"));
 const config_1 = require("./config");
 const logger_1 = require("./middleware/logger");
 const rateLimit_1 = require("./middleware/rateLimit");
@@ -59,6 +60,23 @@ app.use(logger_1.requestLogger);
 app.use(rateLimit_1.apiLimiter);
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+app.get('/api/uploads/*', async (req, res) => {
+    const url = req.originalUrl.replace(/^\/api\/uploads/, '');
+    try {
+        const upstream = await axios_1.default.get(`${config_1.config.horseApi.baseUrl}/uploads${url}`, {
+            responseType: 'arraybuffer',
+            timeout: 10000,
+        });
+        res.set('Content-Type', String(upstream.headers['content-type'] ?? 'application/octet-stream'));
+        res.set('Content-Length', upstream.data.length);
+        res.set('Cache-Control', 'public, max-age=3600');
+        res.send(upstream.data);
+    }
+    catch (error) {
+        const status = axios_1.default.isAxiosError(error) ? (error.response?.status ?? 502) : 502;
+        res.status(status).json({ error: 'Imagem não encontrada' });
+    }
 });
 app.use('/api/auth', auth_1.default);
 app.use('/api/clientes', clientes_1.default);

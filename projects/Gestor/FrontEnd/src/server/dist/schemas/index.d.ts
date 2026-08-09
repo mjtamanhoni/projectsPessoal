@@ -164,6 +164,8 @@ export declare const produtoFabricadoBodySchema: z.ZodObject<{
     custo_unitario: z.ZodOptional<z.ZodNumber>;
     margem_lucro: z.ZodOptional<z.ZodNumber>;
     valor_venda_sugerido: z.ZodOptional<z.ZodNumber>;
+    preco: z.ZodOptional<z.ZodNumber>;
+    foto: z.ZodOptional<z.ZodString>;
     ativo: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
 export declare const receitaIngredienteBodySchema: z.ZodObject<{
@@ -260,6 +262,7 @@ export declare const empresaBodySchema: z.ZodObject<{
     telefone: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     celular: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     email: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    chave_pix: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
 }, z.core.$strip>;
 export declare const moduloBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;

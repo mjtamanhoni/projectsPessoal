@@ -184,6 +184,8 @@ export const produtoFabricadoBodySchema = z.object({
   custo_unitario: z.number().optional(),
   margem_lucro: z.number().optional(),
   valor_venda_sugerido: z.number().optional(),
+  preco: z.number().optional(),
+  foto: z.string().optional(),
   ativo: z.boolean().optional(),
 });
 
@@ -294,6 +296,7 @@ export const empresaBodySchema = z.object({
   telefone: z.string().max(20).optional().or(z.literal('')),
   celular: z.string().max(20).optional().or(z.literal('')),
   email: z.string().email('Email invalido').max(200).optional().or(z.literal('')),
+  chave_pix: z.string().max(255).optional().or(z.literal('')),
 });
 
 export const moduloBodySchema = z.object({

@@ -1233,3 +1233,56 @@ body {
   justify-content: flex-end;
   gap: 6px;
 }
+
+/* Row Menu (menu de opcoes da lista) */
+
+.row-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.row-menu-sheet {
+  width: 342px;
+  max-width: 92vw;
+  background: #ffffff;
+  border-radius: 14px 14px 0 0;
+  padding: 10px 8px 18px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  margin-bottom: 8px;
+}
+
+.row-menu-titulo {
+  font-size: 11px;
+  color: #9ca09d;
+  padding: 6px 18px 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.row-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 13px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border-top: 1px solid #f0f3f1;
+}
+
+.row-menu-item:disabled {
+  opacity: 0.45;
+}
+
+.row-menu-cancelar {
+  color: #6b706c;
+  text-align: center;
+  font-weight: 500;
+}

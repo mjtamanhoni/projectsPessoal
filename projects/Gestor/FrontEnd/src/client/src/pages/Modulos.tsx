@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,7 @@ import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RowActions } from '@/components/ui/RowActions';
 import api from '@/lib/api';
 
 const columnHelper = createColumnHelper<Modulo>();
@@ -81,17 +82,12 @@ export function Modulos() {
       enableSorting: false,
       size: 60,
       cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-0.5">
-          <ShowForPermission rota="/modulos" acao={ACAO.EDITAR}>
-            <button onClick={() => handleEdit(row.original)} className="p-1 rounded hover:bg-bg-muted transition-colors">
-              <Edit2 size={14} className="text-text-secondary" />
-            </button>
-          </ShowForPermission>
-          <ShowForPermission rota="/modulos" acao={ACAO.EXCLUIR}>
-            <button onClick={() => setConfirmDelete(row.original.id ?? row.original.codigo!)} className="p-1 rounded hover:bg-bg-muted transition-colors">
-              <Trash2 size={14} className="text-accent-red" />
-            </button>
-          </ShowForPermission>
+        <div className="flex justify-end">
+          <RowActions
+            rota="/modulos"
+            onEdit={() => handleEdit(row.original)}
+            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+          />
         </div>
       ),
     }),

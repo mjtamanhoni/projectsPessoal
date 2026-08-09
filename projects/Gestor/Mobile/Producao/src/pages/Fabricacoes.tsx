@@ -16,6 +16,7 @@ import {
   type ProdutoFabricado,
 } from '../api';
 import FabricacaoModal from '../components/FabricacaoModal';
+import RowMenu from '../components/RowMenu';
 import CustoAdicionalFabModal from '../components/CustoAdicionalFabModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
@@ -285,23 +286,18 @@ export default function Fabricacoes() {
                       Total: {fmtMoeda(f.custo_total)} &nbsp;|&nbsp; Unit: {fmtMoeda(f.custo_unitario)} &nbsp;|&nbsp;{' '}
                       {fmtData(f.data_fabricacao)}
                     </div>
+                    <RowMenu
+                      className="compra-btn"
+                      style={{ top: 10, height: 36 }}
+                      fontSize={21}
+                      opcoes={[
+                        { rotulo: 'Editar', onPress: () => abrirEditarFabricacao(f) },
+                        { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(f) },
+                      ]}
+                    />
                     <button
                       className="compra-btn"
-                      style={{ top: 12, color: '#6b706c', fontSize: 16 }}
-                      onClick={() => abrirEditarFabricacao(f)}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 36, color: '#dc2626', fontSize: 14 }}
-                      onClick={() => setConfirmDelete(f)}
-                    >
-                      🗑
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 58, color: '#9ca09d', fontSize: 12 }}
+                      style={{ top: 50, height: 36, color: '#9ca09d', fontSize: 16 }}
                       onClick={() => toggleExpandir(f)}
                     >
                       {aberto ? '▲' : '▼'}

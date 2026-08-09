@@ -117,12 +117,12 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var razaoSocial, fantasia, cnpjCpf, ieId, regimeTrib, endereco, telefone, celular, emailEmpresa *string
+	var razaoSocial, fantasia, cnpjCpf, ieId, regimeTrib, endereco, telefone, celular, emailEmpresa, chavePix *string
 	empresaInfo := map[string]interface{}{"id": empresaID}
 	err = h.Pool.QueryRow(r.Context(),
-		`SELECT razao_social, fantasia, cnpj_cpf, inscricao_estadual_identidade, regime_tributario, endereco, telefone, celular, email FROM public.empresa WHERE id = $1`,
+		`SELECT razao_social, fantasia, cnpj_cpf, inscricao_estadual_identidade, regime_tributario, endereco, telefone, celular, email, chave_pix FROM public.empresa WHERE id = $1`,
 		empresaID,
-	).Scan(&razaoSocial, &fantasia, &cnpjCpf, &ieId, &regimeTrib, &endereco, &telefone, &celular, &emailEmpresa)
+	).Scan(&razaoSocial, &fantasia, &cnpjCpf, &ieId, &regimeTrib, &endereco, &telefone, &celular, &emailEmpresa, &chavePix)
 	if err == nil {
 		if razaoSocial != nil {
 			empresaInfo["razao_social"] = *razaoSocial
@@ -150,6 +150,9 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		}
 		if emailEmpresa != nil {
 			empresaInfo["email"] = *emailEmpresa
+		}
+		if chavePix != nil {
+			empresaInfo["chave_pix"] = *chavePix
 		}
 	}
 

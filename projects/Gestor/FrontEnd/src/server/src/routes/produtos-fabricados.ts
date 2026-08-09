@@ -43,4 +43,19 @@ router.delete('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.post('/foto', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, foto } = req.body as { id?: number; foto?: string };
+    if (!id || typeof foto !== 'string') {
+      res.status(400).json({ error: 'id e foto sao obrigatorios' });
+      return;
+    }
+    const result = await horseApi.salvarFotoProdutoFabricado(Number(id), foto);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
 export default router;

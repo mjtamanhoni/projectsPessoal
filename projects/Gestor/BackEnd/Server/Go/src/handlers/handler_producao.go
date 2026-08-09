@@ -494,7 +494,7 @@ func (h *ProducaoHandler) ProdutoFabricadoListar(w http.ResponseWriter, r *http.
 func (h *ProducaoHandler) ProdutoFabricadoAtualizar(w http.ResponseWriter, r *http.Request) {
 	h.BasicCRUD.Salvar(w, r, "produto_fabricado",
 		[]string{"nome", "descricao", "rendimento", "unidade_medida", "custo_unitario",
-			"margem_lucro", "valor_venda_sugerido", "ativo"})
+			"margem_lucro", "valor_venda_sugerido", "preco", "foto", "ativo"})
 }
 
 func (h *ProducaoHandler) ProdutoFabricadoExcluir(w http.ResponseWriter, r *http.Request) {

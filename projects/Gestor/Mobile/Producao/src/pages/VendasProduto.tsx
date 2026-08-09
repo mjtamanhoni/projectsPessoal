@@ -14,11 +14,14 @@ import {
   type ProdutoFabricado,
 } from '../api';
 import VendaProdutoModal from '../components/VendaProdutoModal';
+import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
 import { gerarPDFCupom } from '../lib/cupom-pdf';
+import { gerarPayloadPix, gerarQrPixDataUrl } from '../lib/pix';
 import { compartilharPDF } from '../lib/share';
+import { Clipboard } from '@capacitor/clipboard';
 import { useAuth } from '../auth';
 
 function fmtMoeda(v: number | undefined): string {
@@ -59,6 +62,11 @@ export default function VendasProduto() {
   const [carregandoEdicao, setCarregandoEdicao] = useState(false);
   const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
   const [cupomBusy, setCupomBusy] = useState(false);
+  const [pixVenda, setPixVenda] = useState<VendaProduto | null>(null);
+  const [pixQr, setPixQr] = useState<string | null>(null);
+  const [pixPayload, setPixPayload] = useState<string | null>(null);
+  const [pixBusy, setPixBusy] = useState(false);
+  const [pixCopiado, setPixCopiado] = useState(false);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -153,12 +161,30 @@ export default function VendasProduto() {
     try {
       const cliente = clientes.find((c) => c.id === cupomVenda.cliente_id) ?? null;
       const numero = cupomVenda.id ?? cupomVenda.codigo ?? 0;
+      let pixQrBase64: string | null = null;
+      try {
+        const chave = empresa?.chave_pix;
+        if (chave) {
+          const payload = gerarPayloadPix({
+            chave,
+            nome: empresa?.fantasia || empresa?.razao_social || empresaNome || 'MARCOS JOSE TAMANHONI',
+            cidade: '',
+            valor: Number(cupomVenda.valor_total) || 0,
+            txid: `CUPOM${String(numero).padStart(5, '0')}`,
+          });
+          if (payload) pixQrBase64 = await gerarQrPixDataUrl(payload, 240);
+        }
+      } catch {
+        pixQrBase64 = null;
+      }
       const doc = gerarPDFCupom({
         empresaNome: empresa?.fantasia || empresa?.razao_social || empresaNome || 'MARCOS JOSE TAMANHONI',
         empresaCnpj: empresa?.cnpj_cpf || '56.134.688/0001-57',
         empresaEndereco: empresa?.endereco || '',
         empresaTelefone: empresa?.celular || empresa?.telefone || '(27) 9 8833-7323',
         empresaEmail: empresa?.email || '',
+        chavePix: empresa?.chave_pix || '',
+        pixQrBase64,
         venda: cupomVenda,
         cliente,
         numeroCupom: numero,
@@ -172,6 +198,44 @@ export default function VendasProduto() {
       setErro(e instanceof Error ? e.message : 'Erro ao gerar/compartilhar o cupom');
     } finally {
       setCupomBusy(false);
+    }
+  };
+
+  const abrirPix = async (v: VendaProduto) => {
+    setPixVenda(v);
+    setPixQr(null);
+    setPixPayload(null);
+    setPixCopiado(false);
+    if (!empresa?.chave_pix) return;
+    setPixBusy(true);
+    try {
+      const numero = idVenda(v);
+      const payload = gerarPayloadPix({
+        chave: empresa.chave_pix,
+        nome: empresa?.fantasia || empresa?.razao_social || empresaNome || 'JADE MARCOS JOSE TAMANHONI',
+        cidade: '',
+        valor: Number(v.valor_total) || 0,
+        txid: `CUPOM${String(numero).padStart(5, '0')}`,
+      });
+      if (payload) {
+        setPixPayload(payload);
+        setPixQr(await gerarQrPixDataUrl(payload, 260));
+      }
+    } catch {
+      setPixQr(null);
+    } finally {
+      setPixBusy(false);
+    }
+  };
+
+  const copiarPix = async () => {
+    if (!pixPayload) return;
+    try {
+      await Clipboard.write({ string: pixPayload });
+      setPixCopiado(true);
+      setTimeout(() => setPixCopiado(false), 2500);
+    } catch {
+      setErro('Não foi possível copiar o código PIX');
     }
   };
 
@@ -282,23 +346,21 @@ export default function VendasProduto() {
                       {nItens != null ? `${nItens} ${nItens === 1 ? 'item' : 'itens'}` : '—'}
                     </div>
                     <div className="compra-total">{fmtMoeda(v.valor_total)}</div>
+                    <RowMenu
+                      className="compra-btn"
+                      style={{ top: 10, height: 36 }}
+                      fontSize={21}
+                      opcoes={[
+                        { rotulo: 'Editar', onPress: () => abrirEditar(v) },
+                        { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(v) },
+                        ...(empresa?.chave_pix
+                          ? [{ rotulo: 'PIX', cor: '#0a7a3d', onPress: () => abrirPix(v) }]
+                          : []),
+                      ]}
+                    />
                     <button
                       className="compra-btn"
-                      style={{ top: 12, color: '#6b706c', fontSize: 16 }}
-                      onClick={() => abrirEditar(v)}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 36, color: '#dc2626', fontSize: 14 }}
-                      onClick={() => setConfirmDelete(v)}
-                    >
-                      🗑
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 56, color: '#9ca09d', fontSize: 12 }}
+                      style={{ top: 50, height: 36, color: '#9ca09d', fontSize: 16 }}
                       onClick={() => toggleExpandir(v)}
                     >
                       {aberto ? '▲' : '▼'}
@@ -343,6 +405,49 @@ export default function VendasProduto() {
           onCancel={() => setConfirmDelete(null)}
           onConfirm={aoExcluir}
         />
+      )}
+
+      {pixVenda && (
+        <div className="modal-overlay">
+          <div className="confirm-card" style={{ width: 'min(92vw, 360px)' }}>
+            <div className="confirm-title">PIX — Pagamento da Venda</div>
+            {pixBusy ? (
+              <div className="confirm-msg" style={{ textAlign: 'center', padding: 16 }}>
+                Gerando QR Code...
+              </div>
+            ) : (
+              <>
+                {pixQr ? (
+                  <img
+                    src={pixQr}
+                    alt="QR Code PIX"
+                    style={{ width: 220, height: 220, alignSelf: 'center', marginTop: 4 }}
+                  />
+                ) : (
+                  <div className="confirm-msg" style={{ textAlign: 'center', padding: 12 }}>
+                    Chave PIX não configurada ou QR indisponível.
+                  </div>
+                )}
+                <div className="confirm-msg" style={{ marginTop: 4, fontSize: 12, color: '#4b5563', wordBreak: 'break-all' }}>
+                  {empresa?.chave_pix ?? ''}
+                </div>
+                <div className="confirm-msg" style={{ fontSize: 11, color: '#6b706c', wordBreak: 'break-all', marginTop: 6 }}>
+                  Pix copia e cola: {pixPayload ? `${pixPayload.slice(0, 40)}...` : '—'}
+                </div>
+                <div className="confirm-actions" style={{ flexWrap: 'wrap' }}>
+                  {pixPayload && (
+                    <button className="confirm-btn save" onClick={copiarPix}>
+                      {pixCopiado ? 'Código copiado!' : 'Copiar código PIX'}
+                    </button>
+                  )}
+                  <button className="confirm-btn cancel" onClick={() => setPixVenda(null)}>
+                    Fechar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {cupomVenda && (

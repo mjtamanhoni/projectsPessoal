@@ -13,6 +13,8 @@ export interface CupomData {
   parcelas: { numero: number; total: number; vencimento: string; valor: number }[];
   desconto?: number;
   logoBase64?: string | null;
+  chavePix?: string;
+  pixQrBase64?: string | null;
 }
 
 function formatValor(v: number): string {
@@ -112,6 +114,16 @@ export function gerarTextoCupom(data: CupomData): string {
   linhas.push(padCentral('Obrigado pela preferencia!', 48));
   linhas.push(padCentral('Este documento nao substitui a', 48));
   linhas.push(padCentral('Nota Fiscal Eletronica.', 48));
+  if (data.chavePix) {
+    linhas.push(SEP);
+    linhas.push(padCentral('PAGUE COM PIX', 48));
+    linhas.push(`CHAVE PIX: ${data.chavePix}`);
+    if (data.pixQrBase64) {
+      linhas.push(padCentral('Escaneie o QR Code no comprovante', 48));
+      linhas.push(padCentral('para pagar instantaneamente.', 48));
+    }
+    linhas.push(SEP);
+  }
   if (!venda.recebido) {
     linhas.push(SEP);
     linhas.push('');

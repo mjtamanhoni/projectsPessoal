@@ -1116,9 +1116,18 @@ class HorseApiService {
     }
   }
 
-  async excluirProdutoFabricado(id: number): Promise<unknown> {
+async excluirProdutoFabricado(id: number): Promise<unknown> {
     try {
       const res = await this.api.delete('/produtoFabricado', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarFotoProdutoFabricado(id: number, foto: string): Promise<unknown> {
+    try {
+      const res = await this.api.post('/produtoFoto', { id, foto }, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);

@@ -16,6 +16,7 @@ import {
   type Marca,
 } from '../api';
 import CompraInsumoModal from '../components/CompraInsumoModal';
+import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
@@ -249,23 +250,18 @@ export default function ComprasInsumo() {
                       {nItens != null ? `${nItens} ${nItens === 1 ? 'item' : 'itens'}` : '—'}
                     </div>
                     <div className="compra-total">{fmtMoeda(c.valor_total)}</div>
+                    <RowMenu
+                      className="compra-btn"
+                      style={{ top: 10, height: 36 }}
+                      fontSize={21}
+                      opcoes={[
+                        { rotulo: 'Editar', onPress: () => abrirEditar(c) },
+                        { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(c) },
+                      ]}
+                    />
                     <button
                       className="compra-btn"
-                      style={{ top: 12, color: '#6b706c', fontSize: 16 }}
-                      onClick={() => abrirEditar(c)}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 36, color: '#dc2626', fontSize: 14 }}
-                      onClick={() => setConfirmDelete(c)}
-                    >
-                      🗑
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 56, color: '#9ca09d', fontSize: 12 }}
+                      style={{ top: 50, height: 36, color: '#9ca09d', fontSize: 16 }}
                       onClick={() => toggleExpandir(c)}
                     >
                       {aberto ? '▲' : '▼'}

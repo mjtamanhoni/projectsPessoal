@@ -12,15 +12,18 @@ import { Spinner } from '@/components/ui/Spinner';
 import type { VendaProduto, VendaProdutoItem, ProdutoFabricado, Cliente } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw, Printer, FileText } from 'lucide-react';
+import { Plus, RefreshCw, FileText, Printer } from 'lucide-react';
+import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDate, formatDecimals } from '@/lib/utils';
 import { gerarTextoCupom, imprimirCupomSerial } from '@/lib/cupom';
 import { gerarPDFCupom } from '@/lib/cupom-pdf';
+import { gerarPayloadPix, gerarQrPixDataUrl } from '@/lib/pix';
 import api from '@/lib/api';
 import { getCachedSettings } from '@/lib/settings';
 import { useAuth } from '@/context/AuthContext';
 import { viewPDF } from '@/lib/pdf';
+import { Copy, Check } from 'lucide-react';
 import type { JSX } from 'react';
 
 const columnHelper = createColumnHelper<VendaProduto>();
@@ -35,6 +38,8 @@ export function VendasProduto() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
+  const [cupomQr, setCupomQr] = useState<string | null>(null);
+  const [cupomPayload, setCupomPayload] = useState<string | null>(null);
   const [cupomModalOpen, setCupomModalOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -129,6 +134,7 @@ export function VendasProduto() {
   const handlePrintCupom = async (venda: VendaProduto) => {
     const full = await fetchFullVenda(venda.id ?? venda.codigo ?? 0);
     setCupomVenda(full ?? venda);
+    setCupomQr(null);
     setCupomModalOpen(true);
   };
 
@@ -140,6 +146,8 @@ export function VendasProduto() {
       empresaEndereco: empresa?.endereco || '',
       empresaTelefone: empresa?.celular || empresa?.telefone || '',
       empresaEmail: empresa?.email || '',
+      chavePix: empresa?.chave_pix || '',
+      pixQrBase64: null as string | null,
       venda,
       cliente,
       numeroCupom: venda.id ?? venda.codigo ?? 0,
@@ -148,6 +156,59 @@ export function VendasProduto() {
       desconto: 0,
       logoBase64: null as string | null,
     };
+  };
+
+  const gerarQrPixDaVenda = async (data: ReturnType<typeof buildCupomData>): Promise<void> => {
+    const chave = empresa?.chave_pix;
+    if (!chave) return;
+    try {
+      const payload = gerarPayloadPix({
+        chave,
+        nome: data.empresaNome,
+        cidade: '',
+        valor: Number(data.venda.valor_total) || 0,
+        txid: `CUPOM${String(data.numeroCupom).padStart(5, '0')}`,
+      });
+      setCupomPayload(payload);
+      if (payload) {
+        data.pixQrBase64 = await gerarQrPixDataUrl(payload, 240);
+      }
+    } catch {
+      data.pixQrBase64 = null;
+    }
+  };
+
+  const [copiado, setCopiado] = useState(false);
+  const [copiadoPayload, setCopiadoPayload] = useState(false);
+
+  const copiarTexto = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  };
+
+  const copiarPix = async () => {
+    const chave = empresa?.chave_pix;
+    if (!chave) return;
+    await copiarTexto(chave);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  };
+
+  const copiarCodigoPix = async () => {
+    if (!cupomPayload) return;
+    await copiarTexto(cupomPayload);
+    setCopiadoPayload(true);
+    setTimeout(() => setCopiadoPayload(false), 2000);
   };
 
   const handleThermalPrint = async (venda: VendaProduto) => {
@@ -180,8 +241,11 @@ export function VendasProduto() {
     }
   };
 
-  const handleViewPdf = (venda: VendaProduto) => {
-    const doc = gerarPDFCupom(buildCupomData(venda));
+  const handleViewPdf = async (venda: VendaProduto) => {
+    const data = buildCupomData(venda);
+    await gerarQrPixDaVenda(data);
+    if (data.pixQrBase64) setCupomQr(data.pixQrBase64);
+    const doc = gerarPDFCupom(data);
     viewPDF(doc);
   };
 
@@ -231,30 +295,19 @@ export function VendasProduto() {
       enableColumnFilter: false,
       enableSorting: false,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-1">
-          <button
-            onClick={() => handlePrintCupom(row.original)}
-            className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-            title="Cupom"
-          >
-            <FileText size={16} className="text-text-secondary" />
-          </button>
-          <ShowForPermission rota="/vendas-produto" acao={ACAO.EDITAR}>
-            <button
-              onClick={() => handleEdit(row.original)}
-              className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-            >
-              <Edit2 size={16} className="text-text-secondary" />
-            </button>
-          </ShowForPermission>
-          <ShowForPermission rota="/vendas-produto" acao={ACAO.EXCLUIR}>
-            <button
-              onClick={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
-              className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-            >
-              <Trash2 size={16} className="text-accent-red" />
-            </button>
-          </ShowForPermission>
+        <div className="flex justify-end">
+          <RowActions
+            rota="/vendas-produto"
+            onEdit={() => handleEdit(row.original)}
+            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+            extras={[
+              {
+                rotulo: 'Cupom',
+                icone: FileText,
+                onClick: () => handlePrintCupom(row.original),
+              },
+            ]}
+          />
         </div>
       ),
     }),
@@ -296,6 +349,7 @@ export function VendasProduto() {
       if (vendaSalva) {
         const full = await fetchFullVenda(vendaSalva.id ?? vendaSalva.codigo ?? 0);
         setCupomVenda(full ?? vendaSalva);
+        setCupomQr(null);
         setCupomModalOpen(true);
       }
     } catch (err: unknown) {
@@ -367,12 +421,56 @@ export function VendasProduto() {
         )}
       </Modal>
 
-      <Modal isOpen={cupomModalOpen} onClose={() => { setCupomModalOpen(false); setCupomVenda(null); }} title="Cupom Nao Fiscal" maxWidth="max-w-3xl">
+      <Modal isOpen={cupomModalOpen} onClose={() => { setCupomModalOpen(false); setCupomVenda(null); setCupomQr(null); setCupomPayload(null); }} title="Cupom Nao Fiscal" maxWidth="max-w-3xl">
         {cupomVenda && (
           <div className="space-y-4">
             <pre className="bg-gray-900 text-green-300 p-4 rounded-lg text-xs font-mono leading-tight overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap">
               {gerarTextoCupom(buildCupomData(cupomVenda))}
             </pre>
+
+            {empresa?.chave_pix && (
+              <div className="border border-border-primary rounded-lg p-4 flex items-start gap-4">
+                <div className="flex flex-col items-center gap-2">
+                  {cupomQr ? (
+                    <img src={cupomQr} alt="QR Code PIX" className="h-32 w-32" />
+                  ) : (
+                    <div className="h-32 w-32 flex items-center justify-center text-text-tertiary text-sm text-center px-2">
+                      Clique em "Gerar QR no PDF" para exibir o QR Code
+                    </div>
+                  )}
+                  <span className="text-xs font-medium text-text-secondary">PIX</span>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm font-medium text-text-primary">Pagar com PIX</p>
+                  <p className="text-xs text-text-tertiary break-all">{empresa.chave_pix}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={copiarPix}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-primary hover:bg-bg-muted text-xs transition-colors"
+                    >
+                      {copiado ? <Check size={14} className="text-accent-green" /> : <Copy size={14} />}
+                      {copiado ? 'Chave copiada!' : 'Copiar chave'}
+                    </button>
+                    {cupomPayload && (
+                      <button
+                        onClick={copiarCodigoPix}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-primary hover:bg-bg-muted text-xs transition-colors"
+                      >
+                        {copiadoPayload ? <Check size={14} className="text-accent-green" /> : <Copy size={14} />}
+                        {copiadoPayload ? 'Código PIX copiado!' : 'Copiar código PIX'}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleViewPdf(cupomVenda)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-primary hover:bg-bg-muted text-xs transition-colors"
+                  >
+                    <FileText size={14} /> Gerar QR no PDF
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-center gap-3">
               <Button variant="primary" onClick={() => handleThermalPrint(cupomVenda)} disabled={printing}>
                 <Printer size={16} /> {printing ? 'Imprimindo...' : 'Impressora Termica'}

@@ -10,6 +10,7 @@ import {
   type UsoConsumo,
 } from '../api';
 import UsoConsumoModal from '../components/UsoConsumoModal';
+import RowMenu from '../components/RowMenu';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
 
@@ -126,12 +127,14 @@ export default function UsoConsumo() {
                     &nbsp;•&nbsp; {fmtData(u.data_uso)}
                   </div>
                   <div className="insumo-det">{u.motivo || '—'}</div>
-                  <button className="row-btn" style={{ top: 16, color: '#6b706c', fontSize: 18 }} onClick={() => abrirEditar(u)}>
-                    ✎
-                  </button>
-                  <button className="row-btn" style={{ top: 44, color: '#dc2626', fontSize: 16 }} onClick={() => setConfirmDelete(u)}>
-                    🗑
-                  </button>
+                  <RowMenu
+                    style={{ top: 12, height: 32 }}
+                    fontSize={19}
+                    opcoes={[
+                      { rotulo: 'Editar', onPress: () => abrirEditar(u) },
+                      { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(u) },
+                    ]}
+                  />
                 </div>
                 <div className="row-sep" />
               </div>

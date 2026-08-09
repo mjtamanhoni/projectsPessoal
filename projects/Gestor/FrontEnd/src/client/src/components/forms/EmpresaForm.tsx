@@ -26,6 +26,7 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
       telefone: initial.telefone || '',
       celular: initial.celular || '',
       email: initial.email || '',
+      chave_pix: initial.chave_pix || '',
     } : {
       razao_social: '',
       fantasia: '',
@@ -36,6 +37,7 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
       telefone: '',
       celular: '',
       email: '',
+      chave_pix: '',
     },
   });
 
@@ -130,6 +132,18 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
         control={control}
         render={({ field }) => (
           <Input label="Email" error={errors.email?.message} type="email" {...field} />
+        )}
+      />
+      <Controller
+        name="chave_pix"
+        control={control}
+        render={({ field }) => (
+          <Input
+            label="Chave PIX"
+            error={errors.chave_pix?.message}
+            placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatoria"
+            {...field}
+          />
         )}
       />
 

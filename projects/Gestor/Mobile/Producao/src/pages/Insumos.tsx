@@ -12,6 +12,7 @@ import {
   type Marca,
 } from '../api';
 import InsumoModal from '../components/InsumoModal';
+import RowMenu from '../components/RowMenu';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
 
@@ -126,12 +127,14 @@ export default function Insumos() {
                     {fornNome.get(i.id_fornecedor ?? 0) ?? '—'} &nbsp;•&nbsp;{' '}
                     {marcaNome.get(i.id_marca ?? 0) ?? '—'}
                   </div>
-                  <button className="row-btn" style={{ top: 16, color: '#6b706c', fontSize: 18 }} onClick={() => abrirEditar(i)}>
-                    ✎
-                  </button>
-                  <button className="row-btn" style={{ top: 44, color: '#dc2626', fontSize: 16 }} onClick={() => setConfirmDelete(i)}>
-                    🗑
-                  </button>
+                  <RowMenu
+                    style={{ top: 12, height: 32 }}
+                    fontSize={19}
+                    opcoes={[
+                      { rotulo: 'Editar', onPress: () => abrirEditar(i) },
+                      { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(i) },
+                    ]}
+                  />
                 </div>
                 <div className="row-sep" />
               </div>

@@ -126,6 +126,8 @@ func (b *BasicCRUD) Salvar(w http.ResponseWriter, r *http.Request, table string,
 	}
 	defer tx.Rollback(r.Context())
 
+	var savedIDs []int
+
 	for _, item := range items {
 		id := getID(item)
 
@@ -167,7 +169,9 @@ func (b *BasicCRUD) Salvar(w http.ResponseWriter, r *http.Request, table string,
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			savedIDs = append(savedIDs, id)
 		} else {
+			savedIDs = append(savedIDs, id)
 			setClauses := []string{}
 			vals := []interface{}{}
 			paramIdx := 1
@@ -203,7 +207,7 @@ func (b *BasicCRUD) Salvar(w http.ResponseWriter, r *http.Request, table string,
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro(s) salvo(s) com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro(s) salvo(s) com sucesso", "ids": savedIDs})
 }
 func (b *BasicCRUD) Excluir(w http.ResponseWriter, r *http.Request, table string) {
 	id := parseInt(r.URL.Query().Get("id"), 0)

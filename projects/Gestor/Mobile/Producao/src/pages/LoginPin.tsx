@@ -1,46 +1,44 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUltimoLogin, useAuth } from '../auth';
-import { extrairErro, listarEmpresas, type EmpresaPublic } from '../api';
-import { LogoBox, AuthTitle, EmpresaField, AuthFooter } from '../components/auth';
+import { extrairErro } from '../api';
+import { LogoBox, AuthTitle, AuthFooter } from '../components/auth';
 
 const DOT_OFFSETS = [61, 105, 149, 193];
+
+function mascaraCpfCnpj(value: string): string {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length <= 11) {
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
+    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
+  }
+  if (numbers.length <= 12) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8)}`;
+  if (numbers.length <= 13) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12)}`;
+  return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12, 14)}`;
+}
 
 export default function LoginPin() {
   const navigate = useNavigate();
   const { loginPin } = useAuth();
-  const [empresas, setEmpresas] = useState<EmpresaPublic[]>([]);
-  const [empresaId, setEmpresaId] = useState(0);
-  const [codigo, setCodigo] = useState('');
+  const [cnpjCpf, setCnpjCpf] = useState('');
   const [pin, setPin] = useState('');
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    listarEmpresas()
-      .then((lista) => {
-        setEmpresas(lista);
-        const ultimo = getUltimoLogin();
-        if (ultimo?.tipo === 'login') {
-          navigate('/login', { replace: true });
-          return;
-        }
-        if (lista.length > 0) {
-          if (ultimo?.empresaId && lista.some((e) => e.id === ultimo.empresaId)) {
-            setEmpresaId(ultimo.empresaId);
-          } else {
-            setEmpresaId(lista[0].id);
-          }
-        }
-      })
-      .catch(() => setEmpresas([]));
+    const ultimo = getUltimoLogin();
+    if (ultimo?.tipo === 'login') {
+      navigate('/login', { replace: true });
+      return;
+    }
+    try {
+      const last = localStorage.getItem('producao.ultimoCnpj');
+      if (last) setCnpjCpf(last);
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const nomeEmpresa = (id: number) => {
-    const e = empresas.find((x) => x.id === id);
-    return e ? e.fantasia || e.razao_social : 'Empresa';
-  };
 
   const autenticar = async (valor: string) => {
     if (loading) return;
@@ -49,11 +47,14 @@ export default function LoginPin() {
       setErro('Informe o PIN (4 dígitos)');
       return;
     }
-    const emp = empresas.length > 0 ? empresaId || empresas[0].id : parseInt(codigo || '1', 10);
-    const empData = empresas.find((x) => x.id === emp) ?? { id: emp, razao_social: nomeEmpresa(emp), fantasia: '' };
+    if (!cnpjCpf.trim()) {
+      setErro('Informe o CNPJ/CPF da empresa');
+      return;
+    }
     setLoading(true);
     try {
-      await loginPin(emp, valor, empData);
+      await loginPin(cnpjCpf, valor);
+      try { localStorage.setItem('producao.ultimoCnpj', cnpjCpf); } catch {}
       navigate('/dashboard');
     } catch (e) {
       setErro(extrairErro(e));
@@ -70,12 +71,17 @@ export default function LoginPin() {
       <AuthTitle subtitle="Acesse com seu PIN" />
 
       <div className="auth-card" style={{ height: 340 }}>
-        <EmpresaField
-          empresas={empresas}
-          empresaId={empresaId}
-          onEmpresaId={setEmpresaId}
-          codigo={codigo}
-          onCodigo={setCodigo}
+        <div className="field-label" style={{ top: 18 }}>
+          CNPJ/CPF da Empresa
+        </div>
+        <input
+          className="field-input"
+          style={{ top: 38 }}
+          type="tel"
+          inputMode="numeric"
+          placeholder="Digite o CNPJ/CPF da empresa"
+          value={cnpjCpf}
+          onChange={(e) => setCnpjCpf(mascaraCpfCnpj(e.target.value))}
         />
 
         <div className="field-label" style={{ top: 100 }}>

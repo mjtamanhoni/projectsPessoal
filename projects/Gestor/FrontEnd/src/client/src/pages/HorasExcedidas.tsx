@@ -9,8 +9,9 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import type { HoraExcedida, Servico } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Trash2, RefreshCw, TrendingUp, BarChart3 } from 'lucide-react';
+import { RefreshCw, TrendingUp, BarChart3 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RowActions } from '@/components/ui/RowActions';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import api from '@/lib/api';
 
@@ -104,15 +105,11 @@ export function HorasExcedidas() {
       enableSorting: false,
       size: 50,
       cell: ({ row }) => (
-        <div className="flex items-center justify-center gap-0.5">
-          <ShowForPermission rota="/horas-excedidas" acao={ACAO.EXCLUIR}>
-            <button
-              onClick={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
-              className="p-1 rounded hover:bg-bg-muted transition-colors"
-            >
-              <Trash2 size={14} className="text-accent-red" />
-            </button>
-          </ShowForPermission>
+        <div className="flex justify-end">
+          <RowActions
+            rota="/horas-excedidas"
+            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+          />
         </div>
       ),
     }),

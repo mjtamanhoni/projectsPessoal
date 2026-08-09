@@ -1102,6 +1102,15 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
+    async salvarFotoProdutoFabricado(id, foto) {
+        try {
+            const res = await this.api.post('/produtoFoto', { id, foto }, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
     async listarReceitasIngrediente(params) {
         try {
             const res = await this.api.get('/receitaIngrediente', { params, headers: this.getAuthHeaders() });

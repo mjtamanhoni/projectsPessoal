@@ -10,6 +10,7 @@ import {
   type PerdaInsumo,
 } from '../api';
 import PerdaInsumoModal from '../components/PerdaInsumoModal';
+import RowMenu from '../components/RowMenu';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
 
@@ -126,12 +127,14 @@ export default function PerdasInsumo() {
                     &nbsp;•&nbsp; {fmtData(p.data_perda)}
                   </div>
                   <div className="insumo-det">{p.motivo || '—'}</div>
-                  <button className="row-btn" style={{ top: 16, color: '#6b706c', fontSize: 18 }} onClick={() => abrirEditar(p)}>
-                    ✎
-                  </button>
-                  <button className="row-btn" style={{ top: 44, color: '#dc2626', fontSize: 16 }} onClick={() => setConfirmDelete(p)}>
-                    🗑
-                  </button>
+                  <RowMenu
+                    style={{ top: 12, height: 32 }}
+                    fontSize={19}
+                    opcoes={[
+                      { rotulo: 'Editar', onPress: () => abrirEditar(p) },
+                      { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(p) },
+                    ]}
+                  />
                 </div>
                 <div className="row-sep" />
               </div>

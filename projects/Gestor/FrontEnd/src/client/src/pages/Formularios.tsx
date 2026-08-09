@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,7 @@ import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RowActions } from '@/components/ui/RowActions';
 
 const columnHelper = createColumnHelper<Formulario>();
 
@@ -38,27 +39,17 @@ export function Formularios() {
     }),
     columnHelper.display({
       id: 'acoes',
-      header: 'Acoes',
+      header: '',
       enableColumnFilter: false,
       enableSorting: false,
+      size: 60,
       cell: ({ row }) => (
-        <div className="text-right">
-          <ShowForPermission rota="/formularios" acao={ACAO.EDITAR}>
-            <button
-              onClick={() => handleEdit(row.original)}
-              className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-            >
-              <Edit2 size={16} className="text-text-secondary" />
-            </button>
-          </ShowForPermission>
-          <ShowForPermission rota="/formularios" acao={ACAO.EXCLUIR}>
-            <button
-              onClick={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
-              className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors ml-1"
-            >
-              <Trash2 size={16} className="text-accent-red" />
-            </button>
-          </ShowForPermission>
+        <div className="flex justify-end">
+          <RowActions
+            rota="/formularios"
+            onEdit={() => handleEdit(row.original)}
+            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+          />
         </div>
       ),
     }),

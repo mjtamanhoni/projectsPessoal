@@ -19,7 +19,8 @@ import type { UsuarioPinInput } from '@/schemas';
 import type { UsuarioInput } from '@/schemas';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw, KeyRound } from 'lucide-react';
+import { Plus, KeyRound, RefreshCw, Trash2 } from 'lucide-react';
+import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import api from '@/lib/api';
 
@@ -94,43 +95,29 @@ export function Usuarios() {
       enableColumnFilter: false,
       enableSorting: false,
       cell: ({ row }) => (
-        <div className="text-right flex items-center justify-end gap-1">
-          <ShowForPermission rota="/usuarios" acao={ACAO.EDITAR}>
-            <button
-              onClick={() => handleEdit(row.original)}
-              className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-              title="Editar"
-            >
-              <Edit2 size={16} className="text-text-secondary" />
-            </button>
-          </ShowForPermission>
-          <ShowForPermission rota="/usuarios" acao={ACAO.EDITAR}>
-            <button
-              onClick={() => handleOpenSenha(row.original)}
-              className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-              title="Alterar Senha"
-            >
-              <KeyRound size={16} className="text-text-secondary" />
-            </button>
-          </ShowForPermission>
-          <ShowForPermission rota="/usuarios" acao={ACAO.EDITAR}>
-            <button
-              onClick={() => handleOpenPin(row.original)}
-              className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-              title="Alterar PIN"
-            >
-              <KeyRound size={16} className="text-blue-600" />
-            </button>
-          </ShowForPermission>
-          <ShowForPermission rota="/usuarios" acao={ACAO.EXCLUIR}>
-            <button
-              onClick={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
-              className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-              title="Excluir"
-            >
-              <Trash2 size={16} className="text-accent-red" />
-            </button>
-          </ShowForPermission>
+        <div className="flex justify-end">
+          <RowActions
+            rota="/usuarios"
+            onEdit={() => handleEdit(row.original)}
+            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+            extras={[
+              {
+                rotulo: 'Alterar Senha',
+                icone: KeyRound,
+                onClick: () => handleOpenSenha(row.original),
+                permissaoRota: '/usuarios',
+                permissaoAcao: ACAO.EDITAR,
+              },
+              {
+                rotulo: 'Alterar PIN',
+                icone: KeyRound,
+                cor: '#2563eb',
+                onClick: () => handleOpenPin(row.original),
+                permissaoRota: '/usuarios',
+                permissaoAcao: ACAO.EDITAR,
+              },
+            ]}
+          />
         </div>
       ),
     }),

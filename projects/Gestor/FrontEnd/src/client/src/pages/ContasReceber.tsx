@@ -12,7 +12,8 @@ import api from '@/lib/api';
 import type { ContaReceber, Cliente, Categoria } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, CheckCircle, RotateCcw, Filter, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Plus, CheckCircle, RotateCcw, Filter, RefreshCw, AlertTriangle } from 'lucide-react';
+import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 const columnHelper = createColumnHelper<ContaReceber>();
@@ -269,34 +270,31 @@ export function ContasReceber() {
       enableColumnFilter: false,
       enableSorting: false,
       cell: ({ row }) => (
-        <div className="text-right">
-          {row.original.recebido ? (
-            <ShowForPermission rota="/contas-receber" acao={ACAO.ESTORNAR}>
-              <button onClick={() => setConfirmEstorno(row.original.id || row.original.codigo!)} className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors" title="Estornar Recebimento">
-                <RotateCcw size={16} className="text-orange-500" />
-              </button>
-            </ShowForPermission>
-          ) : (
-            <ShowForPermission rota="/contas-receber" acao={ACAO.BAIXAR}>
-              <button onClick={() => { setBaixando(row.original); setBaixaModalOpen(true); }} className="p-1.5 rounded-lg hover:bg-green-50 transition-colors" title="Baixar Conta">
-                <CheckCircle size={16} className="text-accent-primary" />
-              </button>
-            </ShowForPermission>
-          )}
-          {!row.original.recebido && (
-            <>
-              <ShowForPermission rota="/contas-receber" acao={ACAO.EDITAR}>
-                <button onClick={() => handleEdit(row.original)} className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors ml-1">
-                  <Edit2 size={16} className="text-text-secondary" />
-                </button>
-              </ShowForPermission>
-              <ShowForPermission rota="/contas-receber" acao={ACAO.EXCLUIR}>
-                <button onClick={() => { setConfirmDelete(row.original.id || row.original.codigo!); }} className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors ml-1">
-                  <Trash2 size={16} className="text-accent-red" />
-                </button>
-              </ShowForPermission>
-            </>
-          )}
+        <div className="flex justify-end">
+          <RowActions
+            rota="/contas-receber"
+            onEdit={!row.original.recebido ? () => handleEdit(row.original) : undefined}
+            onDelete={!row.original.recebido ? () => setConfirmDelete(row.original.id || row.original.codigo!) : undefined}
+            extras={[
+              row.original.recebido
+                ? {
+                    rotulo: 'Estornar Recebimento',
+                    icone: RotateCcw,
+                    cor: '#f97316',
+                    onClick: () => setConfirmEstorno(row.original.id || row.original.codigo!),
+                    permissaoRota: '/contas-receber',
+                    permissaoAcao: ACAO.ESTORNAR,
+                  }
+                : {
+                    rotulo: 'Baixar Conta',
+                    icone: CheckCircle,
+                    cor: '#16a34a',
+                    onClick: () => { setBaixando(row.original); setBaixaModalOpen(true); },
+                    permissaoRota: '/contas-receber',
+                    permissaoAcao: ACAO.BAIXAR,
+                  },
+            ]}
+          />
         </div>
       ),
     }),

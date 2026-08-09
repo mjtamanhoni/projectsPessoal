@@ -11,6 +11,7 @@ export interface EmpresaPublic {
   telefone?: string;
   celular?: string;
   email?: string;
+  chave_pix?: string;
 }
 
 export interface LoginResponse {
@@ -21,6 +22,7 @@ export interface LoginResponse {
   token: string;
   empresa: number;
   is_superadmin: boolean;
+  empresa_info?: EmpresaPublic;
 }
 
 export interface Fornecedor {
@@ -87,6 +89,8 @@ export interface ProdutoFabricado {
   custo_unitario?: number;
   margem_lucro?: number;
   valor_venda_sugerido?: number;
+  preco?: number;
+  foto?: string;
   ativo?: boolean;
 }
 
@@ -316,6 +320,11 @@ export function getBaseURL(): string {
   return `http://${host}:${port}`;
 }
 
+export function fotoUrl(foto: string): string {
+  if (!foto) return '';
+  return `${getBaseURL()}/uploads/${foto.split('/').map(encodeURIComponent).join('/')}`;
+}
+
 async function request(path: string, options: RequestInit = {}, autenticado = false): Promise<Response> {
   const headers: Record<string, string> = { ...((options.headers as Record<string, string>) ?? {}) };
   if (options.body) headers['Content-Type'] = 'application/json';
@@ -407,7 +416,7 @@ export async function loginApi(body: {
   login?: string;
   senha?: string;
   pin?: string;
-  empresa: number;
+  empresa: number | string;
 }): Promise<LoginResponse> {
   const res = await request('/usuario/login', { method: 'POST', body: JSON.stringify(body) });
   return (await parseResponse(res)) as LoginResponse;
@@ -714,8 +723,18 @@ export async function listarProdutosFabricados(): Promise<ProdutoFabricado[]> {
   return (await parseResponse(res)) as ProdutoFabricado[];
 }
 
-export async function salvarProdutoFabricado(data: ProdutoFabricado): Promise<void> {
+export async function salvarProdutoFabricado(data: ProdutoFabricado): Promise<{ id?: number } | null> {
   const res = await request('/produtoFabricado', { method: 'POST', body: JSON.stringify(data) }, true);
+  const parsed = (await parseResponse(res)) as Record<string, unknown> | null;
+  if (!parsed) return null;
+  const ids = Array.isArray(parsed.ids) ? parsed.ids : [];
+  return {
+    id: ids.length > 0 ? Number(ids[0]) : undefined,
+  };
+}
+
+export async function enviarFotoProdutoFabricado(id: number, foto: string): Promise<void> {
+  const res = await request('/produtoFoto', { method: 'POST', body: JSON.stringify({ id, foto }) }, true);
   await parseResponse(res);
 }
 

@@ -34,8 +34,8 @@ interface AuthState {
   usuario: LoginResponse | null;
   empresaNome: string;
   empresa: EmpresaPublic | null;
-  login: (empresa: number, login: string, senha: string, empresaData: EmpresaPublic) => Promise<void>;
-  loginPin: (empresa: number, pin: string, empresaData: EmpresaPublic) => Promise<void>;
+  login: (cnpjCpf: string, login: string, senha: string) => Promise<void>;
+  loginPin: (cnpjCpf: string, pin: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -84,14 +84,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const login = async (empresa: number, login: string, senha: string, empresaData: EmpresaPublic) => {
-    const data = await loginApi({ login, senha, empresa });
-    salvarSessao(data, empresaData, 'login', login);
+  const login = async (cnpjCpf: string, login: string, senha: string) => {
+    const data = await loginApi({ login, senha, empresa: cnpjCpf });
+    const empData: EmpresaPublic = data.empresa_info ?? { id: data.empresa, razao_social: '', fantasia: '' };
+    salvarSessao(data, empData, 'login', login);
   };
 
-  const loginPin = async (empresa: number, pin: string, empresaData: EmpresaPublic) => {
-    const data = await loginApi({ pin, empresa });
-    salvarSessao(data, empresaData, 'pin');
+  const loginPin = async (cnpjCpf: string, pin: string) => {
+    const data = await loginApi({ pin, empresa: cnpjCpf });
+    const empData: EmpresaPublic = data.empresa_info ?? { id: data.empresa, razao_social: '', fantasia: '' };
+    salvarSessao(data, empData, 'pin');
   };
 
   const logout = () => {

@@ -522,7 +522,7 @@ func (h *BasicCRUD) ServicoExcluir(w http.ResponseWriter, r *http.Request) {
 func (h *BasicCRUD) EmpresaListarPublico(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.Pool.Query(r.Context(), `SELECT e.id, e.razao_social, e.fantasia,
 		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
-		e.endereco, e.telefone, e.celular, e.email
+		e.endereco, e.telefone, e.celular, e.email, e.chave_pix
 		FROM public.empresa e ORDER BY e.id`)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -539,7 +539,7 @@ func (h *BasicCRUD) EmpresaListar(w http.ResponseWriter, r *http.Request) {
 
 	query := `SELECT e.id, e.razao_social as nome, e.razao_social, e.fantasia,
 		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
-		e.endereco, e.telefone, e.celular, e.email
+		e.endereco, e.telefone, e.celular, e.email, e.chave_pix
 		FROM public.empresa e WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -585,21 +585,22 @@ func (h *BasicCRUD) EmpresaAtualizar(w http.ResponseWriter, r *http.Request) {
 		telefone := getStr(item, "telefone")
 		celular := getStr(item, "celular")
 		email := getStr(item, "email")
+		chavePix := getStr(item, "chave_pix")
 
 		if id == 0 {
 			err = tx.QueryRow(r.Context(),
 				`INSERT INTO public.empresa (razao_social, fantasia, cnpj_cpf, inscricao_estadual_identidade,
-					regime_tributario, endereco, telefone, celular, email)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email,
+					regime_tributario, endereco, telefone, celular, email, chave_pix)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix,
 			).Scan(&id)
 		} else {
 			_, err = tx.Exec(r.Context(), `
 				UPDATE public.empresa SET razao_social=$1, fantasia=$2, cnpj_cpf=$3,
 					inscricao_estadual_identidade=$4, regime_tributario=$5, endereco=$6,
-					telefone=$7, celular=$8, email=$9
-				WHERE id=$10`,
-				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, id)
+					telefone=$7, celular=$8, email=$9, chave_pix=$10
+				WHERE id=$11`,
+				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, id)
 		}
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)

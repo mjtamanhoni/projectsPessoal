@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Encomenda, EncomendaItem, ProdutoFabricado, Cliente } from '@/types';
-import { formatCurrency, formatCurrencyInput, formatQuantityInput, formatDecimals, parseCurrencyInput } from '@/lib/utils';
+import { formatCurrency, formatDecimals } from '@/lib/utils';
+import { ProdutosSelecaoModal, type ProdutoSelecionado } from '@/components/forms/ProdutosSelecaoModal';
 
 interface EncomendaFormProps {
   onSubmit: (data: Encomenda) => void;
@@ -20,30 +21,13 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
   const [observacao, setObservacao] = useState(initial?.observacao ?? '');
 
   const [itens, setItens] = useState<EncomendaItem[]>(initial?.itens ?? []);
-  const [selectedProduto, setSelectedProduto] = useState<number | ''>('');
-  const qtdRef = useRef<HTMLInputElement>(null);
-  const [itemQtd, setItemQtd] = useState('');
-  const [itemUnitRaw, setItemUnitRaw] = useState('');
+  const [seletorAberto, setSeletorAberto] = useState(false);
 
   const total = itens.reduce((acc, item) => acc + item.valor_total, 0);
-  const qtdNum = itemQtd.replace(/\D/g, '');
-  const qtdParsed = qtdNum ? parseInt(qtdNum, 10) / 100 : 0;
-  const unitParsed = parseCurrencyInput(itemUnitRaw);
-  const totalPreview = qtdParsed > 0 && unitParsed > 0 ? formatCurrency(qtdParsed * unitParsed) : '';
 
-  const addItem = () => {
-    const produtoId = typeof selectedProduto === 'number' ? selectedProduto : 0;
-    if (!produtoId) return;
-    const qtd = qtdParsed;
-    const vrUnit = unitParsed;
-    if (qtd <= 0 || vrUnit <= 0) return;
-    const vrTotal = qtd * vrUnit;
-    const produto = produtos.find((p) => (p.id ?? p.codigo) === produtoId);
-    setItens([...itens, { produto_fabricado_id: produtoId, produto_nome: produto?.nome, quantidade: qtd, valor_unitario: vrUnit, valor_total: vrTotal }]);
-    setSelectedProduto('');
-    setItemQtd('');
-    setItemUnitRaw('');
-    qtdRef.current?.focus();
+  const confirmarSelecao = (novos: ProdutoSelecionado[]) => {
+    setItens(novos as EncomendaItem[]);
+    setSeletorAberto(false);
   };
 
   const removeItem = (idx: number) => {
@@ -92,59 +76,12 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
         <label className="label-field font-semibold">Itens da Encomenda</label>
 
         <div className="space-y-2">
-          <div className="space-y-1">
-            <label className="label-field text-xs">Produto</label>
-            <RegistroSelect<number>
-              value={typeof selectedProduto === 'number' ? selectedProduto : null}
-              onChange={(v) => {
-                setSelectedProduto(v);
-                qtdRef.current?.focus();
-              }}
-              options={produtos.map((p) => ({ value: (p.id ?? p.codigo)!, label: p.nome }))}
-              title="Selecionar Produto"
-            />
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="w-32">
-              <label className="label-field text-xs">Quantidade</label>
-              <input
-                ref={qtdRef}
-                type="text"
-                inputMode="decimal"
-                className="input-field text-sm"
-                placeholder="0,00"
-                value={itemQtd}
-                onChange={(e) => setItemQtd(formatQuantityInput(e.target.value, 2))}
-              />
-            </div>
-            <div className="w-36">
-              <label className="label-field text-xs">Valor Unitário</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                className="input-field text-sm"
-                placeholder="0,00"
-                value={itemUnitRaw}
-                onChange={(e) => setItemUnitRaw(formatCurrencyInput(e.target.value))}
-              />
-            </div>
-            <div className="w-36">
-              <label className="label-field text-xs">Valor Total</label>
-              <input
-                type="text"
-                className="input-field text-sm bg-bg-muted text-text-secondary"
-                placeholder="0,00"
-                value={totalPreview}
-                readOnly
-                tabIndex={-1}
-              />
-            </div>
-            <div>
-              <Button type="button" variant="secondary" onClick={addItem}>
-                <Plus size={14} /> Adicionar
-              </Button>
-            </div>
-          </div>
+          <p className="text-xs text-text-tertiary">
+            Clique para abrir a seleção de produtos, marque os desejados e confirme. Para adicionar ou alterar quantidades, reabra a seleção.
+          </p>
+          <Button type="button" variant="secondary" onClick={() => setSeletorAberto(true)}>
+            <Plus size={16} /> Selecionar Produtos ({itens.length})
+          </Button>
         </div>
 
         <div className="border border-border-primary rounded-lg overflow-hidden max-h-60 overflow-y-auto">
@@ -189,6 +126,15 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
         <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
         <Button type="submit" disabled={itens.length === 0}><Plus size={16} /> Salvar Encomenda</Button>
       </div>
+
+      <ProdutosSelecaoModal
+        isOpen={seletorAberto}
+        titulo="Selecionar Produtos"
+        produtos={produtos}
+        itens={itens}
+        onConfirmar={confirmarSelecao}
+        onFechar={() => setSeletorAberto(false)}
+      />
     </form>
   );
 }

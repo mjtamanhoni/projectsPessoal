@@ -76,6 +76,7 @@ declare class HorseApiService {
     listarProdutosFabricados(params?: Record<string, unknown>): Promise<ProdutoFabricado[]>;
     salvarProdutosFabricados(items: ProdutoFabricado[]): Promise<unknown>;
     excluirProdutoFabricado(id: number): Promise<unknown>;
+    salvarFotoProdutoFabricado(id: number, foto: string): Promise<unknown>;
     listarReceitasIngrediente(params?: Record<string, unknown>): Promise<ReceitaIngrediente[]>;
     salvarReceitasIngrediente(items: ReceitaIngrediente[]): Promise<unknown>;
     excluirReceitaIngrediente(id: number): Promise<unknown>;

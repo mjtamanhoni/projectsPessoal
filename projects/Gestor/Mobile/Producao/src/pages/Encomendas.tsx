@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Clipboard } from '@capacitor/clipboard';
 import {
   excluirEncomenda,
   extrairErro,
@@ -8,16 +9,25 @@ import {
   listarEncomendaItens,
   listarEncomendas,
   listarProdutosFabricados,
+  listarVendaProdutoItens,
+  listarVendasProduto,
   salvarEncomenda,
   type Encomenda,
   type EncomendaItem,
   type Cliente,
   type ProdutoFabricado,
+  type VendaProduto,
 } from '../api';
 import EncomendaModal from '../components/EncomendaModal';
+import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
+import { useAuth } from '../auth';
+import { gerarTextoCupom, type CupomData } from '../lib/cupom';
+import { gerarPDFCupom } from '../lib/cupom-pdf';
+import { gerarPayloadPix, gerarQrPixDataUrl } from '../lib/pix';
+import { compartilharPDF } from '../lib/share';
 
 function fmtMoeda(v: number | undefined): string {
   if (v == null || !Number.isFinite(v)) return 'R$ 0,00';
@@ -58,6 +68,13 @@ export default function Encomendas() {
   const [baixarData, setBaixarData] = useState('');
   const [baixarRecebido, setBaixarRecebido] = useState(true);
   const [baixando, setBaixando] = useState(false);
+  const [cupomData, setCupomData] = useState<CupomData | null>(null);
+  const [cupomQr, setCupomQr] = useState<string | null>(null);
+  const [cupomPayload, setCupomPayload] = useState<string | null>(null);
+  const [cupomCopiado, setCupomCopiado] = useState<'payload' | 'chave' | null>(null);
+  const [cupomBusy, setCupomBusy] = useState(false);
+  const [cupomPdfBusy, setCupomPdfBusy] = useState(false);
+  const { empresa, empresaNome } = useAuth();
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -145,7 +162,7 @@ export default function Encomendas() {
     setBaixando(true);
     setErro('');
     try {
-      await gerarVendaDeEncomenda({
+      const res = await gerarVendaDeEncomenda({
         id_encomenda: baixar.id,
         data_venda: baixarData,
         recebido: baixarRecebido,
@@ -153,11 +170,103 @@ export default function Encomendas() {
       setBaixar(null);
       setExpandido({});
       await carregar();
+      if (res?.venda_id != null) {
+        await abrirCupomDaVenda(res.venda_id);
+      }
     } catch (e) {
       setBaixar(null);
       setErro(extrairErro(e));
     } finally {
       setBaixando(false);
+    }
+  };
+
+  const abrirCupomDaVenda = async (vendaId: number) => {
+    setCupomData(null);
+    setCupomQr(null);
+    setCupomPayload(null);
+    setCupomCopiado(null);
+    setErro('');
+    try {
+      const venda = (await listarVendasProduto()).find((v) => (v.id ?? v.codigo) === vendaId);
+      if (!venda) {
+        setErro('Venda gerada, mas não foi possível carregar os dados do cupom.');
+        return;
+      }
+      const itens = await listarVendaProdutoItens(vendaId);
+      const vendaComItens: VendaProduto = { ...venda, itens };
+      const cliente = clientes.find((c) => c.id === venda.cliente_id) ?? null;
+      const data: CupomData = {
+        empresaNome: empresa?.fantasia || empresa?.razao_social || empresaNome || 'EMPRESA',
+        empresaCnpj: empresa?.cnpj_cpf || '',
+        empresaEndereco: empresa?.endereco || '',
+        empresaTelefone: empresa?.celular || empresa?.telefone || '',
+        empresaEmail: empresa?.email || '',
+        chavePix: empresa?.chave_pix || '',
+        pixQrBase64: null,
+        logoBase64: null,
+        venda: vendaComItens,
+        cliente,
+        numeroCupom: vendaId,
+        formaPagamento: venda.recebido ? 'A VISTA' : 'CREDIARIO / PARCELADO',
+        parcelas: [],
+        desconto: 0,
+      };
+      setCupomData(data);
+      const chave = empresa?.chave_pix;
+      if (chave) {
+        setCupomBusy(true);
+        try {
+          const payload = gerarPayloadPix({
+            chave,
+            nome: empresa?.fantasia || empresa?.razao_social || empresaNome || 'EMPRESA',
+            cidade: '',
+            valor: Number(venda.valor_total) || 0,
+            txid: `CUPOM${String(vendaId).padStart(5, '0')}`,
+          });
+          if (payload) {
+            setCupomPayload(payload);
+            setCupomQr(await gerarQrPixDataUrl(payload, 240));
+          }
+        } catch {
+          setCupomQr(null);
+        } finally {
+          setCupomBusy(false);
+        }
+      }
+    } catch (e) {
+      setErro(extrairErro(e));
+    }
+  };
+
+  const copiarCupom = async (modo: 'payload' | 'chave') => {
+    const texto = modo === 'payload' ? cupomPayload : empresa?.chave_pix;
+    if (!texto || !cupomData) return;
+    try {
+      await Clipboard.write({ string: texto });
+      setCupomCopiado(modo);
+      setTimeout(() => setCupomCopiado(null), 2500);
+    } catch {
+      setErro('Não foi possível copiar');
+    }
+  };
+
+  const gerarCupomPdf = async () => {
+    if (!cupomData) return;
+    setCupomPdfBusy(true);
+    setErro('');
+    try {
+      const data: CupomData = { ...cupomData, pixQrBase64: cupomQr };
+      const doc = gerarPDFCupom(data);
+      await compartilharPDF(
+        doc,
+        `cupom-${String(data.numeroCupom).padStart(5, '0')}-${new Date().toISOString().split('T')[0]}.pdf`,
+        'Cupom Não Fiscal',
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao gerar/compartilhar o cupom');
+    } finally {
+      setCupomPdfBusy(false);
     }
   };
 
@@ -270,35 +379,28 @@ export default function Encomendas() {
                       {nItens != null ? `${nItens} ${nItens === 1 ? 'item' : 'itens'}` : '—'}
                     </div>
                     <div className="compra-total">{fmtMoeda(e.valor_total)}</div>
+                    <RowMenu
+                      className="compra-btn"
+                      style={{ top: 10, height: 36 }}
+                      fontSize={21}
+                      opcoes={[
+                        {
+                          rotulo: baixada ? 'Baixada' : 'Baixar',
+                          cor: baixada ? '#9ca09d' : '#10b981',
+                          disabled: baixada,
+                          onPress: () => {
+                            setBaixar({ id: id ?? 0, cliente: e.cliente_nome });
+                            setBaixarData(new Date().toISOString().slice(0, 10));
+                            setBaixarRecebido(true);
+                          },
+                        },
+                        { rotulo: 'Editar', onPress: () => abrirEditar(e) },
+                        { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(e) },
+                      ]}
+                    />
                     <button
                       className="compra-btn"
-                      style={{ top: 12, color: baixada ? '#9ca09d' : '#10b981', fontSize: 11 }}
-                      disabled={baixada}
-                      onClick={() => {
-                        setBaixar({ id: id ?? 0, cliente: e.cliente_nome });
-                        setBaixarData(new Date().toISOString().slice(0, 10));
-                        setBaixarRecebido(true);
-                      }}
-                    >
-                      {baixada ? 'Baixada' : 'Baixar'}
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 36, color: '#6b706c', fontSize: 16 }}
-                      onClick={() => abrirEditar(e)}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 56, color: '#dc2626', fontSize: 14 }}
-                      onClick={() => setConfirmDelete(e)}
-                    >
-                      🗑
-                    </button>
-                    <button
-                      className="compra-btn"
-                      style={{ top: 76, color: '#9ca09d', fontSize: 12 }}
+                      style={{ top: 50, height: 36, color: '#9ca09d', fontSize: 16 }}
                       onClick={() => toggleExpandir(e)}
                     >
                       {aberto ? '▲' : '▼'}
@@ -359,28 +461,113 @@ export default function Encomendas() {
                 A mercadoria foi entregue? Ao baixar a encomenda será gerada uma venda de produto com os itens desta encomenda (baixa de estoque e contas a receber).
                 {baixar.cliente ? ` Cliente: ${baixar.cliente}.` : ''}
               </div>
-              <div className="modal-label" style={{ top: 6 }}>
+              <div className="modal-label" style={{ position: 'static', margin: '12px 4px 4px' }}>
                 Data da Venda *
               </div>
               <input
                 className="modal-input"
-                style={{ top: 22 }}
+                style={{ position: 'static', width: 326, margin: '0 4px 16px' }}
                 type="date"
                 value={baixarData}
                 onChange={(e) => setBaixarData(e.target.value)}
               />
-              <div className="modal-check-row" style={{ top: 64 }}>
+              <div className="modal-check-row" style={{ position: 'static', margin: '0 4px 24px' }}>
                 <div className={`modal-checkbox ${baixarRecebido ? 'checked' : ''}`} onClick={() => setBaixarRecebido(!baixarRecebido)}>
                   {baixarRecebido && <div className="modal-check-fill" />}
                 </div>
                 <span className="modal-check-label">Venda já foi recebida?</span>
               </div>
-              <div style={{ position: 'absolute', left: 0, top: 102, width: 350, display: 'flex', justifyContent: 'center', gap: 12 }}>
-                <button className="modal-btn cancel" onClick={() => setBaixar(null)} disabled={baixando}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+                <button className="modal-btn cancel" style={{ position: 'static', top: 0 }} onClick={() => setBaixar(null)} disabled={baixando}>
                   Cancelar
                 </button>
-                <button className="modal-btn save" onClick={confirmarBaixar} disabled={baixando || !baixarData}>
+                <button className="modal-btn save" style={{ position: 'static', top: 0 }} onClick={confirmarBaixar} disabled={baixando || !baixarData}>
                   {baixando ? 'Gerando...' : 'Baixar e Gerar Venda'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cupomData && (
+        <div className="modal-overlay" style={{ zIndex: 60 }}>
+          <div className="modal-card" style={{ maxHeight: '92vh', overflow: 'hidden' }}>
+            <div className="modal-head" style={{ height: 'auto', minHeight: 56 }}>
+              <div
+                className="modal-title"
+                style={{
+                  position: 'static',
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
+                  maxWidth: 'calc(100% - 60px)',
+                  padding: '14px 16px 12px 20px',
+                  display: 'block',
+                }}
+              >
+                Encomenda baixada — Cupom Não Fiscal {cupomData.venda.cliente_nome ? `(${cupomData.venda.cliente_nome})` : ''}
+              </div>
+              <button className="modal-close" onClick={() => setCupomData(null)} disabled={cupomPdfBusy}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body" style={{ overflowY: 'auto', maxHeight: 'calc(92vh - 120px)' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 10, whiteSpace: 'pre-wrap', background: '#f4f6f4', borderRadius: 6, padding: 10, margin: '0 4px 12px', lineHeight: 1.45 }}>
+                {gerarTextoCupom(cupomData)}
+              </div>
+
+              {empresa?.chave_pix && (
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '0 4px 12px' }}>
+                  {cupomBusy ? (
+                    <div style={{ width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9ca09d' }}>
+                      Gerando QR Code...
+                    </div>
+                  ) : cupomQr ? (
+                    <img src={cupomQr} alt="QR Code PIX" style={{ width: 150, height: 150 }} />
+                  ) : (
+                    <div style={{ width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9ca09d' }}>
+                      QR indisponível
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1b1f1c', marginBottom: 4 }}>
+                      Pagar com PIX
+                    </div>
+                    <div style={{ fontSize: 10, color: '#4b5563', wordBreak: 'break-all', marginBottom: 8 }}>
+                      {empresa.chave_pix}
+                    </div>
+                    {cupomPayload && (
+                      <div style={{ fontSize: 10, color: '#6b706c', wordBreak: 'break-all', marginBottom: 8 }}>
+                        Copia e cola: {cupomPayload.slice(0, 40)}...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {erro && <div className="modal-erro" style={{ position: 'static', margin: '0 4px 8px' }}>{erro}</div>}
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+                {empresa?.chave_pix && (
+                  <button className="confirm-btn save" onClick={() => copiarCupom('chave')} disabled={cupomPdfBusy}>
+                    {cupomCopiado === 'chave' ? 'Chave copiada!' : 'Copiar chave PIX'}
+                  </button>
+                )}
+                {cupomPayload && (
+                  <button
+                    className="confirm-btn save"
+                    onClick={() => copiarCupom('payload')}
+                    disabled={cupomPdfBusy}
+                    style={{ background: '#0a7a3d' }}
+                  >
+                    {cupomCopiado === 'payload' ? 'Código copiado!' : 'Copiar código PIX'}
+                  </button>
+                )}
+                <button className="confirm-btn save" onClick={gerarCupomPdf} disabled={cupomPdfBusy}>
+                  {cupomPdfBusy ? 'Gerando...' : 'Enviar PDF ao cliente'}
+                </button>
+                <button className="confirm-btn cancel" onClick={() => setCupomData(null)} disabled={cupomPdfBusy}>
+                  Fechar
                 </button>
               </div>
             </div>

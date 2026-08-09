@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  enviarFotoProdutoFabricado,
   excluirProdutoFabricado,
   extrairErro,
   listarProdutosFabricados,
@@ -8,6 +9,7 @@ import {
   type ProdutoFabricado,
 } from '../api';
 import ProdutoFabricadoModal from '../components/ProdutoFabricadoModal';
+import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
@@ -55,8 +57,17 @@ export default function ProdutosFabricados() {
     setModalOpen(true);
   };
 
-  const aoSalvar = async (data: ProdutoFabricado) => {
-    await salvarProdutoFabricado({ ...data, id: editing?.id });
+  const aoSalvar = async (data: ProdutoFabricado, foto?: { dataUrl?: string; remover?: boolean }) => {
+    const res = await salvarProdutoFabricado({ ...data, id: editing?.id });
+    const id = res?.id ?? editing?.id;
+    if (id && foto) {
+      try {
+        await enviarFotoProdutoFabricado(id, foto.dataUrl ?? '');
+      } catch (e) {
+        setErro(extrairErro(e));
+        return;
+      }
+    }
     setModalOpen(false);
     setEditing(null);
     await carregar();
@@ -109,28 +120,17 @@ export default function ProdutosFabricados() {
                     {p.unidade_medida || '—'} &nbsp;•&nbsp; {fmtMoeda(p.custo_unitario)}
                   </div>
                   <div className="insumo-det" style={{ color: '#2d5e3a' }}>
-                    Venda: {fmtMoeda(p.valor_venda_sugerido)}
+                    Venda: {fmtMoeda(p.preco ?? p.valor_venda_sugerido)}
                   </div>
-                  <button
-                    className="row-btn"
-                    style={{ top: 16, color: '#6b706c', fontSize: 18 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      abrirEditar(p);
-                    }}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="row-btn"
-                    style={{ top: 44, color: '#dc2626', fontSize: 16 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmDelete(p);
-                    }}
-                  >
-                    🗑
-                  </button>
+                  <RowMenu
+                    style={{ top: 12, height: 32 }}
+                    fontSize={19}
+                    stopPropagacao
+                    opcoes={[
+                      { rotulo: 'Editar', onPress: () => abrirEditar(p) },
+                      { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(p) },
+                    ]}
+                  />
                 </div>
                 <div className="row-sep" />
               </div>

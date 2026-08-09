@@ -12,6 +12,7 @@ import {
   type ReceitaIngrediente,
 } from '../api';
 import IngredienteModal from '../components/IngredienteModal';
+import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
@@ -142,20 +143,14 @@ export default function Ingredientes() {
                   <div className="insumo-det" style={{ color: '#2d5e3a' }}>
                     Subtotal: {fmtMoeda(r.quantidade * (r.insumo_custo_medio ?? 0))}
                   </div>
-                  <button
-                    className="row-btn"
-                    style={{ top: 16, color: '#6b706c', fontSize: 18 }}
-                    onClick={() => abrirEditar(r)}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="row-btn"
-                    style={{ top: 44, color: '#dc2626', fontSize: 16 }}
-                    onClick={() => setConfirmDelete(r)}
-                  >
-                    🗑
-                  </button>
+                  <RowMenu
+                    style={{ top: 12, height: 32 }}
+                    fontSize={19}
+                    opcoes={[
+                      { rotulo: 'Editar', onPress: () => abrirEditar(r) },
+                      { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(r) },
+                    ]}
+                  />
                 </div>
                 <div className="row-sep" />
               </div>

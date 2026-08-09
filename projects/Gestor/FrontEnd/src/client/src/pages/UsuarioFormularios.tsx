@@ -11,8 +11,9 @@ import { useToast } from '@/context/ToastContext';
 import { Spinner } from '@/components/ui/Spinner';
 import api from '@/lib/api';
 import type { UsuarioFormulario, Usuario, Formulario } from '@/types';
-import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RowActions } from '@/components/ui/RowActions';
 
 const columnHelper = createColumnHelper<UsuarioFormulario>();
 
@@ -60,19 +61,11 @@ export function UsuarioFormularios() {
       enableColumnFilter: false,
       enableSorting: false,
       cell: ({ row }) => (
-        <div className="text-right">
-          <button
-            onClick={() => handleEdit(row.original)}
-            className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
-          >
-            <Edit2 size={16} className="text-text-secondary" />
-          </button>
-          <button
-            onClick={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
-            className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors ml-1"
-          >
-            <Trash2 size={16} className="text-accent-red" />
-          </button>
+        <div className="flex justify-end">
+          <RowActions
+            onEdit={() => handleEdit(row.original)}
+            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+          />
         </div>
       ),
     }),

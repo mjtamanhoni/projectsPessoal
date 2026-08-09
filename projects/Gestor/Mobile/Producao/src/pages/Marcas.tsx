@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { excluirMarca, extrairErro, listarMarcas, salvarMarca, type Marca } from '../api';
 import MarcaModal from '../components/MarcaModal';
+import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
@@ -94,20 +95,14 @@ export default function Marcas() {
                   <div className="insumo-det" style={{ color: m.ativo ? '#2d5e3a' : '#c0392b' }}>
                     {m.ativo ? 'Ativo' : 'Inativo'}
                   </div>
-                  <button
-                    className="row-btn"
-                    style={{ top: 16, color: '#6b706c', fontSize: 18 }}
-                    onClick={() => abrirEditar(m)}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="row-btn"
-                    style={{ top: 44, color: '#dc2626', fontSize: 16 }}
-                    onClick={() => setConfirmDelete(m)}
-                  >
-                    🗑
-                  </button>
+                  <RowMenu
+                    style={{ top: 12, height: 32 }}
+                    fontSize={19}
+                    opcoes={[
+                      { rotulo: 'Editar', onPress: () => abrirEditar(m) },
+                      { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(m) },
+                    ]}
+                  />
                 </div>
                 <div className="row-sep" />
               </div>

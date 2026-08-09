@@ -13,6 +13,7 @@ type Config struct {
 	ServerPort string
 	JWTSecret  string
 	DataDir    string
+	FotosDir   string
 }
 
 func Load() *Config {
@@ -25,6 +26,7 @@ func Load() *Config {
 		ServerPort: getEnv("SERVER_PORT", "9000"),
 		JWTSecret:  getEnv("JWT_SECRET", "c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d"),
 		DataDir:    getEnv("DATA_DIR", "data"),
+		FotosDir:   getEnv("FOTOS_DIR", "../Fotos"),
 	}
 }
 

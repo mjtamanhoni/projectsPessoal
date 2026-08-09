@@ -5,6 +5,11 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+export function fotoUrl(foto: string): string {
+  if (!foto) return '';
+  return `/api/uploads/${foto.split('/').map(encodeURIComponent).join('/')}`;
+}
+
 export function formatDate(dateStr: string): string {
   if (!dateStr) return '-';
   const date = new Date(dateStr.split('T')[0] + 'T12:00:00');

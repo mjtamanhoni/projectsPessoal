@@ -8,6 +8,7 @@ import {
   type CustoAdicionalTipo,
 } from '../api';
 import CustoAdicionalModal from '../components/CustoAdicionalModal';
+import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
@@ -100,20 +101,14 @@ export default function CustosAdicionais() {
                   <div className="insumo-det" style={{ color: t.ativo ? '#2d5e3a' : '#c0392b' }}>
                     {t.ativo ? 'Ativo' : 'Inativo'}
                   </div>
-                  <button
-                    className="row-btn"
-                    style={{ top: 16, color: '#6b706c', fontSize: 18 }}
-                    onClick={() => abrirEditar(t)}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="row-btn"
-                    style={{ top: 44, color: '#dc2626', fontSize: 16 }}
-                    onClick={() => setConfirmDelete(t)}
-                  >
-                    🗑
-                  </button>
+                  <RowMenu
+                    style={{ top: 12, height: 32 }}
+                    fontSize={19}
+                    opcoes={[
+                      { rotulo: 'Editar', onPress: () => abrirEditar(t) },
+                      { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(t) },
+                    ]}
+                  />
                 </div>
                 <div className="row-sep" />
               </div>
