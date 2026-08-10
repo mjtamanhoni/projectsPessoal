@@ -108,7 +108,7 @@ export default function RelatorioFabricacoes() {
         {loading ? 'Carregando...' : `${fabricacoes.length} fabricação(ões) | Total ${fmtMoeda(totalGeral)}`}
       </div>
 
-      <div className="list-card" style={{ top: 80, height: 650 }}>
+      <div className="list-card" style={{ top: 88, bottom: 12 }}>
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>

@@ -1,4 +1,7 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { mesCorrente, passaPeriodo } from '@/lib/filtros';
+import type { FiltroPeriodo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +23,13 @@ const columnHelper = createColumnHelper<PerdaProdutoFabricado>();
 
 export function PerdasProduto() {
   const { data: perdas, loading, error, create, update, remove, fetchOne, refetch } = useApi<PerdaProdutoFabricado>('/perdas-produto');
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+
+  const perdasFiltradas = useMemo(
+    () =>
+      (perdas ?? []).filter((p) => passaPeriodo(p.data_perda, periodo)),
+    [perdas, periodo],
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<PerdaProdutoFabricado | null>(null);
   const [fetchingOne, setFetchingOne] = useState(false);
@@ -133,7 +143,16 @@ export function PerdasProduto() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={perdas} loading={loading} error={error} emptyMessage="Nenhuma perda registrada" />
+        <PaginaFiltros
+          periodo={{
+            inicio: periodo.inicio,
+            fim: periodo.fim,
+            onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+            onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+          }}
+          onLimpar={() => setPeriodo({ inicio: '', fim: '' })}
+        />
+        <DataTable columns={columns} data={perdasFiltradas} loading={loading} error={error} emptyMessage="Nenhuma perda registrada" />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Perda' : 'Nova Perda'}>

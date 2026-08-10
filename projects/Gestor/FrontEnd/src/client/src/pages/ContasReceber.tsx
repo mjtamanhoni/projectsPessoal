@@ -50,7 +50,7 @@ export function ContasReceber() {
   const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
   const [dataInicio, setDataInicio] = useState(primeiroDia);
   const [dataFim, setDataFim] = useState(ultimoDia);
-  const [status, setStatus] = useState('ambos');
+  const [status, setStatus] = useState('aberto');
   const [showFilters, setShowFilters] = useState(true);
 
   const { addToast } = useToast();
@@ -333,7 +333,7 @@ export function ContasReceber() {
                 <option value="recebido">Recebido</option>
               </select>
             </div>
-            <button onClick={() => { setDataInicio(primeiroDia); setDataFim(ultimoDia); setStatus('ambos'); }} className="px-4 py-2 text-sm text-text-secondary border border-border-primary rounded-lg hover:bg-background-hover transition-colors">Limpar</button>
+            <button onClick={() => { setDataInicio(primeiroDia); setDataFim(ultimoDia); setStatus('aberto'); }} className="px-4 py-2 text-sm text-text-secondary border border-border-primary rounded-lg hover:bg-background-hover transition-colors">Limpar</button>
           </div>
         </Card>
       )}

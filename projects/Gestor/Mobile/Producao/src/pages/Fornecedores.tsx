@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { passaBusca } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import { excluirFornecedor, extrairErro, listarFornecedores, salvarFornecedor, type Fornecedor } from '../api';
 import PessoaModal from '../components/PessoaModal';
@@ -17,7 +19,21 @@ export default function Fornecedores() {
   const [formKey, setFormKey] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<Fornecedor | null>(null);
 
-  const carregar = useCallback(async () => {
+  const [busca, setBusca] = useState('');
+const [filtroAtivo, setFiltroAtivo] = useState(true);
+const [filtroInativo, setFiltroInativo] = useState(false);
+
+const fornecedoresFiltrados = useMemo(() => {
+  let lista = fornecedores;
+  if (filtroAtivo !== filtroInativo) {
+    lista = lista.filter((f) => {
+      const st = Number(f.status);
+      return (filtroAtivo && (st === 1 || f.status == null)) || (filtroInativo && st === 0);
+    });
+  }
+  return lista.filter((f) => passaBusca([f.nome, f.telefone, f.celular, f.email], busca));
+}, [fornecedores, busca, filtroAtivo, filtroInativo]);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
@@ -75,19 +91,32 @@ export default function Fornecedores() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar...' }}
+            checks={{
+              opcao1: filtroAtivo,
+              onOpcao1: setFiltroAtivo,
+              opcao2: filtroInativo,
+              onOpcao2: setFiltroInativo,
+              label1: 'Ativos',
+              label2: 'Inativos',
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && fornecedores.length === 0 && (
+        {!loading && !erro && fornecedoresFiltrados.length === 0 && (
           <div className="list-empty">Nenhum fornecedor cadastrado</div>
         )}
         {!loading && !erro && fornecedores.length > 0 && (
           <div className="list-scroll">
-            {fornecedores.map((f) => (
+            {fornecedoresFiltrados.map((f) => (
               <div key={f.id}>
                 <div className="insumo-row">
                   <div className="insumo-cod">#{f.id}</div>

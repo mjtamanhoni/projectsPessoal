@@ -7,7 +7,6 @@ export default function Cadastro() {
       subtitulo="Gerencie registros do sistema"
       items={[
         { icon: '📦', bg: '#65a30d', label: 'Insumos', destino: '/insumos' },
-        { icon: '🛒', bg: '#f97316', label: 'Compras Insumo', destino: '/compras-insumo' },
         { icon: '🏷️', bg: '#6366f1', label: 'Marcas', destino: '/marcas' },
         { icon: '🏭', bg: '#a855f7', label: 'Produtos Fabricados', destino: '/produtos-fabricados' },
         { icon: '📋', bg: '#0ea5e9', label: 'Receitas Ingredientes', destino: '/produtos-fabricados' },

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, ChevronDown, Check } from 'lucide-react';
+import { Search, ChevronDown, Check, X } from 'lucide-react';
 import { Modal } from './Modal';
 
 export function normalizar(s: string): string {
@@ -18,6 +18,7 @@ export interface RegistroOption<T> {
 interface RegistroSelectProps<T extends string | number> {
   value: T | null | undefined;
   onChange: (v: T) => void;
+  onClear?: () => void;
   options: RegistroOption<T>[];
   placeholder?: string;
   title?: string;
@@ -29,6 +30,7 @@ interface RegistroSelectProps<T extends string | number> {
 export function RegistroSelect<T extends string | number>({
   value,
   onChange,
+  onClear,
   options,
   placeholder = 'Selecione...',
   title,
@@ -61,7 +63,22 @@ export function RegistroSelect<T extends string | number>({
         className={`input-field flex items-center justify-between gap-2 text-left ${selected?.label ? '' : 'text-text-muted'} ${className}`}
       >
         <span className="truncate">{selected?.label ?? placeholder}</span>
-        <ChevronDown size={16} className="shrink-0 text-text-muted" />
+        {value != null && onClear ? (
+          <span
+            role="button"
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+            }}
+            className="shrink-0 rounded px-1 text-text-muted hover:text-accent-red hover:bg-bg-muted"
+            title="Limpar filtro (todos)"
+          >
+            ✕
+          </span>
+        ) : (
+          <ChevronDown size={16} className="shrink-0 text-text-muted" />
+        )}
       </button>
 
       <Modal isOpen={open} onClose={fechar} title={title ?? placeholder} maxWidth="max-w-lg">
@@ -81,6 +98,23 @@ export function RegistroSelect<T extends string | number>({
         </div>
 
         <div className="mt-2 max-h-72 overflow-y-auto -mx-2 px-2">
+          {onClear && (
+            <button
+              type="button"
+              onClick={() => {
+                onClear();
+                fechar();
+              }}
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-bg-muted"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-text-secondary">
+                  {value != null ? 'Limpar filtro (mostrar todos)' : 'Todos / sem filtro'}
+                </div>
+              </div>
+              <X size={16} className="shrink-0 text-text-muted" />
+            </button>
+          )}
           {filtrados.length === 0 && (
             <div className="py-8 text-center text-sm text-text-muted">Nenhum registro encontrado</div>
           )}

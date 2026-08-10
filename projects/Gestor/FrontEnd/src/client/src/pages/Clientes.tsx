@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -15,11 +15,16 @@ import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { passaBusca, passaStatusNumero } from '@/lib/filtros';
+import type { FiltroStatus } from '@/lib/filtros';
 
 const columnHelper = createColumnHelper<Cliente>();
 
 export function Clientes() {
   const { data: clientes, loading, error, create, update, remove, fetchOne, refetch } = useApi<Cliente>('/clientes');
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('1');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Cliente | null>(null);
   const [fetchingOne, setFetchingOne] = useState(false);
@@ -27,6 +32,16 @@ export function Clientes() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
+
+  const clientesFiltrados = useMemo(
+    () =>
+      (clientes ?? []).filter(
+        (c) =>
+          passaStatusNumero(c.status, filtroStatus) &&
+          passaBusca([c.nome, c.telefone, c.celular, c.email, c.cpf_cnpj], busca),
+      ),
+    [clientes, filtroStatus, busca],
+  );
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -144,7 +159,24 @@ export function Clientes() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={clientes} loading={loading} error={error} emptyMessage="Nenhum cliente cadastrado" />
+        <PaginaFiltros
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome, telefone ou email...' }}
+          status={{
+            rotulo: 'Status',
+            valor: filtroStatus,
+            opcoes: [
+              { valor: '1', label: 'Ativos' },
+              { valor: '2', label: 'Inativos' },
+              { valor: 'todos', label: 'Todos' },
+            ],
+            onChange: (v) => setFiltroStatus(v as FiltroStatus),
+          }}
+          onLimpar={() => {
+            setBusca('');
+            setFiltroStatus('1');
+          }}
+        />
+        <DataTable columns={columns} data={clientesFiltrados} loading={loading} error={error} emptyMessage="Nenhum cliente cadastrado" />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Cliente' : 'Novo Cliente'}>

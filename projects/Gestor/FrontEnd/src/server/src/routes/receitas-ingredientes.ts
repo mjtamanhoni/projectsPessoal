@@ -3,12 +3,31 @@ import { horseApi } from '../services/horseApi';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { receitaIngredienteBodySchema } from '../schemas';
+import type { ReceitaIngrediente } from '../types';
 
 const router = Router();
 
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await horseApi.listarReceitasIngrediente(req.query as Record<string, unknown>);
+    const result = (await horseApi.listarReceitasIngrediente(
+      req.query as Record<string, unknown>,
+    )) as ReceitaIngrediente[];
+    try {
+      const insumos = await horseApi.listarInsumos();
+      const insumoPorId = new Map(insumos.map((i) => [i.id, i]));
+      for (const item of result) {
+        const insumo = item.insumo_id != null ? insumoPorId.get(item.insumo_id) : undefined;
+        if (!insumo) continue;
+        item.insumo_nome = item.insumo_nome ?? insumo.nome;
+        item.insumo_unidade_medida = item.insumo_unidade_medida ?? insumo.unidade_medida;
+        if (item.insumo_custo_medio == null || item.insumo_custo_medio === 0) {
+          item.insumo_custo_medio = insumo.custo_medio ?? 0;
+        }
+        item.insumo_ativo = item.insumo_ativo ?? insumo.ativo;
+      }
+    } catch {
+      // enriquecimento opcional: a listagem segue mesmo sem os custos dos insumos
+    }
     res.json(result);
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;

@@ -68,6 +68,11 @@ func main() {
 	r.Get("/usuario/login", loginHandler.Login)
 	r.Post("/usuario/login", loginHandler.Login)
 	r.Get("/empresaPublic", basicCRUD.EmpresaListarPublico)
+	r.Get("/clientePublico", basicCRUD.ClientePublicoBuscar)
+	r.Post("/clientePublico", basicCRUD.ClientePublicoCriar)
+	r.Get("/produtoFabricadoPublico", producao.ProdutoFabricadoListarPublico)
+	r.Get("/encomendaPublico", producao.EncomendaPublicoListar)
+	r.Post("/encomendaPublico", producao.EncomendaPublicoCriar)
 	r.Get("/test", testPage.TestPage)
 	r.Get("/health", testPage.HealthCheck)
 	r.Get("/logs/json", func(w http.ResponseWriter, r *http.Request) {

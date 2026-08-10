@@ -67,7 +67,7 @@ export function EmpresaField({ empresas, empresaId, onEmpresaId, codigo, onCodig
             position: 'absolute',
             left: 20,
             top: 84,
-            width: 310,
+            width: 'calc(100% - 40px)',
             background: '#ffffff',
             borderRadius: 12,
             border: '1px solid #d6ddd0',

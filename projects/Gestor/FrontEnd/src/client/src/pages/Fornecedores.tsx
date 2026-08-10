@@ -1,4 +1,7 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { passaBusca, passaStatusNumero } from '@/lib/filtros';
+import type { FiltroStatus } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +23,18 @@ const columnHelper = createColumnHelper<Fornecedor>();
 
 export function Fornecedores() {
   const { data: fornecedores, loading, error, create, update, remove, fetchOne, refetch } = useApi<Fornecedor>('/fornecedores');
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('1');
+
+  const fornecedoresFiltrados = useMemo(
+    () =>
+      (fornecedores ?? []).filter(
+        (f) =>
+          passaStatusNumero(f.status, filtroStatus) &&
+          passaBusca([f.nome, f.telefone, f.celular, f.email], busca),
+      ),
+    [fornecedores, filtroStatus, busca],
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Fornecedor | null>(null);
   const [fetchingOne, setFetchingOne] = useState(false);
@@ -144,7 +159,24 @@ export function Fornecedores() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={fornecedores} loading={loading} error={error} emptyMessage="Nenhum fornecedor cadastrado" />
+        <PaginaFiltros
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome, telefone ou email...' }}
+          status={{
+            rotulo: 'Status',
+            valor: filtroStatus,
+            opcoes: [
+              { valor: '1', label: 'Ativos' },
+              { valor: '2', label: 'Inativos' },
+              { valor: 'todos', label: 'Todos' },
+            ],
+            onChange: (v) => setFiltroStatus(v as FiltroStatus),
+          }}
+          onLimpar={() => {
+            setBusca('');
+            setFiltroStatus('1');
+          }}
+        />
+        <DataTable columns={columns} data={fornecedoresFiltrados} loading={loading} error={error} emptyMessage="Nenhum fornecedor cadastrado" />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Fornecedor' : 'Novo Fornecedor'}>

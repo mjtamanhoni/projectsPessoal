@@ -1,4 +1,7 @@
-﻿import { useState, useCallback, useEffect, useRef } from 'react';
+﻿import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { passaBusca, passaStatusAtivo } from '@/lib/filtros';
+import type { FiltroStatusAtivo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +29,16 @@ const DP_2 = 2;
 
 export function ProdutosFabricados() {
   const { data: produtos, loading, error, create, update, remove, fetchOne, refetch } = useApi<ProdutoFabricado>('/produtos-fabricados');
+  const [busca, setBusca] = useState('');
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroStatusAtivo>('1');
+
+  const produtosFiltrados = useMemo(
+    () =>
+      (produtos ?? []).filter(
+        (p) => passaStatusAtivo(p.ativo, filtroAtivo) && passaBusca([p.nome], busca),
+      ),
+    [produtos, filtroAtivo, busca],
+  );
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const insumoMap = useRef<Record<number, Insumo>>({});
 
@@ -387,7 +400,24 @@ export function ProdutosFabricados() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={produtos} loading={loading} error={error} emptyMessage="Nenhum produto cadastrado" renderSubComponent={renderSubComponent} />
+        <PaginaFiltros
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome...' }}
+          status={{
+            rotulo: 'Status',
+            valor: filtroAtivo,
+            opcoes: [
+              { valor: '1', label: 'Ativos' },
+              { valor: '0', label: 'Inativos' },
+              { valor: 'todos', label: 'Todos' },
+            ],
+            onChange: (v) => setFiltroAtivo(v as FiltroStatusAtivo),
+          }}
+          onLimpar={() => {
+            setBusca('');
+            setFiltroAtivo('1');
+          }}
+        />
+        <DataTable columns={columns} data={produtosFiltrados} loading={loading} error={error} emptyMessage="Nenhum produto cadastrado" renderSubComponent={renderSubComponent} />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Produto' : 'Novo Produto'}>

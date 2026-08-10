@@ -113,7 +113,7 @@ export default function Ingredientes() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 76, height: 724 }}>
+      <div className="list-card" style={{ top: 88, bottom: 12 }}>
         {produto && (
           <>
             <div className="ingr-prod-head">{produto.nome}</div>

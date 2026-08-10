@@ -1,4 +1,7 @@
-﻿import { useState, useCallback } from 'react';
+﻿import { useMemo, useState, useCallback } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { mesCorrente, passaPeriodo } from '@/lib/filtros';
+import type { FiltroPeriodo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +26,13 @@ const columnHelper = createColumnHelper<Fabricacao>();
 
 export function Fabricacoes() {
   const { data: fabricacoes, loading, error, create, update, remove, fetchOne, refetch } = useApi<Fabricacao>('/fabricacoes');
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+
+  const fabricacoesFiltradas = useMemo(
+    () =>
+      (fabricacoes ?? []).filter((f) => passaPeriodo(f.data_fabricacao, periodo)),
+    [fabricacoes, periodo],
+  );
   const { data: produtos } = useApi<ProdutoFabricado>('/produtos-fabricados');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Fabricacao | null>(null);
@@ -321,7 +331,16 @@ export function Fabricacoes() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={fabricacoes} loading={loading} error={error} emptyMessage="Nenhuma fabricação cadastrada" renderSubComponent={renderSubComponent} />
+        <PaginaFiltros
+          periodo={{
+            inicio: periodo.inicio,
+            fim: periodo.fim,
+            onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+            onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+          }}
+          onLimpar={() => setPeriodo({ inicio: '', fim: '' })}
+        />
+        <DataTable columns={columns} data={fabricacoesFiltradas} loading={loading} error={error} emptyMessage="Nenhuma fabricação cadastrada" renderSubComponent={renderSubComponent} />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title={editing ? 'Editar Fabricação' : 'Nova Fabricação'}>

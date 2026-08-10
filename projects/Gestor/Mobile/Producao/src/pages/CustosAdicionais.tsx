@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { passaBusca } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import {
   excluirCustoAdicionalTipo,
@@ -23,7 +25,20 @@ export default function CustosAdicionais() {
   const [formKey, setFormKey] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<CustoAdicionalTipo | null>(null);
 
-  const carregar = useCallback(async () => {
+  const [busca, setBusca] = useState('');
+const [filtroAtivo, setFiltroAtivo] = useState(true);
+const [filtroInativo, setFiltroInativo] = useState(false);
+
+const tiposFiltrados = useMemo(() => {
+  let lista = tipos;
+  if (filtroAtivo !== filtroInativo) {
+    lista = lista.filter(
+      (t) => (filtroAtivo && t.ativo === true) || (filtroInativo && t.ativo !== true),
+    );
+  }
+  return lista.filter((t) => passaBusca([t.nome], busca));
+}, [tipos, busca, filtroAtivo, filtroInativo]);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
@@ -81,19 +96,32 @@ export default function CustosAdicionais() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar...' }}
+            checks={{
+              opcao1: filtroAtivo,
+              onOpcao1: setFiltroAtivo,
+              opcao2: filtroInativo,
+              onOpcao2: setFiltroInativo,
+              label1: 'Ativos',
+              label2: 'Inativos',
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && tipos.length === 0 && (
+        {!loading && !erro && tiposFiltrados.length === 0 && (
           <div className="list-empty">Nenhum custo adicional cadastrado</div>
         )}
         {!loading && !erro && tipos.length > 0 && (
           <div className="list-scroll">
-            {tipos.map((t) => (
+            {tiposFiltrados.map((t) => (
               <div key={t.id}>
                 <div className="insumo-row">
                   <div className="insumo-cod">#{t.id}</div>

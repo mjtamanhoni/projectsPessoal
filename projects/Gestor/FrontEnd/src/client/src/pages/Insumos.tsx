@@ -1,4 +1,7 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useMemo, useState, useEffect } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { passaBusca, passaStatusAtivo } from '@/lib/filtros';
+import type { FiltroStatusAtivo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -22,6 +25,18 @@ const columnHelper = createColumnHelper<Insumo>();
 
 export function Insumos() {
   const { data: insumos, loading, error, create, update, remove, fetchOne, refetch } = useApi<Insumo>('/insumos');
+  const [busca, setBusca] = useState('');
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroStatusAtivo>('1');
+
+  const insumosFiltrados = useMemo(
+    () =>
+      (insumos ?? []).filter(
+        (i) =>
+          passaStatusAtivo(i.ativo, filtroAtivo) &&
+          passaBusca([i.nome, i.fornecedor_nome, i.marca_nome], busca),
+      ),
+    [insumos, filtroAtivo, busca],
+  );
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [marcas, setMarcas] = useState<Marca[]>([]);
 
@@ -194,7 +209,24 @@ export function Insumos() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={insumos} loading={loading} error={error} emptyMessage="Nenhum insumo cadastrado" />
+        <PaginaFiltros
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome, fornecedor ou marca...' }}
+          status={{
+            rotulo: 'Status',
+            valor: filtroAtivo,
+            opcoes: [
+              { valor: '1', label: 'Ativos' },
+              { valor: '0', label: 'Inativos' },
+              { valor: 'todos', label: 'Todos' },
+            ],
+            onChange: (v) => setFiltroAtivo(v as FiltroStatusAtivo),
+          }}
+          onLimpar={() => {
+            setBusca('');
+            setFiltroAtivo('1');
+          }}
+        />
+        <DataTable columns={columns} data={insumosFiltrados} loading={loading} error={error} emptyMessage="Nenhum insumo cadastrado" />
       </Card>
 
       <Modal isOpen={recalcOpen} onClose={() => { setRecalcOpen(false); setRecalcInsumoId(''); }} title="Recalcular Insumos">

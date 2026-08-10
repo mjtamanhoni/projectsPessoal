@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { numeroParaDecimal } from '../format';
-import type { Encomenda, EncomendaItem, Cliente, ProdutoFabricado } from '../api';
+import type { Encomenda, EncomendaItem, Cliente, EstoqueProdutoFabricado, ProdutoFabricado } from '../api';
 import SeletorRegistro, { CampoSeletor } from './SeletorRegistro';
 import SeletorProdutoPopup from './SeletorProdutoPopup';
 
@@ -11,6 +11,7 @@ interface Props {
   inicial: Encomenda | null;
   clientes: Cliente[];
   produtos: ProdutoFabricado[];
+  estoques?: EstoqueProdutoFabricado[];
   onCancel: () => void;
   onSalvar: (data: Encomenda) => Promise<void>;
 }
@@ -19,7 +20,7 @@ function fmtMoeda(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-export default function EncomendaModal({ titulo, inicial, clientes, produtos, onCancel, onSalvar }: Props) {
+export default function EncomendaModal({ titulo, inicial, clientes, produtos, estoques, onCancel, onSalvar }: Props) {
   const [clienteId, setClienteId] = useState(inicial?.cliente_id ? String(inicial.cliente_id) : '');
   const [dataEncomenda, setDataEncomenda] = useState(inicial?.data_encomenda ?? new Date().toISOString().slice(0, 10));
   const [observacao, setObservacao] = useState(inicial?.observacao ?? '');
@@ -205,6 +206,7 @@ export default function EncomendaModal({ titulo, inicial, clientes, produtos, on
           precoDe={precoProduto}
           onConfirmar={confirmarSelecao}
           fechar={() => setSeletorAberto(false)}
+          estoques={estoques}
         />
       )}
     </div>

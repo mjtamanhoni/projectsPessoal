@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { passaBusca } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import {
   excluirInsumo,
@@ -34,7 +36,20 @@ export default function Insumos() {
   const [confirmDelete, setConfirmDelete] = useState<Insumo | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const carregar = useCallback(async () => {
+  const [busca, setBusca] = useState('');
+const [filtroAtivo, setFiltroAtivo] = useState(true);
+const [filtroInativo, setFiltroInativo] = useState(false);
+
+const insumosFiltrados = useMemo(() => {
+  let lista = insumos;
+  if (filtroAtivo !== filtroInativo) {
+    lista = lista.filter(
+      (i) => (filtroAtivo && i.ativo === true) || (filtroInativo && i.ativo !== true),
+    );
+  }
+  return lista.filter((i) => passaBusca([i.nome, i.fornecedor_nome, i.marca_nome], busca));
+}, [insumos, busca, filtroAtivo, filtroInativo]);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
@@ -101,7 +116,20 @@ export default function Insumos() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar...' }}
+            checks={{
+              opcao1: filtroAtivo,
+              onOpcao1: setFiltroAtivo,
+              opcao2: filtroInativo,
+              onOpcao2: setFiltroInativo,
+              label1: 'Ativos',
+              label2: 'Inativos',
+            }}
+          />
+        )}
         {loading && (
           <div className="list-empty">Carregando...</div>
         )}
@@ -110,12 +138,12 @@ export default function Insumos() {
             {erro}
           </div>
         )}
-        {!loading && !erro && insumos.length === 0 && (
+        {!loading && !erro && insumosFiltrados.length === 0 && (
           <div className="list-empty">Nenhum insumo cadastrado</div>
         )}
         {!loading && !erro && insumos.length > 0 && (
           <div className="list-scroll">
-            {insumos.map((i) => (
+            {insumosFiltrados.map((i) => (
               <div key={i.id}>
                 <div className="insumo-row">
                   <div className="insumo-cod">#{i.id}</div>

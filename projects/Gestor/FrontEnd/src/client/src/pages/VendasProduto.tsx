@@ -1,4 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { mesCorrente, passaPeriodo } from '@/lib/filtros';
+import type { FiltroPeriodo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -30,6 +33,18 @@ const columnHelper = createColumnHelper<VendaProduto>();
 
 export function VendasProduto() {
   const { data: vendas, loading, error, create, update, remove, refetch } = useApi<VendaProduto>('/vendas-produto');
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+  const [filtroRecebido, setFiltroRecebido] = useState<string>('aberto');
+
+  const vendasFiltradas = useMemo(
+    () =>
+      (vendas ?? []).filter(
+        (v) =>
+          passaPeriodo(v.data_venda, periodo) &&
+          (filtroRecebido === 'todos' || (filtroRecebido === 'recebido' ? v.recebido === true : v.recebido !== true)),
+      ),
+    [vendas, periodo, filtroRecebido],
+  );
   const { data: produtos } = useApi<ProdutoFabricado>('/produtos-fabricados');
   const { data: clientes } = useApi<Cliente>('/clientes');
   const [modalOpen, setModalOpen] = useState(false);
@@ -395,9 +410,31 @@ export function VendasProduto() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
+        <PaginaFiltros
+          periodo={{
+            inicio: periodo.inicio,
+            fim: periodo.fim,
+            onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+            onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+          }}
+          status={{
+            rotulo: 'Situação',
+            valor: filtroRecebido,
+            opcoes: [
+              { valor: 'aberto', label: 'Abertas' },
+              { valor: 'recebido', label: 'Recebidas' },
+              { valor: 'todos', label: 'Todas' },
+            ],
+            onChange: setFiltroRecebido,
+          }}
+          onLimpar={() => {
+            setPeriodo({ inicio: '', fim: '' });
+            setFiltroRecebido('aberto');
+          }}
+        />
         <DataTable
           columns={columns}
-          data={vendas}
+          data={vendasFiltradas}
           loading={loading}
           error={error}
           emptyMessage="Nenhuma venda cadastrada"

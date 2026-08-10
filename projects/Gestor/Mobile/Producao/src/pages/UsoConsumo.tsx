@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { mesCorrente, passaBusca, passaPeriodo } from '../lib/filtros';
+import type { FiltroPeriodo } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import {
   excluirUsoConsumo,
@@ -37,7 +40,15 @@ export default function UsoConsumo() {
   const [confirmDelete, setConfirmDelete] = useState<UsoConsumo | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const carregar = useCallback(async () => {
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+  const [busca, setBusca] = useState('');
+
+const usosFiltrados = useMemo(
+  () =>
+    usos.filter((u) => passaPeriodo(u.data_uso, periodo) && passaBusca([u.produto_nome], busca)),
+  [usos, periodo, busca],
+);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
@@ -101,19 +112,30 @@ export default function UsoConsumo() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar produto...' }}
+            periodo={{
+              inicio: periodo.inicio,
+              fim: periodo.fim,
+              onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+              onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && usos.length === 0 && (
+        {!loading && !erro && usosFiltrados.length === 0 && (
           <div className="list-empty">Nenhum registro de uso/consumo</div>
         )}
         {!loading && !erro && usos.length > 0 && (
           <div className="list-scroll">
-            {usos.map((u) => (
+            {usosFiltrados.map((u) => (
               <div key={u.id}>
                 <div className="insumo-row">
                   <div className="insumo-cod">#{u.id}</div>

@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { mesCorrente, passaPeriodo } from '../lib/filtros';
+import type { FiltroPeriodo } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import {
   excluirVendaProduto,
   extrairErro,
   listarClientes,
+  listarEstoqueProdutos,
   listarProdutosFabricados,
   listarVendaProdutoItens,
   listarVendasProduto,
@@ -11,6 +15,7 @@ import {
   type VendaProduto,
   type VendaProdutoItem,
   type Cliente,
+  type EstoqueProdutoFabricado,
   type ProdutoFabricado,
 } from '../api';
 import VendaProdutoModal from '../components/VendaProdutoModal';
@@ -51,6 +56,7 @@ export default function VendasProduto() {
   const { empresaNome, empresa } = useAuth();
   const [vendas, setVendas] = useState<VendaProduto[]>([]);
   const [produtos, setProdutos] = useState<ProdutoFabricado[]>([]);
+  const [estoques, setEstoques] = useState<EstoqueProdutoFabricado[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
@@ -68,18 +74,33 @@ export default function VendasProduto() {
   const [pixBusy, setPixBusy] = useState(false);
   const [pixCopiado, setPixCopiado] = useState(false);
 
-  const carregar = useCallback(async () => {
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+const [filtroAbertas, setFiltroAbertas] = useState(true);
+const [filtroRecebidas, setFiltroRecebidas] = useState(false);
+
+const vendasFiltradas = useMemo(() => {
+  let lista = vendas;
+  if (filtroAbertas !== filtroRecebidas) {
+    lista = lista.filter(
+      (v) => (filtroAbertas && v.recebido !== true) || (filtroRecebidas && v.recebido === true),
+    );
+  }
+  return lista.filter((v) => passaPeriodo(v.data_venda, periodo));
+}, [vendas, periodo, filtroAbertas, filtroRecebidas]);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
-      const [v, p, c] = await Promise.all([
+      const [v, p, c, es] = await Promise.all([
         listarVendasProduto(),
         listarProdutosFabricados(),
         listarClientes(),
+        listarEstoqueProdutos(),
       ]);
       setVendas(v);
       setProdutos(p);
       setClientes(c);
+      setEstoques(es);
     } catch (e) {
       setErro(extrairErro(e));
     } finally {
@@ -320,19 +341,37 @@ export default function VendasProduto() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            periodo={{
+              inicio: periodo.inicio,
+              fim: periodo.fim,
+              onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+              onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+            }}
+            checks={{
+              opcao1: filtroAbertas,
+              onOpcao1: setFiltroAbertas,
+              opcao2: filtroRecebidas,
+              onOpcao2: setFiltroRecebidas,
+              label1: 'Abertas',
+              label2: 'Recebidas',
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && vendas.length === 0 && (
+        {!loading && !erro && vendasFiltradas.length === 0 && (
           <div className="list-empty">Nenhuma venda cadastrada</div>
         )}
-        {!loading && !erro && vendas.length > 0 && (
+        {!loading && !erro && vendasFiltradas.length > 0 && (
           <div className="list-scroll">
-            {vendas.map((v) => {
+            {vendasFiltradas.map((v) => {
               const id = idVenda(v);
               const aberto = id != null && expandido[id] !== undefined;
               const nItens = qtdItens(v);
@@ -390,6 +429,7 @@ export default function VendasProduto() {
           inicial={editing}
           clientes={clientes}
           produtos={produtos}
+          estoques={estoques}
           onCancel={() => {
             setModalOpen(false);
             setEditing(null);

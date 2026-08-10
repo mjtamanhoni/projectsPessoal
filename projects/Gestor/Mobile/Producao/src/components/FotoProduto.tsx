@@ -38,7 +38,7 @@ export default function FotoProduto({
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch(url, { signal: controller.signal, cache: 'force-cache' });
+        const res = await fetch(url, { signal: controller.signal, cache: 'no-cache' });
         if (!res.ok) throw new Error(String(res.status));
         const blob = await res.blob();
         if (cancelado) return;

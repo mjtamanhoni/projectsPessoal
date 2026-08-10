@@ -181,6 +181,7 @@ export function Abatimentos() {
         <RegistroSelect<number>
           value={filtroUsuarioId ?? null}
           onChange={(v) => setFiltroUsuarioId(v)}
+          onClear={() => setFiltroUsuarioId(undefined)}
           options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
           title="Filtro por Usuario"
           placeholder="Todos os usuarios"

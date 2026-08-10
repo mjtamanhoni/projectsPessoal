@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { passaBusca } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import {
   excluirEstoqueProduto,
@@ -36,6 +38,13 @@ export default function EstoqueProduto() {
   const [formKey, setFormKey] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<EstoqueProdutoFabricado | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [busca, setBusca] = useState('');
+
+  const estoquesFiltrados = useMemo(
+    () => estoques.filter((e) => passaBusca([e.produto_nome], busca)),
+    [estoques, busca],
+  );
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -100,7 +109,10 @@ export default function EstoqueProduto() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+      <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar produto...' }} />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
@@ -112,7 +124,7 @@ export default function EstoqueProduto() {
         )}
         {!loading && !erro && estoques.length > 0 && (
           <div className="list-scroll">
-            {estoques.map((e) => (
+            {estoquesFiltrados.map((e) => (
               <div key={e.id}>
                 <div className="insumo-row">
                   <div className="insumo-cod">#{e.id}</div>

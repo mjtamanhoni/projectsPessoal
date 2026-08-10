@@ -136,7 +136,7 @@ export default function LoginPin() {
 
         <button
           className="link-button"
-          style={{ top: 280, left: 0, width: 350, position: 'absolute' }}
+          style={{ top: 280, left: 0, width: '100%', position: 'absolute' }}
           onClick={() => navigate('/login')}
         >
           Usar login e senha

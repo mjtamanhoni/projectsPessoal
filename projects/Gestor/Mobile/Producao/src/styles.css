@@ -23,24 +23,19 @@ body {
 
 .screen {
   position: relative;
-  width: 390px;
-  height: 844px;
-  margin: 0 auto;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
   overflow: hidden;
   background: #f5f3ee;
-}
-
-@media (max-width: 390px) {
-  .screen {
-    width: 100%;
-  }
 }
 
 .screen-topbar {
   position: fixed;
   left: 0;
   top: 0;
-  width: 390px;
+  width: 100%;
   height: 78px;
   background: #f5f3ee;
   z-index: 30;
@@ -48,7 +43,7 @@ body {
 
 .logo-box {
   position: absolute;
-  left: 163px;
+  left: calc(50% - 32px);
   top: 120px;
   width: 64px;
   height: 64px;
@@ -65,7 +60,7 @@ body {
 
 .auth-title {
   position: absolute;
-  left: 52px;
+  left: calc(50% - 143px);
   top: 210px;
   font-family: 'Playfair Display', serif;
   font-size: 26px;
@@ -79,7 +74,7 @@ body {
   position: absolute;
   left: 0;
   top: 244px;
-  width: 390px;
+  width: 100%;
   text-align: center;
   font-size: 14px;
   color: #6b706c;
@@ -87,9 +82,9 @@ body {
 
 .auth-card {
   position: absolute;
-  left: 20px;
+  left: calc(50% - 175px);
   top: 290px;
-  width: 350px;
+  width: min(350px, calc(100% - 40px));
   border-radius: 16px;
   background: #ffffff;
   border: 1px solid #d6ddd0;
@@ -105,7 +100,7 @@ body {
 .field-select {
   position: absolute;
   left: 20px;
-  width: 310px;
+  width: calc(100% - 40px);
   height: 44px;
   border-radius: 12px;
   border: 1px solid #d6ddd0;
@@ -128,7 +123,7 @@ body {
 .field-input {
   position: absolute;
   left: 20px;
-  width: 310px;
+  width: calc(100% - 40px);
   height: 44px;
   border-radius: 12px;
   border: 1px solid #d6ddd0;
@@ -171,7 +166,7 @@ body {
 .green-button {
   position: absolute;
   left: 20px;
-  width: 310px;
+  width: calc(100% - 40px);
   height: 48px;
   border-radius: 12px;
   border: none;
@@ -191,7 +186,7 @@ body {
 .link-button {
   position: absolute;
   left: 0;
-  width: 390px;
+  width: 100%;
   text-align: center;
   border: none;
   background: none;
@@ -205,7 +200,7 @@ body {
 .auth-footer {
   position: absolute;
   left: 0;
-  width: 390px;
+  width: 100%;
   text-align: center;
   font-size: 11px;
   color: #9ca09d;
@@ -219,7 +214,7 @@ body {
 .version {
   position: absolute;
   left: 0;
-  width: 390px;
+  width: 100%;
   text-align: center;
   font-size: 11px;
   color: #9ca09d;
@@ -231,7 +226,7 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-  width: 390px;
+  width: 100%;
   height: 64px;
   background: #efede7;
   border-bottom: 1px solid #d6ddd0;
@@ -406,7 +401,7 @@ body {
 .submenu-card {
   position: absolute;
   left: 14px;
-  width: 362px;
+  width: min(362px, calc(100% - 28px));
   border-radius: 16px;
   background: #ffffff;
   border: 1px solid #d6ddd0;
@@ -415,7 +410,7 @@ body {
 .submenu-row {
   position: absolute;
   left: 14px;
-  width: 334px;
+  width: calc(100% - 56px);
   height: 56px;
   border: none;
   border-radius: 12px;
@@ -495,11 +490,11 @@ body {
 .list-card {
   position: absolute;
   left: 14px;
-  width: 362px;
+  width: min(362px, calc(100% - 28px));
   border-radius: 16px;
   background: #ffffff;
   border: 1px solid #d6ddd0;
-  overflow: hidden;
+  overflow: hidden; display:flex;flex-direction:column;
 }
 
 .list-empty {
@@ -511,13 +506,13 @@ body {
 
 .list-scroll {
   height: 100%;
-  overflow-y: auto;
+  overflow-y: auto; flex: 1; min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
 
 .insumo-row {
   position: relative;
-  width: 342px;
+  width: 100%;
   height: 100px;
   padding: 10px 44px 14px 16px;
   background: #ffffff;
@@ -559,7 +554,7 @@ body {
 
 .row-btn {
   position: absolute;
-  right: 0;
+  right: 8px;
   width: 32px;
   height: 26px;
   border: none;
@@ -580,7 +575,7 @@ body {
   position: fixed;
   left: 0;
   top: 0;
-  width: 390px;
+  width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.35);
   z-index: 40;
@@ -591,9 +586,8 @@ body {
 
 .modal-card {
   position: relative;
-  width: 350px;
-  height: 680px;
-  max-height: calc(100% - 24px);
+  width: min(350px, calc(100% - 24px));
+  height: min(680px, calc(100% - 24px));
   border-radius: 16px;
   background: #ffffff;
   border: 1px solid #d6ddd0;
@@ -652,7 +646,7 @@ body {
 .modal-input {
   position: absolute;
   left: 20px;
-  width: 310px;
+  width: calc(100% - 40px);
   height: 36px;
   border-radius: 8px;
   border: 1px solid #d6ddd0;
@@ -747,7 +741,7 @@ body {
   position: fixed;
   left: 0;
   top: 0;
-  width: 390px;
+  width: 100%;
   height: 100%;
   background: #faf9f7;
   z-index: 90;
@@ -898,7 +892,7 @@ body {
   position: fixed;
   left: 0;
   top: 0;
-  width: 390px;
+  width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.45);
   z-index: 100;
@@ -1019,7 +1013,7 @@ body {
 
 .compra-row {
   position: relative;
-  width: 342px;
+  width: 100%;
   background: #ffffff;
   padding: 10px 44px 12px 16px;
 }
@@ -1057,7 +1051,7 @@ body {
 
 .compra-btn {
   position: absolute;
-  right: 0;
+  right: 8px;
   width: 32px;
   height: 26px;
   border: none;
@@ -1069,7 +1063,7 @@ body {
 
 .compra-sub {
   margin: 10px -44px 0 -16px;
-  width: 342px;
+  width: calc(100% + 60px);
   background: #f9f8f6;
   border-radius: 8px;
   border: 1px solid #e8efea;
@@ -1136,6 +1130,13 @@ body {
   text-align: right;
 }
 
+.col-estoque {
+  width: 52px;
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .compra-hdr {
   font-size: 9px;
   font-weight: 600;
@@ -1155,7 +1156,7 @@ body {
 /* FABRICACOES */
 .fab-sub {
   margin: 10px -44px 0 -16px;
-  width: 342px;
+  width: calc(100% + 60px);
   background: #f9f8f6;
   border-radius: 8px;
   border: 1px solid #e8efea;
@@ -1247,8 +1248,7 @@ body {
 }
 
 .row-menu-sheet {
-  width: 342px;
-  max-width: 92vw;
+  width: min(342px, calc(100vw - 24px));
   background: #ffffff;
   border-radius: 14px 14px 0 0;
   padding: 10px 8px 18px;
@@ -1285,4 +1285,158 @@ body {
   color: #6b706c;
   text-align: center;
   font-weight: 500;
+}
+
+.filtros-bar {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f6f8f5;
+  border-bottom: 1px solid #d6ddd0;
+}
+
+.filtros-row {
+  display: flex;
+  gap: 8px;
+}
+
+.filtros-busca {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #d6ddd0;
+  background: #ffffff;
+  padding: 0 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #1b1f1c;
+  outline: none;
+}
+
+.filtros-busca::placeholder {
+  color: #9ca09d;
+}
+
+.filtros-select {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #d6ddd0;
+  background: #ffffff;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1b1f1c;
+  outline: none;
+}
+
+.filtros-data {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #d6ddd0;
+  background: #ffffff;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #1b1f1c;
+  outline: none;
+}
+
+.filtros-checks {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.filtros-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1b1f1c;
+  cursor: pointer;
+}
+
+.filtros-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: #2d5e3a;
+  cursor: pointer;
+}
+
+.ingr-inline {
+  margin: 0 10px 8px 14px;
+  border-left: 2px solid #d6ddd0;
+  border-radius: 0 8px 8px 0;
+  background: #f6f8f5;
+  padding: 6px 8px 8px 6px;
+}
+
+.ingr-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.ingr-cod {
+  color: #9ca3af;
+  font-size: 10px;
+  min-width: 26px;
+}
+
+.ingr-nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #1b1f1c;
+}
+
+.ingr-qtd {
+  white-space: nowrap;
+  color: #6b7280;
+}
+
+.ingr-sub {
+  white-space: nowrap;
+  font-weight: 600;
+  color: #2d5e3a;
+}
+
+.ingr-remover {
+  border: none;
+  background: none;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.ingr-add {
+  width: 100%;
+  height: 30px;
+  margin-top: 4px;
+  border: 1px dashed #2d5e3a;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2d5e3a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ingr-vazio {
+  padding: 4px 6px 8px;
+  font-size: 11px;
+  color: #9ca3af;
 }

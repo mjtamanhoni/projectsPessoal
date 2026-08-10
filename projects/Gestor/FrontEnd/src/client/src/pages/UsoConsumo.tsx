@@ -1,4 +1,7 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { mesCorrente, passaPeriodo } from '@/lib/filtros';
+import type { FiltroPeriodo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +23,13 @@ const columnHelper = createColumnHelper<UsoConsumo>();
 
 export function UsoConsumoPage() {
   const { data: consumos, loading, error, create, update, remove, fetchOne, refetch } = useApi<UsoConsumo>('/uso-consumo');
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+
+  const consumosFiltrados = useMemo(
+    () =>
+      (consumos ?? []).filter((c) => passaPeriodo(c.data_uso, periodo)),
+    [consumos, periodo],
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UsoConsumo | null>(null);
   const [fetchingOne, setFetchingOne] = useState(false);
@@ -133,7 +143,16 @@ export function UsoConsumoPage() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={consumos} loading={loading} error={error} emptyMessage="Nenhum uso/consumo registrado" />
+        <PaginaFiltros
+          periodo={{
+            inicio: periodo.inicio,
+            fim: periodo.fim,
+            onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+            onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+          }}
+          onLimpar={() => setPeriodo({ inicio: '', fim: '' })}
+        />
+        <DataTable columns={columns} data={consumosFiltrados} loading={loading} error={error} emptyMessage="Nenhum uso/consumo registrado" />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Uso/Consumo' : 'Novo Uso/Consumo'}>

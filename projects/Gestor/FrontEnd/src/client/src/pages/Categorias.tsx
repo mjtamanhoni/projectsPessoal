@@ -1,4 +1,7 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+﻿import { useMemo, useState, useEffect, useCallback } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { passaBusca, passaStatusAtivo } from '@/lib/filtros';
+import type { FiltroStatusAtivo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -30,6 +33,8 @@ export function Categorias() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [busca, setBusca] = useState('');
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroStatusAtivo>('1');
   const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -160,6 +165,14 @@ export function Categorias() {
 
   const categorias = tipo === 'pagar' ? pagar : receber;
 
+  const categoriasFiltradas = useMemo(
+    () =>
+      (categorias ?? []).filter(
+        (c) => passaStatusAtivo(c.ativo, filtroAtivo) && passaBusca([c.nome, c.descricao], busca),
+      ),
+    [categorias, filtroAtivo, busca],
+  );
+
   return (
     <Layout>
       <PageHeader title="Categorias" subtitle="Gerencie suas categorias">
@@ -195,7 +208,24 @@ export function Categorias() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={categorias} loading={loading} error={error} emptyMessage="Nenhuma categoria cadastrada" />
+        <PaginaFiltros
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome ou descrição...' }}
+          status={{
+            rotulo: 'Status',
+            valor: filtroAtivo,
+            opcoes: [
+              { valor: '1', label: 'Ativas' },
+              { valor: '0', label: 'Inativas' },
+              { valor: 'todos', label: 'Todas' },
+            ],
+            onChange: (v) => setFiltroAtivo(v as FiltroStatusAtivo),
+          }}
+          onLimpar={() => {
+            setBusca('');
+            setFiltroAtivo('1');
+          }}
+        />
+        <DataTable columns={columns} data={categoriasFiltradas} loading={loading} error={error} emptyMessage="Nenhuma categoria cadastrada" />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Categoria' : 'Nova Categoria'}>

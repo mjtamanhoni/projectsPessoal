@@ -87,7 +87,7 @@ export default function CustoAdicionalFabModal({ titulo, inicial, fabricacaoId, 
             </div>
           )}
 
-          <div style={{ position: 'absolute', left: 0, top: 180, width: 350, display: 'flex', justifyContent: 'center', gap: 12 }}>
+          <div style={{ position: 'absolute', left: 0, top: 180, width: '100%', display: 'flex', justifyContent: 'center', gap: 12 }}>
             <button className="modal-btn cancel" style={{ position: 'static', top: 0 }} onClick={onCancel} disabled={salvando}>
               Cancelar
             </button>

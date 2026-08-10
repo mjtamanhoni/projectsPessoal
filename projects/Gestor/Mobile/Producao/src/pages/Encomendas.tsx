@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { mesCorrente, passaPeriodo } from '../lib/filtros';
+import type { FiltroPeriodo } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import { Clipboard } from '@capacitor/clipboard';
 import {
@@ -8,13 +11,15 @@ import {
   listarClientes,
   listarEncomendaItens,
   listarEncomendas,
+  listarEstoqueProdutos,
   listarProdutosFabricados,
   listarVendaProdutoItens,
   listarVendasProduto,
   salvarEncomenda,
+  type Cliente,
   type Encomenda,
   type EncomendaItem,
-  type Cliente,
+  type EstoqueProdutoFabricado,
   type ProdutoFabricado,
   type VendaProduto,
 } from '../api';
@@ -56,6 +61,8 @@ export default function Encomendas() {
   const [encomendas, setEncomendas] = useState<Encomenda[]>([]);
   const [produtos, setProdutos] = useState<ProdutoFabricado[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [estoques, setEstoques] = useState<EstoqueProdutoFabricado[]>([]);
+  const [itensPorId, setItensPorId] = useState<Record<number, EncomendaItem[]>>({});
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -76,18 +83,60 @@ export default function Encomendas() {
   const [cupomPdfBusy, setCupomPdfBusy] = useState(false);
   const { empresa, empresaNome } = useAuth();
 
-  const carregar = useCallback(async () => {
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+const [filtroABaixar, setFiltroABaixar] = useState(true);
+const [filtroBaixadas, setFiltroBaixadas] = useState(false);
+
+const encomendasFiltradas = useMemo(() => {
+  let lista = encomendas;
+  if (filtroABaixar !== filtroBaixadas) {
+    lista = lista.filter(
+      (e) => (filtroABaixar && e.baixado !== true) || (filtroBaixadas && e.baixado === true),
+    );
+  }
+  return lista.filter((e) => passaPeriodo(e.data_encomenda, periodo));
+}, [encomendas, periodo, filtroABaixar, filtroBaixadas]);
+
+const estoquePorProduto = useMemo(() => {
+  const porId = new Map<number, { qtd: number; data: string }>();
+  for (const es of estoques) {
+    if (es.produto_fabricado_id == null) continue;
+    const data = es.data_atualizacao ?? '';
+    const prev = porId.get(es.produto_fabricado_id);
+    if (!prev || data >= prev.data) porId.set(es.produto_fabricado_id, { qtd: es.quantidade, data });
+  }
+  const out = new Map<number, number>();
+  for (const [k, v] of porId) out.set(k, v.qtd);
+  return out;
+}, [estoques]);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
-      const [e, p, c] = await Promise.all([
+      const [e, p, c, es] = await Promise.all([
         listarEncomendas(),
         listarProdutosFabricados(),
         listarClientes(),
+        listarEstoqueProdutos(),
       ]);
       setEncomendas(e);
       setProdutos(p);
       setClientes(c);
+      setEstoques(es);
+      const mapa: Record<number, EncomendaItem[]> = {};
+      await Promise.all(
+        e
+          .map((x) => x.id ?? x.codigo)
+          .filter((id): id is number => id != null)
+          .map(async (id) => {
+            try {
+              mapa[id] = await listarEncomendaItens(id);
+            } catch {
+              mapa[id] = [];
+            }
+          }),
+      );
+      setItensPorId(mapa);
     } catch (err) {
       setErro(extrairErro(err));
     } finally {
@@ -111,6 +160,11 @@ export default function Encomendas() {
         delete next[id];
         return next;
       });
+      return;
+    }
+    const cache = itensPorId[id];
+    if (cache) {
+      setExpandido((prev) => ({ ...prev, [id]: cache }));
       return;
     }
     setExpandido((prev) => ({ ...prev, [id]: 'loading' }));
@@ -315,26 +369,59 @@ export default function Encomendas() {
     return (
       <div className="compra-sub">
         <div className="compra-sub-row compra-hdr">
-          <span className="col-produto">Produto</span>
+          <span className="col-produto" style={{ width: 118 }}>Produto</span>
           <span className="col-qtd">Qtd</span>
           <span className="col-unit">Valor Un.</span>
           <span className="col-total">Valor Total</span>
+          <span className="col-estoque">Estoque</span>
         </div>
         <div className="compra-sub-sep" />
-        {itens.map((item, i) => (
-          <div key={i}>
-            <div className="compra-sub-row compra-item">
-              <span className="col-produto">
-                {produtos.find((p) => (p.id) === item.produto_fabricado_id)?.nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id}`}
-              </span>
-              <span className="col-qtd">{fmtQtd(item.quantidade)}</span>
-              <span className="col-unit">{fmtValor(item.valor_unitario)}</span>
-              <span className="col-total">{fmtValor(item.valor_total)}</span>
+        {itens.map((item, i) => {
+          const estoque = estoquePorProduto.get(item.produto_fabricado_id) ?? 0;
+          return (
+            <div key={i}>
+              <div className="compra-sub-row compra-item">
+                <span className="col-produto" style={{ width: 118 }}>
+                  {produtos.find((p) => (p.id) === item.produto_fabricado_id)?.nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id}`}
+                </span>
+                <span className="col-qtd">{fmtQtd(item.quantidade)}</span>
+                <span className="col-unit">{fmtValor(item.valor_unitario)}</span>
+                <span className="col-total">{fmtValor(item.valor_total)}</span>
+                <span
+                  className="col-estoque"
+                  style={{ color: estoque >= item.quantidade ? '#2d5e3a' : '#dc2626', fontWeight: 700 }}
+                >
+                  {fmtQtd(estoque)}
+                </span>
+              </div>
+              <div className="compra-sub-sep" />
             </div>
-            <div className="compra-sub-sep" />
-          </div>
-        ))}
+          );
+        })}
         <div className="compra-sub-total">Total: {fmtMoeda(itens.reduce((acc, it) => acc + it.valor_total, 0))}</div>
+      </div>
+    );
+  };
+
+  const renderProntaEntrega = (e: Encomenda) => {
+    const id = idEncomenda(e);
+    if (id == null || itensPorId[id] === undefined) return null;
+    const it = itensPorId[id];
+    if (it.length === 0) {
+      return (
+        <div className="compra-det" style={{ marginTop: 2, fontSize: 10, fontWeight: 600, color: '#9ca09d' }}>
+          Sem itens
+        </div>
+      );
+    }
+    const pe = it.every((x) => (estoquePorProduto.get(x.produto_fabricado_id) ?? 0) >= x.quantidade);
+    return (
+      <div className="compra-det" style={{ marginTop: 2, fontSize: 10, fontWeight: 600 }}>
+        {pe ? (
+          <span style={{ color: '#2d5e3a' }}>✓ Pronta entrega</span>
+        ) : (
+          <span style={{ color: '#dc2626' }}>✗ Sem estoque p/ pronta entrega</span>
+        )}
       </div>
     );
   };
@@ -351,19 +438,37 @@ export default function Encomendas() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            periodo={{
+              inicio: periodo.inicio,
+              fim: periodo.fim,
+              onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+              onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+            }}
+            checks={{
+              opcao1: filtroABaixar,
+              onOpcao1: setFiltroABaixar,
+              opcao2: filtroBaixadas,
+              onOpcao2: setFiltroBaixadas,
+              label1: 'A Baixar',
+              label2: 'Baixadas',
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && encomendas.length === 0 && (
+        {!loading && !erro && encomendasFiltradas.length === 0 && (
           <div className="list-empty">Nenhuma encomenda cadastrada</div>
         )}
-        {!loading && !erro && encomendas.length > 0 && (
+        {!loading && !erro && encomendasFiltradas.length > 0 && (
           <div className="list-scroll">
-            {encomendas.map((e) => {
+            {encomendasFiltradas.map((e) => {
               const id = idEncomenda(e);
               const aberto = id != null && expandido[id] !== undefined;
               const nItens = qtdItens(e);
@@ -379,6 +484,7 @@ export default function Encomendas() {
                       {nItens != null ? `${nItens} ${nItens === 1 ? 'item' : 'itens'}` : '—'}
                     </div>
                     <div className="compra-total">{fmtMoeda(e.valor_total)}</div>
+                    {id != null && renderProntaEntrega(e)}
                     <RowMenu
                       className="compra-btn"
                       style={{ top: 10, height: 36 }}
@@ -430,6 +536,7 @@ export default function Encomendas() {
           inicial={editing}
           clientes={clientes}
           produtos={produtos}
+          estoques={estoques}
           onCancel={() => {
             setModalOpen(false);
             setEditing(null);

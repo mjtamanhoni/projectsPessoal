@@ -131,7 +131,7 @@ export default function ServerConfig() {
             position: 'absolute',
             left: 20,
             top: 240 + servers.length * 70,
-            width: 350,
+            width: 'calc(100% - 40px)',
             textAlign: 'center',
             fontSize: 11,
             color: status.ok ? '#2d5e3a' : '#c0392b',

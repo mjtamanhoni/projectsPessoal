@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { mascaraMoeda, numeroParaDecimal, decimalParaNumero } from '../format';
 import FotoProduto from './FotoProduto';
 import { normalizar } from './SeletorRegistro';
-import type { ProdutoFabricado } from '../api';
+import type { EstoqueProdutoFabricado, ProdutoFabricado } from '../api';
 
 const QTD_CASAS = 2;
 
@@ -20,19 +20,42 @@ interface Props {
   precoDe: (p: ProdutoFabricado) => number;
   onConfirmar: (itens: ProdutoSelecionado[]) => void;
   fechar: () => void;
+  estoques?: EstoqueProdutoFabricado[];
 }
 
 function fmtMoeda(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-export default function SeletorProdutoPopup({ titulo, produtos, selecionados, precoDe, onConfirmar, fechar }: Props) {
+function fmtEstoque(v: number): string {
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+}
+
+export default function SeletorProdutoPopup({ titulo, produtos, selecionados, precoDe, onConfirmar, fechar, estoques = [] }: Props) {
   const [busca, setBusca] = useState('');
   const [cart, setCart] = useState<ProdutoSelecionado[]>(selecionados);
   const [qtdPopup, setQtdPopup] = useState<ProdutoFabricado | null>(null);
   const [qtdPopupValor, setQtdPopupValor] = useState('');
   const longPressTimer = useRef<number | null>(null);
   const longPressFlag = useRef(false);
+
+  const estoquePorProduto = useMemo(() => {
+    const porId = new Map<number, { qtd: number; data: string }>();
+    for (const es of estoques) {
+      if (es.produto_fabricado_id == null) continue;
+      const data = es.data_atualizacao ?? '';
+      const prev = porId.get(es.produto_fabricado_id);
+      if (!prev || data >= prev.data) porId.set(es.produto_fabricado_id, { qtd: es.quantidade, data });
+    }
+    const out = new Map<number, number>();
+    for (const [k, v] of porId) out.set(k, v.qtd);
+    return out;
+  }, [estoques]);
+
+  const gridMaxHeight = useMemo(() => {
+    const h = window.innerHeight;
+    return Math.max(280, Math.min(560, Math.round(h * 0.62)));
+  }, []);
 
   const filtrados = useMemo(() => {
     const t = normalizar(busca.trim());
@@ -81,7 +104,7 @@ export default function SeletorProdutoPopup({ titulo, produtos, selecionados, pr
     longPressTimer.current = window.setTimeout(() => {
       longPressFlag.current = true;
       abrirPopupQtd(p);
-    }, 500);
+    }, 2000);
   };
 
   const finalizarPressionar = () => {
@@ -113,7 +136,7 @@ export default function SeletorProdutoPopup({ titulo, produtos, selecionados, pr
 
         <div className="modal-body">
           <div style={{ fontSize: 11, color: '#6b706c', margin: '0 4px 8px' }}>
-            Toque no card: adiciona/remove com quantidade 1. Toque longo: informar a quantidade.
+            Toque no card: adiciona/remove com quantidade 1. Toque longo (segure ~2s): informar a quantidade.
           </div>
 
           <input
@@ -124,11 +147,13 @@ export default function SeletorProdutoPopup({ titulo, produtos, selecionados, pr
             onChange={(e) => setBusca(e.target.value)}
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, maxHeight: 300, overflowY: 'auto', margin: '0 4px 8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, maxHeight: gridMaxHeight, overflowY: 'auto', margin: '0 4px 8px' }}>
             {filtrados.map((p) => {
               const id = p.id ?? 0;
               const qtd = qtdDe(id);
               const selecionado = qtd > 0;
+              const estoque = estoquePorProduto.get(id) ?? 0;
+              const temEstoque = estoque > 0;
               return (
                 <div
                   key={id}
@@ -160,6 +185,9 @@ export default function SeletorProdutoPopup({ titulo, produtos, selecionados, pr
                   ) : null}
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#2d5e3a', marginTop: 2 }}>
                     {fmtMoeda(precoDe(p))}
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: temEstoque ? '#2d5e3a' : '#dc2626', marginTop: 2 }}>
+                    {temEstoque ? `Estoque: ${fmtEstoque(estoque)}` : 'Sem estoque'}
                   </div>
                 </div>
               );

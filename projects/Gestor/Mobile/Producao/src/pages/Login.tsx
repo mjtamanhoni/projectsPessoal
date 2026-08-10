@@ -128,7 +128,7 @@ export default function Login() {
 
         <button
           className="link-button"
-          style={{ top: 342, left: 0, width: 350, position: 'absolute' }}
+          style={{ top: 342, left: 0, width: '100%', position: 'absolute' }}
           onClick={() => navigate('/login-pin')}
         >
           Entrar com PIN

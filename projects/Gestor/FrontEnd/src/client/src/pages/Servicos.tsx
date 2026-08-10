@@ -1,4 +1,7 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { passaBusca, passaStatusNumero } from '@/lib/filtros';
+import type { FiltroStatus } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +24,16 @@ const columnHelper = createColumnHelper<Servico>();
 
 export function Servicos() {
   const { data: servicos, loading, error, create, update, remove, refetch } = useApi<Servico>('/servicos');
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('1');
+
+  const servicosFiltrados = useMemo(
+    () =>
+      (servicos ?? []).filter(
+        (s) => passaStatusNumero(s.status, filtroStatus) && passaBusca([s.nome], busca),
+      ),
+    [servicos, filtroStatus, busca],
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Servico | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -140,7 +153,24 @@ export function Servicos() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={servicos} loading={loading} error={error} emptyMessage="Nenhum servico cadastrado" />
+        <PaginaFiltros
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome...' }}
+          status={{
+            rotulo: 'Status',
+            valor: filtroStatus,
+            opcoes: [
+              { valor: '1', label: 'Ativos' },
+              { valor: '2', label: 'Inativos' },
+              { valor: 'todos', label: 'Todos' },
+            ],
+            onChange: (v) => setFiltroStatus(v as FiltroStatus),
+          }}
+          onLimpar={() => {
+            setBusca('');
+            setFiltroStatus('1');
+          }}
+        />
+        <DataTable columns={columns} data={servicosFiltrados} loading={loading} error={error} emptyMessage="Nenhum servico cadastrado" />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={handleCloseModal} title={editingId ? 'Editar Servico' : 'Novo Servico'}>

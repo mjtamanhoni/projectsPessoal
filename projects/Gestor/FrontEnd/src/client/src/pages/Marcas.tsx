@@ -1,4 +1,7 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { passaBusca, passaStatusAtivo } from '@/lib/filtros';
+import type { FiltroStatusAtivo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +23,16 @@ const columnHelper = createColumnHelper<Marca>();
 
 export function Marcas() {
   const { data: marcas, loading, error, create, update, remove, fetchOne, refetch } = useApi<Marca>('/marcas');
+  const [busca, setBusca] = useState('');
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroStatusAtivo>('1');
+
+  const marcasFiltradas = useMemo(
+    () =>
+      (marcas ?? []).filter(
+        (m) => passaStatusAtivo(m.ativo, filtroAtivo) && passaBusca([m.nome], busca),
+      ),
+    [marcas, filtroAtivo, busca],
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Marca | null>(null);
   const [fetchingOne, setFetchingOne] = useState(false);
@@ -134,7 +147,24 @@ export function Marcas() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={marcas} loading={loading} error={error} emptyMessage="Nenhuma marca cadastrada" />
+        <PaginaFiltros
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome...' }}
+          status={{
+            rotulo: 'Status',
+            valor: filtroAtivo,
+            opcoes: [
+              { valor: '1', label: 'Ativas' },
+              { valor: '0', label: 'Inativas' },
+              { valor: 'todos', label: 'Todas' },
+            ],
+            onChange: (v) => setFiltroAtivo(v as FiltroStatusAtivo),
+          }}
+          onLimpar={() => {
+            setBusca('');
+            setFiltroAtivo('1');
+          }}
+        />
+        <DataTable columns={columns} data={marcasFiltradas} loading={loading} error={error} emptyMessage="Nenhuma marca cadastrada" />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Marca' : 'Nova Marca'}>

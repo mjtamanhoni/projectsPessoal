@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { mesCorrente, passaBusca, passaPeriodo } from '../lib/filtros';
+import type { FiltroPeriodo } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import {
   excluirCustoAdicionalFabricacao,
@@ -59,7 +62,17 @@ export default function Fabricacoes() {
   const [caFabricacaoId, setCaFabricacaoId] = useState<number | null>(null);
   const [confirmDeleteCa, setConfirmDeleteCa] = useState<FabricacaoCustoAdicional | null>(null);
 
-  const carregar = useCallback(async () => {
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+  const [busca, setBusca] = useState('');
+
+const fabricacoesFiltradas = useMemo(
+  () =>
+    fabricacoes.filter(
+      (f) => passaPeriodo(f.data_fabricacao, periodo) && passaBusca([f.produto_nome], busca),
+    ),
+  [fabricacoes, periodo, busca],
+);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
@@ -258,14 +271,25 @@ export default function Fabricacoes() {
       </div>
       <PlusButton onClick={abrirNovaFabricacao} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar produto...' }}
+            periodo={{
+              inicio: periodo.inicio,
+              fim: periodo.fim,
+              onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+              onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && fabricacoes.length === 0 && (
+        {!loading && !erro && fabricacoesFiltradas.length === 0 && (
           <div className="list-empty">Nenhuma fabricação cadastrada</div>
         )}
         {!loading && !erro && fabricacoes.length > 0 && (

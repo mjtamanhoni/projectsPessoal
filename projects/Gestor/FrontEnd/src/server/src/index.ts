@@ -63,13 +63,25 @@ app.get('/health', (_req, res) => {
 app.get('/api/uploads/*', async (req, res) => {
   const url = req.originalUrl.replace(/^\/api\/uploads/, '');
   try {
+    const headers: Record<string, string> = {};
+    const ims = req.headers['if-modified-since'];
+    if (ims) headers['If-Modified-Since'] = String(ims);
     const upstream = await axios.get(`${config.horseApi.baseUrl}/uploads${url}`, {
       responseType: 'arraybuffer',
       timeout: 10000,
+      headers,
+      validateStatus: (status) => status < 400,
     });
+    if (upstream.status === 304) {
+      res.status(304).end();
+      return;
+    }
     res.set('Content-Type', String(upstream.headers['content-type'] ?? 'application/octet-stream'));
     res.set('Content-Length', upstream.data.length);
-    res.set('Cache-Control', 'public, max-age=3600');
+    if (upstream.headers['last-modified']) {
+      res.set('Last-Modified', String(upstream.headers['last-modified']));
+    }
+    res.set('Cache-Control', 'no-cache');
     res.send(upstream.data);
   } catch (error) {
     const status = axios.isAxiosError(error) ? (error.response?.status ?? 502) : 502;

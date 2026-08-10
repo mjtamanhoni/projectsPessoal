@@ -733,6 +733,7 @@ export function HorasTrabalhadas() {
             <RegistroSelect<number>
               value={filtroUsuarioId ?? null}
               onChange={(v) => setFiltroUsuarioId(v)}
+              onClear={() => setFiltroUsuarioId(undefined)}
               options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
               title="Filtro por Usuario"
               placeholder="Todos os usuarios"
@@ -744,6 +745,7 @@ export function HorasTrabalhadas() {
             <RegistroSelect<number>
               value={filtroClienteId ?? null}
               onChange={(v) => setFiltroClienteId(v)}
+              onClear={() => setFiltroClienteId(undefined)}
               options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
               title="Filtro por Cliente"
               placeholder="Todos os clientes"
@@ -755,6 +757,7 @@ export function HorasTrabalhadas() {
             <RegistroSelect<number>
               value={filtroServicoId ?? null}
               onChange={(v) => setFiltroServicoId(v)}
+              onClear={() => setFiltroServicoId(undefined)}
               options={servicos.map((s) => ({ value: (s.id ?? s.codigo)!, label: s.nome }))}
               title="Filtro por Servico"
               placeholder="Todos os servicos"

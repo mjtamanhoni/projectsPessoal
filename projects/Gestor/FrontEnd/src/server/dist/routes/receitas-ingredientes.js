@@ -8,7 +8,25 @@ const schemas_1 = require("../schemas");
 const router = (0, express_1.Router)();
 router.get('/', auth_1.authMiddleware, async (req, res) => {
     try {
-        const result = await horseApi_1.horseApi.listarReceitasIngrediente(req.query);
+        const result = (await horseApi_1.horseApi.listarReceitasIngrediente(req.query));
+        try {
+            const insumos = await horseApi_1.horseApi.listarInsumos();
+            const insumoPorId = new Map(insumos.map((i) => [i.id, i]));
+            for (const item of result) {
+                const insumo = item.insumo_id != null ? insumoPorId.get(item.insumo_id) : undefined;
+                if (!insumo)
+                    continue;
+                item.insumo_nome = item.insumo_nome ?? insumo.nome;
+                item.insumo_unidade_medida = item.insumo_unidade_medida ?? insumo.unidade_medida;
+                if (item.insumo_custo_medio == null || item.insumo_custo_medio === 0) {
+                    item.insumo_custo_medio = insumo.custo_medio ?? 0;
+                }
+                item.insumo_ativo = item.insumo_ativo ?? insumo.ativo;
+            }
+        }
+        catch {
+            // enriquecimento opcional: a listagem segue mesmo sem os custos dos insumos
+        }
         res.json(result);
     }
     catch (error) {

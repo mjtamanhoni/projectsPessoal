@@ -112,25 +112,25 @@ export default function Dashboard() {
       </div>
 
       {loading && (
-        <div style={{ position: 'absolute', left: 0, top: 400, width: 390, textAlign: 'center', fontSize: 12, color: '#6b706c' }}>
+        <div style={{ position: 'absolute', left: 0, top: 400, width: '100%', textAlign: 'center', fontSize: 12, color: '#6b706c' }}>
           Carregando...
         </div>
       )}
       {!loading && erro && (
-        <div style={{ position: 'absolute', left: 0, top: 400, width: 390, textAlign: 'center', fontSize: 12, color: '#c0392b' }}>
+        <div style={{ position: 'absolute', left: 0, top: 400, width: '100%', textAlign: 'center', fontSize: 12, color: '#c0392b' }}>
           {erro}
         </div>
       )}
 
       {k && (
         <>
-          <div className="kpi-row" style={{ top: 118, width: 362 }}>
+          <div className="kpi-row" style={{ top: 118, width: 'calc(100% - 28px)' }}>
             {[
               { icon: '💰', bg: '#22c55e', label: 'Vendas', value: formatCompact(k.total_vendas), sub: `${k.qtd_vendas} vendas` },
               { icon: '🛒', bg: '#f97316', label: 'Compras', value: formatCompact(k.total_compras), sub: `${k.qtd_compras} compras` },
               { icon: '📦', bg: '#3b82f6', label: 'Fabricado', value: `${k.qtd_fabricada.toLocaleString('pt-BR')} un`, sub: `${k.qtd_fabricacoes} fab.` },
             ].map((item) => (
-              <div key={item.label} className="kpi-card" style={{ width: 115 }}>
+              <div key={item.label} className="kpi-card" style={{ flex: 1, minWidth: 0 }}>
                 <div className="kpi-top">
                   <div className="kpi-icon" style={{ background: item.bg }}>
                     {item.icon}
@@ -143,12 +143,12 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="kpi-row" style={{ top: 204, width: 362 }}>
+          <div className="kpi-row" style={{ top: 204, width: 'calc(100% - 28px)' }}>
             {[
               { icon: '📉', bg: '#a855f7', label: 'Lucro Bruto', value: formatCompact(k.lucro_bruto), sub: 'Vendas - Custo' },
               { icon: '💰', bg: '#6366f1', label: 'Lucro Líquido', value: formatCompact(k.lucro_liquido), sub: 'V-(Compras+Custo)' },
             ].map((item) => (
-              <div key={item.label} className="kpi-card" style={{ width: 177 }}>
+              <div key={item.label} className="kpi-card" style={{ flex: 1, minWidth: 0 }}>
                 <div className="kpi-top">
                   <div className="kpi-icon" style={{ background: item.bg }}>
                     {item.icon}
@@ -161,7 +161,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="chart-card" style={{ top: 298, width: 362, height: 220 }}>
+          <div className="chart-card" style={{ top: 298, width: 'calc(100% - 28px)', height: 220 }}>
             <div className="chart-title">📊&nbsp;&nbsp;Vendas vs Custo</div>
             <div className="chart-bg" style={{ height: 170 }}>
               {vendasMensal.map((v, i) => {
@@ -197,7 +197,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="chart-card" style={{ top: 534, width: 362, height: 200 }}>
+          <div className="chart-card" style={{ top: 534, width: 'calc(100% - 28px)', height: 200 }}>
             <div className="chart-title">📈&nbsp;&nbsp;Vendas por Dia — {MESES[mes - 1]}</div>
             <div className="chart-bg" style={{ height: 150 }}>
               {diarioVendas.map((d, i) => (

@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { passaBusca } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import { excluirCliente, extrairErro, listarClientes, salvarCliente, type Cliente } from '../api';
 import PessoaModal from '../components/PessoaModal';
@@ -17,7 +19,21 @@ export default function Clientes() {
   const [formKey, setFormKey] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<Cliente | null>(null);
 
-  const carregar = useCallback(async () => {
+  const [busca, setBusca] = useState('');
+const [filtroAtivo, setFiltroAtivo] = useState(true);
+const [filtroInativo, setFiltroInativo] = useState(false);
+
+const clientesFiltrados = useMemo(() => {
+  let lista = clientes;
+  if (filtroAtivo !== filtroInativo) {
+    lista = lista.filter((c) => {
+      const st = Number(c.status);
+      return (filtroAtivo && (st === 1 || c.status == null)) || (filtroInativo && st === 0);
+    });
+  }
+  return lista.filter((c) => passaBusca([c.nome, c.telefone, c.celular, c.email], busca));
+}, [clientes, busca, filtroAtivo, filtroInativo]);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
@@ -75,19 +91,32 @@ export default function Clientes() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar...' }}
+            checks={{
+              opcao1: filtroAtivo,
+              onOpcao1: setFiltroAtivo,
+              opcao2: filtroInativo,
+              onOpcao2: setFiltroInativo,
+              label1: 'Ativos',
+              label2: 'Inativos',
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && clientes.length === 0 && (
+        {!loading && !erro && clientesFiltrados.length === 0 && (
           <div className="list-empty">Nenhum cliente cadastrado</div>
         )}
         {!loading && !erro && clientes.length > 0 && (
           <div className="list-scroll">
-            {clientes.map((c) => (
+            {clientesFiltrados.map((c) => (
               <div key={c.id}>
                 <div className="insumo-row">
                   <div className="insumo-cod">#{c.id}</div>

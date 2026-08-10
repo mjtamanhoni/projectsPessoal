@@ -269,11 +269,11 @@ export default function CompraInsumoModal({ titulo, inicial, insumos, fornecedor
             Total: {fmtMoeda(totalCompra)}
           </div>
 
-          {erro && <div style={{ position: 'absolute', left: 20, top: tabelaBottom + 26, width: 310, textAlign: 'center', fontSize: 11, color: '#c0392b' }}>
+          {erro && <div style={{ position: 'absolute', left: 20, top: tabelaBottom + 26, width: 'calc(100% - 40px)', textAlign: 'center', fontSize: 11, color: '#c0392b' }}>
             {erro}
           </div>}
 
-          <div style={{ position: 'absolute', left: 0, top: tabelaBottom + 48, width: 350, display: 'flex', justifyContent: 'center', gap: 12 }}>
+          <div style={{ position: 'absolute', left: 0, top: tabelaBottom + 48, width: '100%', display: 'flex', justifyContent: 'center', gap: 12 }}>
             <button className="modal-btn cancel" style={{ position: 'static', top: 0 }} onClick={onCancel} disabled={salvando}>
               Cancelar
             </button>

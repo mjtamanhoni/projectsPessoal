@@ -1,4 +1,4 @@
-export interface Formulario {
+﻿export interface Formulario {
   codigo?: number;
   id?: number;
   nome: string;
@@ -14,14 +14,15 @@ export interface UsuarioFormulario {
 }
 
 export interface Cliente {
-  codigo?: number;
   id?: number;
+  codigo?: number;
   nome: string;
   telefone?: string;
   celular?: string;
-  endereco?: string;
   email?: string;
+  endereco?: string;
   cpf_cnpj?: string;
+  status?: number;
 }
 
 export interface Fornecedor {
@@ -32,6 +33,7 @@ export interface Fornecedor {
   celular?: string;
   endereco?: string;
   email?: string;
+  status?: number;
 }
 
 export interface Categoria {
@@ -84,6 +86,7 @@ export interface Usuario {
   id?: number;
   nome: string;
   email?: string;
+  status?: number;
 }
 
 export interface User {
@@ -208,6 +211,7 @@ export interface Servico {
   nome: string;
   valorHora: number;
   horasMinimas: string;
+  status?: number;
 }
 
 export interface HoraAbatida {
@@ -476,6 +480,7 @@ export interface Empresa {
   celular?: string;
   email?: string;
   chave_pix?: string;
+  status?: number;
 }
 
 export interface Modulo {
@@ -483,6 +488,7 @@ export interface Modulo {
   id?: number;
   nome: string;
   descricao?: string;
+  status?: number;
 }
 
 export interface ModuloFormulario {

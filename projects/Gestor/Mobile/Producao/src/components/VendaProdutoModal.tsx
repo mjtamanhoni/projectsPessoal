@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { numeroParaDecimal } from '../format';
-import type { VendaProduto, VendaProdutoItem, Cliente, ProdutoFabricado } from '../api';
+import type { VendaProduto, VendaProdutoItem, Cliente, EstoqueProdutoFabricado, ProdutoFabricado } from '../api';
 import SeletorRegistro, { CampoSeletor } from './SeletorRegistro';
 import SeletorProdutoPopup from './SeletorProdutoPopup';
 
@@ -11,6 +11,7 @@ interface Props {
   inicial: VendaProduto | null;
   clientes: Cliente[];
   produtos: ProdutoFabricado[];
+  estoques?: EstoqueProdutoFabricado[];
   onCancel: () => void;
   onSalvar: (data: VendaProduto) => Promise<void>;
 }
@@ -19,7 +20,7 @@ function fmtMoeda(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-export default function VendaProdutoModal({ titulo, inicial, clientes, produtos, onCancel, onSalvar }: Props) {
+export default function VendaProdutoModal({ titulo, inicial, clientes, produtos, estoques, onCancel, onSalvar }: Props) {
   const [clienteId, setClienteId] = useState(inicial?.cliente_id ? String(inicial.cliente_id) : '');
   const [dataVenda, setDataVenda] = useState(inicial?.data_venda ?? new Date().toISOString().slice(0, 10));
   const [recebido, setRecebido] = useState(inicial?.recebido ?? true);
@@ -216,6 +217,7 @@ export default function VendaProdutoModal({ titulo, inicial, clientes, produtos,
           precoDe={precoProduto}
           onConfirmar={confirmarSelecao}
           fechar={() => setSeletorAberto(false)}
+          estoques={estoques}
         />
       )}
     </div>

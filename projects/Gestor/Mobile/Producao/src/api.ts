@@ -33,6 +33,7 @@ export interface Fornecedor {
   endereco?: string;
   email?: string;
   cnpj_cpf?: string;
+  status?: number;
 }
 
 export interface Cliente {
@@ -43,6 +44,7 @@ export interface Cliente {
   endereco?: string;
   email?: string;
   cnpj_cpf?: string;
+  status?: number;
 }
 
 export interface Marca {

@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { mesCorrente, passaPeriodo } from '../lib/filtros';
+import type { FiltroPeriodo } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import {
   excluirCompraInsumo,
@@ -58,7 +61,20 @@ export default function ComprasInsumo() {
   const [expandido, setExpandido] = useState<ExpandState>({});
   const [carregandoEdicao, setCarregandoEdicao] = useState(false);
 
-  const carregar = useCallback(async () => {
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+const [filtroAbertas, setFiltroAbertas] = useState(true);
+const [filtroPagas, setFiltroPagas] = useState(false);
+
+const comprasFiltradas = useMemo(() => {
+  let lista = compras;
+  if (filtroAbertas !== filtroPagas) {
+    lista = lista.filter(
+      (c) => (filtroAbertas && c.pago !== true) || (filtroPagas && c.pago === true),
+    );
+  }
+  return lista.filter((c) => passaPeriodo(c.data_compra, periodo));
+}, [compras, periodo, filtroAbertas, filtroPagas]);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
@@ -224,19 +240,37 @@ export default function ComprasInsumo() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            periodo={{
+              inicio: periodo.inicio,
+              fim: periodo.fim,
+              onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+              onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+            }}
+            checks={{
+              opcao1: filtroAbertas,
+              onOpcao1: setFiltroAbertas,
+              opcao2: filtroPagas,
+              onOpcao2: setFiltroPagas,
+              label1: 'Abertas',
+              label2: 'Pagas',
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && compras.length === 0 && (
+        {!loading && !erro && comprasFiltradas.length === 0 && (
           <div className="list-empty">Nenhuma compra cadastrada</div>
         )}
-        {!loading && !erro && compras.length > 0 && (
+        {!loading && !erro && comprasFiltradas.length > 0 && (
           <div className="list-scroll">
-            {compras.map((c) => {
+            {comprasFiltradas.map((c) => {
               const id = idCompra(c);
               const aberto = id != null && expandido[id] !== undefined;
               const nItens = qtdItens(c);

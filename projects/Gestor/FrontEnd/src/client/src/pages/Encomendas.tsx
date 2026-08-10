@@ -1,4 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { mesCorrente, passaPeriodo } from '@/lib/filtros';
+import type { FiltroPeriodo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +26,18 @@ const columnHelper = createColumnHelper<Encomenda>();
 
 export function Encomendas() {
   const { data: encomendas, loading, error, create, update, remove, refetch } = useApi<Encomenda>('/encomendas');
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+  const [filtroBaixa, setFiltroBaixa] = useState<string>('abaixar');
+
+  const encomendasFiltradas = useMemo(
+    () =>
+      (encomendas ?? []).filter(
+        (e) =>
+          passaPeriodo(e.data_encomenda, periodo) &&
+          (filtroBaixa === 'todas' || (filtroBaixa === 'baixada' ? e.baixado === true : e.baixado !== true)),
+      ),
+    [encomendas, periodo, filtroBaixa],
+  );
   const { data: produtos } = useApi<ProdutoFabricado>('/produtos-fabricados');
   const { data: clientes } = useApi<Cliente>('/clientes');
   const [modalOpen, setModalOpen] = useState(false);
@@ -302,9 +317,31 @@ export function Encomendas() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
+        <PaginaFiltros
+          periodo={{
+            inicio: periodo.inicio,
+            fim: periodo.fim,
+            onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+            onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+          }}
+          status={{
+            rotulo: 'Situação',
+            valor: filtroBaixa,
+            opcoes: [
+              { valor: 'abaixar', label: 'A Baixar' },
+              { valor: 'baixada', label: 'Baixadas' },
+              { valor: 'todas', label: 'Todas' },
+            ],
+            onChange: setFiltroBaixa,
+          }}
+          onLimpar={() => {
+            setPeriodo({ inicio: '', fim: '' });
+            setFiltroBaixa('abaixar');
+          }}
+        />
         <DataTable
           columns={columns}
-          data={encomendas}
+          data={encomendasFiltradas}
           loading={loading}
           error={error}
           emptyMessage="Nenhuma encomenda cadastrada"

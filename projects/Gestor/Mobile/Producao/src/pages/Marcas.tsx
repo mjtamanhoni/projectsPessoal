@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import FiltrosBar from '../components/FiltrosBar';
+import { passaBusca } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import { excluirMarca, extrairErro, listarMarcas, salvarMarca, type Marca } from '../api';
 import MarcaModal from '../components/MarcaModal';
@@ -17,7 +19,20 @@ export default function Marcas() {
   const [formKey, setFormKey] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<Marca | null>(null);
 
-  const carregar = useCallback(async () => {
+  const [busca, setBusca] = useState('');
+const [filtroAtivo, setFiltroAtivo] = useState(true);
+const [filtroInativo, setFiltroInativo] = useState(false);
+
+const marcasFiltradas = useMemo(() => {
+  let lista = marcas;
+  if (filtroAtivo !== filtroInativo) {
+    lista = lista.filter(
+      (m) => (filtroAtivo && m.ativo === true) || (filtroInativo && m.ativo !== true),
+    );
+  }
+  return lista.filter((m) => passaBusca([m.nome], busca));
+}, [marcas, busca, filtroAtivo, filtroInativo]);
+const carregar = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
@@ -75,19 +90,32 @@ export default function Marcas() {
       </div>
       <PlusButton onClick={abrirNovo} />
 
-      <div className="list-card" style={{ top: 80, height: 720 }}>
+            <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        {!loading && !erro && (
+          <FiltrosBar
+            busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar...' }}
+            checks={{
+              opcao1: filtroAtivo,
+              onOpcao1: setFiltroAtivo,
+              opcao2: filtroInativo,
+              onOpcao2: setFiltroInativo,
+              label1: 'Ativas',
+              label2: 'Inativas',
+            }}
+          />
+        )}
         {loading && <div className="list-empty">Carregando...</div>}
         {!loading && erro && (
           <div className="list-empty" style={{ color: '#c0392b' }}>
             {erro}
           </div>
         )}
-        {!loading && !erro && marcas.length === 0 && (
+        {!loading && !erro && marcasFiltradas.length === 0 && (
           <div className="list-empty">Nenhuma marca cadastrada</div>
         )}
         {!loading && !erro && marcas.length > 0 && (
           <div className="list-scroll">
-            {marcas.map((m) => (
+            {marcasFiltradas.map((m) => (
               <div key={m.id}>
                 <div className="insumo-row">
                   <div className="insumo-cod">#{m.id}</div>

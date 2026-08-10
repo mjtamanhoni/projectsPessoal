@@ -1,4 +1,6 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+﻿import { useMemo, useState, useEffect, useCallback } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { passaBusca } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +23,13 @@ const columnHelper = createColumnHelper<Empresa>();
 
 export function Empresas() {
   const { data: empresas, loading, error, create, update, remove, fetchOne, refetch } = useApi<Empresa>('/empresas');
+  const [busca, setBusca] = useState('');
+
+  const empresasFiltradas = useMemo(
+    () =>
+      (empresas ?? []).filter((e) => passaBusca([e.razao_social, e.fantasia, e.cnpj_cpf], busca)),
+    [empresas, busca],
+  );
   const [modulos, setModulos] = useState<Modulo[]>([]);
 
   useEffect(() => {
@@ -262,7 +271,11 @@ export function Empresas() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
-        <DataTable columns={columns} data={empresas} loading={loading} error={error} emptyMessage="Nenhuma empresa cadastrada" renderSubComponent={renderSubComponent} />
+        <PaginaFiltros
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por razão social, fantasia ou CNPJ/CPF...' }}
+          onLimpar={() => setBusca('')}
+        />
+        <DataTable columns={columns} data={empresasFiltradas} loading={loading} error={error} emptyMessage="Nenhuma empresa cadastrada" renderSubComponent={renderSubComponent} />
       </Card>
 
       <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Empresa' : 'Nova Empresa'}>

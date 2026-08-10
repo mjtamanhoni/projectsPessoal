@@ -1,4 +1,7 @@
-﻿import { useState, useCallback } from 'react';
+﻿import { useMemo, useState, useCallback } from 'react';
+import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
+import { mesCorrente, passaPeriodo } from '@/lib/filtros';
+import type { FiltroPeriodo } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +27,18 @@ const columnHelper = createColumnHelper<CompraInsumo>();
 
 export function ComprasInsumo() {
   const { data: compras, loading, error, create, update, remove, refetch } = useApi<CompraInsumo>('/compras-insumo');
+  const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
+  const [filtroPago, setFiltroPago] = useState<string>('aberto');
+
+  const comprasFiltradas = useMemo(
+    () =>
+      (compras ?? []).filter(
+        (c) =>
+          passaPeriodo(c.data_compra, periodo) &&
+          (filtroPago === 'todos' || (filtroPago === 'pago' ? c.pago === true : c.pago !== true)),
+      ),
+    [compras, periodo, filtroPago],
+  );
   const { data: insumos } = useApi<Insumo>('/insumos');
   const { data: fornecedores } = useApi<Fornecedor>('/fornecedores');
   const { data: marcas } = useApi<Marca>('/marcas');
@@ -232,9 +247,31 @@ export function ComprasInsumo() {
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>
+        <PaginaFiltros
+          periodo={{
+            inicio: periodo.inicio,
+            fim: periodo.fim,
+            onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
+            onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
+          }}
+          status={{
+            rotulo: 'Situação',
+            valor: filtroPago,
+            opcoes: [
+              { valor: 'aberto', label: 'Abertas' },
+              { valor: 'pago', label: 'Pagas' },
+              { valor: 'todos', label: 'Todas' },
+            ],
+            onChange: setFiltroPago,
+          }}
+          onLimpar={() => {
+            setPeriodo({ inicio: '', fim: '' });
+            setFiltroPago('aberto');
+          }}
+        />
         <DataTable
           columns={columns}
-          data={compras}
+          data={comprasFiltradas}
           loading={loading}
           error={error}
           emptyMessage="Nenhuma compra cadastrada"

@@ -8,6 +8,7 @@ interface Pessoa {
   celular?: string;
   endereco?: string;
   email?: string;
+  status?: number;
 }
 
 interface Props {
@@ -24,6 +25,7 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
   const [celular, setCelular] = useState(inicial?.celular ?? '');
   const [endereco, setEndereco] = useState(inicial?.endereco ?? '');
   const [email, setEmail] = useState(inicial?.email ?? '');
+  const [status, setStatus] = useState<number>(inicial?.status == null ? 1 : Number(inicial.status));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -49,6 +51,7 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
         celular: celular.trim(),
         endereco: endereco.trim(),
         email: email.trim(),
+        status,
       });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao salvar');
@@ -129,12 +132,26 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          {erro && <div className="modal-erro" style={{ top: 336 }}>{erro}</div>}
+          <div className="modal-label" style={{ top: 332 }}>
+            Status
+          </div>
+          <div className="modal-check-row" style={{ top: 348 }}>
+            <label className="modal-check-label" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <input type="checkbox" className="filtros-checkbox" checked={status === 1} onChange={() => setStatus(1)} />
+              Ativo
+            </label>
+            <label className="modal-check-label" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <input type="checkbox" className="filtros-checkbox" checked={status === 0} onChange={() => setStatus(0)} />
+              Inativo
+            </label>
+          </div>
 
-          <button className="modal-btn cancel" style={{ top: 366, left: 30 }} onClick={onCancel} disabled={salvando}>
+          {erro && <div className="modal-erro" style={{ top: 396 }}>{erro}</div>}
+
+          <button className="modal-btn cancel" style={{ top: 424, left: 30 }} onClick={onCancel} disabled={salvando}>
             Cancelar
           </button>
-          <button className="modal-btn save" style={{ top: 366, left: 190 }} onClick={salvar} disabled={salvando}>
+          <button className="modal-btn save" style={{ top: 424, left: 190 }} onClick={salvar} disabled={salvando}>
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
