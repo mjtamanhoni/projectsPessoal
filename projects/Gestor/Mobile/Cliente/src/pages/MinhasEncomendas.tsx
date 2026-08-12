@@ -1,14 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  atualizarItensEncomendaPublica,
   cancelarEncomendaPublica,
   extrairErro,
   listarEncomendasPublicas,
+  listarProdutosFabricadosPublico,
   type Encomenda,
+  type EncomendaItem,
+  type ProdutoFabricado,
 } from '../api';
 import { useSessao } from '../auth';
+import BackButton from '../components/BackButton';
 import CupomModal from '../components/CupomModal';
-import { formatarDataBR, formatarMoeda } from '../format';
+import PlusButton from '../components/PlusButton';
+import RowMenu from '../components/RowMenu';
+import SeletorProdutoPopup from '../components/SeletorProdutoPopup';
+import SeletorRegistro from '../components/SeletorRegistro';
+import { formatarDataBR, formatarMoeda, numeroParaDecimal } from '../format';
 
 const ETAPAS: Record<number, { label: string; cor: string; fundo: string }> = {
   0: { label: 'Aguardando', cor: '#92400e', fundo: '#fef3c7' },
@@ -26,6 +35,21 @@ const CHIPS_FILTRO: { valor: number; label: string }[] = [
   { valor: 4, label: 'Cancelada' },
 ];
 
+function estiloBadge(status: number): CSSProperties {
+  const info = ETAPAS[status] ?? ETAPAS[0];
+  return {
+    display: 'inline-block',
+    padding: '1px 8px',
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 700,
+    color: info.cor,
+    background: info.fundo,
+  };
+}
+
+const QTD_CASAS = 2;
+
 export default function MinhasEncomendas() {
   const navigate = useNavigate();
   const { empresa, cliente, sair } = useSessao();
@@ -38,8 +62,36 @@ export default function MinhasEncomendas() {
   const [filtroStatus, setFiltroStatus] = useState<number[]>(CHIPS_FILTRO.map((c) => c.valor));
   const [cancelarDe, setCancelarDe] = useState<Encomenda | null>(null);
   const [cancelando, setCancelando] = useState(false);
+  const [editandoDe, setEditandoDe] = useState<Encomenda | null>(null);
+  const [seletorAberto, setSeletorAberto] = useState(false);
+  const [produtos, setProdutos] = useState<ProdutoFabricado[]>([]);
+  const [produtosCarregados, setProdutosCarregados] = useState(false);
+  const [produtosLoading, setProdutosLoading] = useState(false);
+  const [excluirDe, setExcluirDe] = useState<Encomenda | null>(null);
 
   const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
+
+  useEffect(() => {
+    if (!seletorAberto || !empresa || produtos.length > 0 || produtosCarregados) return;
+    let cancelado = false;
+    setProdutosLoading(true);
+    listarProdutosFabricadosPublico(empresa.id)
+      .then((lista) => {
+        if (cancelado) return;
+        setProdutos(lista.filter((p) => Number(p.preco) > 0));
+        setProdutosCarregados(true);
+      })
+      .catch((e) => {
+        if (!cancelado) setErro(extrairErro(e));
+      })
+      .finally(() => {
+        if (!cancelado) setProdutosLoading(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seletorAberto, empresa]);
 
   const carregar = async () => {
     if (!empresa || !documento) return;
@@ -68,6 +120,80 @@ export default function MinhasEncomendas() {
   );
 
   const podeCancelar = (e: Encomenda) => Number(e.status ?? 0) < 2;
+  const podeEditarItens = (e: Encomenda) => Number(e.status ?? 0) === 0;
+  const precoDe = (p: ProdutoFabricado) => Number(p.preco) || 0;
+
+  const salvarItens = async (e: Encomenda, novos: EncomendaItem[]) => {
+    if (!empresa) return;
+    if (novos.length === 0) {
+      setErro('A encomenda precisa ter pelo menos um item');
+      return;
+    }
+    setErro('');
+    try {
+      await atualizarItensEncomendaPublica(empresa.id, {
+        id: e.id ?? 0,
+        cliente_id: cliente?.id,
+        documento,
+        itens: novos,
+      });
+      setSeletorAberto(false);
+      await carregar();
+    } catch (err) {
+      setErro(extrairErro(err));
+    }
+  };
+
+  const abrirSeletorItens = (e: Encomenda) => {
+    setEditandoDe(e);
+    setSeletorAberto(true);
+  };
+
+  const confirmarExclusao = (item: EncomendaItem) => {
+    if (!excluirDe) return;
+    const e = excluirDe;
+    setExcluirDe(null);
+    const novos = (e.itens ?? []).filter((i) => i.id !== item.id);
+    salvarItens(e, novos);
+  };
+
+  const renderItens = (e: Encomenda) => {
+    const itens = e.itens ?? [];
+    return (
+      <div className="compra-sub">
+        <div className="compra-sub-row compra-hdr" style={{ padding: '4px 4px 0' }}>
+          <span className="col-produto" style={{ flex: 1 }}>Produto</span>
+          <span className="col-qtd">Qtd</span>
+          <span className="col-unit">Valor Un.</span>
+          <span className="col-total" style={{ width: 64 }}>Valor Total</span>
+        </div>
+        <div className="compra-sub-sep" />
+        {itens.length === 0 ? (
+          <div style={{ padding: 8, fontSize: 10, color: '#9ca09d' }}>Nenhum item</div>
+        ) : (
+          itens.map((item, i) => (
+            <div key={i}>
+              <div className="compra-sub-row compra-item" style={{ padding: '4px 4px 0' }}>
+                <span className="col-produto" style={{ flex: 1 }}>
+                  {item.produto_nome || `ID ${item.produto_fabricado_id}`}
+                </span>
+                <span className="col-qtd">{numeroParaDecimal(item.quantidade, QTD_CASAS)}</span>
+                <span className="col-unit">{numeroParaDecimal(item.valor_unitario, QTD_CASAS)}</span>
+                <span className="col-total" style={{ width: 64 }}>
+                  {numeroParaDecimal(item.valor_total, QTD_CASAS)}
+                </span>
+              </div>
+              <div className="compra-sub-sep" />
+            </div>
+          ))
+        )}
+        {e.observacao && (
+          <div style={{ padding: '4px 8px 0', fontSize: 10, color: '#6b706c' }}>Obs.: {e.observacao}</div>
+        )}
+        <div className="compra-sub-total">Total: {formatarMoeda(Number(e.valor_total) || 0)}</div>
+      </div>
+    );
+  };
 
   const confirmarCancelamento = async () => {
     if (!cancelarDe || !empresa) return;
@@ -91,179 +217,131 @@ export default function MinhasEncomendas() {
 
   if (!empresa || !cliente) return null;
 
+  const sairVoltar = () => {
+    sair();
+    navigate('/', { replace: true });
+  };
+
   return (
     <div className="screen">
-      <div className="screen-topbar">
-        <div className="dashboard-title" style={{ maxWidth: '60%' }}>
-          <span style={{ display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'middle' }}>
-            Acompanhar Encomendas
-          </span>
-        </div>
-        <button
-          className="menu-back"
-          onClick={() => {
-            sair();
-            navigate('/', { replace: true });
-          }}
-        >
-          Sair
-        </button>
+      <div className="screen-topbar" />
+      <BackButton onClick={sairVoltar} />
+      <div className="dashboard-title" style={{ left: 42, top: 24 }}>
+        Encomendas
       </div>
+      <div className="dashboard-subtitle" style={{ left: 42, top: 56, fontSize: 12 }}>
+        Acompanhe o status das suas encomendas
+      </div>
+      <PlusButton onClick={() => navigate('/pedido')} />
 
-      <div style={{ padding: '12px 16px 0' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: '#e7f5ec',
-            border: '1px solid #cde8d6',
-            borderRadius: 10,
-            padding: '12px 14px',
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#1b1f1c' }}>{cliente.nome}</div>
-            <div style={{ fontSize: 11, color: '#4b5563' }}>{empresa.fantasia || empresa.razao_social}</div>
-            <div style={{ fontSize: 11, color: '#4b5563' }}>{cliente.celular}</div>
+      <div className="list-card" style={{ top: 88, bottom: 12 }}>
+        <div className="filtros-bar">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 2 }}>
+            {CHIPS_FILTRO.map((chip) => {
+              const ativo = filtroStatus.includes(chip.valor);
+              return (
+                <button
+                  key={chip.valor}
+                  onClick={() =>
+                    setFiltroStatus((prev) =>
+                      ativo ? prev.filter((v) => v !== chip.valor) : [...prev, chip.valor],
+                    )
+                  }
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 999,
+                    border: ativo ? '1px solid #2d5e3a' : '1px solid #d6ddd0',
+                    background: ativo ? '#2d5e3a' : '#ffffff',
+                    color: ativo ? '#ffffff' : '#6b706c',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
           </div>
-          <button
-            className="confirm-btn save"
-            style={{ height: 34, padding: '0 14px', fontSize: 12 }}
-            onClick={() => navigate('/pedido')}
-          >
-            + Novo pedido
-          </button>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-          {CHIPS_FILTRO.map((chip) => {
-            const ativo = filtroStatus.includes(chip.valor);
-            return (
-              <button
-                key={chip.valor}
-                onClick={() =>
-                  setFiltroStatus((prev) =>
-                    ativo ? prev.filter((v) => v !== chip.valor) : [...prev, chip.valor],
-                  )
-                }
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: 999,
-                  border: ativo ? '1px solid #2d5e3a' : '1px solid #d6ddd0',
-                  background: ativo ? '#2d5e3a' : '#ffffff',
-                  color: ativo ? '#ffffff' : '#6b706c',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                {chip.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {erro && <div style={{ fontSize: 11, color: '#c0392b', marginBottom: 8 }}>{erro}</div>}
-
-        {!carregando && filtradas.length === 0 && !erro && (
-          <div style={{ fontSize: 12, color: '#9ca09d', textAlign: 'center', padding: '28px 0', border: '1px dashed #d6ddd0', borderRadius: 10 }}>
-            Nenhuma encomenda para os filtros selecionados
+        {carregando && <div className="list-empty">Carregando...</div>}
+        {!carregando && erro && (
+          <div className="list-empty" style={{ color: '#c0392b' }}>
+            {erro}
           </div>
         )}
+        {!carregando && !erro && filtradas.length === 0 && (
+          <div className="list-empty">Nenhuma encomenda para os filtros selecionados</div>
+        )}
 
-        {filtradas.map((e) => {
-          const status = Number(e.status ?? 0);
-          const etapa = ETAPAS[status] ?? ETAPAS[0];
-          return (
-            <div
-              key={e.id}
-              style={{
-                background: '#f4f6f4',
-                borderRadius: 10,
-                padding: '10px 12px',
-                marginBottom: 8,
-              }}
-            >
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-                onClick={() => setExpandida(expandida === e.id ? null : (e.id ?? null))}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1b1f1c' }}>
-                    Encomenda #{e.codigo ?? e.id}
-                    <span
-                      style={{
-                        marginLeft: 8,
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: 20,
-                        color: etapa.cor,
-                        background: etapa.fundo,
-                      }}
+        {!carregando && !erro && filtradas.length > 0 && (
+          <div className="list-scroll">
+            {filtradas.map((e) => {
+              const status = Number(e.status ?? 0);
+              const etapa = ETAPAS[status] ?? ETAPAS[0];
+              const aberto = expandida === e.id;
+              const podeEditar = podeEditarItens(e);
+              const nItens = (e.itens ?? []).length;
+              return (
+                <div key={e.id ?? 0}>
+                  <div className="compra-row">
+                    <div className="compra-cod">#{e.codigo ?? e.id}</div>
+                    <div className="compra-nome">{cliente.nome}</div>
+                    <div className="compra-det">
+                      {formatarDataBR(e.data_encomenda)} &nbsp;•&nbsp;
+                      <span style={estiloBadge(status)}>{etapa.label}</span>
+                      {' • '}
+                      {nItens} {nItens === 1 ? 'item' : 'itens'}
+                    </div>
+                    <div
+                      className="compra-total"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                     >
-                      {etapa.label}
-                    </span>
+                      <span style={{ fontSize: 11, fontWeight: 400, color: '#6b706c' }}>
+                        {e.data_entrega ? `Entrega: ${formatarDataBR(e.data_entrega)}` : ''}
+                      </span>
+                      <span>{formatarMoeda(Number(e.valor_total) || 0)}</span>
+                    </div>
+                    <RowMenu
+                      className="compra-btn"
+                      style={{ top: 10, height: 36 }}
+                      fontSize={21}
+                      opcoes={[
+                        ...(podeEditar
+                          ? [
+                              { rotulo: 'Incluir Item', cor: '#10b981', onPress: () => abrirSeletorItens(e) },
+                              { rotulo: 'Excluir Item', cor: '#dc2626', onPress: () => setExcluirDe(e) },
+                            ]
+                          : []),
+                        ...(status >= 2
+                          ? [{ rotulo: 'Ver Cupom', cor: '#10b981', onPress: () => setCupomDe(e) }]
+                          : []),
+                        ...(podeCancelar(e)
+                          ? [{ rotulo: 'Cancelar Encomenda', cor: '#dc2626', onPress: () => setCancelarDe(e) }]
+                          : []),
+                      ]}
+                    />
+                    <button
+                      className="compra-btn"
+                      style={{ top: 50, height: 36, color: '#9ca09d', fontSize: 16 }}
+                      onClick={() => setExpandida(aberto ? null : (e.id ?? null))}
+                    >
+                      {aberto ? '▲' : '▼'}
+                    </button>
+                    {aberto && renderItens(e)}
                   </div>
-                  <div style={{ fontSize: 11, color: '#6b706c' }}>
-                    {formatarDataBR(e.data_encomenda)} · {formatarMoeda(Number(e.valor_total) || 0)}
-                    {e.data_entrega ? ` · Entrega: ${formatarDataBR(e.data_entrega)}` : ''}
-                  </div>
+                  <div className="row-sep" />
                 </div>
-                <span style={{ fontSize: 11, color: '#9ca09d' }}>{expandida === e.id ? '˄' : '˅'}</span>
+              );
+            })}
+            <div style={{ textAlign: 'center', margin: '14px 0 20px' }}>
+              <div className="link-button" onClick={carregar}>
+                Atualizar
               </div>
-
-              {expandida === e.id && (
-                <div style={{ marginTop: 8, borderTop: '1px solid #dfe4dd', paddingTop: 8 }}>
-                  {(e.itens ?? []).map((i, idx) => (
-                    <div key={i.id ?? idx} style={{ display: 'flex', gap: 8, fontSize: 12, color: '#1b1f1c', padding: '2px 0' }}>
-                      <div style={{ flex: 1 }}>{i.produto_nome || `Produto #${i.produto_fabricado_id}`}</div>
-                      <div style={{ color: '#6b706c' }}>
-                        {i.quantidade} × {formatarMoeda(Number(i.valor_unitario) || 0)}
-                      </div>
-                      <div style={{ fontWeight: 600, minWidth: 70, textAlign: 'right' }}>
-                        {formatarMoeda(Number(i.valor_total) || 0)}
-                      </div>
-                    </div>
-                  ))}
-                  {e.observacao && (
-                    <div style={{ fontSize: 11, color: '#6b706c', marginTop: 6 }}>
-                      Obs.: {e.observacao}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                    {status >= 2 && (
-                      <button
-                        className="confirm-btn save"
-                        style={{ height: 30, padding: '0 14px', fontSize: 12 }}
-                        onClick={() => setCupomDe(e)}
-                      >
-                        Ver cupom
-                      </button>
-                    )}
-                    {podeCancelar(e) && (
-                      <button
-                        className="confirm-btn cancel"
-                        style={{ height: 30, padding: '0 14px', fontSize: 12 }}
-                        onClick={() => setCancelarDe(e)}
-                      >
-                        Cancelar encomenda
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
-          );
-        })}
-
-        <div style={{ textAlign: 'center', marginTop: 12 }}>
-          <div className="link-button" onClick={carregar}>
-            Atualizar
           </div>
-        </div>
+        )}
       </div>
 
       {cancelarDe && (
@@ -308,6 +386,37 @@ export default function MinhasEncomendas() {
           cliente={cliente}
           encomenda={cupomDe}
           onClose={() => setCupomDe(null)}
+        />
+      )}
+
+      {seletorAberto && editandoDe && (
+        <SeletorProdutoPopup
+          titulo="Itens da Encomenda"
+          produtos={produtosLoading ? [] : produtos}
+          selecionados={editandoDe.itens ?? []}
+          precoDe={precoDe}
+          carregando={produtosLoading}
+          onConfirmar={(novos) =>
+            salvarItens(
+              editandoDe,
+              novos.map((i) => ({ ...i, valor_total: i.quantidade * i.valor_unitario })),
+            )
+          }
+          fechar={() => setSeletorAberto(false)}
+        />
+      )}
+
+      {excluirDe && (
+        <SeletorRegistro<EncomendaItem>
+          titulo="Excluir Item"
+          placeholder="Buscar item..."
+          registros={excluirDe.itens ?? []}
+          rotulo={(i) => i.produto_nome || `Produto #${i.produto_fabricado_id}`}
+          subtitulo={(i) =>
+            `${numeroParaDecimal(i.quantidade, QTD_CASAS)} × ${formatarMoeda(Number(i.valor_unitario) || 0)}`
+          }
+          aoSelecionar={confirmarExclusao}
+          fechar={() => setExcluirDe(null)}
         />
       )}
     </div>

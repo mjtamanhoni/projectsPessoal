@@ -76,15 +76,18 @@ export default function Entrada() {
 
   return (
     <div className="screen">
-      <div className="logo-box" style={{ marginTop: 40 }}>
+      <div className="logo-box" style={{ top: 36 }}>
         C
       </div>
-      <div className="auth-title" style={{ fontSize: 26 }}>
+      <div className="auth-title" style={{ top: 120, fontSize: 26 }}>
         {nomeEmpresa(empresaSelecionada)}
       </div>
-      <div className="auth-subtitle">Acompanhe suas encomendas em poucos passos</div>
+      <div className="auth-subtitle" style={{ top: 154 }}>
+        <div>Faça pedidos e acompanhe</div>
+        <div>suas encomendas em poucos passos</div>
+      </div>
 
-      <div className="auth-card" style={{ height: 330 }}>
+      <div className="auth-card" style={{ top: 240, height: 330 }}>
         <div className="field-label" style={{ top: 18 }}>
           Empresa
         </div>
@@ -171,13 +174,13 @@ export default function Entrada() {
         </button>
       </div>
 
-      <div className="auth-footer" style={{ top: 560 }} onClick={() => navigate('/server-config')}>
+      <div className="auth-footer" style={{ top: 610 }} onClick={() => navigate('/server-config')}>
         <b>Servidor do App</b>
       </div>
-      <div className="auth-footer" style={{ top: 580 }} onClick={() => navigate('/server-config')}>
+      <div className="auth-footer" style={{ top: 634 }} onClick={() => navigate('/server-config')}>
         Configurações do Servidor
       </div>
-      <div className="version" style={{ top: 640 }}>
+      <div className="version" style={{ top: 674 }}>
         Cliente v1.2
       </div>
     </div>

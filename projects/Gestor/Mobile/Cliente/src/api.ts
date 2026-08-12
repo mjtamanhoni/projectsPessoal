@@ -360,3 +360,14 @@ export async function cancelarEncomendaPublica(
   });
   return (await parseResponse(res)) as { mensagem?: string } | null;
 }
+
+export async function atualizarItensEncomendaPublica(
+  empresa: number,
+  data: { id: number; cliente_id?: number; documento?: string; telefone?: string; itens: EncomendaItem[] }
+): Promise<{ mensagem?: string; id?: number } | null> {
+  const res = await request('/encomendaPublico/itens', {
+    method: 'POST',
+    body: JSON.stringify({ empresa, ...data }),
+  });
+  return (await parseResponse(res)) as { mensagem?: string; id?: number } | null;
+}

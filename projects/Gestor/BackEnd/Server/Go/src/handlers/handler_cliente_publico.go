@@ -425,3 +425,120 @@ func (h *ProducaoHandler) EncomendaPublicoCancelar(w http.ResponseWriter, r *htt
 	}
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Encomenda cancelada com sucesso"})
 }
+
+// EncomendaPublicoItensAtualizar substitui os itens de uma encomenda em Aguardando (status 0),
+// recalculando o valor_total. Permite adicionar/remover itens pelo app do cliente.
+// POST /encomendaPublico/itens  body: { empresa, id, cliente_id?, documento?, telefone?, itens:[{produto_fabricado_id, quantidade, valor_unitario}] }
+func (h *ProducaoHandler) EncomendaPublicoItensAtualizar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+	header := items[0]
+
+	empresaID := getInt(header, "empresa")
+	if empresaID == 0 {
+		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		return
+	}
+	encomendaID := getInt(header, "id")
+	if encomendaID == 0 {
+		jsonError(w, "Parâmetro 'id' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
+		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rawItens, ok := header["itens"]
+	if !ok {
+		jsonError(w, "itens não informados", http.StatusBadRequest)
+		return
+	}
+	itensArr, ok := rawItens.([]interface{})
+	if !ok {
+		jsonError(w, "itens deve ser um array", http.StatusBadRequest)
+		return
+	}
+	if len(itensArr) == 0 {
+		jsonError(w, "Adicione pelo menos um item à encomenda", http.StatusBadRequest)
+		return
+	}
+
+	var status int
+	err = h.Pool.QueryRow(r.Context(),
+		`SELECT status FROM encomenda WHERE id = $1 AND empresa_id = $2 AND cliente_id = $3`,
+		encomendaID, empresaID, clienteID).Scan(&status)
+	if err != nil {
+		jsonError(w, "Encomenda não encontrada para este cliente", http.StatusBadRequest)
+		return
+	}
+	if status != 0 {
+		jsonError(w, "Só é possível alterar itens de encomendas em Aguardando", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	_, err = tx.Exec(r.Context(),
+		`DELETE FROM encomenda_item WHERE encomenda_id = $1 AND empresa_id = $2`,
+		encomendaID, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var totalValor float64
+	for _, rawItem := range itensArr {
+		item, ok := rawItem.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		produtoFabricadoID := getInt(item, "produto_fabricado_id")
+		quantidade := getFloat(item, "quantidade")
+		valorUnitario := getFloat(item, "valor_unitario")
+		valorTotalItem := quantidade * valorUnitario
+
+		itemID, err := database.GerarID(r.Context(), tx, empresaID, "encomenda_item")
+		if err != nil {
+			jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id,
+				cliente_id, quantidade, valor_unitario, valor_total)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+			itemID, empresaID, encomendaID, produtoFabricadoID, clienteID,
+			quantidade, valorUnitario, valorTotalItem)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		totalValor += valorTotalItem
+	}
+
+	_, err = tx.Exec(r.Context(),
+		`UPDATE encomenda SET valor_total = $1 WHERE id = $2 AND empresa_id = $3`,
+		totalValor, encomendaID, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tx.Commit(r.Context())
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Itens da encomenda atualizados com sucesso", "id": encomendaID})
+}

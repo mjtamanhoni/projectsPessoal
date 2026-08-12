@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { emailValido, mascaraTelefone } from '../format';
+import { emailValido, mascaraCpfCnpj, mascaraTelefone } from '../format';
 
 interface Pessoa {
   id?: number;
@@ -8,6 +8,7 @@ interface Pessoa {
   celular?: string;
   endereco?: string;
   email?: string;
+  cnpj_cpf?: string;
   status?: number;
 }
 
@@ -21,6 +22,7 @@ interface Props {
 
 export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalvar }: Props) {
   const [nome, setNome] = useState(inicial?.nome ?? '');
+  const [documento, setDocumento] = useState(inicial?.cnpj_cpf ? mascaraCpfCnpj(inicial.cnpj_cpf) : '');
   const [telefone, setTelefone] = useState(inicial?.telefone ?? '');
   const [celular, setCelular] = useState(inicial?.celular ?? '');
   const [endereco, setEndereco] = useState(inicial?.endereco ?? '');
@@ -28,6 +30,8 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
   const [status, setStatus] = useState<number>(inicial?.status == null ? 1 : Number(inicial.status));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+
+  const exigirDocumento = rotulo === 'cliente';
 
   const salvar = async () => {
     setErro('');
@@ -39,6 +43,11 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
       setErro('Nome deve ter no máximo 200 caracteres');
       return;
     }
+    const doc = documento.replace(/\D/g, '');
+    if (exigirDocumento && doc.length < 11) {
+      setErro('Documento (CPF/CNPJ) é obrigatório');
+      return;
+    }
     if (!emailValido(email)) {
       setErro('Email inválido');
       return;
@@ -47,6 +56,7 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
     try {
       await onSalvar({
         nome: nome.trim(),
+        cnpj_cpf: doc,
         telefone: telefone.trim(),
         celular: celular.trim(),
         endereco: endereco.trim(),
@@ -83,11 +93,24 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
           />
 
           <div className="modal-label" style={{ top: 72 }}>
-            Telefone
+            Documento (CPF/CNPJ) {exigirDocumento ? '*' : ''}
           </div>
           <input
             className="modal-input"
             style={{ top: 88 }}
+            type="tel"
+            inputMode="numeric"
+            placeholder="CPF ou CNPJ"
+            value={documento}
+            onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}
+          />
+
+          <div className="modal-label" style={{ top: 138 }}>
+            Telefone
+          </div>
+          <input
+            className="modal-input"
+            style={{ top: 154 }}
             type="tel"
             inputMode="numeric"
             placeholder="(00) 0000-0000"
@@ -95,12 +118,12 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
             onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
           />
 
-          <div className="modal-label" style={{ top: 138 }}>
+          <div className="modal-label" style={{ top: 204 }}>
             Celular
           </div>
           <input
             className="modal-input"
-            style={{ top: 154 }}
+            style={{ top: 220 }}
             type="tel"
             inputMode="numeric"
             placeholder="(00) 00000-0000"
@@ -108,23 +131,23 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
             onChange={(e) => setCelular(mascaraTelefone(e.target.value))}
           />
 
-          <div className="modal-label" style={{ top: 204 }}>
+          <div className="modal-label" style={{ top: 270 }}>
             Endereço
           </div>
           <input
             className="modal-input"
-            style={{ top: 220 }}
+            style={{ top: 286 }}
             placeholder="Endereço"
             value={endereco}
             onChange={(e) => setEndereco(e.target.value)}
           />
 
-          <div className="modal-label" style={{ top: 270 }}>
+          <div className="modal-label" style={{ top: 336 }}>
             Email
           </div>
           <input
             className="modal-input"
-            style={{ top: 286 }}
+            style={{ top: 352 }}
             type="email"
             inputMode="email"
             placeholder="email@exemplo.com"
@@ -132,10 +155,10 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <div className="modal-label" style={{ top: 332 }}>
+          <div className="modal-label" style={{ top: 398 }}>
             Status
           </div>
-          <div className="modal-check-row" style={{ top: 348 }}>
+          <div className="modal-check-row" style={{ top: 414 }}>
             <label className="modal-check-label" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" className="filtros-checkbox" checked={status === 1} onChange={() => setStatus(1)} />
               Ativo
@@ -146,12 +169,12 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
             </label>
           </div>
 
-          {erro && <div className="modal-erro" style={{ top: 396 }}>{erro}</div>}
+          {erro && <div className="modal-erro" style={{ top: 462 }}>{erro}</div>}
 
-          <button className="modal-btn cancel" style={{ top: 424, left: 30 }} onClick={onCancel} disabled={salvando}>
+          <button className="modal-btn cancel" style={{ top: 490, left: 30 }} onClick={onCancel} disabled={salvando}>
             Cancelar
           </button>
-          <button className="modal-btn save" style={{ top: 424, left: 190 }} onClick={salvar} disabled={salvando}>
+          <button className="modal-btn save" style={{ top: 490, left: 190 }} onClick={salvar} disabled={salvando}>
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
         </div>

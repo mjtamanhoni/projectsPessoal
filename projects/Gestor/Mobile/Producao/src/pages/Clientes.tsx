@@ -18,6 +18,7 @@ export default function Clientes() {
   const [editing, setEditing] = useState<Cliente | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<Cliente | null>(null);
+  const [duplicado, setDuplicado] = useState<{ data: Cliente; existente: Cliente } | null>(null);
 
   const [busca, setBusca] = useState('');
 const [filtroAtivo, setFiltroAtivo] = useState(true);
@@ -61,11 +62,39 @@ const carregar = useCallback(async () => {
     setModalOpen(true);
   };
 
-  const aoSalvar = async (data: Cliente) => {
-    await salvarCliente({ ...data, id: editing?.id });
+  const salvarDeFato = async (data: Cliente, idOverride?: number) => {
+    await salvarCliente({ ...data, id: idOverride ?? editing?.id });
+    setDuplicado(null);
     setModalOpen(false);
     setEditing(null);
     await carregar();
+  };
+
+  const aoSalvar = async (data: Cliente) => {
+    const doc = (data.cnpj_cpf || '').replace(/\D/g, '');
+    if (doc) {
+      const existente = clientes.find(
+        (c) => c.id !== editing?.id && (c.cnpj_cpf || '').replace(/\D/g, '') === doc,
+      );
+      if (existente) {
+        setDuplicado({ data, existente });
+        return;
+      }
+    }
+    await salvarDeFato(data);
+  };
+
+  const usarExistente = () => {
+    const ex = duplicado?.existente;
+    setDuplicado(null);
+    setModalOpen(false);
+    setEditing(null);
+    if (ex) abrirEditar(ex);
+  };
+
+  const substituirExistente = () => {
+    if (!duplicado) return;
+    salvarDeFato(duplicado.data, duplicado.existente.id);
   };
 
   const aoExcluir = async () => {
@@ -161,6 +190,50 @@ const carregar = useCallback(async () => {
           onCancel={() => setConfirmDelete(null)}
           onConfirm={aoExcluir}
         />
+      )}
+
+      {duplicado && (
+        <div className="modal-overlay" style={{ zIndex: 55 }}>
+          <div className="modal-card">
+            <div className="modal-head">
+              <div className="modal-title">Documento Já Cadastrado</div>
+              <button className="modal-close" onClick={() => setDuplicado(null)}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ fontSize: 12, color: '#6b706c', lineHeight: 1.5, margin: '0 4px 16px', padding: 8, background: '#f4f6f4', borderRadius: 6 }}>
+                Já existe o cliente <b>{duplicado.existente.nome}</b> cadastrado com o documento{' '}
+                <b>{duplicado.existente.cnpj_cpf || duplicado.data.cnpj_cpf}</b> (encomendas, vendas e
+                lançamentos deste cliente serão mantidos). Deseja cancelar o cadastro atual e retornar os
+                dados do cadastro existente, ou substituir o cadastro existente pelos dados atuais?
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button
+                  className="modal-btn cancel"
+                  style={{ position: 'static', top: 0 }}
+                  onClick={() => setDuplicado(null)}
+                >
+                  Voltar
+                </button>
+                <button
+                  className="modal-btn cancel"
+                  style={{ position: 'static', top: 0 }}
+                  onClick={usarExistente}
+                >
+                  Usar existente
+                </button>
+                <button
+                  className="modal-btn save"
+                  style={{ position: 'static', top: 0 }}
+                  onClick={substituirExistente}
+                >
+                  Substituir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

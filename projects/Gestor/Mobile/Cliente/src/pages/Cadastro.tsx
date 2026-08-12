@@ -78,15 +78,14 @@ export default function Cadastro() {
     <div className="screen">
       <BackButton onClick={() => navigate('/')} />
 
-      <div className="logo-box" style={{ marginTop: 20 }}>
-        C
-      </div>
-      <div className="auth-title" style={{ fontSize: 22 }}>
+      <div className="auth-title" style={{ top: 40, fontSize: 22 }}>
         Complete seu cadastro
       </div>
-      <div className="auth-subtitle">Ainda não temos seu cadastro</div>
+      <div className="auth-subtitle" style={{ top: 76 }}>
+        Ainda não temos seu cadastro
+      </div>
 
-      <div className="auth-card" style={{ height: '520px' }}>
+      <div className="auth-card" style={{ top: 110, height: '520px' }}>
         <div className="field-label" style={{ top: 16 }}>
           Documento (CPF/CNPJ) *
         </div>
@@ -158,7 +157,7 @@ export default function Cadastro() {
         </button>
       </div>
 
-      <div className="version" style={{ top: 640 }}>
+      <div className="version" style={{ top: 660 }}>
         Cliente v1.2
       </div>
     </div>

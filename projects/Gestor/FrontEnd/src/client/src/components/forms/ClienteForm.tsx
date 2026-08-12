@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Plus } from 'lucide-react';
-import { formatPhone, formatCelular } from '@/lib/utils';
+import { formatCpfCnpj, formatPhone, formatCelular } from '@/lib/utils';
 import { clienteSchema, type ClienteInput } from '@/schemas';
 import type { Cliente } from '@/types';
 
@@ -18,12 +18,14 @@ export function ClienteForm({ onSubmit, onCancel, initial }: ClienteFormProps) {
     resolver: zodResolver(clienteSchema),
     defaultValues: initial ? {
       nome: initial.nome || '',
+      cpf_cnpj: initial.cpf_cnpj || '',
       telefone: initial.telefone || '',
       celular: initial.celular || '',
       endereco: initial.endereco || '',
       email: initial.email || '',
     } : {
       nome: '',
+      cpf_cnpj: '',
       telefone: '',
       celular: '',
       endereco: '',
@@ -46,21 +48,38 @@ export function ClienteForm({ onSubmit, onCancel, initial }: ClienteFormProps) {
         )}
       />
       
-      <Controller
-        name="telefone"
-        control={control}
-        render={({ field }) => (
-          <Input 
-            label="Telefone" 
-            placeholder="(XX) XXXX-XXXX"
-            {...field}
-            onChange={(e) => {
-              const formatted = formatPhone(e.target.value);
-              field.onChange(formatted);
-            }}
-          />
-        )}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <Controller
+          name="cpf_cnpj"
+          control={control}
+          render={({ field }) => (
+            <Input
+              label="CPF/CNPJ *"
+              error={errors.cpf_cnpj?.message}
+              placeholder="CPF ou CNPJ"
+              {...field}
+              onChange={(e) => {
+                field.onChange(formatCpfCnpj(e.target.value));
+              }}
+            />
+          )}
+        />
+        <Controller
+          name="telefone"
+          control={control}
+          render={({ field }) => (
+            <Input 
+              label="Telefone" 
+              placeholder="(XX) XXXX-XXXX"
+              {...field}
+              onChange={(e) => {
+                const formatted = formatPhone(e.target.value);
+                field.onChange(formatted);
+              }}
+            />
+          )}
+        />
+      </div>
       
       <Controller
         name="celular"

@@ -4,6 +4,10 @@ export const clienteBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),
   nome: z.string().min(1, 'Nome e obrigatorio').max(200),
+  cpf_cnpj: z.string()
+    .min(1, 'CPF/CNPJ e obrigatorio')
+    .max(18)
+    .refine((v) => v.replace(/\D/g, '').length >= 11, 'CPF/CNPJ invalido'),
   telefone: z.string().max(20).optional().or(z.literal('')),
   celular: z.string().max(20).optional().or(z.literal('')),
   endereco: z.string().max(300).optional().or(z.literal('')),
