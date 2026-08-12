@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import FiltrosBar from '../components/FiltrosBar';
 import { mesCorrente, passaPeriodo } from '../lib/filtros';
 import type { FiltroPeriodo } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import { Clipboard } from '@capacitor/clipboard';
 import {
+  alterarStatusEncomenda,
   excluirEncomenda,
   extrairErro,
-  gerarVendaDeEncomenda,
   listarClientes,
   listarEncomendaItens,
   listarEncomendas,
@@ -54,6 +54,40 @@ function fmtValor(v: number): string {
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+const ETAPAS_ENCOMENDA: Record<number, { label: string; cor: string; fundo: string }> = {
+  0: { label: 'Aguardando', cor: '#92400e', fundo: '#fef3c7' },
+  1: { label: 'Em produção', cor: '#1e40af', fundo: '#dbeafe' },
+  2: { label: 'Finalizado', cor: '#166534', fundo: '#dcfce7' },
+  3: { label: 'Entregue', cor: '#065f46', fundo: '#d1fae5' },
+  4: { label: 'Cancelada', cor: '#991b1b', fundo: '#fee2e2' },
+};
+
+function etapasPermitidas(status: number): number[] {
+  switch (status) {
+    case 0:
+      return [1, 4];
+    case 1:
+      return [2, 4];
+    case 2:
+      return [3];
+    default:
+      return [];
+  }
+}
+
+function estiloBadge(status: number): CSSProperties {
+  const info = ETAPAS_ENCOMENDA[status] ?? ETAPAS_ENCOMENDA[0];
+  return {
+    display: 'inline-block',
+    padding: '1px 8px',
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 700,
+    color: info.cor,
+    background: info.fundo,
+  };
+}
+
 type ExpandState = Record<number, EncomendaItem[] | 'loading'>;
 
 export default function Encomendas() {
@@ -71,10 +105,11 @@ export default function Encomendas() {
   const [confirmDelete, setConfirmDelete] = useState<Encomenda | null>(null);
   const [expandido, setExpandido] = useState<ExpandState>({});
   const [carregandoEdicao, setCarregandoEdicao] = useState(false);
-  const [baixar, setBaixar] = useState<{ id: number; cliente?: string } | null>(null);
-  const [baixarData, setBaixarData] = useState('');
-  const [baixarRecebido, setBaixarRecebido] = useState(true);
-  const [baixando, setBaixando] = useState(false);
+  const [etapa, setEtapa] = useState<{ id: number; cliente?: string; status: number } | null>(null);
+  const [etapaAlvo, setEtapaAlvo] = useState<number | null>(null);
+  const [etapaDataVenda, setEtapaDataVenda] = useState('');
+  const [etapaRecebido, setEtapaRecebido] = useState(true);
+  const [salvandoEtapa, setSalvandoEtapa] = useState(false);
   const [cupomData, setCupomData] = useState<CupomData | null>(null);
   const [cupomQr, setCupomQr] = useState<string | null>(null);
   const [cupomPayload, setCupomPayload] = useState<string | null>(null);
@@ -84,18 +119,15 @@ export default function Encomendas() {
   const { empresa, empresaNome } = useAuth();
 
   const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
-const [filtroABaixar, setFiltroABaixar] = useState(true);
-const [filtroBaixadas, setFiltroBaixadas] = useState(false);
+  const [filtroStatus, setFiltroStatus] = useState<number[]>([0, 1]);
 
-const encomendasFiltradas = useMemo(() => {
-  let lista = encomendas;
-  if (filtroABaixar !== filtroBaixadas) {
-    lista = lista.filter(
-      (e) => (filtroABaixar && e.baixado !== true) || (filtroBaixadas && e.baixado === true),
+  const encomendasFiltradas = useMemo(() => {
+    return encomendas.filter(
+      (e) =>
+        (filtroStatus.length === 0 || filtroStatus.includes(Number(e.status ?? 0))) &&
+        passaPeriodo(e.data_encomenda, periodo),
     );
-  }
-  return lista.filter((e) => passaPeriodo(e.data_encomenda, periodo));
-}, [encomendas, periodo, filtroABaixar, filtroBaixadas]);
+  }, [encomendas, periodo, filtroStatus]);
 
 const estoquePorProduto = useMemo(() => {
   const porId = new Map<number, { qtd: number; data: string }>();
@@ -211,27 +243,29 @@ const carregar = useCallback(async () => {
     await carregar();
   };
 
-  const confirmarBaixar = async () => {
-    if (!baixar) return;
-    setBaixando(true);
+  const confirmarEtapa = async () => {
+    if (!etapa || etapaAlvo === null) return;
+    setSalvandoEtapa(true);
     setErro('');
     try {
-      const res = await gerarVendaDeEncomenda({
-        id_encomenda: baixar.id,
-        data_venda: baixarData,
-        recebido: baixarRecebido,
+      const res = await alterarStatusEncomenda({
+        id: etapa.id,
+        status: etapaAlvo,
+        data_venda: etapaAlvo === 2 ? etapaDataVenda : undefined,
+        recebido: etapaAlvo === 2 ? etapaRecebido : undefined,
       });
-      setBaixar(null);
+      setEtapa(null);
+      setEtapaAlvo(null);
       setExpandido({});
       await carregar();
-      if (res?.venda_id != null) {
+      if (etapaAlvo === 2 && res?.venda_id != null) {
         await abrirCupomDaVenda(res.venda_id);
       }
     } catch (e) {
-      setBaixar(null);
+      setEtapa(null);
       setErro(extrairErro(e));
     } finally {
-      setBaixando(false);
+      setSalvandoEtapa(false);
     }
   };
 
@@ -426,6 +460,8 @@ const carregar = useCallback(async () => {
     );
   };
 
+  const alvosDoModal = etapa ? etapasPermitidas(etapa.status) : [];
+
   return (
     <div className="screen">
       <div className="screen-topbar" />
@@ -447,13 +483,16 @@ const carregar = useCallback(async () => {
               onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
               onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
             }}
-            checks={{
-              opcao1: filtroABaixar,
-              onOpcao1: setFiltroABaixar,
-              opcao2: filtroBaixadas,
-              onOpcao2: setFiltroBaixadas,
-              label1: 'A Baixar',
-              label2: 'Baixadas',
+            statuses={{
+              valor: filtroStatus,
+              opcoes: [
+                { valor: 0, label: 'Aguardando' },
+                { valor: 1, label: 'Em produção' },
+                { valor: 2, label: 'Finalizado' },
+                { valor: 3, label: 'Entregue' },
+                { valor: 4, label: 'Cancelada' },
+              ],
+              onChange: setFiltroStatus,
             }}
           />
         )}
@@ -472,15 +511,24 @@ const carregar = useCallback(async () => {
               const id = idEncomenda(e);
               const aberto = id != null && expandido[id] !== undefined;
               const nItens = qtdItens(e);
-              const baixada = !!e.baixado;
+              const status = Number(e.status ?? 0);
+              const podeEditar = status < 2;
+              const alvos = etapasPermitidas(status);
               return (
                 <div key={id ?? `${e.cliente_id}-${e.data_encomenda}`}>
                   <div className="compra-row">
                     <div className="compra-cod">#{id}</div>
                     <div className="compra-nome">{e.cliente_nome || '—'}</div>
                     <div className="compra-det">
-                      {fmtData(e.data_encomenda)} &nbsp;•&nbsp;{' '}
-                      {baixada ? `Baixada${e.venda_id ? ` (venda #${e.venda_id})` : ''}` : 'Em aberto'} &nbsp;•&nbsp;{' '}
+                      {fmtData(e.data_encomenda)} &nbsp;•&nbsp;
+                      <span style={estiloBadge(status)}>{ETAPAS_ENCOMENDA[status]?.label ?? '—'}</span>
+                      {e.data_entrega ? (
+                        <>
+                          {' '}
+                          &nbsp;•&nbsp; Entrega: {fmtData(e.data_entrega)}
+                        </>
+                      ) : null}
+                      {e.venda_id ? ` &nbsp;•&nbsp; venda #${e.venda_id}` : ''} &nbsp;•&nbsp;{' '}
                       {nItens != null ? `${nItens} ${nItens === 1 ? 'item' : 'itens'}` : '—'}
                     </div>
                     <div className="compra-total">{fmtMoeda(e.valor_total)}</div>
@@ -490,18 +538,37 @@ const carregar = useCallback(async () => {
                       style={{ top: 10, height: 36 }}
                       fontSize={21}
                       opcoes={[
-                        {
-                          rotulo: baixada ? 'Baixada' : 'Baixar',
-                          cor: baixada ? '#9ca09d' : '#10b981',
-                          disabled: baixada,
-                          onPress: () => {
-                            setBaixar({ id: id ?? 0, cliente: e.cliente_nome });
-                            setBaixarData(new Date().toISOString().slice(0, 10));
-                            setBaixarRecebido(true);
-                          },
-                        },
-                        { rotulo: 'Editar', onPress: () => abrirEditar(e) },
-                        { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(e) },
+                        ...(e.venda_id != null
+                          ? [
+                              {
+                                rotulo: 'Cupom',
+                                cor: '#10b981',
+                                onPress: () => {
+                                  if (e.venda_id != null) abrirCupomDaVenda(e.venda_id);
+                                },
+                              },
+                            ]
+                          : []),
+                        ...(alvos.length > 0
+                          ? [
+                              {
+                                rotulo: 'Alterar Etapa',
+                                cor: '#10b981',
+                                onPress: () => {
+                                  setEtapa({ id: id ?? 0, cliente: e.cliente_nome, status });
+                                  setEtapaAlvo(null);
+                                  setEtapaDataVenda(new Date().toISOString().slice(0, 10));
+                                  setEtapaRecebido(true);
+                                },
+                              },
+                            ]
+                          : []),
+                        ...(podeEditar
+                          ? [
+                              { rotulo: 'Editar', onPress: () => abrirEditar(e) },
+                              { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(e) },
+                            ]
+                          : []),
                       ]}
                     />
                     <button
@@ -554,42 +621,95 @@ const carregar = useCallback(async () => {
         />
       )}
 
-      {baixar && (
-        <div className="modal-overlay">
+      {etapa && (
+        <div className="modal-overlay" style={{ zIndex: 55 }}>
           <div className="modal-card">
             <div className="modal-head">
-              <div className="modal-title">Baixar Encomenda</div>
-              <button className="modal-close" onClick={() => setBaixar(null)} disabled={baixando}>
+              <div className="modal-title">Alterar Etapa da Encomenda</div>
+              <button className="modal-close" onClick={() => setEtapa(null)} disabled={salvandoEtapa}>
                 ✕
               </button>
             </div>
             <div className="modal-body">
               <div style={{ fontSize: 12, color: '#6b706c', lineHeight: 1.5, margin: '0 4px 12px', padding: 8, background: '#f4f6f4', borderRadius: 6 }}>
-                A mercadoria foi entregue? Ao baixar a encomenda será gerada uma venda de produto com os itens desta encomenda (baixa de estoque e contas a receber).
-                {baixar.cliente ? ` Cliente: ${baixar.cliente}.` : ''}
+                Etapa atual: <span style={estiloBadge(etapa.status)}>{ETAPAS_ENCOMENDA[etapa.status]?.label ?? '—'}</span>
+                {etapa.cliente ? `  Cliente: ${etapa.cliente}.` : ''}
+                {etapa.status === 2 ? ' A encomenda já foi finalizada e gerou uma venda.' : ''}
               </div>
-              <div className="modal-label" style={{ position: 'static', margin: '12px 4px 4px' }}>
-                Data da Venda *
-              </div>
-              <input
-                className="modal-input"
-                style={{ position: 'static', width: 326, margin: '0 4px 16px' }}
-                type="date"
-                value={baixarData}
-                onChange={(e) => setBaixarData(e.target.value)}
-              />
-              <div className="modal-check-row" style={{ position: 'static', margin: '0 4px 24px' }}>
-                <div className={`modal-checkbox ${baixarRecebido ? 'checked' : ''}`} onClick={() => setBaixarRecebido(!baixarRecebido)}>
-                  {baixarRecebido && <div className="modal-check-fill" />}
+
+              {alvosDoModal.length > 0 && (
+                <div style={{ margin: '0 4px 8px' }}>
+                  {alvosDoModal.map((alvo) => {
+                    const info = ETAPAS_ENCOMENDA[alvo] ?? { label: '—', cor: '#1b1f1c', fundo: '#e5e7eb' };
+                    const selecionado = etapaAlvo === alvo;
+                    return (
+                      <button
+                        key={alvo}
+                        onClick={() => setEtapaAlvo(alvo)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          width: '100%',
+                          padding: '10px 12px',
+                          marginBottom: 8,
+                          borderRadius: 8,
+                          textAlign: 'left',
+                          border: selecionado ? '2px solid #2d5e3a' : '1px solid #d6ddd0',
+                          background: selecionado ? '#e8efea' : '#ffffff',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span style={estiloBadge(alvo)}>{info.label}</span>
+                        <span style={{ fontSize: 11, color: '#6b706c' }}>
+                          {alvo === 2
+                            ? 'Finalizar: gera venda de produto (baixa de estoque e contas a receber)'
+                            : alvo === 3
+                              ? 'Marcar como entregue ao cliente'
+                              : alvo === 4
+                                ? 'Cancelar esta encomenda'
+                                : alvo === 1
+                                  ? 'Iniciar a produção'
+                                  : ''}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <span className="modal-check-label">Venda já foi recebida?</span>
-              </div>
+              )}
+
+              {etapaAlvo === 2 && (
+                <>
+                  <div className="modal-label" style={{ position: 'static', margin: '12px 4px 4px' }}>
+                    Data da Venda *
+                  </div>
+                  <input
+                    className="modal-input"
+                    style={{ position: 'static', width: 326, margin: '0 4px 16px' }}
+                    type="date"
+                    value={etapaDataVenda}
+                    onChange={(e) => setEtapaDataVenda(e.target.value)}
+                  />
+                  <div className="modal-check-row" style={{ position: 'static', margin: '0 4px 24px' }}>
+                    <div className={`modal-checkbox ${etapaRecebido ? 'checked' : ''}`} onClick={() => setEtapaRecebido(!etapaRecebido)}>
+                      {etapaRecebido && <div className="modal-check-fill" />}
+                    </div>
+                    <span className="modal-check-label">Venda já foi recebida?</span>
+                  </div>
+                </>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-                <button className="modal-btn cancel" style={{ position: 'static', top: 0 }} onClick={() => setBaixar(null)} disabled={baixando}>
+                <button className="modal-btn cancel" style={{ position: 'static', top: 0 }} onClick={() => setEtapa(null)} disabled={salvandoEtapa}>
                   Cancelar
                 </button>
-                <button className="modal-btn save" style={{ position: 'static', top: 0 }} onClick={confirmarBaixar} disabled={baixando || !baixarData}>
-                  {baixando ? 'Gerando...' : 'Baixar e Gerar Venda'}
+                <button
+                  className="modal-btn save"
+                  style={{ position: 'static', top: 0 }}
+                  onClick={confirmarEtapa}
+                  disabled={salvandoEtapa || etapaAlvo === null || (etapaAlvo === 2 && !etapaDataVenda)}
+                >
+                  {salvandoEtapa ? 'Salvando...' : 'Salvar Etapa'}
                 </button>
               </div>
             </div>
@@ -612,7 +732,7 @@ const carregar = useCallback(async () => {
                   display: 'block',
                 }}
               >
-                Encomenda baixada — Cupom Não Fiscal {cupomData.venda.cliente_nome ? `(${cupomData.venda.cliente_nome})` : ''}
+                Encomenda finalizada — Cupom Não Fiscal {cupomData.venda.cliente_nome ? `(${cupomData.venda.cliente_nome})` : ''}
               </div>
               <button className="modal-close" onClick={() => setCupomData(null)} disabled={cupomPdfBusy}>
                 ✕

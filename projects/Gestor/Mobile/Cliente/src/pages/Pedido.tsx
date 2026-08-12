@@ -19,6 +19,7 @@ export default function Pedido() {
 
   const [itens, setItens] = useState<EncomendaItem[]>([]);
   const [observacao, setObservacao] = useState('');
+  const [dataEntrega, setDataEntrega] = useState('');
   const [produtos, setProdutos] = useState<ProdutoFabricado[]>([]);
   const [produtosCarregados, setProdutosCarregados] = useState(false);
   const [produtosLoading, setProdutosLoading] = useState(false);
@@ -52,10 +53,7 @@ export default function Pedido() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popupAberto, empresa]);
 
-  if (!empresa || !cliente) {
-    navigate('/', { replace: true });
-    return null;
-  }
+  if (!empresa || !cliente) return null;
 
   const confirmarItens = (novos: ProdutoSelecionado[]) => {
     setItens(
@@ -79,6 +77,7 @@ export default function Pedido() {
       const criada = await criarEncomendaPublica(empresa.id, {
         cliente_id: cliente.id,
         data_encomenda: dataHojeISO(),
+        data_entrega: dataEntrega,
         observacao: observacao.trim(),
         itens,
       });
@@ -91,15 +90,17 @@ export default function Pedido() {
         cliente_id: cliente.id,
         cliente_nome: cliente.nome,
         data_encomenda: dataHojeISO(),
+        data_entrega: dataEntrega,
         observacao: observacao.trim(),
         valor_total: itens.reduce((acc, i) => acc + (Number(i.valor_total) || 0), 0),
-        status: 1,
+        status: 0,
         baixado: false,
         itens,
       };
       setEncomendaCriada(completa);
       setItens([]);
       setObservacao('');
+      setDataEntrega('');
     } catch (e) {
       setErro(extrairErro(e));
     } finally {
@@ -212,6 +213,17 @@ export default function Pedido() {
           placeholder="Observações (ex.: sem cebola)"
           value={observacao}
           onChange={(e) => setObservacao(e.target.value)}
+        />
+
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#1b1f1c', marginTop: 12 }}>
+          Data de entrega (opcional)
+        </div>
+        <input
+          className="field-input"
+          style={{ position: 'static', marginTop: 6, width: '100%' }}
+          type="date"
+          value={dataEntrega}
+          onChange={(e) => setDataEntrega(e.target.value)}
         />
 
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>

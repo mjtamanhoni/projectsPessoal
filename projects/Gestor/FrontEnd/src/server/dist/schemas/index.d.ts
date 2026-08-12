@@ -212,6 +212,7 @@ export declare const encomendaBodySchema: z.ZodObject<{
     cliente_id: z.ZodNumber;
     valor_total: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
     data_encomenda: z.ZodString;
+    data_entrega: z.ZodOptional<z.ZodString>;
     observacao: z.ZodOptional<z.ZodString>;
     itens: z.ZodArray<z.ZodObject<{
         produto_fabricado_id: z.ZodNumber;
@@ -219,6 +220,13 @@ export declare const encomendaBodySchema: z.ZodObject<{
         valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_total: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
     }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const encomendaStatusSchema: z.ZodObject<{
+    id: z.ZodNumber;
+    status: z.ZodNumber;
+    data_venda: z.ZodOptional<z.ZodString>;
+    recebido: z.ZodOptional<z.ZodBoolean>;
+    categoria_receber_id: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const encomendaBaixaSchema: z.ZodObject<{
     id: z.ZodNumber;

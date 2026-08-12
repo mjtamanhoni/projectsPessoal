@@ -44,6 +44,16 @@ router.post('/gerar-venda', auth_1.authMiddleware, (0, validate_1.validate)(sche
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
+router.post('/status', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.encomendaStatusSchema), async (req, res) => {
+    try {
+        const result = await horseApi_1.horseApi.alterarStatusEncomenda(req.body);
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
 router.delete('/', auth_1.authMiddleware, async (req, res) => {
     try {
         const { id } = req.query;

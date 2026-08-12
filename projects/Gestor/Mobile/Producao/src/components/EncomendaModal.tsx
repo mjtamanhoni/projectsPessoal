@@ -23,6 +23,7 @@ function fmtMoeda(v: number): string {
 export default function EncomendaModal({ titulo, inicial, clientes, produtos, estoques, onCancel, onSalvar }: Props) {
   const [clienteId, setClienteId] = useState(inicial?.cliente_id ? String(inicial.cliente_id) : '');
   const [dataEncomenda, setDataEncomenda] = useState(inicial?.data_encomenda ?? new Date().toISOString().slice(0, 10));
+  const [dataEntrega, setDataEntrega] = useState(inicial?.data_entrega ?? '');
   const [observacao, setObservacao] = useState(inicial?.observacao ?? '');
 
   const [itens, setItens] = useState<EncomendaItem[]>(inicial?.itens ?? []);
@@ -65,6 +66,7 @@ export default function EncomendaModal({ titulo, inicial, clientes, produtos, es
         id: inicial?.id ?? inicial?.codigo,
         cliente_id: clienteId ? Number(clienteId) : undefined,
         data_encomenda: dataEncomenda,
+        data_entrega: dataEntrega,
         observacao: observacao.trim(),
         itens,
         valor_total: totalEncomenda,
@@ -108,6 +110,16 @@ export default function EncomendaModal({ titulo, inicial, clientes, produtos, es
               type="date"
               value={dataEncomenda}
               onChange={(e) => setDataEncomenda(e.target.value)}
+            />
+          ))}
+
+          {campo('Data de Entrega', (
+            <input
+              className="modal-input"
+              style={{ position: 'static', width: '100%' }}
+              type="date"
+              value={dataEntrega}
+              onChange={(e) => setDataEntrega(e.target.value)}
             />
           ))}
 

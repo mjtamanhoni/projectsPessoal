@@ -246,8 +246,17 @@ export const encomendaBodySchema = z.object({
   cliente_id: z.number().int().positive('Cliente e obrigatorio'),
   valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
   data_encomenda: z.string().min(1, 'Data e obrigatoria'),
+  data_entrega: z.string().optional(),
   observacao: z.string().max(500).optional(),
   itens: z.array(encomendaItemSchema).min(1, 'Adicione ao menos um item'),
+});
+
+export const encomendaStatusSchema = z.object({
+  id: z.number().int().positive('Encomenda e obrigatoria'),
+  status: z.number().int().min(0).max(4, 'Status invalido'),
+  data_venda: z.string().optional(),
+  recebido: z.boolean().optional(),
+  categoria_receber_id: z.number().int().positive().optional(),
 });
 
 export const encomendaBaixaSchema = z.object({

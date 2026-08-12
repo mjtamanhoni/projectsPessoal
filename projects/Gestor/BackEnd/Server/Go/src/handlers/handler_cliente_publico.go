@@ -28,26 +28,39 @@ func (h *BasicCRUD) usuarioPadraoDaEmpresa(r *http.Request, empresaID int) (int,
 	return id, nil
 }
 
-// ClientePublicoBuscar retorna clientes de uma empresa pelo documento (CPF/CNPJ).
-// GET /clientePublico?empresa=<id>&documento=<cpf/cnpj>
+// ClientePublicoBuscar retorna clientes de uma empresa pelo documento (CPF/CNPJ) ou telefone (celular).
+// GET /clientePublico?empresa=<id>&documento=<cpf/cnpj>   ou   ?empresa=<id>&telefone=<numero>
 func (h *BasicCRUD) ClientePublicoBuscar(w http.ResponseWriter, r *http.Request) {
 	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
 	documento := apenasDigitos(r.URL.Query().Get("documento"))
+	telefone := apenasDigitos(r.URL.Query().Get("telefone"))
 	if empresaID == 0 {
 		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
 		return
 	}
-	if documento == "" {
-		jsonError(w, "Parâmetro 'documento' é obrigatório", http.StatusBadRequest)
+	if documento == "" && telefone == "" {
+		jsonError(w, "Informe 'documento' ou 'telefone'", http.StatusBadRequest)
 		return
 	}
 
-	query := `SELECT id, empresa_id, nome, telefone, celular, endereco, email, cnpj_cpf, usuario_id
-		FROM public.cliente
+	selects := `SELECT id, empresa_id, nome, telefone, celular, endereco, email, cnpj_cpf, usuario_id
+		FROM public.cliente`
+	var query string
+	var args []interface{}
+	if documento != "" {
+		query = selects + `
 		WHERE empresa_id = $1
 		AND regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9]', '', 'g') = $2
 		ORDER BY id`
-	rows, err := h.Pool.Query(r.Context(), query, empresaID, documento)
+		args = []interface{}{empresaID, documento}
+	} else {
+		query = selects + `
+		WHERE empresa_id = $1
+		AND regexp_replace(COALESCE(celular, telefone), '[^0-9]', '', 'g') = $2
+		ORDER BY id`
+		args = []interface{}{empresaID, telefone}
+	}
+	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -158,7 +171,7 @@ func (h *ProducaoHandler) ProdutoFabricadoListarPublico(w http.ResponseWriter, r
 	jsonSuccess(w, rowsToMap(rows))
 }
 
-func (h *ProducaoHandler) clienteIdDaEmpresa(r *http.Request, empresaID int, clienteID int, documento string) (int, error) {
+func (h *ProducaoHandler) clienteIdDaEmpresa(r *http.Request, empresaID int, clienteID int, documento string, telefone string) (int, error) {
 	if clienteID > 0 {
 		var ex int
 		err := h.Pool.QueryRow(r.Context(),
@@ -168,18 +181,29 @@ func (h *ProducaoHandler) clienteIdDaEmpresa(r *http.Request, empresaID int, cli
 		}
 		return ex, nil
 	}
-	if documento == "" {
-		return 0, fmt.Errorf("Informe o cliente (cliente_id ou documento)")
+	if documento != "" {
+		var id int
+		err := h.Pool.QueryRow(r.Context(),
+			`SELECT id FROM public.cliente
+			WHERE empresa_id = $1 AND regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9]', '', 'g') = $2`,
+			empresaID, documento).Scan(&id)
+		if err != nil {
+			return 0, fmt.Errorf("Cliente não encontrado para o documento informado")
+		}
+		return id, nil
 	}
-	var id int
-	err := h.Pool.QueryRow(r.Context(),
-		`SELECT id FROM public.cliente
-		WHERE empresa_id = $1 AND regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9]', '', 'g') = $2`,
-		empresaID, documento).Scan(&id)
-	if err != nil {
-		return 0, fmt.Errorf("Cliente não encontrado para o documento informado")
+	if telefone != "" {
+		var id int
+		err := h.Pool.QueryRow(r.Context(),
+			`SELECT id FROM public.cliente
+			WHERE empresa_id = $1 AND regexp_replace(COALESCE(celular, telefone), '[^0-9]', '', 'g') = $2`,
+			empresaID, telefone).Scan(&id)
+		if err != nil {
+			return 0, fmt.Errorf("Cliente não encontrado para o telefone informado")
+		}
+		return id, nil
 	}
-	return id, nil
+	return 0, fmt.Errorf("Informe o cliente (cliente_id, documento ou telefone)")
 }
 
 // EncomendaPublicoCriar cria uma encomenda (sem autenticação) para um cliente da empresa.
@@ -203,7 +227,7 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 	}
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
-		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")))
+		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -214,6 +238,7 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 		jsonError(w, "Data da encomenda é obrigatória", http.StatusBadRequest)
 		return
 	}
+	dataEntrega := getStr(header, "data_entrega")
 	observacao := getStr(header, "observacao")
 
 	rawItens, ok := header["itens"]
@@ -250,9 +275,9 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 		return
 	}
 	_, err = tx.Exec(r.Context(), `
-		INSERT INTO encomenda (id, empresa_id, cliente_id, data_encomenda, valor_total, observacao, usuario_id, status)
-		VALUES ($1,$2,$3,$4::date,0,$5,$6,1)`,
-		id, empresaID, clienteID, dataEncomenda, observacao, usuarioID)
+		INSERT INTO encomenda (id, empresa_id, cliente_id, data_encomenda, data_entrega, valor_total, observacao, usuario_id, status)
+		VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0)`,
+		id, empresaID, clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, usuarioID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -299,8 +324,8 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Encomenda salva com sucesso", "codigo": id, "id": id})
 }
 
-// EncomendaPublicoListar lista encomendas de um cliente por documento (com itens).
-// GET /encomendaPublico?empresa=<id>&documento=<cpf/cnpj>[&id=<encomenda>]
+// EncomendaPublicoListar lista encomendas de um cliente por documento ou telefone (com itens).
+// GET /encomendaPublico?empresa=<id>&documento=<cpf/cnpj>   ou   ?empresa=<id>&telefone=<numero>[&id=<encomenda>]
 func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
 	if empresaID == 0 {
@@ -308,16 +333,17 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 		return
 	}
 	documento := apenasDigitos(r.URL.Query().Get("documento"))
+	telefone := apenasDigitos(r.URL.Query().Get("telefone"))
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	if documento == "" {
-		jsonError(w, "Parâmetro 'documento' é obrigatório", http.StatusBadRequest)
+	if documento == "" && telefone == "" {
+		jsonError(w, "Informe 'documento' ou 'telefone'", http.StatusBadRequest)
 		return
 	}
 
-	query := `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda,
+	query := `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 		e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 		c.nome as cliente_nome,
-		CASE WHEN e.status = 2 THEN true ELSE false END as baixado,
+		CASE WHEN e.status >= 2 THEN true ELSE false END as baixado,
 		ei.id as item_id, ei.produto_fabricado_id, ei.quantidade,
 		ei.valor_unitario, ei.valor_total as item_valor_total,
 		pf.nome as produto_nome
@@ -325,10 +351,18 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 		JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
 		JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
 		LEFT JOIN produto_fabricado pf ON pf.id = ei.produto_fabricado_id AND pf.empresa_id = ei.empresa_id
-		WHERE e.empresa_id = $1
-		AND regexp_replace(COALESCE(c.cnpj_cpf, ''), '[^0-9]', '', 'g') = $2`
-	args := []interface{}{empresaID, documento}
-	argN := 3
+		WHERE e.empresa_id = $1`
+	args := []interface{}{empresaID}
+	argN := 2
+	if documento != "" {
+		query += fmt.Sprintf(" AND regexp_replace(COALESCE(c.cnpj_cpf, ''), '[^0-9]', '', 'g') = $%d", argN)
+		args = append(args, documento)
+		argN++
+	} else {
+		query += fmt.Sprintf(" AND regexp_replace(COALESCE(c.celular, c.telefone), '[^0-9]', '', 'g') = $%d", argN)
+		args = append(args, telefone)
+		argN++
+	}
 	if id > 0 {
 		query += fmt.Sprintf(" AND e.id = $%d", argN)
 		args = append(args, id)
@@ -341,4 +375,53 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 		return
 	}
 	jsonSuccess(w, rowsToMap(rows))
+}
+
+// EncomendaPublicoCancelar cancela uma encomenda do cliente (sem autenticação).
+// Só permite cancelar encomendas em Aguardando (0) ou Em produção (1).
+// POST /encomendaPublico/cancelar  body: { empresa, id, cliente_id?, documento?, telefone? }
+func (h *ProducaoHandler) EncomendaPublicoCancelar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+	header := items[0]
+
+	empresaID := getInt(header, "empresa")
+	if empresaID == 0 {
+		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		return
+	}
+	encomendaID := getInt(header, "id")
+	if encomendaID == 0 {
+		jsonError(w, "Parâmetro 'id' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
+		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	res, err := h.Pool.Exec(r.Context(),
+		`UPDATE encomenda SET status = 4
+		WHERE id = $1 AND empresa_id = $2 AND cliente_id = $3 AND status < 2`,
+		encomendaID, empresaID, clienteID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	afetadas := res.RowsAffected()
+	if afetadas == 0 {
+		jsonError(w, "Encomenda não encontrada ou não pode ser cancelada (já finalizada ou entregue)", http.StatusBadRequest)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Encomenda cancelada com sucesso"})
 }

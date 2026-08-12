@@ -1,20 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buscarClientePorDocumento, extrairErro, listarEmpresas, type EmpresaPublic } from '../api';
+import {
+  buscarClientePorDocumento,
+  extrairErro,
+  getDocumentoLembrado,
+  getEmpresaSelecionadaMemoria,
+  listarEmpresas,
+  setDocumentoLembrado,
+  setEmpresaSelecionadaMemoria,
+  type EmpresaPublic,
+} from '../api';
 import { useSessao } from '../auth';
-
-function mascaraCpfCnpj(value: string): string {
-  const numbers = value.replace(/\D/g, '');
-  if (numbers.length <= 11) {
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
-    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
-    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
-  }
-  if (numbers.length <= 12) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8)}`;
-  if (numbers.length <= 13) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12)}`;
-  return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12, 14)}`;
-}
+import { mascaraCpfCnpj } from '../format';
 
 export default function Entrada() {
   const navigate = useNavigate();
@@ -22,8 +19,11 @@ export default function Entrada() {
 
   const [empresas, setEmpresas] = useState<EmpresaPublic[]>([]);
   const [empresaAberta, setEmpresaAberta] = useState(false);
-  const [empresaSelecionada, setEmpresaSelecionada] = useState<EmpresaPublic | null>(empresaSessao);
-  const [documento, setDocumento] = useState(cliente?.cnpj_cpf || '');
+  const [empresaSelecionada, setEmpresaSelecionada] = useState<EmpresaPublic | null>(
+    empresaSessao || getEmpresaSelecionadaMemoria()
+  );
+  const [documento, setDocumento] = useState(() => getDocumentoLembrado() || cliente?.cnpj_cpf || '');
+  const [documentoBloqueado, setDocumentoBloqueado] = useState(() => !!getDocumentoLembrado());
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +40,12 @@ export default function Entrada() {
 
   const nomeEmpresa = (e: EmpresaPublic | null) => (e ? e.fantasia || e.razao_social : 'Selecione a empresa');
 
+  const limparDocumento = () => {
+    setDocumento('');
+    setDocumentoBloqueado(false);
+    setDocumentoLembrado('');
+  };
+
   const continuar = async () => {
     setErro('');
     if (!empresaSelecionada) {
@@ -47,15 +53,16 @@ export default function Entrada() {
       return;
     }
     const doc = documento.replace(/\D/g, '');
-    if (!doc) {
+    if (doc.length < 11) {
       setErro('Informe o documento (CPF/CNPJ)');
       return;
     }
     setLoading(true);
     try {
+      setDocumentoLembrado(doc);
       const clientes = await buscarClientePorDocumento(empresaSelecionada.id, doc);
       if (clientes.length === 0) {
-        navigate('/cadastro', { state: { documento: doc } });
+        navigate('/cadastro', { state: { documento: doc, empresa: empresaSelecionada } });
         return;
       }
       entrar(empresaSelecionada, clientes[0]);
@@ -75,7 +82,7 @@ export default function Entrada() {
       <div className="auth-title" style={{ fontSize: 26 }}>
         {nomeEmpresa(empresaSelecionada)}
       </div>
-      <div className="auth-subtitle">Faça seu pedido em poucos passos</div>
+      <div className="auth-subtitle">Acompanhe suas encomendas em poucos passos</div>
 
       <div className="auth-card" style={{ height: 330 }}>
         <div className="field-label" style={{ top: 18 }}>
@@ -111,6 +118,7 @@ export default function Entrada() {
                 key={e.id}
                 onClick={() => {
                   setEmpresaSelecionada(e);
+                  setEmpresaSelecionadaMemoria(e);
                   setEmpresaAberta(false);
                 }}
                 style={{
@@ -132,16 +140,25 @@ export default function Entrada() {
         </div>
         <input
           className="field-input"
-          style={{ top: 130 }}
+          style={{ top: 130, ...(documentoBloqueado ? { background: '#f0f2f0', color: '#9ca09d' } : {}) }}
           type="tel"
           inputMode="numeric"
           placeholder="Digite seu CPF ou CNPJ"
           value={documento}
+          disabled={documentoBloqueado}
           onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}
           onKeyDown={(e) => {
             if (e.key === 'Enter') continuar();
           }}
         />
+        {documentoBloqueado && (
+          <div style={{ position: 'absolute', left: 20, top: 173, fontSize: 10, color: '#9ca09d' }}>
+            Documento salvo neste aparelho{' '}
+            <span style={{ color: '#2563eb', textDecoration: 'underline' }} onClick={limparDocumento}>
+              (trocar)
+            </span>
+          </div>
+        )}
 
         {erro && (
           <div style={{ position: 'absolute', left: 20, top: 200, fontSize: 11, color: '#c0392b' }}>
@@ -161,7 +178,7 @@ export default function Entrada() {
         Configurações do Servidor
       </div>
       <div className="version" style={{ top: 640 }}>
-        Cliente v1.0
+        Cliente v1.2
       </div>
     </div>
   );

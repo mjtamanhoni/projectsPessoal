@@ -1,18 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { criarClientePublico, extrairErro } from '../api';
+import { criarClientePublico, extrairErro, setDocumentoLembrado, type EmpresaPublic } from '../api';
 import { useSessao } from '../auth';
 import BackButton from '../components/BackButton';
+import { mascaraCpfCnpj, mascaraTelefone } from '../format';
 
 interface LocationState {
   documento?: string;
+  empresa?: EmpresaPublic;
 }
 
 export default function Cadastro() {
   const navigate = useNavigate();
-  const { empresa, entrar } = useSessao();
+  const { empresa: empresaSessao, entrar } = useSessao();
   const location = useLocation();
   const state = (location.state || {}) as LocationState;
+
+  const empresa = empresaSessao || state.empresa || null;
+
+  useEffect(() => {
+    if (!empresa) navigate('/', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresa]);
 
   const [documento, setDocumento] = useState(state.documento || '');
   const [nome, setNome] = useState('');
@@ -22,19 +31,16 @@ export default function Cadastro() {
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (!empresa) {
-    navigate('/', { replace: true });
-    return null;
-  }
+  if (!empresa) return null;
 
   const salvar = async () => {
     setErro('');
-    if (!documento) {
-      setErro('Informe o documento');
-      return;
-    }
     if (nome.trim().length < 3) {
       setErro('Informe seu nome completo');
+      return;
+    }
+    if (documento.replace(/\D/g, '').length < 11) {
+      setErro('Informe seu documento (CPF/CNPJ)');
       return;
     }
     setLoading(true);
@@ -50,6 +56,7 @@ export default function Cadastro() {
       if (!criado?.id) {
         throw new Error('Resposta inválida do servidor');
       }
+      setDocumentoLembrado(documento.replace(/\D/g, ''));
       entrar(empresa, {
         id: criado.id,
         nome: nome.trim(),
@@ -81,7 +88,7 @@ export default function Cadastro() {
 
       <div className="auth-card" style={{ height: '520px' }}>
         <div className="field-label" style={{ top: 16 }}>
-          Documento (CPF/CNPJ)
+          Documento (CPF/CNPJ) *
         </div>
         <input
           className="field-input"
@@ -90,11 +97,11 @@ export default function Cadastro() {
           inputMode="numeric"
           placeholder="CPF ou CNPJ"
           value={documento}
-          onChange={(e) => setDocumento(e.target.value.replace(/\D/g, ''))}
+          onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}
         />
 
         <div className="field-label" style={{ top: 104 }}>
-          Nome completo
+          Nome completo *
         </div>
         <input
           className="field-input"
@@ -105,7 +112,7 @@ export default function Cadastro() {
         />
 
         <div className="field-label" style={{ top: 192 }}>
-          Celular (WhatsApp)
+          Celular (WhatsApp) (opcional)
         </div>
         <input
           className="field-input"
@@ -114,7 +121,7 @@ export default function Cadastro() {
           inputMode="tel"
           placeholder="(00) 00000-0000"
           value={celular}
-          onChange={(e) => setCelular(e.target.value)}
+          onChange={(e) => setCelular(mascaraTelefone(e.target.value))}
         />
 
         <div className="field-label" style={{ top: 280 }}>
@@ -152,7 +159,7 @@ export default function Cadastro() {
       </div>
 
       <div className="version" style={{ top: 640 }}>
-        Cliente v1.0
+        Cliente v1.2
       </div>
     </div>
   );

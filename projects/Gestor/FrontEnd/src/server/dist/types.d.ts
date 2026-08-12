@@ -448,6 +448,7 @@ export interface Encomenda {
     usuario_id?: number;
     valor_total: number;
     data_encomenda: string;
+    data_entrega?: string;
     observacao?: string;
     status?: number;
     baixado?: boolean;

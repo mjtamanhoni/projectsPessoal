@@ -1254,6 +1254,7 @@ class HorseApiService {
                 id: header.id ?? header.codigo ?? 0,
                 cliente_id: header.cliente_id,
                 data_encomenda: header.data_encomenda,
+                data_entrega: header.data_entrega ?? '',
                 observacao: header.observacao ?? '',
                 itens: (header.itens ?? []).map((i) => ({
                     produto_fabricado_id: i.produto_fabricado_id,
@@ -1281,6 +1282,15 @@ class HorseApiService {
     async gerarVendaDeEncomenda(data) {
         try {
             const res = await this.api.post('/encomenda/gerarVenda', data, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async alterarStatusEncomenda(data) {
+        try {
+            const res = await this.api.post('/encomenda', data, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {

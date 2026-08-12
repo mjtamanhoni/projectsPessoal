@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginBodySchema = exports.usoConsumoBodySchema = exports.perdaProdutoFabricadoBodySchema = exports.perdaInsumoBodySchema = exports.usuarioEmpresaBodySchema = exports.empresaModuloBodySchema = exports.moduloFormularioBodySchema = exports.moduloBodySchema = exports.empresaBodySchema = exports.estoqueProdutoFabricadoBodySchema = exports.estoqueInsumoBodySchema = exports.fabricacaoCustoAdicionalBodySchema = exports.encomendaBaixaSchema = exports.encomendaBodySchema = exports.vendaProdutoBodySchema = exports.fabricacaoBodySchema = exports.custoAdicionalTipoBodySchema = exports.receitaIngredienteBodySchema = exports.produtoFabricadoBodySchema = exports.compraInsumoBodySchema = exports.insumoBodySchema = exports.horaAbatidaBodySchema = exports.servicoBodySchema = exports.horaTrabalhadaBodySchema = exports.usuarioFormularioBodySchema = exports.formularioBodySchema = exports.usuarioPinBodySchema = exports.usuarioSenhaBodySchema = exports.usuarioBodySchema = exports.contaReceberBodySchema = exports.contaPagarBodySchema = exports.categoriaSaveSchema = exports.categoriaBodySchema = exports.fornecedorBodySchema = exports.clienteBodySchema = void 0;
+exports.loginBodySchema = exports.usoConsumoBodySchema = exports.perdaProdutoFabricadoBodySchema = exports.perdaInsumoBodySchema = exports.usuarioEmpresaBodySchema = exports.empresaModuloBodySchema = exports.moduloFormularioBodySchema = exports.moduloBodySchema = exports.empresaBodySchema = exports.estoqueProdutoFabricadoBodySchema = exports.estoqueInsumoBodySchema = exports.fabricacaoCustoAdicionalBodySchema = exports.encomendaBaixaSchema = exports.encomendaStatusSchema = exports.encomendaBodySchema = exports.vendaProdutoBodySchema = exports.fabricacaoBodySchema = exports.custoAdicionalTipoBodySchema = exports.receitaIngredienteBodySchema = exports.produtoFabricadoBodySchema = exports.compraInsumoBodySchema = exports.insumoBodySchema = exports.horaAbatidaBodySchema = exports.servicoBodySchema = exports.horaTrabalhadaBodySchema = exports.usuarioFormularioBodySchema = exports.formularioBodySchema = exports.usuarioPinBodySchema = exports.usuarioSenhaBodySchema = exports.usuarioBodySchema = exports.contaReceberBodySchema = exports.contaPagarBodySchema = exports.categoriaSaveSchema = exports.categoriaBodySchema = exports.fornecedorBodySchema = exports.clienteBodySchema = void 0;
 const zod_1 = require("zod");
 exports.clienteBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),
@@ -222,8 +222,16 @@ exports.encomendaBodySchema = zod_1.z.object({
     cliente_id: zod_1.z.number().int().positive('Cliente e obrigatorio'),
     valor_total: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).optional(),
     data_encomenda: zod_1.z.string().min(1, 'Data e obrigatoria'),
+    data_entrega: zod_1.z.string().optional(),
     observacao: zod_1.z.string().max(500).optional(),
     itens: zod_1.z.array(encomendaItemSchema).min(1, 'Adicione ao menos um item'),
+});
+exports.encomendaStatusSchema = zod_1.z.object({
+    id: zod_1.z.number().int().positive('Encomenda e obrigatoria'),
+    status: zod_1.z.number().int().min(0).max(4, 'Status invalido'),
+    data_venda: zod_1.z.string().optional(),
+    recebido: zod_1.z.boolean().optional(),
+    categoria_receber_id: zod_1.z.number().int().positive().optional(),
 });
 exports.encomendaBaixaSchema = zod_1.z.object({
     id: zod_1.z.number().int().positive('Encomenda e obrigatoria'),

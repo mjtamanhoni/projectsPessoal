@@ -6,6 +6,7 @@
 interface FiltrosBarProps {
   busca?: { valor: string; onChange: (valor: string) => void; placeholder?: string };
   status?: { valor: string; opcoes: FiltroOpcao[]; onChange: (valor: string) => void };
+  statuses?: { valor: number[]; opcoes: { valor: number; label: string }[]; onChange: (valores: number[]) => void };
   checks?: {
     opcao1: boolean;
     onOpcao1: (valor: boolean) => void;
@@ -22,7 +23,7 @@ interface FiltrosBarProps {
   };
 }
 
-export default function FiltrosBar({ busca, status, checks, periodo }: FiltrosBarProps) {
+export default function FiltrosBar({ busca, status, statuses, checks, periodo }: FiltrosBarProps) {
   return (
     <div className="filtros-bar">
       {busca && (
@@ -43,6 +44,28 @@ export default function FiltrosBar({ busca, status, checks, periodo }: FiltrosBa
             </option>
           ))}
         </select>
+      )}
+
+      {statuses && (
+        <div className="filtros-chips">
+          {statuses.opcoes.map((op) => {
+            const ativo = statuses.valor.includes(op.valor);
+            return (
+              <button
+                key={op.valor}
+                type="button"
+                className={`filtros-chip${ativo ? ' ativo' : ''}`}
+                onClick={() =>
+                  ativo
+                    ? statuses.onChange(statuses.valor.filter((v) => v !== op.valor))
+                    : statuses.onChange([...statuses.valor, op.valor])
+                }
+              >
+                {op.label}
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {checks && (

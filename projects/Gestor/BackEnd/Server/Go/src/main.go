@@ -73,6 +73,7 @@ func main() {
 	r.Get("/produtoFabricadoPublico", producao.ProdutoFabricadoListarPublico)
 	r.Get("/encomendaPublico", producao.EncomendaPublicoListar)
 	r.Post("/encomendaPublico", producao.EncomendaPublicoCriar)
+	r.Post("/encomendaPublico/cancelar", producao.EncomendaPublicoCancelar)
 	r.Get("/test", testPage.TestPage)
 	r.Get("/health", testPage.HealthCheck)
 	r.Get("/logs/json", func(w http.ResponseWriter, r *http.Request) {

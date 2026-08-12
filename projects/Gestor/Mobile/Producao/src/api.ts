@@ -178,6 +178,7 @@ export interface Encomenda {
   cliente_id?: number;
   cliente_nome?: string;
   data_encomenda: string;
+  data_entrega?: string;
   valor_total?: number;
   observacao?: string;
   status?: number;
@@ -588,6 +589,17 @@ export async function gerarVendaDeEncomenda(input: {
 }): Promise<{ venda_id?: number; mensagem?: string } | null> {
   const res = await request('/encomenda/gerarVenda', { method: 'POST', body: JSON.stringify(input) }, true);
   return (await parseResponse(res)) as { venda_id?: number; mensagem?: string } | null;
+}
+
+export async function alterarStatusEncomenda(input: {
+  id: number;
+  status: number;
+  data_venda?: string;
+  recebido?: boolean;
+  categoria_receber_id?: number;
+}): Promise<{ venda_id?: number; mensagem?: string; id?: number } | null> {
+  const res = await request('/encomenda', { method: 'POST', body: JSON.stringify(input) }, true);
+  return (await parseResponse(res)) as { venda_id?: number; mensagem?: string; id?: number } | null;
 }
 
 export async function listarEstoqueInsumos(): Promise<EstoqueInsumo[]> {

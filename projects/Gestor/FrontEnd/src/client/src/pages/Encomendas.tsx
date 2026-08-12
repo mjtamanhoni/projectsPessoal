@@ -9,13 +9,14 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
 import { EncomendaForm } from '@/components/forms/EncomendaForm';
+import { CupomVendaModal } from '@/components/cupom/CupomVendaModal';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { Spinner } from '@/components/ui/Spinner';
-import type { Encomenda, EncomendaItem, ProdutoFabricado, Cliente } from '@/types';
+import type { Encomenda, EncomendaItem, ProdutoFabricado, Cliente, VendaProduto } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw, Download } from 'lucide-react';
+import { Plus, Edit2, Trash2, RefreshCw, ListChecks, FileText } from 'lucide-react';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDecimals } from '@/lib/utils';
@@ -24,19 +25,36 @@ import type { JSX } from 'react';
 
 const columnHelper = createColumnHelper<Encomenda>();
 
+const ETAPAS_ENCOMENDA: Record<number, { label: string; badge: string; descricao: string }> = {
+  0: { label: 'Aguardando', badge: 'bg-yellow-100 text-yellow-800', descricao: 'Encomenda aguardando o início da produção' },
+  1: { label: 'Em produção', badge: 'bg-blue-100 text-blue-800', descricao: 'Encomenda em produção' },
+  2: { label: 'Finalizado', badge: 'bg-green-100 text-green-800', descricao: 'Produção finalizada - gera a venda do pedido' },
+  3: { label: 'Entregue', badge: 'bg-emerald-100 text-emerald-800', descricao: 'Encomenda entregue ao cliente' },
+  4: { label: 'Cancelada', badge: 'bg-red-100 text-red-800', descricao: 'Encomenda cancelada' },
+};
+
+function etapasPermitidas(status: number): number[] {
+  switch (status) {
+    case 0: return [1, 4];
+    case 1: return [2, 4];
+    case 2: return [3];
+    default: return [];
+  }
+}
+
 export function Encomendas() {
   const { data: encomendas, loading, error, create, update, remove, refetch } = useApi<Encomenda>('/encomendas');
   const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
-  const [filtroBaixa, setFiltroBaixa] = useState<string>('abaixar');
+  const [filtroStatus, setFiltroStatus] = useState<string[]>(['0', '1']);
 
   const encomendasFiltradas = useMemo(
     () =>
       (encomendas ?? []).filter(
         (e) =>
           passaPeriodo(e.data_encomenda, periodo) &&
-          (filtroBaixa === 'todas' || (filtroBaixa === 'baixada' ? e.baixado === true : e.baixado !== true)),
+          (filtroStatus.length === 0 || filtroStatus.includes(String(e.status ?? 0))),
       ),
-    [encomendas, periodo, filtroBaixa],
+    [encomendas, periodo, filtroStatus],
   );
   const { data: produtos } = useApi<ProdutoFabricado>('/produtos-fabricados');
   const { data: clientes } = useApi<Cliente>('/clientes');
@@ -48,10 +66,12 @@ export function Encomendas() {
   const [formKey, setFormKey] = useState(0);
   const [loadedItens, setLoadedItens] = useState<Record<number, EncomendaItem[]>>({});
 
-  const [baixar, setBaixar] = useState<{ id: number; cliente?: string } | null>(null);
-  const [baixarData, setBaixarData] = useState('');
-  const [baixarRecebido, setBaixarRecebido] = useState(true);
-  const [baixando, setBaixando] = useState(false);
+  const [etapa, setEtapa] = useState<{ id: number; cliente?: string; status: number } | null>(null);
+  const [etapaAlvo, setEtapaAlvo] = useState<number | null>(null);
+  const [etapaDataVenda, setEtapaDataVenda] = useState('');
+  const [etapaRecebido, setEtapaRecebido] = useState(true);
+  const [salvandoEtapa, setSalvandoEtapa] = useState(false);
+  const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
 
   const { addToast } = useToast();
 
@@ -100,6 +120,7 @@ export function Encomendas() {
         cliente_id: first.cliente_id,
         cliente_nome: first.cliente_nome,
         data_encomenda: first.data_encomenda,
+        data_entrega: first.data_entrega,
         valor_total: Number(first.valor_total),
         observacao: first.observacao,
         status: first.status,
@@ -111,6 +132,37 @@ export function Encomendas() {
       return null;
     }
   }, []);
+
+  const abrirCupomDaVenda = useCallback(async (vendaId: number | null | undefined) => {
+    if (!vendaId) return;
+    try {
+      const response = await api.get('/vendas-produto', { params: { id: vendaId } });
+      const rows = response.data as any[];
+      if (!rows || rows.length === 0) return;
+      const first = rows[0];
+      const itens = rows.map((row: any) => ({
+        item_id: row.item_id,
+        produto_fabricado_id: row.produto_fabricado_id,
+        produto_nome: row.produto_nome,
+        quantidade: Number(row.quantidade),
+        valor_unitario: Number(row.valor_unitario),
+        valor_total: Number(row.item_valor_total ?? row.valor_total),
+      }));
+      setCupomVenda({
+        id: first.id,
+        codigo: first.id,
+        cliente_id: first.cliente_id,
+        cliente_nome: first.cliente_nome,
+        data_venda: first.data_venda,
+        valor_total: Number(first.valor_total),
+        observacao: first.observacao,
+        recebido: first.recebido,
+        itens,
+      });
+    } catch {
+      addToast('error', 'Erro ao carregar cupom da venda');
+    }
+  }, [addToast]);
 
   const renderSubComponent = useCallback((row: Encomenda): JSX.Element => {
     const id = row.id!;
@@ -171,11 +223,16 @@ export function Encomendas() {
       header: 'Data Encomenda',
       cell: (info) => formatDataEncomenda(info.getValue()),
     }),
-    columnHelper.accessor('baixado', {
+    columnHelper.accessor('data_entrega', {
+      header: 'Data Entrega',
+      cell: (info) => formatDataEncomenda(info.getValue()),
+    }),
+    columnHelper.accessor('status', {
       header: 'Situação',
-      cell: (info) => info.getValue()
-        ? <span className="text-accent-green font-medium">Baixada {info.row.original.venda_id ? `(venda #${info.row.original.venda_id})` : ''}</span>
-        : <span className="text-accent-red">Em aberto</span>,
+      cell: (info) => {
+        const etapaInfo = ETAPAS_ENCOMENDA[Number(info.getValue())] ?? ETAPAS_ENCOMENDA[0];
+        return <span className={`status-badge ${etapaInfo.badge}`}>{etapaInfo.label}</span>;
+      },
     }),
     columnHelper.accessor('qtd_itens', {
       header: 'Qtd. Itens',
@@ -197,26 +254,38 @@ export function Encomendas() {
       enableSorting: false,
       cell: ({ row }) => {
         const id = row.original.id ?? row.original.codigo;
-        const baixada = !!row.original.baixado;
-        if (!id || baixada) {
+        const status = Number(row.original.status ?? 0);
+        if (!id) {
           return null;
+        }
+        const podeEditar = status < 2;
+        const podeEtapa = etapasPermitidas(status).length > 0;
+        const podeCupom = !!row.original.venda_id;
+        const extras = [];
+        if (podeCupom) {
+          extras.push({
+            rotulo: 'Cupom',
+            icone: FileText,
+            onClick: () => abrirCupomDaVenda(row.original.venda_id),
+          });
+        }
+        if (podeEtapa) {
+          extras.push({
+            rotulo: 'Alterar Etapa',
+            icone: ListChecks,
+            cor: '#2D5E3A',
+            onClick: () => { setEtapa({ id, cliente: row.original.cliente_nome, status }); setEtapaAlvo(null); setEtapaDataVenda(new Date().toISOString().slice(0, 10)); setEtapaRecebido(true); },
+            permissaoRota: '/encomendas',
+            permissaoAcao: ACAO.BAIXAR,
+          });
         }
         return (
           <div className="flex justify-end">
             <RowActions
               rota="/encomendas"
-              onEdit={() => handleEdit(row.original)}
-              onDelete={() => setConfirmDelete(id)}
-              extras={[
-                {
-                  rotulo: 'Baixar Encomenda',
-                  icone: Download,
-                  cor: '#16a34a',
-                  onClick: () => { setBaixar({ id, cliente: row.original.cliente_nome }); setBaixarData(new Date().toISOString().slice(0, 10)); setBaixarRecebido(true); },
-                  permissaoRota: '/encomendas',
-                  permissaoAcao: ACAO.BAIXAR,
-                },
-              ]}
+              onEdit={podeEditar ? () => handleEdit(row.original) : undefined}
+              onDelete={podeEditar ? () => setConfirmDelete(id) : undefined}
+              extras={extras}
             />
           </div>
         );
@@ -258,25 +327,29 @@ export function Encomendas() {
     }
   };
 
-  const handleBaixar = async () => {
-    if (!baixar) return;
-    setBaixando(true);
+  const handleAlterarEtapa = async () => {
+    if (!etapa || etapaAlvo === null) return;
+    setSalvandoEtapa(true);
     try {
-      const resp = (await api.post('/encomendas/gerar-venda', {
-        id: baixar.id,
-        data_venda: baixarData,
-        recebido: baixarRecebido,
-      })) as { data?: { venda_id?: number; mensagem?: string } };
-      const vendaId = resp?.data?.venda_id;
-      setBaixar(null);
+      const resp = (await api.post('/encomendas/status', {
+        id: etapa.id,
+        status: etapaAlvo,
+        data_venda: etapaAlvo === 2 ? etapaDataVenda : undefined,
+        recebido: etapaAlvo === 2 ? etapaRecebido : undefined,
+      })) as { data?: { venda_id?: number } };
+      setEtapa(null);
+      setEtapaAlvo(null);
       setLoadedItens({});
       await refetch();
-      addToast('success', vendaId ? `Venda #${vendaId} gerada com sucesso` : 'Venda gerada com sucesso');
+      addToast('success', `Encomenda movida para "${ETAPAS_ENCOMENDA[etapaAlvo].label}"`);
+      if (etapaAlvo === 2) {
+        abrirCupomDaVenda(resp?.data?.venda_id);
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao gerar venda';
+      const msg = err instanceof Error ? err.message : 'Erro ao alterar etapa';
       addToast('error', msg);
     } finally {
-      setBaixando(false);
+      setSalvandoEtapa(false);
     }
   };
 
@@ -324,19 +397,22 @@ export function Encomendas() {
             onInicio: (v) => setPeriodo((p) => ({ ...p, inicio: v })),
             onFim: (v) => setPeriodo((p) => ({ ...p, fim: v })),
           }}
-          status={{
+          multiStatus={{
             rotulo: 'Situação',
-            valor: filtroBaixa,
+            valor: filtroStatus,
+            padrao: ['0', '1'],
             opcoes: [
-              { valor: 'abaixar', label: 'A Baixar' },
-              { valor: 'baixada', label: 'Baixadas' },
-              { valor: 'todas', label: 'Todas' },
+              { valor: '0', label: 'Aguardando' },
+              { valor: '1', label: 'Em produção' },
+              { valor: '2', label: 'Finalizado' },
+              { valor: '3', label: 'Entregue' },
+              { valor: '4', label: 'Cancelada' },
             ],
-            onChange: setFiltroBaixa,
+            onChange: setFiltroStatus,
           }}
           onLimpar={() => {
             setPeriodo({ inicio: '', fim: '' });
-            setFiltroBaixa('abaixar');
+            setFiltroStatus(['0', '1']);
           }}
         />
         <DataTable
@@ -365,37 +441,63 @@ export function Encomendas() {
         )}
       </Modal>
 
-      <Modal isOpen={baixar !== null} onClose={() => setBaixar(null)} title="Baixar Encomenda" maxWidth="max-w-lg">
-        {baixar && (
+      <Modal isOpen={etapa !== null} onClose={() => setEtapa(null)} title="Alterar Etapa da Encomenda" maxWidth="max-w-lg">
+        {etapa && (
           <div className="space-y-4">
             <p className="text-sm text-text-secondary">
-              A mercadoria foi entregue? Ao baixar a encomenda será gerada uma venda de produto com os itens desta encomenda (baixa de estoque e contas a receber).{baixar.cliente ? ` Cliente: ${baixar.cliente}.` : ''}
+              Etapa atual:{' '}
+              <span className={`status-badge ${ETAPAS_ENCOMENDA[etapa.status]?.badge}`}>{ETAPAS_ENCOMENDA[etapa.status]?.label ?? 'Aguardando'}</span>
+              {etapa.cliente ? ` Cliente: ${etapa.cliente}.` : ''}
             </p>
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-1.5">
-                <label className="label-field">Data da Venda *</label>
-                <input type="date" className="input-field" value={baixarData} onChange={(e) => setBaixarData(e.target.value)} />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="baixar-recebido"
-                  checked={baixarRecebido}
-                  onChange={(e) => setBaixarRecebido(e.target.checked)}
-                  className="rounded border-border-subtle"
-                />
-                <label htmlFor="baixar-recebido" className="text-sm text-text-secondary whitespace-nowrap">Venda já foi recebida?</label>
-              </div>
+            <div className="grid grid-cols-1 gap-2">
+              {etapasPermitidas(etapa.status).map((alvo) => {
+                const alvoInfo = ETAPAS_ENCOMENDA[alvo];
+                const selecionado = etapaAlvo === alvo;
+                return (
+                  <button
+                    key={alvo}
+                    type="button"
+                    onClick={() => setEtapaAlvo(alvo)}
+                    className={`flex items-center gap-3 text-left px-4 py-3 rounded-lg border transition-all ${
+                      selecionado ? 'border-accent-primary bg-accent-light' : 'border-border-primary hover:bg-bg-muted'
+                    }`}
+                  >
+                    <span className={`status-badge ${alvoInfo.badge}`}>{alvoInfo.label}</span>
+                    <span className="text-sm text-text-secondary">{alvoInfo.descricao}</span>
+                  </button>
+                );
+              })}
             </div>
+            {etapaAlvo === 2 && (
+              <div className="space-y-4 rounded-lg border border-border-primary p-4">
+                <p className="text-sm font-medium text-text-primary">Dados da venda que será gerada</p>
+                <div className="space-y-1.5">
+                  <label className="label-field">Data da Venda *</label>
+                  <input type="date" className="input-field" value={etapaDataVenda} onChange={(e) => setEtapaDataVenda(e.target.value)} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="etapa-recebido"
+                    checked={etapaRecebido}
+                    onChange={(e) => setEtapaRecebido(e.target.checked)}
+                    className="rounded border-border-subtle"
+                  />
+                  <label htmlFor="etapa-recebido" className="text-sm text-text-secondary whitespace-nowrap">Venda já foi recebida?</label>
+                </div>
+              </div>
+            )}
             <div className="flex justify-center gap-3 pt-2">
-              <Button type="button" variant="secondary" onClick={() => setBaixar(null)} disabled={baixando}>Cancelar</Button>
-              <Button type="button" variant="primary" onClick={handleBaixar} disabled={baixando || !baixarData}>
-                {baixando ? 'Gerando...' : 'Baixar e Gerar Venda'}
+              <Button type="button" variant="secondary" onClick={() => setEtapa(null)} disabled={salvandoEtapa}>Cancelar</Button>
+              <Button type="button" variant="primary" onClick={handleAlterarEtapa} disabled={salvandoEtapa || etapaAlvo === null || (etapaAlvo === 2 && !etapaDataVenda)}>
+                {salvandoEtapa ? 'Salvando...' : 'Salvar Etapa'}
               </Button>
             </div>
           </div>
         )}
       </Modal>
+
+      <CupomVendaModal venda={cupomVenda} onClose={() => setCupomVenda(null)} clientes={clientes} />
 
       <ConfirmDialog
         isOpen={confirmDelete !== null}

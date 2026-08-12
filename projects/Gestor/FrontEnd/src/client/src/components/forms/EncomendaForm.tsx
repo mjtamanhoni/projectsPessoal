@@ -18,6 +18,7 @@ interface EncomendaFormProps {
 export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes }: EncomendaFormProps) {
   const [clienteId, setClienteId] = useState<number>(initial?.cliente_id ?? 0);
   const [dataEncomenda, setDataEncomenda] = useState(initial?.data_encomenda ?? new Date().toISOString().slice(0, 10));
+  const [dataEntrega, setDataEntrega] = useState(initial?.data_entrega ?? '');
   const [observacao, setObservacao] = useState(initial?.observacao ?? '');
 
   const [itens, setItens] = useState<EncomendaItem[]>(initial?.itens ?? []);
@@ -41,6 +42,7 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
       id: initial?.id ?? initial?.codigo,
       cliente_id: clienteId,
       data_encomenda: dataEncomenda,
+      data_entrega: dataEntrega,
       observacao,
       valor_total: total,
       itens,
@@ -62,6 +64,9 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <Input label="Data da Encomenda *" type="date" value={dataEncomenda} onChange={(e) => setDataEncomenda(e.target.value)} />
+          </div>
+          <div className="flex-1">
+            <Input label="Data de Entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
           </div>
         </div>
         <div className="space-y-1.5">

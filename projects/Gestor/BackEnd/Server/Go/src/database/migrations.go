@@ -213,6 +213,19 @@ var Migracoes = []Migracao{
 		`,
 	},
 	{
+		Nome: "009_encomenda_data_entrega_status",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encomenda' AND column_name='data_entrega') THEN
+					ALTER TABLE encomenda ADD COLUMN data_entrega DATE;
+				END IF;
+				-- Migra os status antigos: 1 (A Baixar) -> 0 (Aguardando); 2 (Baixado) -> 2 (Finalizado)
+				UPDATE encomenda SET status = 0 WHERE status = 1;
+			END $$;
+		`,
+	},
+	{
 		Nome: "004_restruturar_venda_produto",
 		SQLUp: `
 			DO $$

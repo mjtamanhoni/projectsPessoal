@@ -1184,6 +1184,14 @@ func getStr(m map[string]interface{}, key string) string {
 	return ""
 }
 
+// dataOuNil retorna nil (NULL no banco) quando a data é vazia, ou a própria string.
+func dataOuNil(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
 type LancamentoAutomaticoConfig struct {
 	CategoriaID       int
 	DiasVencimento    int

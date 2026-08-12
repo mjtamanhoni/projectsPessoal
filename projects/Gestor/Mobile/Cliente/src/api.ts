@@ -52,6 +52,7 @@ export interface Encomenda {
   cliente_id?: number;
   cliente_nome?: string;
   data_encomenda: string;
+  data_entrega?: string;
   valor_total?: number;
   observacao?: string;
   status?: number;
@@ -87,12 +88,16 @@ export interface VendaProduto {
 
 const SERVER_KEY = 'cliente.server';
 const SERVERS_KEY = 'cliente.servers';
+const DOCUMENTO_KEY = 'cliente.documento';
+const EMPRESA_SELECIONADA_KEY = 'cliente.empresa.selecionada';
 const REQUEST_TIMEOUT_MS = 6000;
 
 export interface ServerEndpoint {
   host: string;
   port: number;
 }
+
+export const SERVIDOR_PADRAO: ServerEndpoint = { host: 'mjtsystems-gestor.duckdns.org', port: 9000 };
 
 function getServerConfigLegacy(): { host: string; port: number } {
   try {
@@ -104,7 +109,7 @@ function getServerConfigLegacy(): { host: string; port: number } {
   } catch {
     /* ignora */
   }
-  return { host: 'localhost', port: 9000 };
+  return { host: SERVIDOR_PADRAO.host, port: SERVIDOR_PADRAO.port };
 }
 
 export function getServerConfig(): { host: string; port: number } {
@@ -141,6 +146,41 @@ export function setServerList(list: ServerEndpoint[]) {
   localStorage.setItem(SERVERS_KEY, JSON.stringify(valid));
   const first = valid[0];
   localStorage.setItem(SERVER_KEY, JSON.stringify({ host: first.host, port: first.port }));
+}
+
+export function getDocumentoLembrado(): string {
+  try {
+    return localStorage.getItem(DOCUMENTO_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setDocumentoLembrado(documento: string) {
+  try {
+    localStorage.setItem(DOCUMENTO_KEY, documento);
+  } catch {
+    /* ignora */
+  }
+}
+
+export function getEmpresaSelecionadaMemoria(): EmpresaPublic | null {
+  try {
+    const raw = localStorage.getItem(EMPRESA_SELECIONADA_KEY);
+    if (raw) return JSON.parse(raw) as EmpresaPublic;
+  } catch {
+    /* ignora */
+  }
+  return null;
+}
+
+export function setEmpresaSelecionadaMemoria(empresa: EmpresaPublic | null) {
+  try {
+    if (empresa) localStorage.setItem(EMPRESA_SELECIONADA_KEY, JSON.stringify(empresa));
+    else localStorage.removeItem(EMPRESA_SELECIONADA_KEY);
+  } catch {
+    /* ignora */
+  }
 }
 
 export function getBaseURL(): string {
@@ -286,6 +326,7 @@ export async function listarEncomendasPublicas(
         cliente_id: Number(row.cliente_id ?? 0) || undefined,
         cliente_nome: row.cliente_nome ? String(row.cliente_nome) : undefined,
         data_encomenda: String(row.data_encomenda ?? ''),
+        data_entrega: row.data_entrega ? String(row.data_entrega) : undefined,
         valor_total: Number(row.valor_total ?? 0) || undefined,
         observacao: row.observacao ? String(row.observacao) : undefined,
         status: Number(row.status ?? 1),
@@ -307,4 +348,15 @@ export async function listarEncomendasPublicas(
     }
   }
   return Array.from(porId.values()).sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
+}
+
+export async function cancelarEncomendaPublica(
+  empresa: number,
+  data: { id: number; cliente_id?: number; documento?: string; telefone?: string }
+): Promise<{ mensagem?: string } | null> {
+  const res = await request('/encomendaPublico/cancelar', {
+    method: 'POST',
+    body: JSON.stringify({ empresa, ...data }),
+  });
+  return (await parseResponse(res)) as { mensagem?: string } | null;
 }
