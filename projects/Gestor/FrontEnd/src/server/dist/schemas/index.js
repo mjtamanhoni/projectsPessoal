@@ -6,6 +6,10 @@ exports.clienteBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),
     id: zod_1.z.number().int().positive().optional(),
     nome: zod_1.z.string().min(1, 'Nome e obrigatorio').max(200),
+    cpf_cnpj: zod_1.z.string()
+        .min(1, 'CPF/CNPJ e obrigatorio')
+        .max(18)
+        .refine((v) => v.replace(/\D/g, '').length >= 11, 'CPF/CNPJ invalido'),
     telefone: zod_1.z.string().max(20).optional().or(zod_1.z.literal('')),
     celular: zod_1.z.string().max(20).optional().or(zod_1.z.literal('')),
     endereco: zod_1.z.string().max(300).optional().or(zod_1.z.literal('')),

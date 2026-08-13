@@ -89,7 +89,8 @@ class HorseApiService {
     }
     async salvarClientes(clientes) {
         try {
-            const res = await this.api.post('/cliente', clientes, { headers: this.getAuthHeaders() });
+            const payload = clientes.map(({ cpf_cnpj, ...rest }) => cpf_cnpj ? { ...rest, cnpj_cpf: cpf_cnpj } : rest);
+            const res = await this.api.post('/cliente', payload, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {

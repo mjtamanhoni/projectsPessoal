@@ -3,6 +3,7 @@ export declare const clienteBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;
     id: z.ZodOptional<z.ZodNumber>;
     nome: z.ZodString;
+    cpf_cnpj: z.ZodString;
     telefone: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     celular: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     endereco: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
