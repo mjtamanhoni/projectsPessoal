@@ -19,37 +19,15 @@ function logoKey(): string {
   return id ? `app-logo-${id}` : 'app-logo';
 }
 
-function logoPdfKey(): string {
-  const id = getEmpresaId();
-  return id ? `app-logo-pdf-${id}` : 'app-logo-pdf';
-}
-
-function saveLogosToStorage(settings: AppSettings) {
-  const lKey = logoKey();
-  const pKey = logoPdfKey();
-  if (settings.logoBase64) {
-    localStorage.setItem(lKey, settings.logoBase64);
-  } else {
-    localStorage.removeItem(lKey);
-  }
-  if (settings.logoPdfBase64) {
-    localStorage.setItem(pKey, settings.logoPdfBase64);
-  } else {
-    localStorage.removeItem(pKey);
-  }
-}
-
 export async function fetchSettings(): Promise<AppSettings> {
   const res = await api.get('/settings');
   cache = res.data as AppSettings;
-  saveLogosToStorage(cache);
   return cache;
 }
 
 export async function saveSettings(data: Partial<AppSettings>): Promise<AppSettings> {
   const res = await api.put('/settings', data);
   cache = res.data as AppSettings;
-  saveLogosToStorage(cache);
   window.dispatchEvent(new CustomEvent('settings:saved'));
   return cache;
 }
@@ -67,5 +45,5 @@ export function getLogo(): string | null {
 }
 
 export function getLogoPdf(): string | null {
-  return localStorage.getItem(logoPdfKey());
+  return getLogo();
 }

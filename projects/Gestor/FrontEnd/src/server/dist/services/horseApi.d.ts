@@ -117,6 +117,7 @@ declare class HorseApiService {
     listarEmpresasPublic(): Promise<Empresa[]>;
     listarEmpresas(params?: Record<string, unknown>): Promise<Empresa[]>;
     salvarEmpresas(empresas: Empresa[]): Promise<unknown>;
+    salvarEmpresaLogomarca(id: number, logomarca: string): Promise<unknown>;
     listarModulos(params?: Record<string, unknown>): Promise<Modulo[]>;
     salvarModulos(items: Modulo[]): Promise<unknown>;
     excluirModulo(id: number): Promise<unknown>;

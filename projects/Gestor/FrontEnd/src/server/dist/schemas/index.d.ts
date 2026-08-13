@@ -259,6 +259,10 @@ export declare const estoqueProdutoFabricadoBodySchema: z.ZodObject<{
     data_atualizacao: z.ZodString;
     observacao: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
+export declare const logomarcaBodySchema: z.ZodObject<{
+    id: z.ZodNumber;
+    logomarca: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+}, z.core.$strip>;
 export declare const empresaBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;
     id: z.ZodOptional<z.ZodNumber>;
@@ -272,6 +276,7 @@ export declare const empresaBodySchema: z.ZodObject<{
     celular: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     email: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     chave_pix: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    logomarca: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
 }, z.core.$strip>;
 export declare const moduloBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;

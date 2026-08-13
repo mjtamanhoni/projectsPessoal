@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -7,14 +7,14 @@ import { fetchSettings, saveSettings } from '@/lib/settings';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { AppSettings, Categoria, Empresa } from '@/types';
-import { Save, Server, Monitor, Loader2, ImageIcon, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check } from 'lucide-react';
+import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
 import type { ModuleItem } from '@/context/ModuleContext';
 
 
-type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'logomarcas' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes';
+type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes';
 
 export function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -34,18 +34,6 @@ export function Settings() {
   const [aplicando, setAplicando] = useState<string | null>(null);
   const [msgMigracao, setMsgMigracao] = useState<{ tipo: string; texto: string } | null>(null);
   const { addToast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const fileInputPdfRef = useRef<HTMLInputElement>(null);
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'page' | 'pdf') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setSettings((prev) => prev ? { ...prev, [type === 'page' ? 'logoBase64' : 'logoPdfBase64']: reader.result as string } : null);
-    };
-    reader.readAsDataURL(file);
-  };
 
   useEffect(() => {
     fetchSettings()
@@ -117,7 +105,6 @@ export function Settings() {
     { key: 'servidor', label: 'Servidor', icon: <Server size={16} /> },
     { key: 'exibicao', label: 'Exibição', icon: <Monitor size={16} /> },
     { key: 'financeiro', label: 'Financeiro', icon: <DollarSign size={16} /> },
-    { key: 'logomarcas', label: 'Logomarcas', icon: <ImageIcon size={16} /> },
     { key: 'impressao', label: 'Impressao', icon: <Printer size={16} /> },
     { key: 'limpeza', label: 'Limpeza', icon: <AlertTriangle size={16} /> },
     { key: 'sequencias', label: 'Sequências', icon: <Database size={16} /> },
@@ -757,80 +744,6 @@ export function Settings() {
                   {atualizandoSeq ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />}
                   {atualizandoSeq ? 'Atualizando...' : 'Atualizar sequências'}
                 </Button>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {tab === 'logomarcas' && (
-          <Card>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <ImageIcon size={20} className="text-green-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-text-primary">Logomarcas</h2>
-            </div>
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-text-primary">Logomarca do Menu (Páginas)</h3>
-                <p className="text-xs text-text-secondary">Exibida no menu lateral do sistema</p>
-                {settings.logoBase64 ? (
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={settings.logoBase64}
-                      alt="Logo Menu"
-                      className="max-h-16 max-w-40 object-contain border border-border-subtle rounded-lg p-2"
-                    />
-                    <Button variant="secondary" onClick={() => setSettings({ ...settings, logoBase64: null })}>
-                      <Trash2 size={16} />
-                      Remover
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-text-secondary">Nenhuma logo selecionada. O sistema usará o texto padrão.</p>
-                )}
-                <div>
-                  <label className="label-field">Selecionar imagem</label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(e) => handleLogoUpload(e, 'page')}
-                    className="block w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-accent-primary file:text-white hover:file:bg-accent-hover cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-border-subtle pt-4">
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-text-primary">Logomarca dos Relatórios (PDF)</h3>
-                  <p className="text-xs text-text-secondary">Exibida no cabeçalho dos relatórios gerados em PDF</p>
-                  {settings.logoPdfBase64 ? (
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={settings.logoPdfBase64}
-                        alt="Logo PDF"
-                        className="max-h-16 max-w-40 object-contain border border-border-subtle rounded-lg p-2"
-                      />
-                      <Button variant="secondary" onClick={() => setSettings({ ...settings, logoPdfBase64: null })}>
-                        <Trash2 size={16} />
-                        Remover
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-text-secondary">Nenhuma logo selecionada. Os relatórios não terão logomarca.</p>
-                  )}
-                  <div>
-                    <label className="label-field">Selecionar imagem</label>
-                    <input
-                      ref={fileInputPdfRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(e) => handleLogoUpload(e, 'pdf')}
-                      className="block w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-accent-primary file:text-white hover:file:bg-accent-hover cursor-pointer"
-                    />
-                  </div>
-                </div>
               </div>
             </div>
           </Card>

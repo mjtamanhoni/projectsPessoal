@@ -22,7 +22,7 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
   const [erro, setErro] = useState('');
 
   const baixada = !!encomenda.baixado;
-  const chave = baixada ? '' : empresa.chave_pix || '';
+  const chave = empresa.chave_pix || '';
   const numeroCupom = encomenda.id ?? encomenda.codigo ?? 0;
 
   useEffect(() => {
@@ -152,12 +152,17 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#1b1f1c', marginBottom: 4 }}>
-                  Pagar com PIX
+                  {baixada ? 'Pagamento confirmado (PIX)' : 'Pagar com PIX'}
                 </div>
+                {baixada && (
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#0a7a3d', marginBottom: 4 }}>
+                    PAGO: R$ {(Number(encomenda.valor_total) || 0).toFixed(2).replace('.', ',')}
+                  </div>
+                )}
                 <div style={{ fontSize: 10, color: '#4b5563', wordBreak: 'break-all', marginBottom: 8 }}>
                   {chave}
                 </div>
-                {payload && (
+                {payload && !baixada && (
                   <div style={{ fontSize: 10, color: '#6b706c', wordBreak: 'break-all', marginBottom: 8 }}>
                     Copia e cola: {payload.slice(0, 40)}...
                   </div>
@@ -169,12 +174,12 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
           {erro && <div className="modal-erro" style={{ position: 'static', margin: '0 4px 8px' }}>{erro}</div>}
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
-            {chave && (
+            {chave && !baixada && (
               <button className="confirm-btn save" onClick={() => copiar('chave')} disabled={pdfBusy}>
                 {copiado === 'chave' ? 'Chave copiada!' : 'Copiar chave PIX'}
               </button>
             )}
-            {payload && (
+            {payload && !baixada && (
               <button
                 className="confirm-btn save"
                 onClick={() => copiar('payload')}

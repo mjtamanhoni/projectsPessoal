@@ -18,6 +18,7 @@ import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import api from '@/lib/api';
+import { salvarLogomarcaCache } from '@/lib/empresaLogo';
 
 const columnHelper = createColumnHelper<Empresa>();
 
@@ -141,15 +142,30 @@ export function Empresas() {
 
   const handleSubmit = async (data: Empresa) => {
     try {
+      const temLogomarca = 'logomarca' in data && data.logomarca !== undefined && data.logomarca !== null;
+      const { logomarca: logoUpload, ...dados } = data;
+      let empresaId = dados.id ?? dados.codigo;
+
       if (editing) {
-        await update({ ...data, id: editing.id ?? editing.codigo });
+        empresaId = editing.id ?? editing.codigo ?? empresaId;
+        await update({ ...dados, id: empresaId });
         closeModal();
         addToast('success', 'Empresa atualizada com sucesso');
       } else {
-        await create(data);
+        const criada = await create({ ...dados });
+        const idCriada = (criada as { id?: number } | null)?.id;
+        if (idCriada) empresaId = idCriada;
         setFormKey((k) => k + 1);
         refetch();
         addToast('success', 'Empresa cadastrada com sucesso');
+      }
+
+      if (temLogomarca && empresaId) {
+        await api.post('/empresas/logomarca', { id: empresaId, logomarca: logoUpload ?? '' });
+        salvarLogomarcaCache(logoUpload || null);
+        if (logoUpload) {
+          refetch();
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar empresa';

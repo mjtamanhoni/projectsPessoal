@@ -489,6 +489,8 @@ export interface Empresa {
   telefone?: string;
   celular?: string;
   email?: string;
+  chave_pix?: string;
+  logomarca?: string | null;
 }
 
 export interface Modulo {

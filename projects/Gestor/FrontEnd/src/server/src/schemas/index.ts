@@ -297,6 +297,11 @@ export const estoqueProdutoFabricadoBodySchema = z.object({
   observacao: z.string().max(500).optional(),
 });
 
+export const logomarcaBodySchema = z.object({
+  id: z.number().int().positive('ID da empresa e obrigatorio'),
+  logomarca: z.string().max(11 * 1024 * 1024, 'Imagem muito grande').optional().or(z.literal('')),
+});
+
 export const empresaBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),
@@ -310,6 +315,7 @@ export const empresaBodySchema = z.object({
   celular: z.string().max(20).optional().or(z.literal('')),
   email: z.string().email('Email invalido').max(200).optional().or(z.literal('')),
   chave_pix: z.string().max(255).optional().or(z.literal('')),
+  logomarca: z.string().max(255).optional().or(z.literal('')),
 });
 
 export const moduloBodySchema = z.object({

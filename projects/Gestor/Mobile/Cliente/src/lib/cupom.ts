@@ -114,7 +114,7 @@ export function gerarTextoCupom(data: CupomData): string {
   linhas.push(padCentral('Obrigado pela preferencia!', 48));
   linhas.push(padCentral('Este documento nao substitui a', 48));
   linhas.push(padCentral('Nota Fiscal Eletronica.', 48));
-  if (data.chavePix) {
+  if (data.chavePix && !venda.recebido) {
     linhas.push(SEP);
     linhas.push(padCentral('PAGUE COM PIX', 48));
     linhas.push(`CHAVE PIX: ${data.chavePix}`);

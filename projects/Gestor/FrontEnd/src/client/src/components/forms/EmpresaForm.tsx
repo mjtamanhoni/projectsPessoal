@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
@@ -5,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Plus } from 'lucide-react';
 import { empresaSchema, type EmpresaInput } from '@/schemas';
 import { formatCpfCnpj, formatPhone, formatCelular } from '@/lib/utils';
+import { getUploadsUrl } from '@/lib/empresaLogo';
 import type { Empresa } from '@/types';
 
 interface EmpresaFormProps {
@@ -41,22 +43,48 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
     },
   });
 
+  const [logoNova, setLogoNova] = useState<string | null>(null);
+  const [logoRemovida, setLogoRemovida] = useState(false);
+  const logoAtualUrl = getUploadsUrl(initial?.logomarca);
+  const logoPreview = logoNova ?? (logoRemovida ? null : logoAtualUrl);
+
+  const handleLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoNova(reader.result as string);
+      setLogoRemovida(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const finalizar = (values: EmpresaInput) => {
+    let data = values as Empresa;
+    if (logoNova !== null || logoRemovida) {
+      data = { ...data, logomarca: logoNova ?? '' };
+    }
+    onSubmit(data);
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <Controller
-        name="razao_social"
-        control={control}
-        render={({ field }) => (
-          <Input label="Razao Social *" error={errors.razao_social?.message} autoFocus {...field} />
-        )}
-      />
-      <Controller
-        name="fantasia"
-        control={control}
-        render={({ field }) => (
-          <Input label="Fantasia" error={errors.fantasia?.message} {...field} />
-        )}
-      />
+    <form onSubmit={handleSubmit(finalizar)} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <Controller
+          name="razao_social"
+          control={control}
+          render={({ field }) => (
+            <Input label="Razao Social *" error={errors.razao_social?.message} autoFocus {...field} />
+          )}
+        />
+        <Controller
+          name="fantasia"
+          control={control}
+          render={({ field }) => (
+            <Input label="Fantasia" error={errors.fantasia?.message} {...field} />
+          )}
+        />
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <Controller
           name="cnpj_cpf"
@@ -127,25 +155,61 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
           )}
         />
       </div>
-      <Controller
-        name="email"
-        control={control}
-        render={({ field }) => (
-          <Input label="Email" error={errors.email?.message} type="email" {...field} />
-        )}
-      />
-      <Controller
-        name="chave_pix"
-        control={control}
-        render={({ field }) => (
-          <Input
-            label="Chave PIX"
-            error={errors.chave_pix?.message}
-            placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatoria"
-            {...field}
+      <div className="grid grid-cols-2 gap-4">
+        <Controller
+          name="email"
+          control={control}
+          render={({ field }) => (
+            <Input label="Email" error={errors.email?.message} type="email" {...field} />
+          )}
+        />
+        <Controller
+          name="chave_pix"
+          control={control}
+          render={({ field }) => (
+            <Input
+              label="Chave PIX"
+              error={errors.chave_pix?.message}
+              placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatoria"
+              {...field}
+            />
+          )}
+        />
+      </div>
+
+      <div>
+        <label className="label-field">Logomarca</label>
+        <div className="flex items-center gap-4">
+          {logoPreview && (
+            <img
+              src={logoPreview}
+              alt="Logomarca"
+              className="max-h-16 max-w-40 object-contain border border-border-subtle rounded-lg p-2"
+            />
+          )}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handleLogoFile}
+            className="block text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-accent-primary file:text-white hover:file:bg-accent-hover cursor-pointer"
           />
-        )}
-      />
+          {logoPreview && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setLogoNova(null);
+                setLogoRemovida(true);
+              }}
+            >
+              Remover
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-text-secondary mt-1">
+          Usada no sistema e nos relatorios em PDF. Salva com o nome da empresa.
+        </p>
+      </div>
 
       <div className="flex justify-center gap-3 pt-4">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>

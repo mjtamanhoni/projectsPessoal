@@ -51,7 +51,8 @@ export function gerarPDFCupom(data: CupomData): jsPDF {
       doc.addImage(data.pixQrBase64, 'PNG', qrX, y, qrSize, qrSize);
       y += qrSize + 3;
       doc.setFontSize(fontSize);
-      doc.text('PAGUE COM PIX', (pageWidth - doc.getTextWidth('PAGUE COM PIX')) / 2, y);
+      const legenda = data.venda.recebido ? 'PAGAMENTO CONFIRMADO (PIX)' : 'PAGUE COM PIX';
+      doc.text(legenda, (pageWidth - doc.getTextWidth(legenda)) / 2, y);
     } catch {
       /* QR indisponivel no PDF */
     }

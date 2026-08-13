@@ -481,6 +481,7 @@ export interface Empresa {
   celular?: string;
   email?: string;
   chave_pix?: string;
+  logomarca?: string | null;
   status?: number;
 }
 

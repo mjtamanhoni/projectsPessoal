@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import api from '@/lib/api';
 import { fetchSettings, getCachedSettings } from '@/lib/settings';
+import { preloadEmpresaLogomarca } from '@/lib/empresaLogo';
 import { formRouteMap, routeFormMap, ACAO } from '@/lib/permissions';
 import type { User, FormularioPermissao, Empresa } from '@/types';
 
@@ -222,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const emp = extractEmpresa(parsedUser) ?? await fetchEmpresaData(parsedUser.empresaId);
           setEmpresa(emp);
           setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
+          void preloadEmpresaLogomarca(emp?.logomarca);
           fetchPermissions()
             .then((data) => {
               setPermissoes(data.formularios);
@@ -283,6 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const emp = extractEmpresa(data) ?? await fetchEmpresaData(data.empresaId);
     setEmpresa(emp);
     setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
+    void preloadEmpresaLogomarca(emp?.logomarca);
     try {
       const permData = await fetchPermissions();
       setPermissoes(permData.formularios);

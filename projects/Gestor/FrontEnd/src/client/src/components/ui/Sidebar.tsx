@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useModule } from '@/context/ModuleContext';
 import { useAppMode } from '@/context/AppModeContext';
 import { getLogo } from '@/lib/settings';
+import { getUploadsUrl } from '@/lib/empresaLogo';
 import { getModuleIcon, getModuleImage } from '@/lib/moduleIcons';
 import { formRouteMap } from '@/lib/permissions';
 
@@ -241,14 +242,14 @@ function FormLink({ f, collapsed }: { f: { id: number; nome: string }; collapsed
 }
 
 export function Sidebar() {
-  const { user, empresaNome, logout, temAcesso, permissoes, irrestrito } = useAuth();
+  const { user, empresaNome, logout, temAcesso, permissoes, irrestrito, empresa } = useAuth();
   const { selectedModule, selectModule, menuData, menuLoading, menuError, refetchMenu } = useModule();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>();
   const appMode = useAppMode();
 
-  const logo = getLogo();
+  const logo = getLogo() ?? (empresa?.logomarca ? getUploadsUrl(empresa.logomarca) : null);
   const visibleSettings = temAcesso('/settings');
 
   useEffect(() => {

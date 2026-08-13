@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { horseApi } from '../services/horseApi';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { empresaBodySchema } from '../schemas';
+import { empresaBodySchema, logomarcaBodySchema } from '../schemas';
 
 const router = Router();
 
@@ -51,6 +51,17 @@ router.post('/limpar-dados', authMiddleware, async (req: AuthRequest, res: Respo
       return;
     }
     const result = await horseApi.limparDadosEmpresa(Number(empresa_id));
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.post('/logomarca', authMiddleware, validate(logomarcaBodySchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, logomarca } = req.body;
+    const result = await horseApi.salvarEmpresaLogomarca(Number(id), String(logomarca ?? ''));
     res.json(result);
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;

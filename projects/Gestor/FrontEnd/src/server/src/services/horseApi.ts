@@ -1435,6 +1435,15 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     }
   }
 
+  async salvarEmpresaLogomarca(id: number, logomarca: string): Promise<unknown> {
+    try {
+      const res = await this.api.post('/empresa/logomarca', { id, logomarca }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarModulos(params?: Record<string, unknown>): Promise<Modulo[]> {
     try {
       const res = await this.api.get('/modulo', { params, headers: this.getAuthHeaders() });

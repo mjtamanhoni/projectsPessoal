@@ -58,6 +58,17 @@ router.post('/limpar-dados', auth_1.authMiddleware, async (req, res) => {
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
+router.post('/logomarca', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.logomarcaBodySchema), async (req, res) => {
+    try {
+        const { id, logomarca } = req.body;
+        const result = await horseApi_1.horseApi.salvarEmpresaLogomarca(Number(id), String(logomarca ?? ''));
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
 router.post('/atualizar-sequencias', auth_1.authMiddleware, async (_req, res) => {
     try {
         const result = await horseApi_1.horseApi.atualizarSequencias();

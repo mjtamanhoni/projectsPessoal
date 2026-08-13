@@ -480,6 +480,7 @@ carregar();
 		r.Post("/empresa", basicCRUD.EmpresaAtualizar)
 		r.Put("/empresa", basicCRUD.EmpresaAtualizar)
 		r.Delete("/empresa", basicCRUD.EmpresaExcluir)
+		r.Post("/empresa/logomarca", basicCRUD.EmpresaLogomarcaSalvar)
 		r.Post("/empresa/limpar-dados", basicCRUD.EmpresaLimparDados)
 		r.Post("/empresa/atualizar-sequencias", basicCRUD.EmpresaAtualizarSequencias)
 
