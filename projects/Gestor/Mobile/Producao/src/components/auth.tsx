@@ -1,14 +1,28 @@
 import { useState } from 'react';
-import type { EmpresaPublic } from '../api';
+import { fotoUrl, type EmpresaPublic } from '../api';
+import { getLogomarcaBase64 } from '../lib/logomarca';
 
-export function LogoBox() {
-  return <div className="logo-box">G</div>;
+export function LogoBox({ empresa }: { empresa?: EmpresaPublic | null }) {
+  const src = getLogomarcaBase64() || (empresa?.logomarca ? fotoUrl(empresa.logomarca) : null);
+  if (!src) return null;
+  return (
+    <div className="logo-box">
+      <img
+        src={src}
+        alt="Logomarca"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }}
+        onError={(e) => {
+          e.currentTarget.style.display = 'none';
+        }}
+      />
+    </div>
+  );
 }
 
 export function AuthTitle({ subtitle }: { subtitle: string }) {
   return (
     <>
-      <div className="auth-title">Oficina de Sabores</div>
+      <div className="auth-title">Fábrica de Sabores</div>
       <div className="auth-subtitle">{subtitle}</div>
     </>
   );
@@ -109,7 +123,7 @@ export function AuthFooter({ top = 700, onServerConfig }: { top?: number; onServ
         Configurações do Servidor
       </div>
       <div className="version" style={{ top: top + 70 }}>
-        Oficina de Sabores v1.5
+        Fábrica de Sabores v1.5
       </div>
     </>
   );

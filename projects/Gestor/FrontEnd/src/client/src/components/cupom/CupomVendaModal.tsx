@@ -8,7 +8,7 @@ import type { VendaProduto, Cliente } from '@/types';
 import { gerarTextoCupom, imprimirCupomSerial, type CupomData } from '@/lib/cupom';
 import { gerarPDFCupom } from '@/lib/cupom-pdf';
 import { gerarPayloadPix, gerarQrPixDataUrl } from '@/lib/pix';
-import { getCachedSettings } from '@/lib/settings';
+import { getCachedSettings, getLogo } from '@/lib/settings';
 import { viewPDF } from '@/lib/pdf';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
@@ -47,7 +47,7 @@ export function CupomVendaModal({ venda, onClose, clientes }: CupomVendaModalPro
     formaPagamento: v.recebido ? 'A VISTA' : 'CREDIARIO / PARCELADO',
     parcelas: [] as { numero: number; total: number; vencimento: string; valor: number }[],
     desconto: 0,
-    logoBase64: null,
+    logoBase64: getLogo(),
   });
 
   useEffect(() => {

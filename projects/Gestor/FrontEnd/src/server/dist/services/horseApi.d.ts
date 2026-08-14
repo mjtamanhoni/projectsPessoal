@@ -5,6 +5,7 @@ declare class HorseApiService {
     constructor();
     setToken(token: string): void;
     clearToken(): void;
+    runWithToken(token: string, fn: () => void): void;
     private getAuthHeaders;
     private handleError;
     login(data: LoginRequest): Promise<LoginResponse>;

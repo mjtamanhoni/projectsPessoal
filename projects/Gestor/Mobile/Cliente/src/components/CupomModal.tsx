@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Clipboard } from '@capacitor/clipboard';
 import type { Cliente, EmpresaPublic, Encomenda } from '../api';
+import { fotoUrl } from '../api';
 import { gerarTextoCupom, type CupomData } from '../lib/cupom';
 import { gerarPDFCupom } from '../lib/cupom-pdf';
 import { gerarPayloadPix, gerarQrPixDataUrl } from '../lib/pix';
@@ -20,6 +21,7 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
   const [qrBusy, setQrBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [erro, setErro] = useState('');
+  const [logo, setLogo] = useState<string | null>(null);
 
   const baixada = !!encomenda.baixado;
   const chave = empresa.chave_pix || '';
@@ -55,6 +57,34 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encomenda.id, baixada]);
 
+  useEffect(() => {
+    if (!empresa.logomarca) return;
+    let cancelado = false;
+    fetch(fotoUrl(empresa.logomarca))
+      .then((res) => {
+        if (!res.ok) throw new Error('falha ao buscar a logomarca');
+        return res.blob();
+      })
+      .then(
+        (blob) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('falha ao ler a logomarca'));
+            reader.readAsDataURL(blob);
+          })
+      )
+      .then((dataUrl) => {
+        if (!cancelado) setLogo(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelado) setLogo(null);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [empresa.logomarca]);
+
   const cupomData: CupomData = {
     empresaNome: empresa.fantasia || empresa.razao_social || 'EMPRESA',
     empresaCnpj: empresa.cnpj_cpf || '',
@@ -63,7 +93,7 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
     empresaEmail: empresa.email || '',
     chavePix: chave || undefined,
     pixQrBase64: qr,
-    logoBase64: null,
+    logoBase64: logo,
     venda: {
       id: encomenda.id,
       codigo: encomenda.codigo ?? encomenda.id,

@@ -14,6 +14,22 @@ export function gerarPDFCupom(data: CupomData): jsPDF {
   const fontSize = charWidth / (0.6 * (25.4 / 72));
   let y = margin;
 
+  if (data.logoBase64) {
+    try {
+      const imgProps = doc.getImageProperties(data.logoBase64);
+      const logoSize = 22;
+      const ratio = Math.min(logoSize / imgProps.width, logoSize / imgProps.height);
+      const logoW = imgProps.width * ratio;
+      const logoH = imgProps.height * ratio;
+      const logoX = (pageWidth - logoW) / 2;
+      const imgType = imgProps.fileType.toUpperCase() as 'PNG' | 'JPEG' | 'WEBP';
+      doc.addImage(data.logoBase64, imgType, logoX, margin, logoW, logoH);
+      y = margin + logoH + 3;
+    } catch {
+      y = margin;
+    }
+  }
+
   doc.setFont('courier', 'normal');
   doc.setFontSize(fontSize);
 

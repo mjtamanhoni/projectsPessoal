@@ -220,7 +220,7 @@ export default function Dashboard() {
       )}
 
       <div className="version" style={{ top: 810 }}>
-        Oficina de Sabores v1.5
+        Fábrica de Sabores v1.5
       </div>
     </div>
   );

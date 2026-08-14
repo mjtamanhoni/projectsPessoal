@@ -277,6 +277,7 @@ export declare const empresaBodySchema: z.ZodObject<{
     email: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     chave_pix: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     logomarca: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    delivery: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const moduloBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;

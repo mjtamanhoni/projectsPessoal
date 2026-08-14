@@ -14,7 +14,7 @@ const BOTOES = [
 
 export default function MenuPrincipal() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, empresa, empresaNome } = useAuth();
 
   const aoClicar = (label: string, destino: string) => {
     if (label === 'SAIR') {
@@ -28,8 +28,8 @@ export default function MenuPrincipal() {
   return (
     <div className="screen">
       <BackButton onClick={() => navigate('/dashboard')} />
-      <LogoBox />
-      <div className="auth-title">Oficina de Sabores</div>
+      <LogoBox empresa={empresa} />
+      <div className="auth-title">{empresaNome || 'Fábrica de Sabores'}</div>
       <div className="auth-subtitle">Menu Principal</div>
 
       <div className="auth-card" style={{ top: 290, height: 400 }}>
@@ -46,7 +46,7 @@ export default function MenuPrincipal() {
       </div>
 
       <div className="version" style={{ top: 770 }}>
-        Oficina de Sabores v1.5
+        Fábrica de Sabores v1.5
       </div>
     </div>
   );

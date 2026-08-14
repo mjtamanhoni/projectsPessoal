@@ -96,6 +96,7 @@ export const empresaSchema = z.object({
   email: z.string().email('Email invalido').max(200).optional().or(z.literal('')),
   chave_pix: z.string().max(255).optional().or(z.literal('')),
   logomarca: z.string().max(11 * 1024 * 1024).optional().or(z.literal('')),
+  delivery: z.number().int().min(0).max(1).optional(),
 });
 
 export const loginSchema = z.object({

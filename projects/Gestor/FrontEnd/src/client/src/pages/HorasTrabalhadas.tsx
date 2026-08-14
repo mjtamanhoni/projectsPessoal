@@ -16,7 +16,7 @@ import type { HoraTrabalhadaInput } from '@/schemas';
 import api from '@/lib/api';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw, Clock, DollarSign, CalendarDays, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Users, User, Wrench, FileDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, RefreshCw, Clock, DollarSign, CalendarDays, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Users, User, Wrench, FileDown, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -127,7 +127,7 @@ function loadFilters(): FilterState {
     servicoId: undefined,
   };
   try {
-    const saved = localStorage.getItem(FILTER_KEY);
+    const saved = sessionStorage.getItem(FILTER_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       return { ...defaults, ...parsed };
@@ -137,7 +137,7 @@ function loadFilters(): FilterState {
 }
 
 function saveFilters(filters: FilterState) {
-  localStorage.setItem(FILTER_KEY, JSON.stringify(filters));
+  sessionStorage.setItem(FILTER_KEY, JSON.stringify(filters));
 }
 
 export function HorasTrabalhadas() {
@@ -176,6 +176,25 @@ export function HorasTrabalhadas() {
   const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | undefined>(savedFilters.usuarioId);
   const [filtroClienteId, setFiltroClienteId] = useState<number | undefined>(savedFilters.clienteId);
   const [filtroServicoId, setFiltroServicoId] = useState<number | undefined>(savedFilters.servicoId);
+
+  const FILTROS_ABERTO_KEY = 'horas_filtros_aberto';
+  const [filtrosAbertos, setFiltrosAbertos] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(FILTROS_ABERTO_KEY) !== '0';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleFiltros = () => {
+    setFiltrosAbertos((v) => {
+      const novo = !v;
+      try {
+        sessionStorage.setItem(FILTROS_ABERTO_KEY, novo ? '1' : '0');
+      } catch { /* ignore */ }
+      return novo;
+    });
+  };
 
   useEffect(() => {
     Promise.all([api.get('/clientes'), api.get('/usuarios'), api.get('/servicos')]).then(([c, u, s]) => {
@@ -269,6 +288,17 @@ export function HorasTrabalhadas() {
     if (minDec <= 0) return null;
     return totalHoras - minDec;
   }, [totalHoras, servicoSelecionado]);
+
+  const nomeFiltroUsuario = filtroUsuarioId ? usuarios.find((u) => (u.id ?? u.codigo) === filtroUsuarioId)?.nome : undefined;
+  const nomeFiltroCliente = filtroClienteId ? clientes.find((c) => (c.id ?? c.codigo) === filtroClienteId)?.nome : undefined;
+  const nomeFiltroServico = filtroServicoId ? servicos.find((s) => (s.id ?? s.codigo) === filtroServicoId)?.nome : undefined;
+
+  const resumoFiltros = [
+    { rotulo: 'Período', valor: `${formatDate(dataInicio)} a ${formatDate(dataFim)}` },
+    { rotulo: 'Usuário', valor: nomeFiltroUsuario ?? 'Todos' },
+    { rotulo: 'Cliente', valor: nomeFiltroCliente ?? 'Todos' },
+    { rotulo: 'Serviço', valor: nomeFiltroServico ?? 'Todos' },
+  ];
 
   const abatimentosFiltrados = useMemo(() => {
     if (!abatimentos) return [];
@@ -698,7 +728,29 @@ export function HorasTrabalhadas() {
       </PageHeader>
 
       <Card className="mb-6">
-        <div className="flex items-center gap-4 flex-wrap">
+        <button
+          type="button"
+          onClick={toggleFiltros}
+          className="w-full flex items-center justify-between gap-2 group"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+            <Filter size={16} className="text-accent-primary" />
+            Filtros
+          </span>
+          <span className="flex-1 flex items-center justify-center gap-x-3 gap-y-0.5 flex-wrap min-w-0 px-2">
+            {resumoFiltros.map((f) => (
+              <span key={f.rotulo} className="flex items-center gap-1 min-w-0">
+                <span className="text-text-secondary">{f.rotulo}:</span>
+                <span className="font-semibold text-text-primary truncate max-w-[180px]">{f.valor}</span>
+              </span>
+            ))}
+          </span>
+          <span className="text-text-secondary">
+            {filtrosAbertos ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </span>
+        </button>
+        {filtrosAbertos && (
+        <div className="flex items-center gap-4 flex-wrap mt-4">
           <div className="flex items-center gap-2">
             <CalendarDays size={18} className="text-text-secondary" />
             <span className="text-sm font-medium text-text-secondary">Periodo:</span>
@@ -764,6 +816,7 @@ export function HorasTrabalhadas() {
             />
           </div>
         </div>
+        )}
       </Card>
 
       <div className="flex flex-wrap gap-3 mb-6">

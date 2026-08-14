@@ -48,14 +48,7 @@ body {
   width: 64px;
   height: 64px;
   border-radius: 16px;
-  background: #2d5e3a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Inter', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: #ffffff;
+  overflow: hidden;
 }
 
 .auth-title {

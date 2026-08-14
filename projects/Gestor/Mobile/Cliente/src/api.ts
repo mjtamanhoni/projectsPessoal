@@ -12,6 +12,8 @@ export interface EmpresaPublic {
   celular?: string;
   email?: string;
   chave_pix?: string;
+  logomarca?: string;
+  delivery?: number;
 }
 
 export interface Cliente {
@@ -254,8 +256,8 @@ export function extrairErro(e: unknown): string {
   return 'Erro desconhecido';
 }
 
-export async function listarEmpresas(): Promise<EmpresaPublic[]> {
-  const res = await request('/empresaPublic');
+export async function listarEmpresas(apenasDelivery?: boolean): Promise<EmpresaPublic[]> {
+  const res = await request(`/empresaPublic${apenasDelivery ? '?delivery=1' : ''}`);
   return (await parseResponse(res)) as EmpresaPublic[];
 }
 

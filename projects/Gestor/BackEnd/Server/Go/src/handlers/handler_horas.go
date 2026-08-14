@@ -415,6 +415,11 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 	now := time.Now()
 	anoStr := r.URL.Query().Get("ano")
 	mesStr := r.URL.Query().Get("mes")
+	dataInicio := r.URL.Query().Get("dataInicio")
+	dataFim := r.URL.Query().Get("dataFim")
+	usuarioID := parseInt(r.URL.Query().Get("usuario_id"), 0)
+	clienteID := parseInt(r.URL.Query().Get("cliente_id"), 0)
+	servicoID := parseInt(r.URL.Query().Get("servico_id"), 0)
 
 	ano := now.Year()
 	mes := int(now.Month())
@@ -430,30 +435,64 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
+	buildCond := func(alias, colData string) (string, []interface{}) {
+		args := []interface{}{empresaID}
+		argN := 2
+		cond := ""
+		if dataInicio != "" || dataFim != "" {
+			if dataInicio != "" {
+				args = append(args, dataInicio)
+				cond += fmt.Sprintf(" AND %s.%s >= $%d", alias, colData, argN)
+				argN++
+			}
+			if dataFim != "" {
+				args = append(args, dataFim)
+				cond += fmt.Sprintf(" AND %s.%s <= $%d", alias, colData, argN)
+				argN++
+			}
+		} else {
+			args = append(args, ano, mes)
+			cond = fmt.Sprintf(" AND EXTRACT(YEAR FROM %s.%s) = $%d AND EXTRACT(MONTH FROM %s.%s) = $%d", alias, colData, argN, alias, colData, argN+1)
+			argN += 2
+		}
+		if usuarioID > 0 {
+			args = append(args, usuarioID)
+			cond += fmt.Sprintf(" AND %s.usuario_id = $%d", alias, argN)
+			argN++
+		}
+		if clienteID > 0 {
+			args = append(args, clienteID)
+			cond += fmt.Sprintf(" AND %s.cliente_id = $%d", alias, argN)
+			argN++
+		}
+		if servicoID > 0 {
+			args = append(args, servicoID)
+			cond += fmt.Sprintf(" AND %s.servico_id = $%d", alias, argN)
+			argN++
+		}
+		return cond, args
+	}
+
 	var totalHoras, totalValor, totalAbatido float64
 	var diasTrabalhados int
 
+	condHt, argsHt := buildCond("ht", "data_servico")
 	err := h.Pool.QueryRow(r.Context(), `
 		SELECT COALESCE(SUM(ht.quantidade_horas), 0),
 			COALESCE(SUM(ht.total_horas), 0),
 			COALESCE(COUNT(DISTINCT ht.data_servico), 0)
 		FROM horas_trabalhadas ht
-		WHERE ht.empresa_id = $1
-			AND EXTRACT(YEAR FROM ht.data_servico) = $2
-			AND EXTRACT(MONTH FROM ht.data_servico) = $3
-	`, empresaID, ano, mes).Scan(&totalHoras, &totalValor, &diasTrabalhados)
+		WHERE 1=1`+condHt, argsHt...).Scan(&totalHoras, &totalValor, &diasTrabalhados)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	condHa, argsHa := buildCond("ha", "data_abatimento")
 	err = h.Pool.QueryRow(r.Context(), `
 		SELECT COALESCE(SUM(ha.quantidade_horas), 0)
 		FROM horas_abatidas ha
-		WHERE ha.empresa_id = $1
-			AND EXTRACT(YEAR FROM ha.data_abatimento) = $2
-			AND EXTRACT(MONTH FROM ha.data_abatimento) = $3
-	`, empresaID, ano, mes).Scan(&totalAbatido)
+		WHERE 1=1`+condHa, argsHa...).Scan(&totalAbatido)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -464,12 +503,9 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 			SUM(ht.quantidade_horas) AS horas,
 			SUM(ht.total_horas) AS valor
 		FROM horas_trabalhadas ht
-		WHERE ht.empresa_id = $1
-			AND EXTRACT(YEAR FROM ht.data_servico) = $2
-			AND EXTRACT(MONTH FROM ht.data_servico) = $3
+		WHERE 1=1`+condHt+`
 		GROUP BY ht.data_servico
-		ORDER BY ht.data_servico
-	`, empresaID, ano, mes)
+		ORDER BY ht.data_servico`, argsHt...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -481,11 +517,9 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 			SUM(ht.quantidade_horas) AS horas,
 			SUM(ht.total_horas) AS valor
 		FROM horas_trabalhadas ht
-		WHERE ht.empresa_id = $1
-			AND EXTRACT(YEAR FROM ht.data_servico) = $2
+		WHERE 1=1`+condHt+`
 		GROUP BY EXTRACT(MONTH FROM ht.data_servico)
-		ORDER BY mes
-	`, empresaID, ano)
+		ORDER BY mes`, argsHt...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -496,11 +530,9 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 		SELECT EXTRACT(MONTH FROM ha.data_abatimento) AS mes,
 			SUM(ha.quantidade_horas) AS horas_abatidas
 		FROM horas_abatidas ha
-		WHERE ha.empresa_id = $1
-			AND EXTRACT(YEAR FROM ha.data_abatimento) = $2
+		WHERE 1=1`+condHa+`
 		GROUP BY EXTRACT(MONTH FROM ha.data_abatimento)
-		ORDER BY mes
-	`, empresaID, ano)
+		ORDER BY mes`, argsHa...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return

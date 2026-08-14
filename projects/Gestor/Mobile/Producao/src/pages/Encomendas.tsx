@@ -31,6 +31,7 @@ import PlusButton from '../components/PlusButton';
 import { useAuth } from '../auth';
 import { gerarTextoCupom, type CupomData } from '../lib/cupom';
 import { gerarPDFCupom } from '../lib/cupom-pdf';
+import { getLogomarcaBase64 } from '../lib/logomarca';
 import { gerarPayloadPix, gerarQrPixDataUrl } from '../lib/pix';
 import { compartilharPDF } from '../lib/share';
 
@@ -292,7 +293,7 @@ const carregar = useCallback(async () => {
         empresaEmail: empresa?.email || '',
         chavePix: empresa?.chave_pix || '',
         pixQrBase64: null,
-        logoBase64: null,
+        logoBase64: getLogomarcaBase64(),
         venda: vendaComItens,
         cliente,
         numeroCupom: vendaId,

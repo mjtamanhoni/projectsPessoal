@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config';
 import { AppError } from '../types';
 import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
@@ -18,6 +19,10 @@ function normalizeDate(val: unknown): string {
   const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
   return match ? match[1] : s;
 }
+
+// Cada requisicao autenticada carrega seu proprio token (via AsyncLocalStorage),
+// evitando que sessoes de empresas/usuarios diferentes se sobrescrevam.
+const tokenStore = new AsyncLocalStorage<string | null>();
 
 class HorseApiService {
   private api: AxiosInstance;
@@ -39,8 +44,13 @@ class HorseApiService {
     this.token = null;
   }
 
+  runWithToken(token: string, fn: () => void) {
+    tokenStore.run(token, fn);
+  }
+
   private getAuthHeaders() {
-    return this.token ? { Authorization: `Bearer ${this.token}` } : {};
+    const token = tokenStore.getStore() ?? this.token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
   private handleError(error: unknown): never {
@@ -74,7 +84,6 @@ class HorseApiService {
   async login(data: LoginRequest): Promise<LoginResponse> {
     try {
       const res = await this.api.post('/usuario/login', data);
-      this.setToken(res.data.token);
       return res.data as LoginResponse;
     } catch (error) {
       return this.handleError(error);

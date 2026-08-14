@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUltimoLogin, useAuth } from '../auth';
 import { extrairErro } from '../api';
-import { LogoBox, AuthTitle, AuthFooter } from '../components/auth';
+import { AuthTitle, AuthFooter } from '../components/auth';
 
 const DOT_OFFSETS = [61, 105, 149, 193];
 
@@ -67,7 +67,6 @@ export default function LoginPin() {
 
   return (
     <div className="screen">
-      <LogoBox />
       <AuthTitle subtitle="Acesse com seu PIN" />
 
       <div className="auth-card" style={{ height: 340 }}>

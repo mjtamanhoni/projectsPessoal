@@ -20,11 +20,11 @@ describe('Auth Middleware', () => {
 
   it('deve chamar next() com token válido', async () => {
     const jwt = await import('jsonwebtoken');
-    const token = jwt.sign({ id: 1 }, 'c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d', { expiresIn: '1h' });
+    const token = jwt.sign({ id: 1, empresa: 1 }, 'c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d', { expiresIn: '1h' });
 
     const { authMiddleware } = await import('../middleware/auth');
 
-    const req = { headers: { authorization: `Bearer ${token}` } } as any;
+    const req = { headers: { authorization: `Bearer ${token}` }, query: {} } as any;
     const res = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
@@ -35,5 +35,6 @@ describe('Auth Middleware', () => {
 
     expect(next).toHaveBeenCalled();
     expect(req.usuarioId).toBe(1);
+    expect(req.empresaId).toBe(1);
   });
 });

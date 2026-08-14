@@ -294,7 +294,7 @@ export function Empresas() {
         <DataTable columns={columns} data={empresasFiltradas} loading={loading} error={error} emptyMessage="Nenhuma empresa cadastrada" renderSubComponent={renderSubComponent} />
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Empresa' : 'Nova Empresa'}>
+      <Modal isOpen={modalOpen} onClose={closeModal} title={editing ? 'Editar Empresa' : 'Nova Empresa'} maxWidth="max-w-xl">
         {fetchingOne ? (
           <Spinner />
         ) : (

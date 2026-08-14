@@ -482,6 +482,7 @@ export interface Empresa {
   email?: string;
   chave_pix?: string;
   logomarca?: string | null;
+  delivery?: number;
   status?: number;
 }
 

@@ -7,7 +7,7 @@ export default function Ajuda() {
   const { usuario } = useAuth();
 
   const itens: { label: string; valor: string }[] = [
-    { label: 'Aplicativo', valor: 'Oficina de Sabores — Produção' },
+    { label: 'Aplicativo', valor: 'Fábrica de Sabores — Produção' },
     { label: 'Versão', valor: '1.5' },
     { label: 'Usuário', valor: usuario?.nome ?? '—' },
     { label: 'Contato de suporte', valor: usuario?.email ?? '—' },

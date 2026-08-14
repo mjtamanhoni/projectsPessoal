@@ -24,6 +24,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
 import { gerarPDFCupom } from '../lib/cupom-pdf';
+import { getLogomarcaBase64 } from '../lib/logomarca';
 import { gerarPayloadPix, gerarQrPixDataUrl } from '../lib/pix';
 import { compartilharPDF } from '../lib/share';
 import { Clipboard } from '@capacitor/clipboard';
@@ -206,6 +207,7 @@ const carregar = useCallback(async () => {
         empresaEmail: empresa?.email || '',
         chavePix: empresa?.chave_pix || '',
         pixQrBase64,
+        logoBase64: getLogomarcaBase64(),
         venda: cupomVenda,
         cliente,
         numeroCupom: numero,

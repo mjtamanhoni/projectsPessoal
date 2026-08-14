@@ -59,7 +59,7 @@ export default function MinhasEncomendas() {
   const [erro, setErro] = useState('');
   const [expandida, setExpandida] = useState<number | null>(null);
   const [cupomDe, setCupomDe] = useState<Encomenda | null>(null);
-  const [filtroStatus, setFiltroStatus] = useState<number[]>(CHIPS_FILTRO.map((c) => c.valor));
+  const [filtroStatus, setFiltroStatus] = useState<number[]>([0, 1]);
   const [cancelarDe, setCancelarDe] = useState<Encomenda | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [editandoDe, setEditandoDe] = useState<Encomenda | null>(null);

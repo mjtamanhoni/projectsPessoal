@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { loginApi, type LoginResponse, type EmpresaPublic } from './api';
+import { limparLogomarcaCache, preloadLogomarca } from './lib/logomarca';
 
 const TOKEN_KEY = 'producao.token';
 const USER_KEY = 'producao.user';
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(raw) as EmpresaPublic;
         setEmpresa(parsed);
         setEmpresaNome(parsed.fantasia || parsed.razao_social || '');
+        void preloadLogomarca(parsed.logomarca);
       }
     } catch {
       /* ignora */
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUsuario(null);
       setEmpresa(null);
       setEmpresaNome('');
+      limparLogomarcaCache();
     };
     window.addEventListener('producao:unauthorized', onUnauthorized);
     return () => window.removeEventListener('producao:unauthorized', onUnauthorized);
@@ -70,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsuario(data);
     setEmpresa(empresaData);
     setEmpresaNome(empresaData.fantasia || empresaData.razao_social || '');
+    void preloadLogomarca(empresaData.logomarca);
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(data));
     localStorage.setItem(EMPRESA_KEY, JSON.stringify(empresaData));
@@ -100,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsuario(null);
     setEmpresa(null);
     setEmpresaNome('');
+    limparLogomarcaCache();
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(EMPRESA_KEY);

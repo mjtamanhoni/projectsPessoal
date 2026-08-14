@@ -29,6 +29,7 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
       celular: initial.celular || '',
       email: initial.email || '',
       chave_pix: initial.chave_pix || '',
+      delivery: initial.delivery ?? 0,
     } : {
       razao_social: '',
       fantasia: '',
@@ -40,6 +41,7 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
       celular: '',
       email: '',
       chave_pix: '',
+      delivery: 0,
     },
   });
 
@@ -178,8 +180,37 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
       </div>
 
       <div>
+        <label className="label-field">Empresa de delivery?</label>
+        <Controller
+          name="delivery"
+          control={control}
+          render={({ field }) => (
+            <div className="flex gap-2">
+              {[0, 1].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => field.onChange(v)}
+                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    field.value === v
+                      ? 'bg-accent-primary text-white border-transparent'
+                      : 'bg-transparent text-text-secondary border-border-subtle hover:border-accent-primary'
+                  }`}
+                >
+                  {v === 1 ? 'Sim' : 'Nao'}
+                </button>
+              ))}
+            </div>
+          )}
+        />
+        <p className="text-xs text-text-secondary mt-1">
+          Indica se a empresa atua no ramo de delivery (1-Sim / 0-Nao).
+        </p>
+      </div>
+
+      <div>
         <label className="label-field">Logomarca</label>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           {logoPreview && (
             <img
               src={logoPreview}

@@ -9,10 +9,43 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
 import {
-  Clock, TrendingUp, TrendingDown, DollarSign, Calendar, Activity, ChevronLeft, ChevronRight, Loader2, RefreshCw,
+  Clock, TrendingUp, TrendingDown, DollarSign, Calendar, Activity, ChevronLeft, ChevronRight, Loader2, RefreshCw, CalendarDays, User, Users, Wrench, Filter, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import api from '@/lib/api';
-import type { HorasDashboardData, HoraExcedida } from '@/types';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
+import type { HorasDashboardData, HoraExcedida, Cliente, Usuario, Servico } from '@/types';
+
+const FILTER_KEY = 'horas_trabalhadas_filtros';
+
+interface FilterState {
+  dataInicio: string;
+  dataFim: string;
+  usuarioId: number | undefined;
+  clienteId: number | undefined;
+  servicoId: number | undefined;
+}
+
+function loadFilters(): FilterState {
+  const defaults: FilterState = {
+    dataInicio: (() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; })(),
+    dataFim: (() => { const d = new Date(); d.setMonth(d.getMonth() + 1, 0); return d.toISOString().split('T')[0]; })(),
+    usuarioId: undefined,
+    clienteId: undefined,
+    servicoId: undefined,
+  };
+  try {
+    const saved = sessionStorage.getItem(FILTER_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...defaults, ...parsed };
+    }
+  } catch { /* ignore */ }
+  return defaults;
+}
+
+function saveFilters(filters: FilterState) {
+  sessionStorage.setItem(FILTER_KEY, JSON.stringify(filters));
+}
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -34,33 +67,103 @@ function mediaDiaria(total: number, dias: number): string {
 
 export function HorasDashboard() {
   const hoje = new Date();
+  const savedFilters = useMemo(() => loadFilters(), []);
   const [ano, setAno] = useState(hoje.getFullYear());
   const [mes, setMes] = useState(hoje.getMonth() + 1);
+  const [dataInicio, setDataInicio] = useState(savedFilters.dataInicio);
+  const [dataFim, setDataFim] = useState(savedFilters.dataFim);
+  const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | undefined>(savedFilters.usuarioId);
+  const [filtroClienteId, setFiltroClienteId] = useState<number | undefined>(savedFilters.clienteId);
+  const [filtroServicoId, setFiltroServicoId] = useState<number | undefined>(savedFilters.servicoId);
   const [data, setData] = useState<HorasDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [filtrosAbertos, setFiltrosAbertos] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('horas_filtros_aberto') !== '0';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleFiltros = () => {
+    setFiltrosAbertos((v) => {
+      const novo = !v;
+      try {
+        sessionStorage.setItem('horas_filtros_aberto', novo ? '1' : '0');
+      } catch { /* ignore */ }
+      return novo;
+    });
+  };
+
+  const nomeFiltroUsuario = filtroUsuarioId ? usuarios.find((u) => (u.id ?? u.codigo) === filtroUsuarioId)?.nome : undefined;
+  const nomeFiltroCliente = filtroClienteId ? clientes.find((c) => (c.id ?? c.codigo) === filtroClienteId)?.nome : undefined;
+  const nomeFiltroServico = filtroServicoId ? servicos.find((s) => (s.id ?? s.codigo) === filtroServicoId)?.nome : undefined;
+
+  const resumoFiltros = [
+    { rotulo: 'Período', valor: `${MESES[mes - 1]} ${ano}` },
+    { rotulo: 'Usuário', valor: nomeFiltroUsuario ?? 'Todos' },
+    { rotulo: 'Cliente', valor: nomeFiltroCliente ?? 'Todos' },
+    { rotulo: 'Serviço', valor: nomeFiltroServico ?? 'Todos' },
+  ];
+
+  useEffect(() => {
+    Promise.all([api.get('/clientes'), api.get('/usuarios'), api.get('/servicos')]).then(([c, u, s]) => {
+      setClientes(c.data as Cliente[]);
+      setUsuarios(u.data as Usuario[]);
+      setServicos(s.data as Servico[]);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    saveFilters({ dataInicio, dataFim, usuarioId: filtroUsuarioId, clienteId: filtroClienteId, servicoId: filtroServicoId });
+  }, [dataInicio, dataFim, filtroUsuarioId, filtroClienteId, filtroServicoId]);
+
+  useEffect(() => {
+    if (!dataInicio) return;
+    const [y, m] = dataInicio.split('-').map(Number);
+    setAno(y);
+    setMes(m);
+  }, [dataInicio]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/horas-dashboard', { params: { ano: String(ano), mes: String(mes) } });
+      const params: Record<string, string> = { ano: String(ano), mes: String(mes) };
+      if (dataInicio) params.dataInicio = dataInicio;
+      if (dataFim) params.dataFim = dataFim;
+      if (filtroUsuarioId) params.usuario_id = String(filtroUsuarioId);
+      if (filtroClienteId) params.cliente_id = String(filtroClienteId);
+      if (filtroServicoId) params.servico_id = String(filtroServicoId);
+      const res = await api.get('/horas-dashboard', { params });
       setData(res.data as HorasDashboardData);
     } catch {
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [ano, mes]);
+  }, [ano, mes, dataInicio, dataFim, filtroUsuarioId, filtroClienteId, filtroServicoId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const atualizarPeriodoMes = (novoMes: number, novoAno: number) => {
+    setMes(novoMes);
+    setAno(novoAno);
+    const mesPadded = String(novoMes).padStart(2, '0');
+    setDataInicio(`${novoAno}-${mesPadded}-01`);
+    setDataFim(`${novoAno}-${mesPadded}-${new Date(novoAno, novoMes, 0).getDate()}`);
+  };
+
   const mesAnterior = () => {
-    if (mes === 1) { setMes(12); setAno(ano - 1); }
-    else { setMes(mes - 1); }
+    if (mes === 1) atualizarPeriodoMes(12, ano - 1);
+    else atualizarPeriodoMes(mes - 1, ano);
   };
 
   const mesSeguinte = () => {
-    if (mes === 12) { setMes(1); setAno(ano + 1); }
-    else { setMes(mes + 1); }
+    if (mes === 12) atualizarPeriodoMes(1, ano + 1);
+    else atualizarPeriodoMes(mes + 1, ano);
   };
 
   const dailyMap = new Map<string, { horas: number; valor: number }>();
@@ -121,37 +224,103 @@ export function HorasDashboard() {
     <Layout>
       <PageHeader title="Dashboard Horas" subtitle="Visão geral das horas trabalhadas" />
 
-      <div className="flex items-center gap-4 mb-6">
-        <Card className="flex items-center gap-3 px-4 py-2">
-          <button onClick={mesAnterior} className="p-1 hover:bg-bg-muted rounded transition-colors">
-            <ChevronLeft size={18} className="text-text-secondary" />
-          </button>
-          <select
-            value={mes}
-            onChange={(e) => setMes(Number(e.target.value))}
-            className="text-sm font-medium text-text-primary bg-transparent border-none outline-none cursor-pointer"
-          >
-            {MESES.map((nome, i) => (
-              <option key={i + 1} value={i + 1}>{nome}</option>
-            ))}
-          </select>
-          <select
-            value={ano}
-            onChange={(e) => setAno(Number(e.target.value))}
-            className="text-sm font-medium text-text-primary bg-transparent border-none outline-none cursor-pointer"
-          >
-            {Array.from({ length: 5 }, (_, i) => hoje.getFullYear() - 2 + i).map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-          <button onClick={mesSeguinte} className="p-1 hover:bg-bg-muted rounded transition-colors">
-            <ChevronRight size={18} className="text-text-secondary" />
-          </button>
-        </Card>
+      <div className="flex items-center justify-end mb-6">
         <Button variant="secondary" onClick={() => fetchData()} title="Atualizar dados">
           <RefreshCw size={16} />
         </Button>
       </div>
+
+      <Card className="mb-6">
+        <button
+          type="button"
+          onClick={toggleFiltros}
+          className="w-full flex items-center justify-between gap-2 group"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+            <Filter size={16} className="text-accent-primary" />
+            Filtros
+          </span>
+          <span className="flex-1 flex items-center justify-center gap-x-3 gap-y-0.5 flex-wrap min-w-0 px-2">
+            {resumoFiltros.map((f) => (
+              <span key={f.rotulo} className="flex items-center gap-1 min-w-0">
+                <span className="text-text-secondary">{f.rotulo}:</span>
+                <span className="font-semibold text-text-primary truncate max-w-[180px]">{f.valor}</span>
+              </span>
+            ))}
+          </span>
+          <span className="text-text-secondary">
+            {filtrosAbertos ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </span>
+        </button>
+        {filtrosAbertos && (
+        <div className="flex items-center gap-4 flex-wrap mt-4">
+          <div className="flex items-center gap-2">
+            <CalendarDays size={18} className="text-text-secondary" />
+            <span className="text-sm font-medium text-text-secondary">Periodo:</span>
+            <button onClick={mesAnterior} className="p-1 hover:bg-bg-muted rounded transition-colors">
+              <ChevronLeft size={18} className="text-text-secondary" />
+            </button>
+            <select
+              value={mes}
+              onChange={(e) => atualizarPeriodoMes(Number(e.target.value), ano)}
+              className="px-3 py-1.5 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
+            >
+              {MESES.map((nome, i) => (
+                <option key={i + 1} value={i + 1}>{nome}</option>
+              ))}
+            </select>
+            <select
+              value={ano}
+              onChange={(e) => atualizarPeriodoMes(mes, Number(e.target.value))}
+              className="px-3 py-1.5 rounded-lg border border-border-primary bg-bg-primary text-foreground-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
+            >
+              {Array.from({ length: 5 }, (_, i) => hoje.getFullYear() - 2 + i).map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+            <button onClick={mesSeguinte} className="p-1 hover:bg-bg-muted rounded transition-colors">
+              <ChevronRight size={18} className="text-text-secondary" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <User size={16} className="text-text-secondary" />
+            <label className="text-sm text-text-secondary">Usuario:</label>
+            <RegistroSelect<number>
+              value={filtroUsuarioId ?? null}
+              onChange={(v) => setFiltroUsuarioId(v)}
+              onClear={() => setFiltroUsuarioId(undefined)}
+              options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
+              title="Filtro por Usuario"
+              placeholder="Todos os usuarios"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Users size={16} className="text-text-secondary" />
+            <label className="text-sm text-text-secondary">Cliente:</label>
+            <RegistroSelect<number>
+              value={filtroClienteId ?? null}
+              onChange={(v) => setFiltroClienteId(v)}
+              onClear={() => setFiltroClienteId(undefined)}
+              options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
+              title="Filtro por Cliente"
+              placeholder="Todos os clientes"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Wrench size={16} className="text-text-secondary" />
+            <label className="text-sm text-text-secondary">Servico:</label>
+            <RegistroSelect<number>
+              value={filtroServicoId ?? null}
+              onChange={(v) => setFiltroServicoId(v)}
+              onClear={() => setFiltroServicoId(undefined)}
+              options={servicos.map((s) => ({ value: (s.id ?? s.codigo)!, label: s.nome }))}
+              title="Filtro por Servico"
+              placeholder="Todos os servicos"
+            />
+          </div>
+        </div>
+        )}
+      </Card>
 
       {loading ? (
         <div className="flex justify-center py-20">

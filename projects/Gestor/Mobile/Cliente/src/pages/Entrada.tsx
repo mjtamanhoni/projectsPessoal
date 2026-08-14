@@ -3,42 +3,34 @@ import { useNavigate } from 'react-router-dom';
 import {
   buscarClientePorDocumento,
   extrairErro,
+  fotoUrl,
   getDocumentoLembrado,
-  getEmpresaSelecionadaMemoria,
   listarEmpresas,
   setDocumentoLembrado,
-  setEmpresaSelecionadaMemoria,
   type EmpresaPublic,
 } from '../api';
 import { useSessao } from '../auth';
-import { mascaraCpfCnpj } from '../format';
+import { mascaraCpfCnpj, mascaraTelefone } from '../format';
 
 export default function Entrada() {
   const navigate = useNavigate();
-  const { entrar, empresa: empresaSessao, cliente } = useSessao();
+  const { entrar, cliente } = useSessao();
 
   const [empresas, setEmpresas] = useState<EmpresaPublic[]>([]);
-  const [empresaAberta, setEmpresaAberta] = useState(false);
-  const [empresaSelecionada, setEmpresaSelecionada] = useState<EmpresaPublic | null>(
-    empresaSessao || getEmpresaSelecionadaMemoria()
-  );
   const [documento, setDocumento] = useState(() => getDocumentoLembrado() || cliente?.cnpj_cpf || '');
   const [documentoBloqueado, setDocumentoBloqueado] = useState(() => !!getDocumentoLembrado());
   const [erro, setErro] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [carregandoId, setCarregandoId] = useState<number | null>(null);
+  const [carregandoLista, setCarregandoLista] = useState(true);
 
   useEffect(() => {
     if (empresas.length > 0) return;
-    listarEmpresas()
-      .then((lista) => {
-        setEmpresas(lista);
-        if (lista.length === 1 && !empresaSelecionada) setEmpresaSelecionada(lista[0]);
-      })
-      .catch((e) => setErro(extrairErro(e)));
+    listarEmpresas(true)
+      .then((lista) => setEmpresas(lista.filter((e) => Number(e.delivery) === 1)))
+      .catch((e) => setErro(extrairErro(e)))
+      .finally(() => setCarregandoLista(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const nomeEmpresa = (e: EmpresaPublic | null) => (e ? e.fantasia || e.razao_social : 'Selecione a empresa');
 
   const limparDocumento = () => {
     setDocumento('');
@@ -46,142 +38,104 @@ export default function Entrada() {
     setDocumentoLembrado('');
   };
 
-  const continuar = async () => {
+  const selecionarEmpresa = async (empresa: EmpresaPublic) => {
     setErro('');
-    if (!empresaSelecionada) {
-      setErro('Selecione a empresa');
-      return;
-    }
     const doc = documento.replace(/\D/g, '');
     if (doc.length < 11) {
-      setErro('Informe o documento (CPF/CNPJ)');
+      setErro('Informe seu documento (CPF/CNPJ) para continuar');
       return;
     }
-    setLoading(true);
+    setCarregandoId(empresa.id);
     try {
       setDocumentoLembrado(doc);
-      const clientes = await buscarClientePorDocumento(empresaSelecionada.id, doc);
+      const clientes = await buscarClientePorDocumento(empresa.id, doc);
       if (clientes.length === 0) {
-        navigate('/cadastro', { state: { documento: doc, empresa: empresaSelecionada } });
+        navigate('/cadastro', { state: { documento: doc, empresa } });
         return;
       }
-      entrar(empresaSelecionada, clientes[0]);
+      entrar(empresa, clientes[0]);
       navigate('/minhas-encomendas');
     } catch (e) {
       setErro(extrairErro(e));
     } finally {
-      setLoading(false);
+      setCarregandoId(null);
     }
   };
 
   return (
     <div className="screen">
-      <div className="logo-box" style={{ top: 36 }}>
-        C
-      </div>
-      <div className="auth-title" style={{ top: 120, fontSize: 26 }}>
-        {nomeEmpresa(empresaSelecionada)}
-      </div>
-      <div className="auth-subtitle" style={{ top: 154 }}>
-        <div>Faça pedidos e acompanhe</div>
-        <div>suas encomendas em poucos passos</div>
-      </div>
+      <div className="entrada-title">Mundo de Delícias</div>
+      <div className="entrada-subtitle">Selecione quem vai preparar sua encomenda hoje.</div>
 
-      <div className="auth-card" style={{ top: 240, height: 330 }}>
-        <div className="field-label" style={{ top: 18 }}>
-          Empresa
-        </div>
-        <div
-          className="field-select"
-          style={{ top: 38, zIndex: 20 }}
-          onClick={() => setEmpresaAberta(!empresaAberta)}
-        >
-          <span>{nomeEmpresa(empresaSelecionada)}</span>
-          <span className="arrow">{empresaAberta ? '˄' : '>'}</span>
-        </div>
-        {empresaAberta && (
-          <div
-            style={{
-              position: 'absolute',
-              left: 20,
-              top: 84,
-              width: 'calc(100% - 40px)',
-              background: '#ffffff',
-              borderRadius: 12,
-              border: '1px solid #d6ddd0',
-              zIndex: 30,
-              overflow: 'hidden',
-            }}
-          >
-            {empresas.length === 0 && (
-              <div style={{ padding: 12, fontSize: 12, color: '#6b706c' }}>Carregando empresas...</div>
-            )}
-            {empresas.map((e) => (
-              <div
-                key={e.id}
-                onClick={() => {
-                  setEmpresaSelecionada(e);
-                  setEmpresaSelecionadaMemoria(e);
-                  setEmpresaAberta(false);
-                }}
-                style={{
-                  padding: '12px 14px',
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  background: e.id === empresaSelecionada?.id ? '#f5f3ee' : '#ffffff',
-                  borderBottom: '1px solid #efeee9',
-                }}
-              >
-                {e.fantasia || e.razao_social}
-              </div>
-            ))}
-          </div>
+      <div className="empresa-list">
+        {carregandoLista && empresas.length === 0 && (
+          <div className="empresa-vazio">Carregando empresas...</div>
         )}
+        {!carregandoLista && empresas.length === 0 && !erro && (
+          <div className="empresa-vazio">Nenhuma empresa de delivery disponível.</div>
+        )}
+        {empresas.map((e) => (
+          <button
+            key={e.id}
+            className="empresa-card"
+            disabled={carregandoId !== null}
+            onClick={() => selecionarEmpresa(e)}
+          >
+            <span className="empresa-card-logo">
+              {e.logomarca ? (
+                <img src={fotoUrl(e.logomarca)} alt="Logomarca" />
+              ) : (
+                <span className="empresa-card-inicial">{(e.fantasia || e.razao_social || 'D')[0]}</span>
+              )}
+            </span>
+            <span className="empresa-card-nome">{e.fantasia || e.razao_social}</span>
+            {e.email && <span className="empresa-card-linha">{e.email}</span>}
+            {(e.celular || e.telefone) && (
+              <span className="empresa-card-linha">{mascaraTelefone(e.celular || e.telefone || '')}</span>
+            )}
+            {carregandoId === e.id && <span className="empresa-card-carregando">Verificando...</span>}
+          </button>
+        ))}
+      </div>
 
-        <div className="field-label" style={{ top: 110 }}>
+      <div className="entrada-footer-bar">
+        {erro && <div className="entrada-erro">{erro}</div>}
+        <div className="field-label" style={{ position: 'static', marginBottom: 6 }}>
           Seu documento (CPF/CNPJ)
         </div>
-        <input
-          className="field-input"
-          style={{ top: 130, ...(documentoBloqueado ? { background: '#f0f2f0', color: '#9ca09d' } : {}) }}
-          type="tel"
-          inputMode="numeric"
-          placeholder="Digite seu CPF ou CNPJ"
-          value={documento}
-          disabled={documentoBloqueado}
-          onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') continuar();
-          }}
-        />
-        {documentoBloqueado && (
-          <div style={{ position: 'absolute', left: 20, top: 173, fontSize: 10, color: '#9ca09d' }}>
-            Documento salvo neste aparelho{' '}
-            <span style={{ color: '#2563eb', textDecoration: 'underline' }} onClick={limparDocumento}>
-              (trocar)
-            </span>
-          </div>
-        )}
-
-        {erro && (
-          <div style={{ position: 'absolute', left: 20, top: 200, fontSize: 11, color: '#c0392b' }}>
-            {erro}
-          </div>
-        )}
-
-        <button className="green-button" style={{ top: 226 }} onClick={continuar} disabled={loading}>
-          {loading ? 'Verificando...' : 'Continuar'}
-        </button>
-      </div>
-
-      <div className="auth-footer" style={{ top: 610 }} onClick={() => navigate('/server-config')}>
-        <b>Servidor do App</b>
-      </div>
-      <div className="auth-footer" style={{ top: 634 }} onClick={() => navigate('/server-config')}>
-        Configurações do Servidor
-      </div>
-      <div className="version" style={{ top: 674 }}>
-        Cliente v1.2
+        <div className="entrada-doc-row">
+          <input
+            className="field-input entrada-doc-input"
+            style={{
+              position: 'static',
+              width: '100%',
+              ...(documentoBloqueado ? { background: '#f0f2f0', color: '#9ca09d' } : {}),
+            }}
+            type="tel"
+            inputMode="numeric"
+            placeholder="Digite seu CPF ou CNPJ"
+            value={documento}
+            disabled={documentoBloqueado}
+            onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && empresas.length === 1) selecionarEmpresa(empresas[0]);
+            }}
+          />
+          {documentoBloqueado && (
+            <button className="entrada-trocar" onClick={limparDocumento}>
+              trocar
+            </button>
+          )}
+        </div>
+        <div className="entrada-rodape">
+          <span style={{ fontSize: 11, color: '#9ca09d' }}>Cliente v1.2</span>
+          <span
+            style={{ fontSize: 11, color: '#2d5e3a', cursor: 'pointer' }}
+            onClick={() => navigate('/server-config')}
+          >
+            Configurações do Servidor
+          </span>
+        </div>
       </div>
     </div>
   );

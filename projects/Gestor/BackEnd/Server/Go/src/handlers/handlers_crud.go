@@ -520,10 +520,16 @@ func (h *BasicCRUD) ServicoExcluir(w http.ResponseWriter, r *http.Request) {
 
 // --- Empresa Pública ---
 func (h *BasicCRUD) EmpresaListarPublico(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.Pool.Query(r.Context(), `SELECT e.id, e.razao_social, e.fantasia,
+	query := `SELECT e.id, e.razao_social, e.fantasia,
 		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
-		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca
-		FROM public.empresa e ORDER BY e.id`)
+		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.delivery
+		FROM public.empresa e WHERE 1=1`
+	var args []interface{}
+	if r.URL.Query().Get("delivery") == "1" {
+		query += " AND e.delivery = 1"
+	}
+	query += " ORDER BY e.id"
+	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -539,7 +545,7 @@ func (h *BasicCRUD) EmpresaListar(w http.ResponseWriter, r *http.Request) {
 
 	query := `SELECT e.id, e.razao_social as nome, e.razao_social, e.fantasia,
 		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
-		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca
+		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.delivery
 		FROM public.empresa e WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -589,13 +595,29 @@ for _, item := range items {
 		chavePix := getStr(item, "chave_pix")
 		_, temLogomarca := item["logomarca"]
 		logomarca := getStr(item, "logomarca")
+		temDelivery := false
+		delivery := 0
+		if v, ok := item["delivery"]; ok && v != nil {
+			temDelivery = true
+			switch val := v.(type) {
+			case bool:
+				if val {
+					delivery = 1
+				}
+			case float64:
+				delivery = int(val)
+			case json.Number:
+				n, _ := val.Int64()
+				delivery = int(n)
+			}
+		}
 
 		if id == 0 {
 			err = tx.QueryRow(r.Context(),
 				`INSERT INTO public.empresa (razao_social, fantasia, cnpj_cpf, inscricao_estadual_identidade,
-					regime_tributario, endereco, telefone, celular, email, chave_pix, logomarca)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, logomarca,
+					regime_tributario, endereco, telefone, celular, email, chave_pix, logomarca, delivery)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, logomarca, delivery,
 			).Scan(&id)
 		} else {
 			setClauses := []string{"razao_social=$1", "fantasia=$2", "cnpj_cpf=$3",
@@ -605,6 +627,10 @@ for _, item := range items {
 			if temLogomarca {
 				setClauses = append(setClauses, fmt.Sprintf("logomarca=$%d", len(vals)+1))
 				vals = append(vals, logomarca)
+			}
+			if temDelivery {
+				setClauses = append(setClauses, fmt.Sprintf("delivery=$%d", len(vals)+1))
+				vals = append(vals, delivery)
 			}
 			vals = append(vals, id)
 			_, err = tx.Exec(r.Context(),

@@ -285,6 +285,7 @@ exports.empresaBodySchema = zod_1.z.object({
     email: zod_1.z.string().email('Email invalido').max(200).optional().or(zod_1.z.literal('')),
     chave_pix: zod_1.z.string().max(255).optional().or(zod_1.z.literal('')),
     logomarca: zod_1.z.string().max(255).optional().or(zod_1.z.literal('')),
+    delivery: zod_1.z.number().int().min(0).max(1).optional(),
 });
 exports.moduloBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),

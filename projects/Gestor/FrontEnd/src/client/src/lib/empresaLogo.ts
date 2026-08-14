@@ -2,7 +2,7 @@ import { getBaseURL } from './serverConfig';
 import type { User } from '@/types';
 
 function getEmpresaId(): number | null {
-  const raw = localStorage.getItem('user');
+  const raw = sessionStorage.getItem('user');
   if (!raw) return null;
   try {
     const user = JSON.parse(raw) as User;
@@ -26,9 +26,9 @@ function logoKey(): string {
 export function salvarLogomarcaCache(logomarcaBase64: string | null): void {
   const key = logoKey();
   if (logomarcaBase64) {
-    localStorage.setItem(key, logomarcaBase64);
+    sessionStorage.setItem(key, logomarcaBase64);
   } else {
-    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
   }
 }
 
@@ -37,7 +37,7 @@ export async function preloadEmpresaLogomarca(logomarca?: string | null): Promis
   const url = getUploadsUrl(logomarca);
   try {
     if (!url) {
-      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
       return;
     }
     const res = await fetch(url);
@@ -49,8 +49,8 @@ export async function preloadEmpresaLogomarca(logomarca?: string | null): Promis
       reader.onerror = () => reject(new Error('falha ao ler a imagem'));
       reader.readAsDataURL(blob);
     });
-    localStorage.setItem(key, dataUrl);
+    sessionStorage.setItem(key, dataUrl);
   } catch {
-    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
   }
 }

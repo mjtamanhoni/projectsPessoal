@@ -290,6 +290,17 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "012_empresa_delivery",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='empresa' AND column_name='delivery') THEN
+					ALTER TABLE public.empresa ADD COLUMN delivery INTEGER DEFAULT 0;
+				END IF;
+			END $$;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

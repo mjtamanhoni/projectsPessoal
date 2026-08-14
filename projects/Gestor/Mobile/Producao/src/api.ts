@@ -12,6 +12,7 @@ export interface EmpresaPublic {
   celular?: string;
   email?: string;
   chave_pix?: string;
+  logomarca?: string;
 }
 
 export interface LoginResponse {

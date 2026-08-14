@@ -4,7 +4,7 @@ import type { AppSettings, User } from '@/types';
 let cache: AppSettings | null = null;
 
 function getEmpresaId(): number | null {
-  const raw = localStorage.getItem('user');
+  const raw = sessionStorage.getItem('user');
   if (!raw) return null;
   try {
     const user = JSON.parse(raw) as User;
@@ -41,7 +41,7 @@ export function getDecimalPlaces(): number {
 }
 
 export function getLogo(): string | null {
-  return localStorage.getItem(logoKey());
+  return sessionStorage.getItem(logoKey());
 }
 
 export function getLogoPdf(): string | null {

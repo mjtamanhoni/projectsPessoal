@@ -28,11 +28,12 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
     req.usuarioId = decoded.id;
     req.empresaId = decoded.empresa;
     req.isSuperadmin = decoded.is_superadmin ?? false;
-    if (!req.query.empresa_id) {
-      (req.query as Record<string, unknown>).empresa_id = decoded.empresa;
+    const query = (req.query ?? {}) as Record<string, unknown>;
+    if (!query.empresa_id) {
+      query.empresa_id = decoded.empresa;
     }
-    horseApi.setToken(token);
-    next();
+    horseApi.runWithToken(token, () => next());
+    return;
   } catch {
     res.status(401).json({ error: 'Token inválido ou expirado' });
   }

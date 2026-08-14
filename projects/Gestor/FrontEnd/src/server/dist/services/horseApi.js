@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.horseApi = void 0;
 const axios_1 = __importDefault(require("axios"));
+const node_async_hooks_1 = require("node:async_hooks");
 const config_1 = require("../config");
 const types_1 = require("../types");
 const settings_1 = require("./settings");
@@ -22,6 +23,9 @@ function normalizeDate(val) {
     const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
     return match ? match[1] : s;
 }
+// Cada requisicao autenticada carrega seu proprio token (via AsyncLocalStorage),
+// evitando que sessoes de empresas/usuarios diferentes se sobrescrevam.
+const tokenStore = new node_async_hooks_1.AsyncLocalStorage();
 class HorseApiService {
     api;
     token = null;
@@ -38,8 +42,12 @@ class HorseApiService {
     clearToken() {
         this.token = null;
     }
+    runWithToken(token, fn) {
+        tokenStore.run(token, fn);
+    }
     getAuthHeaders() {
-        return this.token ? { Authorization: `Bearer ${this.token}` } : {};
+        const token = tokenStore.getStore() ?? this.token;
+        return token ? { Authorization: `Bearer ${token}` } : {};
     }
     handleError(error) {
         if (axios_1.default.isAxiosError(error)) {
@@ -71,7 +79,6 @@ class HorseApiService {
     async login(data) {
         try {
             const res = await this.api.post('/usuario/login', data);
-            this.setToken(res.data.token);
             return res.data;
         }
         catch (error) {

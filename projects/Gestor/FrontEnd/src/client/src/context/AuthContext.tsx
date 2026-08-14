@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 function loadPermissions(): { permissoes: FormularioPermissao[]; irrestrito: boolean } {
   try {
-    const raw = localStorage.getItem('permissoes');
+    const raw = sessionStorage.getItem('permissoes');
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
@@ -50,7 +50,7 @@ function extractEmpresa(data: unknown): Empresa | null {
   if (info && typeof info === 'object' && 'razao_social' in info) {
     const emp = info as Empresa;
     const nome = emp.fantasia || emp.razao_social || '';
-    if (nome) localStorage.setItem('empresaNome', nome);
+    if (nome) sessionStorage.setItem('empresaNome', nome);
     return emp;
   }
   return null;
@@ -63,7 +63,7 @@ async function fetchEmpresaData(empresaId: number): Promise<Empresa | null> {
     const empresa = empresas.find(e => e.id === empresaId || e.codigo === empresaId) ?? null;
     if (empresa) {
       const nome = empresa.fantasia || empresa.razao_social || '';
-      localStorage.setItem('empresaNome', nome);
+      sessionStorage.setItem('empresaNome', nome);
     }
     return empresa;
   } catch {
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isSuperadmin, setIsSuperadmin] = useState<boolean>(() => {
     try {
-      const raw = localStorage.getItem('user');
+      const raw = sessionStorage.getItem('user');
       if (raw) {
         const parsed = JSON.parse(raw) as User;
         return parsed.is_superadmin === true;
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissoes, setPermissoes] = useState<FormularioPermissao[]>(() => loadPermissions().permissoes);
   const [irrestrito, setIrrestrito] = useState<boolean>(() => loadPermissions().irrestrito);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
-  const [empresaNome, setEmpresaNome] = useState<string>(() => localStorage.getItem('empresaNome') || '');
+  const [empresaNome, setEmpresaNome] = useState<string>(() => sessionStorage.getItem('empresaNome') || '');
   const [loading, setLoading] = useState(true);
 
   const sessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -157,11 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const doLogout = useCallback((reason: string) => {
     clearSessionTimer();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('permissoes');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('permissoes');
     sessionStorage.removeItem('moduloInicialRedirectDone');
-    localStorage.removeItem('empresaNome');
+    sessionStorage.removeItem('empresaNome');
     setUser(null);
     setIsSuperadmin(false);
     setPermissoes([]);
@@ -211,8 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [startSessionTimer]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    const token = sessionStorage.getItem('token');
+    const userData = sessionStorage.getItem('user');
     if (token && userData) {
       (async () => {
         try {
@@ -231,13 +231,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (data.isSuperadmin !== undefined) {
                 setIsSuperadmin(data.isSuperadmin);
               }
-              localStorage.setItem('permissoes', JSON.stringify({ permissoes: data.formularios, irrestrito: data.irrestrito }));
+              sessionStorage.setItem('permissoes', JSON.stringify({ permissoes: data.formularios, irrestrito: data.irrestrito }));
             })
             .catch(() => {});
         } catch {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('permissoes');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+          sessionStorage.removeItem('permissoes');
         }
       })();
     }
@@ -253,9 +253,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSuperadmin(false);
       setPermissoes([]);
       setIrrestrito(true);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('permissoes');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('permissoes');
       if (window.location.pathname !== '/login') {
         saveRedirectPath(window.location.pathname);
         window.location.href = `/login?expired=1&message=${encodeURIComponent(detail || 'Sessão expirada')}`;
@@ -277,8 +277,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       : { login, senha, empresa: empresa || undefined };
     const response = await api.post('/auth/login', body);
     const data = response.data as User;
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data));
+    sessionStorage.setItem('token', data.token);
+    sessionStorage.setItem('user', JSON.stringify(data));
     sessionStorage.removeItem('moduloInicialRedirectDone');
     setUser(data);
     setIsSuperadmin(data.is_superadmin === true);
@@ -293,7 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (permData.isSuperadmin !== undefined) {
         setIsSuperadmin(permData.isSuperadmin);
       }
-      localStorage.setItem('permissoes', JSON.stringify({ permissoes: permData.formularios, irrestrito: permData.irrestrito }));
+      sessionStorage.setItem('permissoes', JSON.stringify({ permissoes: permData.formularios, irrestrito: permData.irrestrito }));
     } catch {
       setPermissoes([]);
       setIrrestrito(true);
