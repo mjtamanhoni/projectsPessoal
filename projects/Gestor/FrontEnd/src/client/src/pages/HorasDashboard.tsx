@@ -43,10 +43,6 @@ function loadFilters(): FilterState {
   return defaults;
 }
 
-function saveFilters(filters: FilterState) {
-  sessionStorage.setItem(FILTER_KEY, JSON.stringify(filters));
-}
-
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -70,8 +66,12 @@ export function HorasDashboard() {
   const savedFilters = useMemo(() => loadFilters(), []);
   const [ano, setAno] = useState(hoje.getFullYear());
   const [mes, setMes] = useState(hoje.getMonth() + 1);
-  const [dataInicio, setDataInicio] = useState(savedFilters.dataInicio);
-  const [dataFim, setDataFim] = useState(savedFilters.dataFim);
+  const [dataInicio, setDataInicio] = useState(
+    () => `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`,
+  );
+  const [dataFim, setDataFim] = useState(
+    () => `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate()}`,
+  );
   const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | undefined>(savedFilters.usuarioId);
   const [filtroClienteId, setFiltroClienteId] = useState<number | undefined>(savedFilters.clienteId);
   const [filtroServicoId, setFiltroServicoId] = useState<number | undefined>(savedFilters.servicoId);
@@ -116,17 +116,6 @@ export function HorasDashboard() {
       setServicos(s.data as Servico[]);
     }).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    saveFilters({ dataInicio, dataFim, usuarioId: filtroUsuarioId, clienteId: filtroClienteId, servicoId: filtroServicoId });
-  }, [dataInicio, dataFim, filtroUsuarioId, filtroClienteId, filtroServicoId]);
-
-  useEffect(() => {
-    if (!dataInicio) return;
-    const [y, m] = dataInicio.split('-').map(Number);
-    setAno(y);
-    setMes(m);
-  }, [dataInicio]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

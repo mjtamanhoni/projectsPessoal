@@ -47,6 +47,10 @@ import menuRoutes from './routes/menu';
 import relatoriosProducaoRoutes from './routes/relatorios-producao';
 import lancamentoAutomaticoConfigRoutes from './routes/lancamento-automatico-config';
 import printRoutes from './routes/print';
+import adicionaisRoutes from './routes/adicionais';
+import produtosAdicionaisRoutes from './routes/produtos-adicionais';
+import produtosVendaRoutes from './routes/produtos-venda';
+import produtosVendaItensRoutes from './routes/produtos-venda-itens';
 
 const app = express();
 
@@ -131,6 +135,10 @@ app.use('/api/print', printRoutes);
 app.use('/api/perdas-insumo', perdasInsumoRoutes);
 app.use('/api/perdas-produto', perdasProdutoRoutes);
 app.use('/api/uso-consumo', usoConsumoRoutes);
+app.use('/api/adicionais', adicionaisRoutes);
+app.use('/api/produtos-adicionais', produtosAdicionaisRoutes);
+app.use('/api/produtos-venda', produtosVendaRoutes);
+app.use('/api/produtos-venda-itens', produtosVendaItensRoutes);
 
 const clientDistPath = path.resolve(__dirname, '../../client/dist');
 app.use(express.static(clientDistPath));

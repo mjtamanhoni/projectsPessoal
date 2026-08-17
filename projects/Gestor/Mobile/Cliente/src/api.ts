@@ -27,6 +27,28 @@ export interface Cliente {
   status?: number;
 }
 
+export interface IngredientePublico {
+  id?: number;
+  insumo_id?: number;
+  nome: string;
+  quantidade?: number;
+}
+
+export interface AdicionalPublico {
+  adicional_id: number;
+  nome: string;
+  descricao?: string;
+  preco: number;
+}
+
+export interface AdicionalItemPedido {
+  adicional_id?: number;
+  nome: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total?: number;
+}
+
 export interface ProdutoFabricado {
   id?: number;
   nome: string;
@@ -37,6 +59,8 @@ export interface ProdutoFabricado {
   preco?: number;
   foto?: string;
   ativo?: boolean;
+  ingredientes?: string;
+  adicionais?: string;
 }
 
 export interface EncomendaItem {
@@ -46,6 +70,8 @@ export interface EncomendaItem {
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
+  removidos?: string[];
+  adicionais?: AdicionalItemPedido[];
 }
 
 export interface Encomenda {
@@ -339,6 +365,36 @@ export async function listarEncomendasPublicas(
       porId.set(id, e);
     }
     if (row.item_id != null) {
+      const removidosRaw = typeof row.removidos === 'string' ? row.removidos : null;
+      const adicionaisRaw = typeof row.adicionais === 'string' ? row.adicionais : null;
+      let removidos: string[] | undefined;
+      if (removidosRaw) {
+        try {
+          const arr = JSON.parse(removidosRaw);
+          if (Array.isArray(arr)) {
+            removidos = arr.map((v) => (typeof v === 'string' ? v : String(v?.nome ?? ''))).filter(Boolean);
+          }
+        } catch {
+          /* ignora */
+        }
+      }
+      let adicionais: AdicionalItemPedido[] | undefined;
+      if (adicionaisRaw) {
+        try {
+          const arr = JSON.parse(adicionaisRaw);
+          if (Array.isArray(arr)) {
+            adicionais = arr.map((a) => ({
+              adicional_id: Number(a.adicional_id ?? 0) || undefined,
+              nome: String(a.nome ?? ''),
+              quantidade: Number(a.quantidade ?? 0),
+              valor_unitario: Number(a.valor_unitario ?? 0),
+              valor_total: Number(a.valor_total ?? 0) || undefined,
+            }));
+          }
+        } catch {
+          /* ignora */
+        }
+      }
       e.itens?.push({
         id: Number(row.item_id),
         produto_fabricado_id: Number(row.produto_fabricado_id ?? 0),
@@ -346,6 +402,8 @@ export async function listarEncomendasPublicas(
         quantidade: Number(row.quantidade ?? 0),
         valor_unitario: Number(row.valor_unitario ?? 0),
         valor_total: Number(row.item_valor_total ?? 0),
+        removidos,
+        adicionais,
       });
     }
   }

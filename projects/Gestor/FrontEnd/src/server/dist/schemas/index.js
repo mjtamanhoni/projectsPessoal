@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginBodySchema = exports.usoConsumoBodySchema = exports.perdaProdutoFabricadoBodySchema = exports.perdaInsumoBodySchema = exports.usuarioEmpresaBodySchema = exports.empresaModuloBodySchema = exports.moduloFormularioBodySchema = exports.moduloBodySchema = exports.empresaBodySchema = exports.logomarcaBodySchema = exports.estoqueProdutoFabricadoBodySchema = exports.estoqueInsumoBodySchema = exports.fabricacaoCustoAdicionalBodySchema = exports.encomendaBaixaSchema = exports.encomendaStatusSchema = exports.encomendaBodySchema = exports.vendaProdutoBodySchema = exports.fabricacaoBodySchema = exports.custoAdicionalTipoBodySchema = exports.receitaIngredienteBodySchema = exports.produtoFabricadoBodySchema = exports.compraInsumoBodySchema = exports.insumoBodySchema = exports.horaAbatidaBodySchema = exports.servicoBodySchema = exports.horaTrabalhadaBodySchema = exports.usuarioFormularioBodySchema = exports.formularioBodySchema = exports.usuarioPinBodySchema = exports.usuarioSenhaBodySchema = exports.usuarioBodySchema = exports.contaReceberBodySchema = exports.contaPagarBodySchema = exports.categoriaSaveSchema = exports.categoriaBodySchema = exports.fornecedorBodySchema = exports.clienteBodySchema = void 0;
+exports.loginBodySchema = exports.usoConsumoBodySchema = exports.perdaProdutoFabricadoBodySchema = exports.perdaInsumoBodySchema = exports.usuarioEmpresaBodySchema = exports.empresaModuloBodySchema = exports.moduloFormularioBodySchema = exports.moduloBodySchema = exports.empresaBodySchema = exports.logomarcaBodySchema = exports.estoqueProdutoFabricadoBodySchema = exports.estoqueInsumoBodySchema = exports.fabricacaoCustoAdicionalBodySchema = exports.encomendaBaixaSchema = exports.encomendaStatusSchema = exports.encomendaBodySchema = exports.vendaProdutoBodySchema = exports.fabricacaoBodySchema = exports.produtoVendaItemBodySchema = exports.produtoVendaBodySchema = exports.produtoAdicionalBodySchema = exports.adicionalBodySchema = exports.custoAdicionalTipoBodySchema = exports.receitaIngredienteBodySchema = exports.produtoFabricadoBodySchema = exports.compraInsumoBodySchema = exports.insumoBodySchema = exports.horaAbatidaBodySchema = exports.servicoBodySchema = exports.horaTrabalhadaBodySchema = exports.usuarioFormularioBodySchema = exports.formularioBodySchema = exports.usuarioPinBodySchema = exports.usuarioSenhaBodySchema = exports.usuarioBodySchema = exports.contaReceberBodySchema = exports.contaPagarBodySchema = exports.categoriaSaveSchema = exports.categoriaBodySchema = exports.fornecedorBodySchema = exports.clienteBodySchema = void 0;
 const zod_1 = require("zod");
 exports.clienteBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),
@@ -188,6 +188,47 @@ exports.custoAdicionalTipoBodySchema = zod_1.z.object({
     nome: zod_1.z.string().min(1, 'Nome e obrigatorio').max(200),
     ativo: zod_1.z.boolean().optional(),
 });
+exports.adicionalBodySchema = zod_1.z.object({
+    codigo: zod_1.z.number().int().positive().optional(),
+    id: zod_1.z.number().int().positive().optional(),
+    nome: zod_1.z.string().min(1, 'Nome e obrigatorio').max(200),
+    descricao: zod_1.z.string().max(500).optional(),
+    preco: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco nao pode ser negativo'),
+    ativo: zod_1.z.boolean().optional(),
+});
+const produtoAdicionalItemSchema = zod_1.z.object({
+    produto_fabricado_id: zod_1.z.number().int().positive('Produto e obrigatorio'),
+    adicional_id: zod_1.z.number().int().positive('Adicional e obrigatorio'),
+});
+exports.produtoAdicionalBodySchema = zod_1.z.union([
+    zod_1.z.object({
+        produto_fabricado_id: zod_1.z.number().int().positive('Produto e obrigatorio'),
+        adicionais: zod_1.z.array(zod_1.z.number().int().positive()).optional(),
+    }),
+    produtoAdicionalItemSchema,
+]);
+const produtoVendaItemSchema = zod_1.z.object({
+    nome: zod_1.z.string().min(1, 'Nome e obrigatorio').max(200),
+    pode_remover: zod_1.z.boolean().optional(),
+    pode_adicionar: zod_1.z.boolean().optional(),
+    preco_adicional: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco adicional nao pode ser negativo').optional(),
+    ordem: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseInt(s, 10))]).optional(),
+});
+exports.produtoVendaBodySchema = zod_1.z.object({
+    codigo: zod_1.z.number().int().positive().optional(),
+    id: zod_1.z.number().int().positive().optional(),
+    nome: zod_1.z.string().min(1, 'Nome e obrigatorio').max(200),
+    descricao: zod_1.z.string().max(500).optional(),
+    preco: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco nao pode ser negativo'),
+    produto_fabricado_id: zod_1.z.union([zod_1.z.number().int().positive(), zod_1.z.null()]).optional(),
+    foto: zod_1.z.string().max(500).optional(),
+    ativo: zod_1.z.boolean().optional(),
+});
+exports.produtoVendaItemBodySchema = produtoVendaItemSchema.extend({
+    codigo: zod_1.z.number().int().positive().optional(),
+    id: zod_1.z.number().int().positive().optional(),
+    produto_venda_id: zod_1.z.number().int().positive('Produto de venda e obrigatorio'),
+});
 exports.fabricacaoBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),
     id: zod_1.z.number().int().positive().optional(),
@@ -196,11 +237,20 @@ exports.fabricacaoBodySchema = zod_1.z.object({
     data_fabricacao: zod_1.z.string().min(1, 'Data e obrigatoria'),
     observacao: zod_1.z.string().max(500).optional(),
 });
+const adicionalPedidoItemSchema = zod_1.z.object({
+    adicional_id: zod_1.z.number().int().positive().optional(),
+    nome: zod_1.z.string().min(1, 'Nome e obrigatorio').max(200),
+    quantidade: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+    valor_unitario: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Valor unitario nao pode ser negativo'),
+    valor_total: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).optional(),
+});
 const vendaProdutoItemSchema = zod_1.z.object({
     produto_fabricado_id: zod_1.z.number().int().positive('Produto e obrigatorio'),
     quantidade: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
     valor_unitario: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
     valor_total: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
+    removidos: zod_1.z.array(zod_1.z.string()).optional(),
+    adicionais: zod_1.z.array(adicionalPedidoItemSchema).optional(),
 });
 exports.vendaProdutoBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),
@@ -219,6 +269,8 @@ const encomendaItemSchema = zod_1.z.object({
     quantidade: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
     valor_unitario: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
     valor_total: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
+    removidos: zod_1.z.array(zod_1.z.string()).optional(),
+    adicionais: zod_1.z.array(adicionalPedidoItemSchema).optional(),
 });
 exports.encomendaBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),

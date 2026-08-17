@@ -71,6 +71,7 @@ func main() {
 	r.Get("/clientePublico", basicCRUD.ClientePublicoBuscar)
 	r.Post("/clientePublico", basicCRUD.ClientePublicoCriar)
 	r.Get("/produtoFabricadoPublico", producao.ProdutoFabricadoListarPublico)
+	r.Get("/produtoVendaPublico", producao.ProdutoVendaListarPublico)
 	r.Get("/encomendaPublico", producao.EncomendaPublicoListar)
 	r.Post("/encomendaPublico", producao.EncomendaPublicoCriar)
 	r.Post("/encomendaPublico/cancelar", producao.EncomendaPublicoCancelar)
@@ -414,10 +415,33 @@ carregar();
 		// Foto do Produto Fabricado
 		r.Post("/produtoFoto", producao.ProdutoFotoSalvar)
 
+		// Foto do Produto de Venda
+		r.Post("/produtoVendaFoto", producao.ProdutoVendaFotoSalvar)
+
 		// Receita Ingrediente
 		r.Get("/receitaIngrediente", producao.ReceitaIngredienteListar)
 		r.Post("/receitaIngrediente", producao.ReceitaIngredienteAtualizar)
 		r.Delete("/receitaIngrediente", producao.ReceitaIngredienteExcluir)
+
+		// Adicional (customização de produto)
+		r.Get("/adicional", producao.AdicionalListar)
+		r.Post("/adicional", producao.AdicionalAtualizar)
+		r.Delete("/adicional", producao.AdicionalExcluir)
+
+		// Produto Adicional (vínculo produto -> adicionais)
+		r.Get("/produtoAdicional", producao.ProdutoAdicionalListar)
+		r.Post("/produtoAdicional", producao.ProdutoAdicionalAtualizar)
+		r.Delete("/produtoAdicional", producao.ProdutoAdicionalExcluir)
+
+		// Produto de Venda (produto comercializável com itens removíveis/adicionáveis)
+		r.Get("/produtoVenda", producao.ProdutoVendaListar)
+		r.Post("/produtoVenda", producao.ProdutoVendaAtualizar)
+		r.Delete("/produtoVenda", producao.ProdutoVendaExcluir)
+
+		// Item do Produto de Venda (receita comercial)
+		r.Get("/produtoVendaItem", producao.ProdutoVendaItemListar)
+		r.Post("/produtoVendaItem", producao.ProdutoVendaItemAtualizar)
+		r.Delete("/produtoVendaItem", producao.ProdutoVendaItemExcluir)
 
 		// Custo Adicional Tipo
 		r.Get("/custoAdicionalTipo", producao.CustoAdicionalTipoListar)

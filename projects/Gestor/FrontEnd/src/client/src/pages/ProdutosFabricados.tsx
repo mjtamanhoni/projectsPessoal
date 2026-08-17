@@ -13,7 +13,7 @@ import { ReceitaIngredienteForm } from '@/components/forms/ReceitaIngredienteFor
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { Spinner } from '@/components/ui/Spinner';
-import type { ProdutoFabricado, ReceitaIngrediente, Insumo, Fabricacao } from '@/types';
+import type { ProdutoFabricado, ReceitaIngrediente, Insumo, Fabricacao, Adicional, ProdutoAdicional } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
@@ -67,6 +67,64 @@ export function ProdutosFabricados() {
   const [riProdutoId, setRiProdutoId] = useState<number | null>(null);
   const [confirmDeleteRi, setConfirmDeleteRi] = useState<number | null>(null);
   const [deletingRi, setDeletingRi] = useState(false);
+
+  const [adicionaisDisponiveis, setAdicionaisDisponiveis] = useState<Adicional[]>([]);
+  const [adicionaisProduto, setAdicionaisProduto] = useState<Record<number, Set<number>>>({});
+  const [loadingAdicionais, setLoadingAdicionais] = useState<Set<number>>(new Set());
+  const [salvandoAdicionais, setSalvandoAdicionais] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    api.get<Adicional[]>('/adicionais').then((r) => {
+      setAdicionaisDisponiveis(r.data.filter((a) => Boolean(a.ativo)));
+    }).catch(() => {});
+  }, []);
+
+  const fetchAdicionaisDoProduto = useCallback(async (produtoId: number) => {
+    setLoadingAdicionais((prev) => new Set(prev).add(produtoId));
+    try {
+      const res = await api.get('/produtos-adicionais', { params: { produto_fabricado_id: produtoId } });
+      const items = res.data as ProdutoAdicional[];
+      const ids = new Set<number>();
+      for (const it of items) {
+        if (it.adicional_id) ids.add(it.adicional_id);
+      }
+      setAdicionaisProduto((prev) => ({ ...prev, [produtoId]: ids }));
+    } catch {
+      setAdicionaisProduto((prev) => ({ ...prev, [produtoId]: new Set<number>() }));
+    } finally {
+      setLoadingAdicionais((prev) => {
+        const next = new Set(prev);
+        next.delete(produtoId);
+        return next;
+      });
+    }
+  }, []);
+
+  const toggleAdicional = async (produtoId: number, adicionalId: number) => {
+    const atual = adicionaisProduto[produtoId] ?? new Set<number>();
+    const proximo = new Set(atual);
+    if (proximo.has(adicionalId)) {
+      proximo.delete(adicionalId);
+    } else {
+      proximo.add(adicionalId);
+    }
+    setAdicionaisProduto((prev) => ({ ...prev, [produtoId]: proximo }));
+    setSalvandoAdicionais((prev) => new Set(prev).add(produtoId));
+    try {
+      await api.post('/produtos-adicionais', { produto_fabricado_id: produtoId, adicionais: [...proximo] });
+      addToast('success', 'Adicionais atualizados com sucesso');
+    } catch (err: unknown) {
+      setAdicionaisProduto((prev) => ({ ...prev, [produtoId]: atual }));
+      const msg = err instanceof Error ? err.message : 'Erro ao atualizar adicionais';
+      addToast('error', msg);
+    } finally {
+      setSalvandoAdicionais((prev) => {
+        const next = new Set(prev);
+        next.delete(produtoId);
+        return next;
+      });
+    }
+  };
 
   const recalcularProduto = useCallback(async (produtoId: number) => {
     try {
@@ -380,6 +438,45 @@ export function ProdutosFabricados() {
             </tbody>
           </table>
         )}
+        <div className="mt-4 pt-4 border-t border-border-subtle">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-text-primary">Adicionais do Produto</h3>
+            <button onClick={() => fetchAdicionaisDoProduto(pid)} className="p-1.5 rounded-lg border border-border-primary hover:bg-background-hover transition-colors" title="Atualizar">
+              <RefreshCw size={14} className="text-text-secondary" />
+            </button>
+          </div>
+          {loadingAdicionais.has(pid) ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-accent-primary" />
+            </div>
+          ) : adicionaisDisponiveis.length === 0 ? (
+            <p className="text-sm text-text-muted text-center py-4">Nenhum adicional cadastrado</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {adicionaisDisponiveis.map((ad) => {
+                const adId = ad.id ?? ad.codigo;
+                if (!adId) return null;
+                const marcado = (adicionaisProduto[pid] ?? new Set<number>()).has(adId);
+                return (
+                  <label
+                    key={adId}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${marcado ? 'border-accent-primary bg-accent-primary/5' : 'border-border-subtle hover:bg-bg-muted/40'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      disabled={salvandoAdicionais.has(pid)}
+                      onChange={() => toggleAdicional(pid, adId)}
+                      className="rounded border-border-subtle"
+                    />
+                    <span className="flex-1 truncate text-text-primary">{ad.nome}</span>
+                    <span className="text-text-secondary text-xs font-medium">{formatCurrency(ad.preco ?? 0)}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     );
   };

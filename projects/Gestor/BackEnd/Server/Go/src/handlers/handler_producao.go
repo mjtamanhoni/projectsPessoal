@@ -183,8 +183,11 @@ func (h *ProducaoHandler) CompraInsumoListar(w http.ResponseWriter, r *http.Requ
 			LEFT JOIN fornecedor f ON f.id = ci.fornecedor_id AND f.empresa_id = ci.empresa_id
 			LEFT JOIN marca m ON m.id = i.id_marca AND m.empresa_id = i.empresa_id
 			WHERE 1=1`
-		query += fmt.Sprintf(" AND ci.id = $%d", argN); argN++; args = append(args, id)
-		query += fmt.Sprintf(" AND ci.empresa_id = $%d", argN); args = append(args, empresaID)
+		query += fmt.Sprintf(" AND ci.id = $%d", argN)
+		argN++
+		args = append(args, id)
+		query += fmt.Sprintf(" AND ci.empresa_id = $%d", argN)
+		args = append(args, empresaID)
 		query += " ORDER BY cii.id"
 	} else {
 		// Summary list: one row per purchase with header data and aggregates
@@ -203,13 +206,16 @@ func (h *ProducaoHandler) CompraInsumoListar(w http.ResponseWriter, r *http.Requ
 			WHERE 1=1`
 		if insumoID > 0 {
 			query += ` AND EXISTS (SELECT 1 FROM compra_insumo_item cii3 WHERE cii3.compra_id = ci.id AND cii3.empresa_id = ci.empresa_id AND cii3.insumo_id = $` + fmt.Sprintf("%d", argN) + `)`
-			argN++; args = append(args, insumoID)
+			argN++
+			args = append(args, insumoID)
 		}
 		if dataInicial != "" && dataFinal != "" {
 			query += fmt.Sprintf(" AND ci.data_compra BETWEEN $%d::date AND $%d::date", argN, argN+1)
-			argN += 2; args = append(args, dataInicial, dataFinal)
+			argN += 2
+			args = append(args, dataInicial, dataFinal)
 		}
-		query += fmt.Sprintf(" AND (ci.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += fmt.Sprintf(" AND (ci.empresa_id = $%d OR $%d = 0)", argN, argN)
+		args = append(args, empresaID)
 		query += " ORDER BY ci.id"
 	}
 
@@ -302,7 +308,7 @@ func (h *ProducaoHandler) CompraInsumoAtualizar(w http.ResponseWriter, r *http.R
 			return
 		}
 		type oldItem struct {
-			insumoID int
+			insumoID   int
 			quantidade float64
 		}
 		var oldItems []oldItem
@@ -513,9 +519,12 @@ func (h *ProducaoHandler) ReceitaIngredienteListar(w http.ResponseWriter, r *htt
 	var args []interface{}
 	argN := 1
 	if produtoFabricadoID > 0 {
-		query += fmt.Sprintf(" AND ri.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+		query += fmt.Sprintf(" AND ri.produto_fabricado_id = $%d", argN)
+		argN++
+		args = append(args, produtoFabricadoID)
 	}
-	query += fmt.Sprintf(" AND (ri.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+	query += fmt.Sprintf(" AND (ri.empresa_id = $%d OR $%d = 0)", argN, argN)
+	args = append(args, empresaID)
 	query += " ORDER BY ri.id"
 
 	rows, err := h.Pool.Query(r.Context(), query, args...)
@@ -564,16 +573,22 @@ func (h *ProducaoHandler) FabricacaoListar(w http.ResponseWriter, r *http.Reques
 	var args []interface{}
 	argN := 1
 	if id > 0 {
-		query += fmt.Sprintf(" AND f.id = $%d", argN); argN++; args = append(args, id)
+		query += fmt.Sprintf(" AND f.id = $%d", argN)
+		argN++
+		args = append(args, id)
 	}
 	if produtoFabricadoID > 0 {
-		query += fmt.Sprintf(" AND f.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+		query += fmt.Sprintf(" AND f.produto_fabricado_id = $%d", argN)
+		argN++
+		args = append(args, produtoFabricadoID)
 	}
 	if dataInicial != "" && dataFinal != "" {
 		query += fmt.Sprintf(" AND f.data_fabricacao BETWEEN $%d::date AND $%d::date", argN, argN+1)
-		argN += 2; args = append(args, dataInicial, dataFinal)
+		argN += 2
+		args = append(args, dataInicial, dataFinal)
 	}
-	query += fmt.Sprintf(" AND f.empresa_id = $%d", argN); args = append(args, empresaID)
+	query += fmt.Sprintf(" AND f.empresa_id = $%d", argN)
+	args = append(args, empresaID)
 	query += " ORDER BY f.id"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
@@ -733,28 +748,46 @@ func (h *ProducaoHandler) VendaProdutoListar(w http.ResponseWriter, r *http.Requ
 			vp.valor_total, vp.observacao, vp.usuario_id, vp.status, vp.created_at,
 			c.nome as cliente_nome,
 			CASE WHEN vp.status = 2 THEN true ELSE false END as recebido,
-			vpi.id as item_id, vpi.produto_fabricado_id, vpi.quantidade,
+			vpi.id as item_id, vpi.produto_fabricado_id, vpi.produto_venda_id, vpi.quantidade,
 			vpi.valor_unitario, vpi.valor_total as item_valor_total,
-			pf.nome as produto_nome
+			pf.nome as produto_nome, pv.nome as produto_venda_nome,
+			COALESCE((SELECT json_agg(x) FROM (
+				SELECT ir.id, ir.nome, ir.produto_venda_item_id FROM venda_produto_item_removido ir
+				WHERE ir.venda_produto_item_id = vpi.id AND ir.empresa_id = vpi.empresa_id) x),
+				'[]'::json)::text as removidos,
+			COALESCE((SELECT json_agg(x) FROM (
+				SELECT ia.id, ia.adicional_id, ia.nome, ia.quantidade, ia.valor_unitario, ia.valor_total, ia.produto_venda_item_id
+				FROM venda_produto_item_adicional ia
+				WHERE ia.venda_produto_item_id = vpi.id AND ia.empresa_id = vpi.empresa_id) x),
+				'[]'::json)::text as adicionais
 			FROM venda_produto vp
 			JOIN venda_produto_item vpi ON vpi.venda_id = vp.id AND vpi.empresa_id = vp.empresa_id
 			LEFT JOIN public.cliente c ON c.id = vp.cliente_id AND c.empresa_id = vp.empresa_id
 			LEFT JOIN produto_fabricado pf ON pf.id = vpi.produto_fabricado_id AND pf.empresa_id = vpi.empresa_id
+			LEFT JOIN produto_venda pv ON pv.id = vpi.produto_venda_id AND pv.empresa_id = vpi.empresa_id
 			WHERE 1=1`
 		if id > 0 {
-			query += fmt.Sprintf(" AND vp.id = $%d", argN); argN++; args = append(args, id)
+			query += fmt.Sprintf(" AND vp.id = $%d", argN)
+			argN++
+			args = append(args, id)
 		}
 		if produtoFabricadoID > 0 {
-			query += fmt.Sprintf(" AND vpi.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+			query += fmt.Sprintf(" AND vpi.produto_fabricado_id = $%d", argN)
+			argN++
+			args = append(args, produtoFabricadoID)
 		}
 		if clienteID > 0 {
-			query += fmt.Sprintf(" AND vp.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
+			query += fmt.Sprintf(" AND vp.cliente_id = $%d", argN)
+			argN++
+			args = append(args, clienteID)
 		}
 		if dataInicial != "" && dataFinal != "" {
 			query += fmt.Sprintf(" AND vp.data_venda BETWEEN $%d::date AND $%d::date", argN, argN+1)
-			argN += 2; args = append(args, dataInicial, dataFinal)
+			argN += 2
+			args = append(args, dataInicial, dataFinal)
 		}
-		query += fmt.Sprintf(" AND (vp.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += fmt.Sprintf(" AND (vp.empresa_id = $%d OR $%d = 0)", argN, argN)
+		args = append(args, empresaID)
 		query += " ORDER BY vp.id, vpi.id"
 	} else {
 		// Summary list: one row per venda with header data and aggregates
@@ -773,16 +806,21 @@ func (h *ProducaoHandler) VendaProdutoListar(w http.ResponseWriter, r *http.Requ
 			WHERE 1=1`
 		if produtoFabricadoID > 0 {
 			query += ` AND EXISTS (SELECT 1 FROM venda_produto_item vpi3 WHERE vpi3.venda_id = vp.id AND vpi3.empresa_id = vp.empresa_id AND vpi3.produto_fabricado_id = $` + fmt.Sprintf("%d", argN) + `)`
-			argN++; args = append(args, produtoFabricadoID)
+			argN++
+			args = append(args, produtoFabricadoID)
 		}
 		if clienteID > 0 {
-			query += fmt.Sprintf(" AND vp.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
+			query += fmt.Sprintf(" AND vp.cliente_id = $%d", argN)
+			argN++
+			args = append(args, clienteID)
 		}
 		if dataInicial != "" && dataFinal != "" {
 			query += fmt.Sprintf(" AND vp.data_venda BETWEEN $%d::date AND $%d::date", argN, argN+1)
-			argN += 2; args = append(args, dataInicial, dataFinal)
+			argN += 2
+			args = append(args, dataInicial, dataFinal)
 		}
-		query += fmt.Sprintf(" AND (vp.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += fmt.Sprintf(" AND (vp.empresa_id = $%d OR $%d = 0)", argN, argN)
+		args = append(args, empresaID)
 		query += " ORDER BY vp.id"
 	}
 
@@ -876,7 +914,7 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 			return
 		}
 		type oldItem struct {
-			produtoFabricadoID int
+			produtoFabricadoID *int
 			quantidade         float64
 		}
 		var oldItems []oldItem
@@ -887,7 +925,10 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 		}
 		oldRows.Close()
 		for _, o := range oldItems {
-			err = atualizarEstoqueProdutoFabricado(r.Context(), tx, o.produtoFabricadoID, empresaID, o.quantidade, dataVenda, usuarioID)
+			if o.produtoFabricadoID == nil || *o.produtoFabricadoID <= 0 {
+				continue
+			}
+			err = atualizarEstoqueProdutoFabricado(r.Context(), tx, *o.produtoFabricadoID, empresaID, o.quantidade, dataVenda, usuarioID)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -897,6 +938,13 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 		_, err = tx.Exec(r.Context(),
 			`DELETE FROM venda_produto_item WHERE venda_id = $1 AND empresa_id = $2`,
 			id, empresaID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = apagarCustomizacaoDeItens(r.Context(), tx, empresaID, id,
+			"venda_produto_item", "venda_id", "venda_produto_item_id",
+			"venda_produto_item_removido", "venda_produto_item_adicional")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -912,6 +960,7 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 		}
 
 		produtoFabricadoID := getInt(item, "produto_fabricado_id")
+		produtoVendaID := getInt(item, "produto_venda_id")
 		quantidade := getFloat(item, "quantidade")
 		valorUnitario := getFloat(item, "valor_unitario")
 		valorTotalItem := quantidade * valorUnitario
@@ -921,21 +970,31 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 			jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
+			"venda_produto_item_id", "venda_produto_item_removido", "venda_produto_item_adicional", item)
+		if err != nil {
+			jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		valorTotalItem += adicionalValor
+
 		_, err = tx.Exec(r.Context(), `
-			INSERT INTO venda_produto_item (id, empresa_id, venda_id, produto_fabricado_id,
+			INSERT INTO venda_produto_item (id, empresa_id, venda_id, produto_fabricado_id, produto_venda_id,
 				cliente_id, quantidade, valor_unitario, valor_total)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-			itemID, empresaID, id, produtoFabricadoID, clienteID,
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+			itemID, empresaID, id, produtoFabricadoID, produtoVendaID, clienteID,
 			quantidade, valorUnitario, valorTotalItem)
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		err = atualizarEstoqueProdutoFabricado(r.Context(), tx, produtoFabricadoID, empresaID, -quantidade, dataVenda, usuarioID)
-		if err != nil {
-			jsonError(w, err.Error(), http.StatusInternalServerError)
-			return
+		if produtoFabricadoID > 0 {
+			err = atualizarEstoqueProdutoFabricado(r.Context(), tx, produtoFabricadoID, empresaID, -quantidade, dataVenda, usuarioID)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		if primeiroNome == "" {
@@ -1028,7 +1087,7 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 	}
 
 	type oldItem struct {
-		produtoFabricadoID int
+		produtoFabricadoID *int
 		quantidade         float64
 	}
 	var oldItems []oldItem
@@ -1053,6 +1112,13 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	err = apagarCustomizacaoDeItens(r.Context(), tx, empresaID, id,
+		"venda_produto_item", "venda_id", "venda_produto_item_id",
+		"venda_produto_item_removido", "venda_produto_item_adicional")
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	tag, err := tx.Exec(r.Context(),
 		`DELETE FROM venda_produto WHERE id = $1 AND empresa_id = $2`,
@@ -1068,7 +1134,10 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 
 	usuarioID := middleware.GetUserID(r)
 	for _, o := range oldItems {
-		err = atualizarEstoqueProdutoFabricado(r.Context(), tx, o.produtoFabricadoID, empresaID, o.quantidade, dataVenda, usuarioID)
+		if o.produtoFabricadoID == nil || *o.produtoFabricadoID <= 0 {
+			continue
+		}
+		err = atualizarEstoqueProdutoFabricado(r.Context(), tx, *o.produtoFabricadoID, empresaID, o.quantidade, dataVenda, usuarioID)
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -1097,28 +1166,46 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 			c.nome as cliente_nome,
 			CASE WHEN e.status >= 2 THEN true ELSE false END as baixado,
-			ei.id as item_id, ei.produto_fabricado_id, ei.quantidade,
+			ei.id as item_id, ei.produto_fabricado_id, ei.produto_venda_id, ei.quantidade,
 			ei.valor_unitario, ei.valor_total as item_valor_total,
-			pf.nome as produto_nome
+			pf.nome as produto_nome, pv.nome as produto_venda_nome,
+			COALESCE((SELECT json_agg(x) FROM (
+				SELECT ir.id, ir.nome, ir.produto_venda_item_id FROM encomenda_item_removido ir
+				WHERE ir.encomenda_item_id = ei.id AND ir.empresa_id = ei.empresa_id) x),
+				'[]'::json)::text as removidos,
+			COALESCE((SELECT json_agg(x) FROM (
+				SELECT ia.id, ia.adicional_id, ia.nome, ia.quantidade, ia.valor_unitario, ia.valor_total, ia.produto_venda_item_id
+				FROM encomenda_item_adicional ia
+				WHERE ia.encomenda_item_id = ei.id AND ia.empresa_id = ei.empresa_id) x),
+				'[]'::json)::text as adicionais
 			FROM encomenda e
 			JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
 			LEFT JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
 			LEFT JOIN produto_fabricado pf ON pf.id = ei.produto_fabricado_id AND pf.empresa_id = ei.empresa_id
+			LEFT JOIN produto_venda pv ON pv.id = ei.produto_venda_id AND pv.empresa_id = ei.empresa_id
 			WHERE 1=1`
 		if id > 0 {
-			query += fmt.Sprintf(" AND e.id = $%d", argN); argN++; args = append(args, id)
+			query += fmt.Sprintf(" AND e.id = $%d", argN)
+			argN++
+			args = append(args, id)
 		}
 		if produtoFabricadoID > 0 {
-			query += fmt.Sprintf(" AND ei.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+			query += fmt.Sprintf(" AND ei.produto_fabricado_id = $%d", argN)
+			argN++
+			args = append(args, produtoFabricadoID)
 		}
 		if clienteID > 0 {
-			query += fmt.Sprintf(" AND e.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
+			query += fmt.Sprintf(" AND e.cliente_id = $%d", argN)
+			argN++
+			args = append(args, clienteID)
 		}
 		if dataInicial != "" && dataFinal != "" {
 			query += fmt.Sprintf(" AND e.data_encomenda BETWEEN $%d::date AND $%d::date", argN, argN+1)
-			argN += 2; args = append(args, dataInicial, dataFinal)
+			argN += 2
+			args = append(args, dataInicial, dataFinal)
 		}
-		query += fmt.Sprintf(" AND (e.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += fmt.Sprintf(" AND (e.empresa_id = $%d OR $%d = 0)", argN, argN)
+		args = append(args, empresaID)
 		query += " ORDER BY e.id, ei.id"
 	} else {
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
@@ -1136,16 +1223,21 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 			WHERE 1=1`
 		if produtoFabricadoID > 0 {
 			query += ` AND EXISTS (SELECT 1 FROM encomenda_item ei3 WHERE ei3.encomenda_id = e.id AND ei3.empresa_id = e.empresa_id AND ei3.produto_fabricado_id = $` + fmt.Sprintf("%d", argN) + `)`
-			argN++; args = append(args, produtoFabricadoID)
+			argN++
+			args = append(args, produtoFabricadoID)
 		}
 		if clienteID > 0 {
-			query += fmt.Sprintf(" AND e.cliente_id = $%d", argN); argN++; args = append(args, clienteID)
+			query += fmt.Sprintf(" AND e.cliente_id = $%d", argN)
+			argN++
+			args = append(args, clienteID)
 		}
 		if dataInicial != "" && dataFinal != "" {
 			query += fmt.Sprintf(" AND e.data_encomenda BETWEEN $%d::date AND $%d::date", argN, argN+1)
-			argN += 2; args = append(args, dataInicial, dataFinal)
+			argN += 2
+			args = append(args, dataInicial, dataFinal)
 		}
-		query += fmt.Sprintf(" AND (e.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+		query += fmt.Sprintf(" AND (e.empresa_id = $%d OR $%d = 0)", argN, argN)
+		args = append(args, empresaID)
 		query += " ORDER BY e.id"
 	}
 
@@ -1301,6 +1393,13 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			err = apagarCustomizacaoDeItens(r.Context(), tx, empresaID, id,
+				"encomenda_item", "encomenda_id", "encomenda_item_id",
+				"encomenda_item_removido", "encomenda_item_adicional")
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		} else {
 			if dataEntrega != "" {
 				_, err = tx.Exec(r.Context(), `
@@ -1329,6 +1428,7 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 			}
 
 			produtoFabricadoID := getInt(item, "produto_fabricado_id")
+			produtoVendaID := getInt(item, "produto_venda_id")
 			quantidade := getFloat(item, "quantidade")
 			valorUnitario := getFloat(item, "valor_unitario")
 			valorTotalItem := quantidade * valorUnitario
@@ -1338,11 +1438,19 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 				jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
+			adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
+				"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
+			if err != nil {
+				jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			valorTotalItem += adicionalValor
+
 			_, err = tx.Exec(r.Context(), `
-				INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id,
+				INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id, produto_venda_id,
 					cliente_id, quantidade, valor_unitario, valor_total)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-				itemID, empresaID, id, produtoFabricadoID, clienteID,
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+				itemID, empresaID, id, produtoFabricadoID, produtoVendaID, clienteID,
 				quantidade, valorUnitario, valorTotalItem)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -1405,6 +1513,13 @@ func (h *ProducaoHandler) EncomendaExcluir(w http.ResponseWriter, r *http.Reques
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	err = apagarCustomizacaoDeItens(r.Context(), tx, empresaID, id,
+		"encomenda_item", "encomenda_id", "encomenda_item_id",
+		"encomenda_item_removido", "encomenda_item_adicional")
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	tag, err := tx.Exec(r.Context(),
 		`DELETE FROM encomenda WHERE id = $1 AND empresa_id = $2`,
@@ -1444,13 +1559,15 @@ func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx
 	}
 
 	type encomendaItem struct {
-		produtoFabricadoID int
+		id                 int
+		produtoFabricadoID *int
+		produtoVendaID     *int
 		quantidade         float64
 		valorUnitario      float64
 	}
 	var encomendaItens []encomendaItem
 	itemRows, err := tx.Query(ctx,
-		`SELECT produto_fabricado_id, quantidade, valor_unitario FROM encomenda_item
+		`SELECT id, produto_fabricado_id, produto_venda_id, quantidade, valor_unitario FROM encomenda_item
 		 WHERE encomenda_id = $1 AND empresa_id = $2`,
 		encomendaID, empresaID)
 	if err != nil {
@@ -1458,7 +1575,7 @@ func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx
 	}
 	for itemRows.Next() {
 		var it encomendaItem
-		itemRows.Scan(&it.produtoFabricadoID, &it.quantidade, &it.valorUnitario)
+		itemRows.Scan(&it.id, &it.produtoFabricadoID, &it.produtoVendaID, &it.quantidade, &it.valorUnitario)
 		encomendaItens = append(encomendaItens, it)
 	}
 	itemRows.Close()
@@ -1496,19 +1613,116 @@ func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx
 			return 0, fmt.Errorf("Erro ao gerar ID do item: %w", err)
 		}
 		valorTotalItem := it.quantidade * it.valorUnitario
+
+		// Copia os ingredientes removidos da encomenda para o item da venda
+		removRows, err := tx.Query(ctx,
+			`SELECT nome, produto_venda_item_id FROM encomenda_item_removido
+			 WHERE encomenda_item_id = $1 AND empresa_id = $2`,
+			it.id, empresaID)
+		if err != nil {
+			return 0, err
+		}
+		type removReg struct {
+			nome        string
+			pvItemIDVal *int
+		}
+		var removRegs []removReg
+		for removRows.Next() {
+			var reg removReg
+			removRows.Scan(&reg.nome, &reg.pvItemIDVal)
+			removRegs = append(removRegs, reg)
+		}
+		removRows.Close()
+		for _, reg := range removRegs {
+			rid, err := database.GerarID(ctx, tx, empresaID, "venda_produto_item_removido")
+			if err != nil {
+				return 0, err
+			}
+			var pvItemID interface{}
+			if reg.pvItemIDVal != nil {
+				pvItemID = *reg.pvItemIDVal
+			}
+			_, err = tx.Exec(ctx, `
+				INSERT INTO venda_produto_item_removido (empresa_id, id, venda_produto_item_id, nome, produto_venda_item_id)
+				VALUES ($1,$2,$3,$4,$5)`,
+				empresaID, rid, itemID, reg.nome, pvItemID)
+			if err != nil {
+				return 0, err
+			}
+		}
+
+		// Copia os adicionais da encomenda para o item da venda
+		adicRows, err := tx.Query(ctx,
+			`SELECT adicional_id, nome, quantidade, valor_unitario, valor_total, produto_venda_item_id
+			 FROM encomenda_item_adicional
+			 WHERE encomenda_item_id = $1 AND empresa_id = $2`,
+			it.id, empresaID)
+		if err != nil {
+			return 0, err
+		}
+		type adicionalReg struct {
+			adicionalID   *int
+			nome          string
+			quantidade    float64
+			valorUnitario float64
+			valorTotal    float64
+			pvItemIDVal   *int
+		}
+		var adicRegs []adicionalReg
+		for adicRows.Next() {
+			var reg adicionalReg
+			adicRows.Scan(&reg.adicionalID, &reg.nome, &reg.quantidade, &reg.valorUnitario, &reg.valorTotal, &reg.pvItemIDVal)
+			adicRegs = append(adicRegs, reg)
+		}
+		adicRows.Close()
+		for _, reg := range adicRegs {
+			aID, err := database.GerarID(ctx, tx, empresaID, "venda_produto_item_adicional")
+			if err != nil {
+				return 0, err
+			}
+			var adicionalIDVal interface{}
+			if reg.adicionalID != nil {
+				adicionalIDVal = *reg.adicionalID
+			}
+			var pvItemID interface{}
+			if reg.pvItemIDVal != nil {
+				pvItemID = *reg.pvItemIDVal
+			}
+			_, err = tx.Exec(ctx, `
+				INSERT INTO venda_produto_item_adicional
+					(empresa_id, id, venda_produto_item_id, adicional_id, nome, quantidade, valor_unitario, valor_total, produto_venda_item_id)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+				empresaID, aID, itemID, adicionalIDVal, reg.nome,
+				reg.quantidade, reg.valorUnitario, reg.valorTotal, pvItemID)
+			if err != nil {
+				return 0, err
+			}
+			valorTotalItem += reg.valorTotal
+		}
+
+		var pfIDVal interface{}
+		if it.produtoFabricadoID != nil {
+			pfIDVal = *it.produtoFabricadoID
+		}
+		var pvIDVal interface{}
+		if it.produtoVendaID != nil {
+			pvIDVal = *it.produtoVendaID
+		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO venda_produto_item (id, empresa_id, venda_id, produto_fabricado_id,
+			INSERT INTO venda_produto_item (id, empresa_id, venda_id, produto_fabricado_id, produto_venda_id,
 				cliente_id, quantidade, valor_unitario, valor_total)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-			itemID, empresaID, vendaID, it.produtoFabricadoID, clienteID,
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+			itemID, empresaID, vendaID, pfIDVal, pvIDVal, clienteID,
 			it.quantidade, it.valorUnitario, valorTotalItem)
 		if err != nil {
 			return 0, err
 		}
 
-		err = atualizarEstoqueProdutoFabricado(ctx, tx, it.produtoFabricadoID, empresaID, -it.quantidade, dataVenda, usuarioID)
-		if err != nil {
-			return 0, err
+		if it.produtoFabricadoID != nil && *it.produtoFabricadoID > 0 {
+			err = atualizarEstoqueProdutoFabricado(ctx, tx, *it.produtoFabricadoID, empresaID, -it.quantidade, dataVenda, usuarioID)
+			if err != nil {
+				return 0, err
+			}
 		}
 
 		if primeiroNome == "" {
@@ -1662,9 +1876,12 @@ func (h *ProducaoHandler) FabricacaoCustoAdicionalListar(w http.ResponseWriter, 
 	var args []interface{}
 	argN := 1
 	if fabricacaoID > 0 {
-		query += fmt.Sprintf(" AND fca.fabricacao_id = $%d", argN); argN++; args = append(args, fabricacaoID)
+		query += fmt.Sprintf(" AND fca.fabricacao_id = $%d", argN)
+		argN++
+		args = append(args, fabricacaoID)
 	}
-	query += fmt.Sprintf(" AND fca.empresa_id = $%d", argN); args = append(args, empresaID)
+	query += fmt.Sprintf(" AND fca.empresa_id = $%d", argN)
+	args = append(args, empresaID)
 	query += " ORDER BY fca.id"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
@@ -1839,16 +2056,22 @@ func (h *ProducaoHandler) PerdaInsumoListar(w http.ResponseWriter, r *http.Reque
 	var args []interface{}
 	argN := 1
 	if id > 0 {
-		query += fmt.Sprintf(" AND pi.id = $%d", argN); argN++; args = append(args, id)
+		query += fmt.Sprintf(" AND pi.id = $%d", argN)
+		argN++
+		args = append(args, id)
 	}
 	if insumoID > 0 {
-		query += fmt.Sprintf(" AND pi.insumo_id = $%d", argN); argN++; args = append(args, insumoID)
+		query += fmt.Sprintf(" AND pi.insumo_id = $%d", argN)
+		argN++
+		args = append(args, insumoID)
 	}
 	if dataInicial != "" && dataFinal != "" {
 		query += fmt.Sprintf(" AND pi.data_perda BETWEEN $%d::date AND $%d::date", argN, argN+1)
-		argN += 2; args = append(args, dataInicial, dataFinal)
+		argN += 2
+		args = append(args, dataInicial, dataFinal)
 	}
-	query += fmt.Sprintf(" AND (pi.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+	query += fmt.Sprintf(" AND (pi.empresa_id = $%d OR $%d = 0)", argN, argN)
+	args = append(args, empresaID)
 	query += " ORDER BY pi.id"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
@@ -1980,16 +2203,22 @@ func (h *ProducaoHandler) PerdaProdutoFabricadoListar(w http.ResponseWriter, r *
 	var args []interface{}
 	argN := 1
 	if id > 0 {
-		query += fmt.Sprintf(" AND ppf.id = $%d", argN); argN++; args = append(args, id)
+		query += fmt.Sprintf(" AND ppf.id = $%d", argN)
+		argN++
+		args = append(args, id)
 	}
 	if produtoFabricadoID > 0 {
-		query += fmt.Sprintf(" AND ppf.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+		query += fmt.Sprintf(" AND ppf.produto_fabricado_id = $%d", argN)
+		argN++
+		args = append(args, produtoFabricadoID)
 	}
 	if dataInicial != "" && dataFinal != "" {
 		query += fmt.Sprintf(" AND ppf.data_perda BETWEEN $%d::date AND $%d::date", argN, argN+1)
-		argN += 2; args = append(args, dataInicial, dataFinal)
+		argN += 2
+		args = append(args, dataInicial, dataFinal)
 	}
-	query += fmt.Sprintf(" AND (ppf.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+	query += fmt.Sprintf(" AND (ppf.empresa_id = $%d OR $%d = 0)", argN, argN)
+	args = append(args, empresaID)
 	query += " ORDER BY ppf.id"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
@@ -2121,16 +2350,22 @@ func (h *ProducaoHandler) UsoConsumoListar(w http.ResponseWriter, r *http.Reques
 	var args []interface{}
 	argN := 1
 	if id > 0 {
-		query += fmt.Sprintf(" AND uc.id = $%d", argN); argN++; args = append(args, id)
+		query += fmt.Sprintf(" AND uc.id = $%d", argN)
+		argN++
+		args = append(args, id)
 	}
 	if produtoFabricadoID > 0 {
-		query += fmt.Sprintf(" AND uc.produto_fabricado_id = $%d", argN); argN++; args = append(args, produtoFabricadoID)
+		query += fmt.Sprintf(" AND uc.produto_fabricado_id = $%d", argN)
+		argN++
+		args = append(args, produtoFabricadoID)
 	}
 	if dataInicial != "" && dataFinal != "" {
 		query += fmt.Sprintf(" AND uc.data_uso BETWEEN $%d::date AND $%d::date", argN, argN+1)
-		argN += 2; args = append(args, dataInicial, dataFinal)
+		argN += 2
+		args = append(args, dataInicial, dataFinal)
 	}
-	query += fmt.Sprintf(" AND (uc.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+	query += fmt.Sprintf(" AND (uc.empresa_id = $%d OR $%d = 0)", argN, argN)
+	args = append(args, empresaID)
 	query += " ORDER BY uc.id"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
@@ -2302,13 +2537,18 @@ func (h *ProducaoHandler) LancamentoAutomaticoConfigListar(w http.ResponseWriter
 
 	tipoOrigem := r.URL.Query().Get("tipo_origem")
 	if tipoOrigem != "" {
-		query += fmt.Sprintf(" AND tipo_origem = $%d", argN); argN++; args = append(args, tipoOrigem)
+		query += fmt.Sprintf(" AND tipo_origem = $%d", argN)
+		argN++
+		args = append(args, tipoOrigem)
 	}
 	tipoLancamento := r.URL.Query().Get("tipo_lancamento")
 	if tipoLancamento != "" {
-		query += fmt.Sprintf(" AND tipo_lancamento = $%d", argN); argN++; args = append(args, tipoLancamento)
+		query += fmt.Sprintf(" AND tipo_lancamento = $%d", argN)
+		argN++
+		args = append(args, tipoLancamento)
 	}
-	query += fmt.Sprintf(" AND (empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
+	query += fmt.Sprintf(" AND (empresa_id = $%d OR $%d = 0)", argN, argN)
+	args = append(args, empresaID)
 	query += " ORDER BY id"
 
 	rows, err := h.Pool.Query(r.Context(), query, args...)
@@ -2540,7 +2780,7 @@ func (h *ProducaoHandler) ProducaoDashboardListar(w http.ResponseWriter, r *http
 		"mensal_vendas":     mensalVendas,
 		"mensal_compras":    mensalCompras,
 		"mensal_fabricacao": mensalFabricacao,
-		"diario_fabricacao":  diarioFabricacao,
+		"diario_fabricacao": diarioFabricacao,
 		"diario_vendas":     diarioVendas,
 	}
 	jsonSuccess(w, result)

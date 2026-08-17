@@ -39,6 +39,8 @@ const Insumos = lazy(() => import('@/pages/Insumos').then((m) => ({ default: m.I
 const ComprasInsumo = lazy(() => import('@/pages/ComprasInsumo').then((m) => ({ default: m.ComprasInsumo })));
 const ProdutosFabricados = lazy(() => import('@/pages/ProdutosFabricados').then((m) => ({ default: m.ProdutosFabricados })));
 const CustosAdicionais = lazy(() => import('@/pages/CustosAdicionais').then((m) => ({ default: m.CustosAdicionais })));
+const Adicionais = lazy(() => import('@/pages/Adicionais').then((m) => ({ default: m.Adicionais })));
+const ProdutosVenda = lazy(() => import('@/pages/ProdutosVenda').then((m) => ({ default: m.ProdutosVenda })));
 const Fabricacoes = lazy(() => import('@/pages/Fabricacoes').then((m) => ({ default: m.Fabricacoes })));
 const VendasProduto = lazy(() => import('@/pages/VendasProduto').then((m) => ({ default: m.VendasProduto })));
 const Encomendas = lazy(() => import('@/pages/Encomendas').then((m) => ({ default: m.Encomendas })));
@@ -174,6 +176,8 @@ export default function App() {
           {routesFor(PRODUCAO, mode) && <Route path="/compras-insumo" element={<Private><ComprasInsumo /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/produtos-fabricados" element={<Private><ProdutosFabricados /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/custos-adicionais" element={<Private><CustosAdicionais /></Private>} />}
+          {routesFor(PRODUCAO, mode) && <Route path="/adicionais" element={<Private><Adicionais /></Private>} />}
+          {routesFor(PRODUCAO, mode) && <Route path="/produtos-venda" element={<Private><ProdutosVenda /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/fabricacoes" element={<Private><Fabricacoes /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/vendas-produto" element={<Private><VendasProduto /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/encomendas" element={<Private><Encomendas /></Private>} />}

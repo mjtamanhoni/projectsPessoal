@@ -435,25 +435,30 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	buildCond := func(alias, colData string) (string, []interface{}) {
+	buildCond := func(alias, colData string, comServico bool, porAno bool) (string, []interface{}) {
 		args := []interface{}{empresaID}
 		argN := 2
-		cond := ""
-		if dataInicio != "" || dataFim != "" {
+		cond := fmt.Sprintf(" AND %s.empresa_id = $1", alias)
+		if !porAno && (dataInicio != "" || dataFim != "") {
 			if dataInicio != "" {
 				args = append(args, dataInicio)
-				cond += fmt.Sprintf(" AND %s.%s >= $%d", alias, colData, argN)
+				cond += fmt.Sprintf(" AND %s.%s >= $%d::date", alias, colData, argN)
 				argN++
 			}
 			if dataFim != "" {
 				args = append(args, dataFim)
-				cond += fmt.Sprintf(" AND %s.%s <= $%d", alias, colData, argN)
+				cond += fmt.Sprintf(" AND %s.%s <= $%d::date", alias, colData, argN)
 				argN++
 			}
 		} else {
-			args = append(args, ano, mes)
-			cond = fmt.Sprintf(" AND EXTRACT(YEAR FROM %s.%s) = $%d AND EXTRACT(MONTH FROM %s.%s) = $%d", alias, colData, argN, alias, colData, argN+1)
-			argN += 2
+			args = append(args, ano)
+			cond += fmt.Sprintf(" AND EXTRACT(YEAR FROM %s.%s) = $%d", alias, colData, argN)
+			argN++
+			if !porAno {
+				args = append(args, mes)
+				cond += fmt.Sprintf(" AND EXTRACT(MONTH FROM %s.%s) = $%d", alias, colData, argN)
+				argN++
+			}
 		}
 		if usuarioID > 0 {
 			args = append(args, usuarioID)
@@ -465,7 +470,7 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 			cond += fmt.Sprintf(" AND %s.cliente_id = $%d", alias, argN)
 			argN++
 		}
-		if servicoID > 0 {
+		if comServico && servicoID > 0 {
 			args = append(args, servicoID)
 			cond += fmt.Sprintf(" AND %s.servico_id = $%d", alias, argN)
 			argN++
@@ -476,7 +481,7 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 	var totalHoras, totalValor, totalAbatido float64
 	var diasTrabalhados int
 
-	condHt, argsHt := buildCond("ht", "data_servico")
+	condHt, argsHt := buildCond("ht", "data_servico", false, false)
 	err := h.Pool.QueryRow(r.Context(), `
 		SELECT COALESCE(SUM(ht.quantidade_horas), 0),
 			COALESCE(SUM(ht.total_horas), 0),
@@ -488,7 +493,7 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	condHa, argsHa := buildCond("ha", "data_abatimento")
+	condHa, argsHa := buildCond("ha", "data_abatimento", true, false)
 	err = h.Pool.QueryRow(r.Context(), `
 		SELECT COALESCE(SUM(ha.quantidade_horas), 0)
 		FROM horas_abatidas ha
@@ -512,14 +517,17 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 	}
 	dailyData := rowsToMap(dailyRows)
 
+	condHtAno, argsHtAno := buildCond("ht", "data_servico", false, true)
+	condHaAno, argsHaAno := buildCond("ha", "data_abatimento", true, true)
+
 	monthlyRows, err := h.Pool.Query(r.Context(), `
 		SELECT EXTRACT(MONTH FROM ht.data_servico) AS mes,
 			SUM(ht.quantidade_horas) AS horas,
 			SUM(ht.total_horas) AS valor
 		FROM horas_trabalhadas ht
-		WHERE 1=1`+condHt+`
+		WHERE 1=1`+condHtAno+`
 		GROUP BY EXTRACT(MONTH FROM ht.data_servico)
-		ORDER BY mes`, argsHt...)
+		ORDER BY mes`, argsHtAno...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -530,9 +538,9 @@ func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Reque
 		SELECT EXTRACT(MONTH FROM ha.data_abatimento) AS mes,
 			SUM(ha.quantidade_horas) AS horas_abatidas
 		FROM horas_abatidas ha
-		WHERE 1=1`+condHa+`
+		WHERE 1=1`+condHaAno+`
 		GROUP BY EXTRACT(MONTH FROM ha.data_abatimento)
-		ORDER BY mes`, argsHa...)
+		ORDER BY mes`, argsHaAno...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return

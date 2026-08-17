@@ -13,13 +13,13 @@ import { CupomVendaModal } from '@/components/cupom/CupomVendaModal';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { Spinner } from '@/components/ui/Spinner';
-import type { VendaProduto, VendaProdutoItem, ProdutoFabricado, Cliente } from '@/types';
+import type { VendaProduto, VendaProdutoItem, ProdutoFabricado, ProdutoVenda, Cliente } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, RefreshCw, FileText } from 'lucide-react';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { formatCurrency, formatDate, formatDecimals } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDecimals, parseItemCustomizacao } from '@/lib/utils';
 import api from '@/lib/api';
 import type { JSX } from 'react';
 
@@ -40,6 +40,7 @@ export function VendasProduto() {
     [vendas, periodo, filtroRecebido],
   );
   const { data: produtos } = useApi<ProdutoFabricado>('/produtos-fabricados');
+  const { data: produtosVenda } = useApi<ProdutoVenda>('/produtos-venda');
   const { data: clientes } = useApi<Cliente>('/clientes');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<VendaProduto | null>(null);
@@ -59,9 +60,12 @@ export function VendasProduto() {
         item_id: row.item_id,
         produto_fabricado_id: row.produto_fabricado_id,
         produto_nome: row.produto_nome,
+        produto_venda_id: row.produto_venda_id,
+        produto_venda_nome: row.produto_venda_nome,
         quantidade: Number(row.quantidade),
         valor_unitario: Number(row.valor_unitario),
         valor_total: Number(row.item_valor_total ?? row.valor_total),
+        ...parseItemCustomizacao(row),
       }));
       setLoadedItens((prev) => ({ ...prev, [vendaId]: itens }));
     } catch {
@@ -79,9 +83,12 @@ export function VendasProduto() {
         item_id: row.item_id,
         produto_fabricado_id: row.produto_fabricado_id,
         produto_nome: row.produto_nome,
+        produto_venda_id: row.produto_venda_id,
+        produto_venda_nome: row.produto_venda_nome,
         quantidade: Number(row.quantidade),
         valor_unitario: Number(row.valor_unitario),
         valor_total: Number(row.item_valor_total ?? row.valor_total),
+        ...parseItemCustomizacao(row),
       }));
       return {
         id: first.id,
@@ -123,7 +130,7 @@ export function VendasProduto() {
             const produto = produtos.find((p) => (p.id ?? p.codigo) === item.produto_fabricado_id);
             return (
               <tr key={i} className="border-t border-border-primary/50">
-                <td className="px-2 py-1.5">{produto?.nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id}`}</td>
+                <td className="px-2 py-1.5">{produto?.nome ?? item.produto_venda_nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id ?? item.produto_venda_id}`}</td>
                 <td className="text-right px-2 py-1.5">{item.quantidade.toFixed(2).replace('.', ',')}</td>
                 <td className="text-right px-2 py-1.5">{formatDecimals(item.valor_unitario, 4)}</td>
                 <td className="text-right px-2 py-1.5 font-medium">{formatCurrency(item.valor_total)}</td>
@@ -327,6 +334,7 @@ export function VendasProduto() {
             onCancel={() => { setModalOpen(false); setEditing(null); }}
             initial={editing}
             produtos={produtos}
+            produtosVenda={produtosVenda}
             clientes={clientes}
           />
         )}

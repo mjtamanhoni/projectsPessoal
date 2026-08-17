@@ -1147,6 +1147,130 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
+    async listarAdicionais(params) {
+        try {
+            const res = await this.api.get('/adicional', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarAdicionais(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/adicional', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirAdicional(id) {
+        try {
+            const res = await this.api.delete('/adicional', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarProdutosAdicionais(params) {
+        try {
+            const res = await this.api.get('/produtoAdicional', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarProdutosAdicionais(payload) {
+        try {
+            const res = await this.api.post('/produtoAdicional', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirProdutoAdicional(produtoFabricadoId, adicionalId) {
+        try {
+            const res = await this.api.delete('/produtoAdicional', {
+                params: { produto_fabricado_id: produtoFabricadoId, adicional_id: adicionalId },
+                headers: this.getAuthHeaders(),
+            });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarProdutosVenda(params) {
+        try {
+            const res = await this.api.get('/produtoVenda', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarProdutosVenda(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/produtoVenda', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirProdutoVenda(id) {
+        try {
+            const res = await this.api.delete('/produtoVenda', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarProdutosVendaItens(params) {
+        try {
+            const res = await this.api.get('/produtoVendaItem', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarProdutosVendaItens(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/produtoVendaItem', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirProdutoVendaItem(id) {
+        try {
+            const res = await this.api.delete('/produtoVendaItem', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarFotoProdutoVenda(id, fotoBase64) {
+        try {
+            const raw = fotoBase64.replace(/^data:image\/[a-z]+;base64,/i, '');
+            const res = await this.api.post('/produtoVendaFoto', { id, foto: raw }, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
     async listarCustosAdicionaisTipo(params) {
         try {
             const res = await this.api.get('/custoAdicionalTipo', { params, headers: this.getAuthHeaders() });
@@ -1228,6 +1352,8 @@ class HorseApiService {
                     quantidade: Number(i.quantidade),
                     valor_unitario: Number(i.valor_unitario),
                     valor_total: Number(i.valor_total),
+                    removidos: i.removidos,
+                    adicionais: i.adicionais,
                 })),
             };
             const res = await this.api.post('/vendaProduto', payload, { headers: this.getAuthHeaders() });
@@ -1269,6 +1395,8 @@ class HorseApiService {
                     quantidade: Number(i.quantidade),
                     valor_unitario: Number(i.valor_unitario),
                     valor_total: Number(i.valor_total),
+                    removidos: i.removidos,
+                    adicionais: i.adicionais,
                 })),
             };
             const res = await this.api.post('/encomenda', payload, { headers: this.getAuthHeaders() });

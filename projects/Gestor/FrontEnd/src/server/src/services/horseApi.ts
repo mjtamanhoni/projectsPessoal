@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, ProdutoVenda, ProdutoVendaItem } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -1174,6 +1174,130 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     }
   }
 
+  async listarAdicionais(params?: Record<string, unknown>): Promise<Adicional[]> {
+    try {
+      const res = await this.api.get('/adicional', { params, headers: this.getAuthHeaders() });
+      return res.data as Adicional[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarAdicionais(items: Adicional[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/adicional', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirAdicional(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/adicional', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarProdutosAdicionais(params?: Record<string, unknown>): Promise<ProdutoAdicional[]> {
+    try {
+      const res = await this.api.get('/produtoAdicional', { params, headers: this.getAuthHeaders() });
+      return res.data as ProdutoAdicional[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarProdutosAdicionais(payload: { produto_fabricado_id: number; adicionais?: number[] }): Promise<unknown> {
+    try {
+      const res = await this.api.post('/produtoAdicional', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirProdutoAdicional(produtoFabricadoId: number, adicionalId: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/produtoAdicional', {
+        params: { produto_fabricado_id: produtoFabricadoId, adicional_id: adicionalId },
+        headers: this.getAuthHeaders(),
+      });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarProdutosVenda(params?: Record<string, unknown>): Promise<ProdutoVenda[]> {
+    try {
+      const res = await this.api.get('/produtoVenda', { params, headers: this.getAuthHeaders() });
+      return res.data as ProdutoVenda[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarProdutosVenda(items: ProdutoVenda[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/produtoVenda', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirProdutoVenda(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/produtoVenda', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarProdutosVendaItens(params?: Record<string, unknown>): Promise<ProdutoVendaItem[]> {
+    try {
+      const res = await this.api.get('/produtoVendaItem', { params, headers: this.getAuthHeaders() });
+      return res.data as ProdutoVendaItem[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarProdutosVendaItens(items: ProdutoVendaItem[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/produtoVendaItem', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirProdutoVendaItem(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/produtoVendaItem', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarFotoProdutoVenda(id: number, fotoBase64: string): Promise<unknown> {
+    try {
+      const raw = fotoBase64.replace(/^data:image\/[a-z]+;base64,/i, '');
+      const res = await this.api.post('/produtoVendaFoto', { id, foto: raw }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarCustosAdicionaisTipo(params?: Record<string, unknown>): Promise<CustoAdicionalTipo[]> {
     try {
       const res = await this.api.get('/custoAdicionalTipo', { params, headers: this.getAuthHeaders() });
@@ -1255,6 +1379,8 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
           quantidade: Number(i.quantidade),
           valor_unitario: Number(i.valor_unitario),
           valor_total: Number(i.valor_total),
+          removidos: i.removidos,
+          adicionais: i.adicionais,
         })),
       };
       const res = await this.api.post('/vendaProduto', payload, { headers: this.getAuthHeaders() });
@@ -1296,6 +1422,8 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
           quantidade: Number(i.quantidade),
           valor_unitario: Number(i.valor_unitario),
           valor_total: Number(i.valor_total),
+          removidos: i.removidos,
+          adicionais: i.adicionais,
         })),
       };
       const res = await this.api.post('/encomenda', payload, { headers: this.getAuthHeaders() });

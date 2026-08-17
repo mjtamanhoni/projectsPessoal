@@ -208,6 +208,53 @@ export const custoAdicionalTipoBodySchema = z.object({
   ativo: z.boolean().optional(),
 });
 
+export const adicionalBodySchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  nome: z.string().min(1, 'Nome e obrigatorio').max(200),
+  descricao: z.string().max(500).optional(),
+  preco: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco nao pode ser negativo'),
+  ativo: z.boolean().optional(),
+});
+
+const produtoAdicionalItemSchema = z.object({
+  produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
+  adicional_id: z.number().int().positive('Adicional e obrigatorio'),
+});
+
+export const produtoAdicionalBodySchema = z.union([
+  z.object({
+    produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
+    adicionais: z.array(z.number().int().positive()).optional(),
+  }),
+  produtoAdicionalItemSchema,
+]);
+
+const produtoVendaItemSchema = z.object({
+  nome: z.string().min(1, 'Nome e obrigatorio').max(200),
+  pode_remover: z.boolean().optional(),
+  pode_adicionar: z.boolean().optional(),
+  preco_adicional: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco adicional nao pode ser negativo').optional(),
+  ordem: z.union([z.number(), z.string().transform((s) => parseInt(s, 10))]).optional(),
+});
+
+export const produtoVendaBodySchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  nome: z.string().min(1, 'Nome e obrigatorio').max(200),
+  descricao: z.string().max(500).optional(),
+  preco: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco nao pode ser negativo'),
+  produto_fabricado_id: z.union([z.number().int().positive(), z.null()]).optional(),
+  foto: z.string().max(500).optional(),
+  ativo: z.boolean().optional(),
+});
+
+export const produtoVendaItemBodySchema = produtoVendaItemSchema.extend({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  produto_venda_id: z.number().int().positive('Produto de venda e obrigatorio'),
+});
+
 export const fabricacaoBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),
@@ -217,11 +264,21 @@ export const fabricacaoBodySchema = z.object({
   observacao: z.string().max(500).optional(),
 });
 
+const adicionalPedidoItemSchema = z.object({
+  adicional_id: z.number().int().positive().optional(),
+  nome: z.string().min(1, 'Nome e obrigatorio').max(200),
+  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+  valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Valor unitario nao pode ser negativo'),
+  valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
+});
+
 const vendaProdutoItemSchema = z.object({
   produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
   quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
   valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
   valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
+  removidos: z.array(z.string()).optional(),
+  adicionais: z.array(adicionalPedidoItemSchema).optional(),
 });
 
 export const vendaProdutoBodySchema = z.object({
@@ -242,6 +299,8 @@ const encomendaItemSchema = z.object({
   quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
   valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
   valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
+  removidos: z.array(z.string()).optional(),
+  adicionais: z.array(adicionalPedidoItemSchema).optional(),
 });
 
 export const encomendaBodySchema = z.object({

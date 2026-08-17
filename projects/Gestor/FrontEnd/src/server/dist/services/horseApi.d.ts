@@ -1,4 +1,4 @@
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, ProdutoVenda, ProdutoVendaItem } from '../types';
 declare class HorseApiService {
     private api;
     private token;
@@ -81,6 +81,22 @@ declare class HorseApiService {
     listarReceitasIngrediente(params?: Record<string, unknown>): Promise<ReceitaIngrediente[]>;
     salvarReceitasIngrediente(items: ReceitaIngrediente[]): Promise<unknown>;
     excluirReceitaIngrediente(id: number): Promise<unknown>;
+    listarAdicionais(params?: Record<string, unknown>): Promise<Adicional[]>;
+    salvarAdicionais(items: Adicional[]): Promise<unknown>;
+    excluirAdicional(id: number): Promise<unknown>;
+    listarProdutosAdicionais(params?: Record<string, unknown>): Promise<ProdutoAdicional[]>;
+    salvarProdutosAdicionais(payload: {
+        produto_fabricado_id: number;
+        adicionais?: number[];
+    }): Promise<unknown>;
+    excluirProdutoAdicional(produtoFabricadoId: number, adicionalId: number): Promise<unknown>;
+    listarProdutosVenda(params?: Record<string, unknown>): Promise<ProdutoVenda[]>;
+    salvarProdutosVenda(items: ProdutoVenda[]): Promise<unknown>;
+    excluirProdutoVenda(id: number): Promise<unknown>;
+    listarProdutosVendaItens(params?: Record<string, unknown>): Promise<ProdutoVendaItem[]>;
+    salvarProdutosVendaItens(items: ProdutoVendaItem[]): Promise<unknown>;
+    excluirProdutoVendaItem(id: number): Promise<unknown>;
+    salvarFotoProdutoVenda(id: number, fotoBase64: string): Promise<unknown>;
     listarCustosAdicionaisTipo(params?: Record<string, unknown>): Promise<CustoAdicionalTipo[]>;
     salvarCustosAdicionaisTipo(items: CustoAdicionalTipo[]): Promise<unknown>;
     excluirCustoAdicionalTipo(id: number): Promise<unknown>;

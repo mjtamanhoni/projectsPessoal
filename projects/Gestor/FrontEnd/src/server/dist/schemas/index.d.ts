@@ -182,6 +182,41 @@ export declare const custoAdicionalTipoBodySchema: z.ZodObject<{
     nome: z.ZodString;
     ativo: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
+export declare const adicionalBodySchema: z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    nome: z.ZodString;
+    descricao: z.ZodOptional<z.ZodString>;
+    preco: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+    ativo: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strip>;
+export declare const produtoAdicionalBodySchema: z.ZodUnion<readonly [z.ZodObject<{
+    produto_fabricado_id: z.ZodNumber;
+    adicionais: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+}, z.core.$strip>, z.ZodObject<{
+    produto_fabricado_id: z.ZodNumber;
+    adicional_id: z.ZodNumber;
+}, z.core.$strip>]>;
+export declare const produtoVendaBodySchema: z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    nome: z.ZodString;
+    descricao: z.ZodOptional<z.ZodString>;
+    preco: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+    produto_fabricado_id: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodNull]>>;
+    foto: z.ZodOptional<z.ZodString>;
+    ativo: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strip>;
+export declare const produtoVendaItemBodySchema: z.ZodObject<{
+    nome: z.ZodString;
+    pode_remover: z.ZodOptional<z.ZodBoolean>;
+    pode_adicionar: z.ZodOptional<z.ZodBoolean>;
+    preco_adicional: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
+    ordem: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    produto_venda_id: z.ZodNumber;
+}, z.core.$strip>;
 export declare const fabricacaoBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;
     id: z.ZodOptional<z.ZodNumber>;
@@ -205,6 +240,14 @@ export declare const vendaProdutoBodySchema: z.ZodObject<{
         quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_total: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+        removidos: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        adicionais: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            adicional_id: z.ZodOptional<z.ZodNumber>;
+            nome: z.ZodString;
+            quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+            valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+            valor_total: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
+        }, z.core.$strip>>>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const encomendaBodySchema: z.ZodObject<{
@@ -220,6 +263,14 @@ export declare const encomendaBodySchema: z.ZodObject<{
         quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_total: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+        removidos: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        adicionais: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            adicional_id: z.ZodOptional<z.ZodNumber>;
+            nome: z.ZodString;
+            quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+            valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+            valor_total: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
+        }, z.core.$strip>>>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const encomendaStatusSchema: z.ZodObject<{

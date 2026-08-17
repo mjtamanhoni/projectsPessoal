@@ -301,6 +301,146 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "013_customizacao_produto",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='adicional') THEN
+					CREATE TABLE adicional (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						nome VARCHAR(200) NOT NULL,
+						descricao VARCHAR(500),
+						preco NUMERIC(12,2) NOT NULL DEFAULT 0,
+						ativo BOOLEAN NOT NULL DEFAULT TRUE,
+						PRIMARY KEY (empresa_id, id)
+					);
+				END IF;
+
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='produto_adicional') THEN
+					CREATE TABLE produto_adicional (
+						empresa_id INTEGER NOT NULL,
+						produto_fabricado_id INTEGER NOT NULL,
+						adicional_id INTEGER NOT NULL,
+						PRIMARY KEY (empresa_id, produto_fabricado_id, adicional_id)
+					);
+				END IF;
+
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='encomenda_item_removido') THEN
+					CREATE TABLE encomenda_item_removido (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						encomenda_item_id INTEGER NOT NULL,
+						nome VARCHAR(200) NOT NULL,
+						PRIMARY KEY (empresa_id, id)
+					);
+				END IF;
+
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='encomenda_item_adicional') THEN
+					CREATE TABLE encomenda_item_adicional (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						encomenda_item_id INTEGER NOT NULL,
+						adicional_id INTEGER,
+						nome VARCHAR(200) NOT NULL,
+						quantidade NUMERIC(12,3) NOT NULL DEFAULT 1,
+						valor_unitario NUMERIC(12,2) NOT NULL DEFAULT 0,
+						valor_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+						PRIMARY KEY (empresa_id, id)
+					);
+				END IF;
+
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='venda_produto_item_removido') THEN
+					CREATE TABLE venda_produto_item_removido (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						venda_produto_item_id INTEGER NOT NULL,
+						nome VARCHAR(200) NOT NULL,
+						PRIMARY KEY (empresa_id, id)
+					);
+				END IF;
+
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='venda_produto_item_adicional') THEN
+					CREATE TABLE venda_produto_item_adicional (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						venda_produto_item_id INTEGER NOT NULL,
+						adicional_id INTEGER,
+						nome VARCHAR(200) NOT NULL,
+						quantidade NUMERIC(12,3) NOT NULL DEFAULT 1,
+						valor_unitario NUMERIC(12,2) NOT NULL DEFAULT 0,
+						valor_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+						PRIMARY KEY (empresa_id, id)
+					);
+				END IF;
+			END $$;
+		`,
+	},
+	{
+		Nome: "014_produto_venda",
+		SQLUp: `
+			DO $$
+			BEGIN
+				-- Produto de Venda: produto comercializavel (encomenda/venda),
+				-- pode derivar de um produto fabricado.
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='produto_venda') THEN
+					CREATE TABLE produto_venda (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						nome VARCHAR(200) NOT NULL,
+						descricao TEXT,
+						preco NUMERIC(12,2) NOT NULL DEFAULT 0,
+						produto_fabricado_id INTEGER,
+						foto TEXT,
+						ativo BOOLEAN NOT NULL DEFAULT TRUE,
+						usuario_id INTEGER,
+						PRIMARY KEY (empresa_id, id)
+					);
+				END IF;
+
+				-- Itens que compoem o produto de venda (receita comercial).
+				-- Cada item indica se pode ser removido e/ou adicionado na encomenda,
+				-- e o preco cobrado quando adicionado.
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='produto_venda_item') THEN
+					CREATE TABLE produto_venda_item (
+						empresa_id INTEGER NOT NULL,
+						id INTEGER NOT NULL,
+						produto_venda_id INTEGER NOT NULL,
+						nome VARCHAR(200) NOT NULL,
+						pode_remover BOOLEAN NOT NULL DEFAULT FALSE,
+						pode_adicionar BOOLEAN NOT NULL DEFAULT FALSE,
+						preco_adicional NUMERIC(12,2) NOT NULL DEFAULT 0,
+						ordem INTEGER NOT NULL DEFAULT 0,
+						ativo BOOLEAN NOT NULL DEFAULT TRUE,
+						PRIMARY KEY (empresa_id, id)
+					);
+				END IF;
+
+				-- Referencia opcional ao produto de venda nos itens de encomenda/venda
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encomenda_item' AND column_name='produto_venda_id') THEN
+					ALTER TABLE public.encomenda_item ADD COLUMN produto_venda_id INTEGER;
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='venda_produto_item' AND column_name='produto_venda_id') THEN
+					ALTER TABLE public.venda_produto_item ADD COLUMN produto_venda_id INTEGER;
+				END IF;
+
+				-- Referencia opcional ao item do produto de venda nas customizacoes
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encomenda_item_removido' AND column_name='produto_venda_item_id') THEN
+					ALTER TABLE public.encomenda_item_removido ADD COLUMN produto_venda_item_id INTEGER;
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encomenda_item_adicional' AND column_name='produto_venda_item_id') THEN
+					ALTER TABLE public.encomenda_item_adicional ADD COLUMN produto_venda_item_id INTEGER;
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='venda_produto_item_removido' AND column_name='produto_venda_item_id') THEN
+					ALTER TABLE public.venda_produto_item_removido ADD COLUMN produto_venda_item_id INTEGER;
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='venda_produto_item_adicional' AND column_name='produto_venda_item_id') THEN
+					ALTER TABLE public.venda_produto_item_adicional ADD COLUMN produto_venda_item_id INTEGER;
+				END IF;
+			END $$;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

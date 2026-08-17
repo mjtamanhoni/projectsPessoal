@@ -327,6 +327,58 @@ export interface CustoAdicionalTipo {
   ativo?: boolean;
 }
 
+export interface Adicional {
+  codigo?: number;
+  id?: number;
+  nome: string;
+  descricao?: string;
+  preco: number;
+  ativo?: boolean;
+}
+
+export interface ProdutoAdicional {
+  produto_fabricado_id: number;
+  adicional_id: number;
+  adicional_nome?: string;
+  adicional_descricao?: string;
+  adicional_preco?: number;
+  adicional_ativo?: boolean;
+}
+
+export interface ProdutoVenda {
+  codigo?: number;
+  id?: number;
+  nome: string;
+  descricao?: string;
+  preco: number;
+  produto_fabricado_id?: number | null;
+  produto_fabricado_nome?: string | null;
+  foto?: string;
+  ativo?: boolean;
+}
+
+export interface ProdutoVendaItem {
+  codigo?: number;
+  id?: number;
+  produto_venda_id: number;
+  produto_venda_nome?: string;
+  nome: string;
+  pode_remover: boolean;
+  pode_adicionar: boolean;
+  preco_adicional: number;
+  ordem: number;
+  ativo?: boolean;
+}
+
+export interface AdicionalItemPedido {
+  adicional_id?: number;
+  produto_venda_item_id?: number;
+  nome: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total?: number;
+}
+
 export interface Fabricacao {
   codigo?: number;
   id?: number;
@@ -366,11 +418,15 @@ export interface LancamentoAutomaticoConfig {
 export interface VendaProdutoItem {
   item_id?: number;
   id?: number;
-  produto_fabricado_id: number;
+  produto_fabricado_id?: number;
   produto_nome?: string;
+  produto_venda_id?: number;
+  produto_venda_nome?: string;
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
+  removidos?: (string | { nome: string; produto_venda_item_id?: number })[];
+  adicionais?: AdicionalItemPedido[];
 }
 
 export interface VendaProduto {
@@ -392,11 +448,15 @@ export interface VendaProduto {
 export interface EncomendaItem {
   item_id?: number;
   id?: number;
-  produto_fabricado_id: number;
+  produto_fabricado_id?: number;
   produto_nome?: string;
+  produto_venda_id?: number;
+  produto_venda_nome?: string;
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
+  removidos?: (string | { nome: string; produto_venda_item_id?: number })[];
+  adicionais?: AdicionalItemPedido[];
 }
 
 export interface Encomenda {

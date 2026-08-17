@@ -2,20 +2,22 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
-import { Plus, Trash2 } from 'lucide-react';
-import type { Encomenda, EncomendaItem, ProdutoFabricado, Cliente } from '@/types';
+import { Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
+import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente } from '@/types';
 import { formatCurrency, formatDecimals } from '@/lib/utils';
 import { ProdutosSelecaoModal, type ProdutoSelecionado } from '@/components/forms/ProdutosSelecaoModal';
+import { ItemCustomizacaoModal, type ItemCustomizavel } from '@/components/forms/ItemCustomizacaoModal';
 
 interface EncomendaFormProps {
   onSubmit: (data: Encomenda) => void;
   onCancel: () => void;
   initial?: Encomenda | null;
   produtos: ProdutoFabricado[];
+  produtosVenda?: ProdutoVenda[];
   clientes: Cliente[];
 }
 
-export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes }: EncomendaFormProps) {
+export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosVenda = [], clientes }: EncomendaFormProps) {
   const [clienteId, setClienteId] = useState<number>(initial?.cliente_id ?? 0);
   const [dataEncomenda, setDataEncomenda] = useState(initial?.data_encomenda ?? new Date().toISOString().slice(0, 10));
   const [dataEntrega, setDataEntrega] = useState(initial?.data_entrega ?? '');
@@ -23,6 +25,7 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
 
   const [itens, setItens] = useState<EncomendaItem[]>(initial?.itens ?? []);
   const [seletorAberto, setSeletorAberto] = useState(false);
+  const [customizandoIdx, setCustomizandoIdx] = useState<number | null>(null);
 
   const total = itens.reduce((acc, item) => acc + item.valor_total, 0);
 
@@ -33,6 +36,12 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
 
   const removeItem = (idx: number) => {
     setItens(itens.filter((_, i) => i !== idx));
+  };
+
+  const confirmarCustomizacao = (item: ItemCustomizavel) => {
+    if (customizandoIdx === null) return;
+    setItens((prev) => prev.map((it, i) => (i === customizandoIdx ? (item as EncomendaItem) : it)));
+    setCustomizandoIdx(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,22 +106,42 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
                 <th className="text-right px-3 py-2 text-text-secondary font-medium">Quantidade</th>
                 <th className="text-right px-3 py-2 text-text-secondary font-medium">Valor Unit.</th>
                 <th className="text-right px-3 py-2 text-text-secondary font-medium">Valor Total</th>
-                <th className="px-3 py-2 w-10"></th>
+                <th className="px-3 py-2 w-24"></th>
               </tr>
             </thead>
             <tbody>
               {itens.map((item, idx) => {
                 const produto = produtos.find((p) => (p.id ?? p.codigo) === item.produto_fabricado_id);
+                const personalizado = (item.removidos?.length ?? 0) > 0 || (item.adicionais?.length ?? 0) > 0;
                 return (
                   <tr key={idx} className="border-t border-border-primary">
-                    <td className="px-3 py-2">{produto?.nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id}`}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate">{produto?.nome ?? item.produto_venda_nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id ?? item.produto_venda_id}`}</span>
+                        {personalizado && (
+                          <span className="shrink-0 rounded-full bg-accent-blue/15 text-accent-blue px-2 py-0.5 text-[10px] font-medium">
+                            Personalizado
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2 text-right">{item.quantidade.toFixed(2).replace('.', ',')}</td>
                     <td className="px-3 py-2 text-right">{formatDecimals(item.valor_unitario, 2)}</td>
                     <td className="px-3 py-2 text-right">{formatCurrency(item.valor_total)}</td>
                     <td className="px-3 py-2 text-center">
-                      <button type="button" onClick={() => removeItem(idx)} className="p-1 rounded hover:bg-bg-muted transition-colors">
-                        <Trash2 size={14} className="text-accent-red" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setCustomizandoIdx(idx)}
+                          title="Personalizar produto"
+                          className="p-1 rounded hover:bg-bg-muted transition-colors"
+                        >
+                          <SlidersHorizontal size={14} className="text-accent-blue" />
+                        </button>
+                        <button type="button" onClick={() => removeItem(idx)} className="p-1 rounded hover:bg-bg-muted transition-colors">
+                          <Trash2 size={14} className="text-accent-red" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -136,9 +165,17 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, clientes 
         isOpen={seletorAberto}
         titulo="Selecionar Produtos"
         produtos={produtos}
+        produtosVenda={produtosVenda}
         itens={itens}
         onConfirmar={confirmarSelecao}
         onFechar={() => setSeletorAberto(false)}
+      />
+
+      <ItemCustomizacaoModal
+        isOpen={customizandoIdx !== null}
+        item={customizandoIdx !== null ? (itens[customizandoIdx] ?? null) : null}
+        onConfirmar={confirmarCustomizacao}
+        onFechar={() => setCustomizandoIdx(null)}
       />
     </form>
   );

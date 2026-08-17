@@ -176,6 +176,11 @@ export default function MinhasEncomendas() {
               <div className="compra-sub-row compra-item" style={{ padding: '4px 4px 0' }}>
                 <span className="col-produto" style={{ flex: 1 }}>
                   {item.produto_nome || `ID ${item.produto_fabricado_id}`}
+                  {(item.removidos && item.removidos.length > 0) || (item.adicionais && item.adicionais.length > 0) ? (
+                    <span style={{ marginLeft: 4, display: 'inline-block', background: '#e8f0ea', color: '#2d6a4f', borderRadius: 8, padding: '0 6px', fontSize: 9, fontWeight: 700 }}>
+                      Personalizado
+                    </span>
+                  ) : null}
                 </span>
                 <span className="col-qtd">{numeroParaDecimal(item.quantidade, QTD_CASAS)}</span>
                 <span className="col-unit">{numeroParaDecimal(item.valor_unitario, QTD_CASAS)}</span>
@@ -183,6 +188,19 @@ export default function MinhasEncomendas() {
                   {numeroParaDecimal(item.valor_total, QTD_CASAS)}
                 </span>
               </div>
+              {(item.removidos && item.removidos.length > 0) || (item.adicionais && item.adicionais.length > 0) ? (
+                <div style={{ padding: '2px 8px 0', fontSize: 10, color: '#6b706c' }}>
+                  {item.removidos && item.removidos.length > 0 ? (
+                    <span>Sem: {item.removidos.join(', ')}</span>
+                  ) : null}
+                  {item.removidos && item.removidos.length > 0 && item.adicionais && item.adicionais.length > 0 ? ' • ' : ''}
+                  {item.adicionais && item.adicionais.length > 0
+                    ? `+ ${item.adicionais
+                        .map((a) => `${a.nome}${a.quantidade > 1 ? ` x${a.quantidade}` : ''}`)
+                        .join(', ')}`
+                    : null}
+                </div>
+              ) : null}
               <div className="compra-sub-sep" />
             </div>
           ))

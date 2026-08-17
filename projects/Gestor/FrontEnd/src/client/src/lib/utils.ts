@@ -76,6 +76,39 @@ export function parseQuantityInput(value: string, decimals: number = 4): number 
   return parseInt(numbers, 10) / Math.pow(10, decimals);
 }
 
+export interface AdicionalItemParsed {
+  adicional_id?: number;
+  nome: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total?: number;
+}
+
+export function parseItemCustomizacao(row: { removidos?: unknown; adicionais?: unknown }): {
+  removidos?: string[];
+  adicionais?: AdicionalItemParsed[];
+} {
+  let removidos: string[] | undefined;
+  if (typeof row.removidos === 'string') {
+    try {
+      const parsed = JSON.parse(row.removidos);
+      removidos = Array.isArray(parsed) ? (parsed as string[]) : [];
+    } catch {
+      removidos = [];
+    }
+  }
+  let adicionais: AdicionalItemParsed[] | undefined;
+  if (typeof row.adicionais === 'string') {
+    try {
+      const parsed = JSON.parse(row.adicionais);
+      adicionais = Array.isArray(parsed) ? (parsed as AdicionalItemParsed[]) : [];
+    } catch {
+      adicionais = [];
+    }
+  }
+  return { removidos, adicionais };
+}
+
 export function formatPhone(value: string): string {
   const numbers = value.replace(/\D/g, '');
   
