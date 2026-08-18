@@ -234,7 +234,7 @@ const produtoVendaItemSchema = z.object({
   nome: z.string().min(1, 'Nome e obrigatorio').max(200),
   pode_remover: z.boolean().optional(),
   pode_adicionar: z.boolean().optional(),
-  preco_adicional: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco adicional nao pode ser negativo').optional(),
+  adicional_id: z.number().int().positive().nullable().optional(),
   ordem: z.union([z.number(), z.string().transform((s) => parseInt(s, 10))]).optional(),
 });
 

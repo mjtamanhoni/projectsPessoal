@@ -121,6 +121,23 @@ func salvarCustomizacaoItem(ctx context.Context, tx pgx.Tx, empresaID, itemID in
 		if err != nil {
 			return 0, err
 		}
+
+		// O preco do adicional e autoritativo: vem da tabela adicional
+		// (quando vinculado), independente do valor enviado pelo cliente.
+		var preco float64
+		if a.AdicionalID > 0 {
+			err = tx.QueryRow(ctx,
+				"SELECT COALESCE(preco, 0) FROM adicional WHERE id = $1 AND empresa_id = $2",
+				a.AdicionalID, empresaID).Scan(&preco)
+			if err != nil {
+				return 0, err
+			}
+		} else {
+			preco = a.ValorUnitario
+		}
+
+		valorTotal := a.Quantidade * preco
+
 		var adicionalID interface{}
 		if a.AdicionalID > 0 {
 			adicionalID = a.AdicionalID
@@ -133,11 +150,11 @@ func salvarCustomizacaoItem(ctx context.Context, tx pgx.Tx, empresaID, itemID in
 			"INSERT INTO %s (empresa_id, id, %s, adicional_id, nome, quantidade, valor_unitario, valor_total, produto_venda_item_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
 			tabelaAdicionais, colItem),
 			empresaID, id, itemID, adicionalID, a.Nome,
-			a.Quantidade, a.ValorUnitario, a.ValorTotal, pviID)
+			a.Quantidade, preco, valorTotal, pviID)
 		if err != nil {
 			return 0, err
 		}
-		adicionalValor += a.ValorTotal
+		adicionalValor += valorTotal
 	}
 	return adicionalValor, nil
 }

@@ -365,7 +365,9 @@ export interface ProdutoVendaItem {
   nome: string;
   pode_remover: boolean;
   pode_adicionar: boolean;
-  preco_adicional: number;
+  adicional_id?: number | null;
+  adicional_nome?: string | null;
+  adicional_preco?: number | null;
   ordem: number;
   ativo?: boolean;
 }

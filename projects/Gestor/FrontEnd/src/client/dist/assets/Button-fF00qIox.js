@@ -1,0 +1,1 @@
+import{j as o}from"./boot-BZ3TndOW.js";function i({variant:r="primary",children:n,className:t="",...a}){const s={primary:"btn-primary",secondary:"btn-secondary",danger:"btn-danger"};return o.jsx("button",{className:`${s[r]} ${t}`,...a,children:n})}export{i as B};

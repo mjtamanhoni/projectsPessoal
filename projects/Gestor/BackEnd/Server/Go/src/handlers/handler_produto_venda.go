@@ -90,9 +90,12 @@ func (h *ProducaoHandler) ProdutoVendaItemListar(w http.ResponseWriter, r *http.
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	produtoVendaID := parseInt(r.URL.Query().Get("produto_venda_id"), 0)
 
-	query := `SELECT pvi.*, pv.nome as produto_venda_nome
+	query := `SELECT pvi.*, pv.nome as produto_venda_nome,
+		ad.nome as adicional_nome, ad.preco as adicional_preco, ad.descricao as adicional_descricao,
+		ad.ativo as adicional_ativo
 		FROM produto_venda_item pvi
 		LEFT JOIN produto_venda pv ON pv.id = pvi.produto_venda_id AND pv.empresa_id = pvi.empresa_id
+		LEFT JOIN adicional ad ON ad.id = pvi.adicional_id AND ad.empresa_id = pvi.empresa_id
 		WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -115,7 +118,7 @@ func (h *ProducaoHandler) ProdutoVendaItemListar(w http.ResponseWriter, r *http.
 
 func (h *ProducaoHandler) ProdutoVendaItemAtualizar(w http.ResponseWriter, r *http.Request) {
 	h.BasicCRUD.Salvar(w, r, "produto_venda_item",
-		[]string{"produto_venda_id", "nome", "pode_remover", "pode_adicionar", "preco_adicional", "ordem", "ativo"})
+		[]string{"produto_venda_id", "nome", "pode_remover", "pode_adicionar", "adicional_id", "ordem", "ativo"})
 }
 
 func (h *ProducaoHandler) ProdutoVendaItemExcluir(w http.ResponseWriter, r *http.Request) {

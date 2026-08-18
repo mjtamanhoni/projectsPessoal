@@ -1,11 +1,14 @@
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus } from 'lucide-react';
 import { z } from 'zod';
-import { formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
-import type { ProdutoVendaItem } from '@/types';
+import { formatCurrency } from '@/lib/utils';
+import type { Adicional, ProdutoVendaItem } from '@/types';
+import api from '@/lib/api';
 
 const produtoVendaItemSchema = z.object({
   codigo: z.number().int().positive().optional(),
@@ -14,7 +17,7 @@ const produtoVendaItemSchema = z.object({
   nome: z.string().min(1, 'Nome e obrigatorio').max(200),
   pode_remover: z.boolean(),
   pode_adicionar: z.boolean(),
-  preco_adicional: z.number().min(0, 'Preco adicional deve ser maior ou igual a zero'),
+  adicional_id: z.number().int().positive().nullable().optional(),
   ordem: z.number().int().min(0, 'Ordem deve ser maior ou igual a zero'),
   ativo: z.boolean().optional(),
 });
@@ -26,17 +29,27 @@ interface ProdutoVendaItemFormProps {
   onCancel: () => void;
   initial?: ProdutoVendaItem | null;
   produtoVendaId?: number;
+  ordemInicial?: number;
 }
 
-export function ProdutoVendaItemForm({ onSubmit, onCancel, initial, produtoVendaId }: ProdutoVendaItemFormProps) {
-  const { handleSubmit, formState: { errors }, control } = useForm<ProdutoVendaItemInput>({
+export function ProdutoVendaItemForm({ onSubmit, onCancel, initial, produtoVendaId, ordemInicial }: ProdutoVendaItemFormProps) {
+  const [adicionais, setAdicionais] = useState<Adicional[]>([]);
+  const [erroAdicionais, setErroAdicionais] = useState('');
+
+  useEffect(() => {
+    api.get<Adicional[]>('/adicionais')
+      .then((r) => setAdicionais(r.data))
+      .catch(() => setErroAdicionais('Erro ao carregar os adicionais. Verifique a conexão com o servidor.'));
+  }, []);
+
+  const { handleSubmit, formState: { errors }, control, watch, setValue } = useForm<ProdutoVendaItemInput>({
     resolver: zodResolver(produtoVendaItemSchema),
     defaultValues: initial ? {
       nome: initial.nome || '',
       produto_venda_id: initial.produto_venda_id || produtoVendaId || 0,
       pode_remover: initial?.pode_remover ?? false,
       pode_adicionar: initial?.pode_adicionar ?? false,
-      preco_adicional: initial.preco_adicional ?? 0,
+      adicional_id: initial?.adicional_id ?? null,
       ordem: initial.ordem ?? 0,
       ativo: initial.ativo ?? true,
     } : {
@@ -44,14 +57,59 @@ export function ProdutoVendaItemForm({ onSubmit, onCancel, initial, produtoVenda
       produto_venda_id: produtoVendaId ?? 0,
       pode_remover: false,
       pode_adicionar: false,
-      preco_adicional: 0,
-      ordem: 0,
+      adicional_id: null,
+      ordem: ordemInicial ?? 0,
       ativo: true,
     },
   });
 
+  const watchAdicional = watch('adicional_id');
+  const watchNome = watch('nome');
+  const adicionalAtual = adicionais.find((a) => (a.id ?? a.codigo) === watchAdicional);
+
+  const selecionarAdicional = (id: number) => {
+    const adicional = adicionais.find((a) => (a.id ?? a.codigo) === id);
+    setValue('adicional_id', id);
+    if (adicional) {
+      setValue('nome', adicional.nome);
+    }
+  };
+
+  const limparAdicional = () => {
+    if (adicionalAtual && watchNome === adicionalAtual.nome) {
+      setValue('nome', '');
+    }
+    setValue('adicional_id', null);
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <Controller
+        name="adicional_id"
+        control={control}
+        render={({ field }) => (
+          <div className="space-y-1.5">
+            <label className="label-field">Adicional de preço</label>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={selecionarAdicional}
+              onClear={limparAdicional}
+              options={adicionais.filter((a) => Boolean(a.ativo)).map((a) => ({
+                value: (a.id ?? a.codigo)!,
+                label: `${a.nome} — ${formatCurrency(Number(a.preco ?? 0))}`,
+              }))}
+              title="Selecionar Adicional"
+              placeholder="Sem adicional (adição gratuita)"
+            />
+            <p className="text-xs text-text-tertiary">
+              O preço da adição é o do adicional cadastrado
+              {adicionalAtual ? `: ${formatCurrency(Number(adicionalAtual.preco ?? 0))}` : ' (R$ 0,00)'}
+              {initial?.adicional_nome && !adicionalAtual && ` — vigente: ${initial.adicional_nome} (${formatCurrency(Number(initial.adicional_preco ?? 0))})`}
+            </p>
+            {erroAdicionais && <p className="text-xs text-accent-red">{erroAdicionais}</p>}
+          </div>
+        )}
+      />
       <Controller
         name="nome"
         control={control}
@@ -93,24 +151,6 @@ export function ProdutoVendaItemForm({ onSubmit, onCancel, initial, produtoVenda
           )}
         />
       </div>
-      <Controller
-        name="preco_adicional"
-        control={control}
-        render={({ field }) => (
-          <Input
-            label="Preço quando adicionado (R$)"
-            type="text"
-            inputMode="decimal"
-            placeholder="0,00"
-            error={errors.preco_adicional?.message}
-            value={field.value ? formatCurrencyInput(Number(field.value).toFixed(2)) : ''}
-            onChange={(e) => {
-              const parsed = parseCurrencyInput(e.target.value);
-              field.onChange(parsed);
-            }}
-          />
-        )}
-      />
       <Controller
         name="ordem"
         control={control}

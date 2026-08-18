@@ -255,7 +255,7 @@ export function ProdutosVenda() {
                 <th className="text-left text-xs font-medium text-text-muted py-2 px-2">Item</th>
                 <th className="text-center text-xs font-medium text-text-muted py-2 px-2">Remover</th>
                 <th className="text-center text-xs font-medium text-text-muted py-2 px-2">Adicionar</th>
-                <th className="text-right text-xs font-medium text-text-muted py-2 px-2">Preço Adic.</th>
+                <th className="text-left text-xs font-medium text-text-muted py-2 px-2">Adicional de Preço</th>
                 <th className="text-right text-xs font-medium text-text-muted py-2 px-2 w-14">Ordem</th>
                 <th className="text-center text-xs font-medium text-text-muted py-2 px-2 w-14">Ações</th>
               </tr>
@@ -269,7 +269,7 @@ export function ProdutosVenda() {
                     <td className="text-text-primary py-1.5 px-2">{item.nome}</td>
                     <td className="py-1.5 px-2 text-center"><BadgeItem rotulo="Remover" ativo={Boolean(item.pode_remover)} /></td>
                     <td className="py-1.5 px-2 text-center"><BadgeItem rotulo="Adicionar" ativo={Boolean(item.pode_adicionar)} /></td>
-                    <td className="text-text-primary py-1.5 px-2 text-right">{formatCurrency(Number(item.preco_adicional ?? 0))}</td>
+                    <td className="text-text-primary py-1.5 px-2">{item.adicional_nome ? `${item.adicional_nome} — ${formatCurrency(Number(item.adicional_preco ?? 0))}` : <span className="text-text-muted">Grátis</span>}</td>
                     <td className="text-text-secondary py-1.5 px-2 text-right text-xs">{item.ordem ?? 0}</td>
                     <td className="py-1.5 px-2">
                       <div className="flex items-center justify-center gap-0.5">
@@ -351,6 +351,7 @@ export function ProdutosVenda() {
           onCancel={() => { setPiModalOpen(false); setPiEditing(null); setPiProdutoId(null); }}
           initial={piEditing}
           produtoVendaId={piProdutoId ?? undefined}
+          ordemInicial={piEditing ? undefined : (itens[piProdutoId ?? 0] ?? []).reduce((m, i) => Math.max(m, i.ordem ?? 0), 0) + 1}
         />
       </Modal>
 

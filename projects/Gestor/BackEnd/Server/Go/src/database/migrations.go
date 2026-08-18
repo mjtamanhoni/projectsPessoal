@@ -441,6 +441,22 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "015_produto_venda_item_adicional",
+		SQLUp: `
+			DO $$
+			BEGIN
+				-- Item da receita comercial referencia um adicional (preco vem da tabela adicional)
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produto_venda_item' AND column_name='adicional_id') THEN
+					ALTER TABLE public.produto_venda_item ADD COLUMN adicional_id INTEGER;
+				END IF;
+				-- O preco de adicionar deixa de ser cadastrado no item: vem do adicional vinculado
+				IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produto_venda_item' AND column_name='preco_adicional') THEN
+					ALTER TABLE public.produto_venda_item DROP COLUMN preco_adicional;
+				END IF;
+			END $$;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

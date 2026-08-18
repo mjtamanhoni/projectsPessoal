@@ -15,6 +15,27 @@ func apenasDigitos(s string) string {
 	return digitosRe.ReplaceAllString(s, "")
 }
 
+// unidadesPorItem define em quantas linhas de 1 unidade um item deve ser gravado.
+// Produtos de venda (customizáveis) ou itens com customização (removidos/adicionais)
+// com quantidade inteira > 1 são divididos para permitir ajustar cada lanche
+// individualmente. Quantidades decimais ou itens simples (ex.: bebidas) não dividem.
+func unidadesPorItem(produtoVendaID int, quantidade float64, item map[string]interface{}) int {
+	if quantidade <= 1 || quantidade != float64(int(quantidade)) {
+		return 1
+	}
+	customizado := false
+	for _, campo := range []string{"removidos", "adicionais"} {
+		if arr, ok := item[campo].([]interface{}); ok && len(arr) > 0 {
+			customizado = true
+			break
+		}
+	}
+	if produtoVendaID <= 0 && !customizado {
+		return 1
+	}
+	return int(quantidade)
+}
+
 func (h *BasicCRUD) usuarioPadraoDaEmpresa(r *http.Request, empresaID int) (int, error) {
 	var id int
 	err := h.Pool.QueryRow(r.Context(),
@@ -186,7 +207,7 @@ func (h *ProducaoHandler) ProdutoFabricadoListarPublico(w http.ResponseWriter, r
 
 // ProdutoVendaListarPublico lista os produtos de venda ativos de uma empresa
 // (sem autenticação), incluindo os itens da receita comercial (pode_remover,
-// pode_adicionar, preco_adicional) para montagem da customização na encomenda.
+// pode_adicionar, adicional_preco) para montagem da customização na encomenda.
 // GET /produtoVendaPublico?empresa=<id>
 func (h *ProducaoHandler) ProdutoVendaListarPublico(w http.ResponseWriter, r *http.Request) {
 	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
@@ -200,8 +221,10 @@ func (h *ProducaoHandler) ProdutoVendaListarPublico(w http.ResponseWriter, r *ht
 		pf.nome as produto_fabricado_nome,
 		COALESCE((SELECT json_agg(x) FROM (
 			SELECT pvi.id, pvi.nome, pvi.pode_remover, pvi.pode_adicionar,
-				pvi.preco_adicional, pvi.ordem
+				pvi.adicional_id, ad.nome as adicional_nome, ad.preco as adicional_preco,
+				pvi.ordem
 			FROM produto_venda_item pvi
+			LEFT JOIN adicional ad ON ad.id = pvi.adicional_id AND ad.empresa_id = pvi.empresa_id
 			WHERE pvi.produto_venda_id = pv.id AND pvi.empresa_id = pv.empresa_id
 				AND pvi.ativo = true
 			ORDER BY pvi.ordem, pvi.id) x),
@@ -341,32 +364,40 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 		produtoVendaID := getInt(item, "produto_venda_id")
 		quantidade := getFloat(item, "quantidade")
 		valorUnitario := getFloat(item, "valor_unitario")
-		valorTotalItem := quantidade * valorUnitario
 
-		itemID, err := database.GerarID(r.Context(), tx, empresaID, "encomenda_item")
-		if err != nil {
-			jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
-			return
+		unidades := unidadesPorItem(produtoVendaID, quantidade, item)
+		quantidadeUnidade := quantidade
+		if unidades > 1 {
+			quantidadeUnidade = 1
 		}
-		adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
-			"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
-		if err != nil {
-			jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		valorTotalItem += adicionalValor
+		for u := 0; u < unidades; u++ {
+			valorTotalItem := quantidadeUnidade * valorUnitario
 
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id, produto_venda_id,
-				cliente_id, quantidade, valor_unitario, valor_total)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-			itemID, empresaID, id, produtoFabricadoID, produtoVendaID, clienteID,
-			quantidade, valorUnitario, valorTotalItem)
-		if err != nil {
-			jsonError(w, err.Error(), http.StatusInternalServerError)
-			return
+			itemID, err := database.GerarID(r.Context(), tx, empresaID, "encomenda_item")
+			if err != nil {
+				jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
+				"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
+			if err != nil {
+				jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			valorTotalItem += adicionalValor
+
+			_, err = tx.Exec(r.Context(), `
+				INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id, produto_venda_id,
+					cliente_id, quantidade, valor_unitario, valor_total)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+				itemID, empresaID, id, produtoFabricadoID, produtoVendaID, clienteID,
+				quantidadeUnidade, valorUnitario, valorTotalItem)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			totalValor += valorTotalItem
 		}
-		totalValor += valorTotalItem
 	}
 
 	_, err = tx.Exec(r.Context(),
@@ -582,34 +613,43 @@ func (h *ProducaoHandler) EncomendaPublicoItensAtualizar(w http.ResponseWriter, 
 			continue
 		}
 		produtoFabricadoID := getInt(item, "produto_fabricado_id")
+		produtoVendaID := getInt(item, "produto_venda_id")
 		quantidade := getFloat(item, "quantidade")
 		valorUnitario := getFloat(item, "valor_unitario")
-		valorTotalItem := quantidade * valorUnitario
 
-		itemID, err := database.GerarID(r.Context(), tx, empresaID, "encomenda_item")
-		if err != nil {
-			jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
-			return
+		unidades := unidadesPorItem(produtoVendaID, quantidade, item)
+		quantidadeUnidade := quantidade
+		if unidades > 1 {
+			quantidadeUnidade = 1
 		}
-		adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
-			"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
-		if err != nil {
-			jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		valorTotalItem += adicionalValor
+		for u := 0; u < unidades; u++ {
+			valorTotalItem := quantidadeUnidade * valorUnitario
 
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id,
-				cliente_id, quantidade, valor_unitario, valor_total)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-			itemID, empresaID, encomendaID, produtoFabricadoID, clienteID,
-			quantidade, valorUnitario, valorTotalItem)
-		if err != nil {
-			jsonError(w, err.Error(), http.StatusInternalServerError)
-			return
+			itemID, err := database.GerarID(r.Context(), tx, empresaID, "encomenda_item")
+			if err != nil {
+				jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
+				"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
+			if err != nil {
+				jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			valorTotalItem += adicionalValor
+
+			_, err = tx.Exec(r.Context(), `
+				INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id, produto_venda_id,
+					cliente_id, quantidade, valor_unitario, valor_total)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+				itemID, empresaID, encomendaID, produtoFabricadoID, produtoVendaID, clienteID,
+				quantidadeUnidade, valorUnitario, valorTotalItem)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			totalValor += valorTotalItem
 		}
-		totalValor += valorTotalItem
 	}
 
 	_, err = tx.Exec(r.Context(),

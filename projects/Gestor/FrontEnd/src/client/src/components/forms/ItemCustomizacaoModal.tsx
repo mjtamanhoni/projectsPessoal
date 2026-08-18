@@ -98,13 +98,13 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
 
   const mudarAdicionalPv = (item: ProdutoVendaItem, delta: number) => {
     const pviId = item.id;
-    const preco = Number(item.preco_adicional ?? 0);
+    const preco = Number(item.adicional_preco ?? 0);
     setAdicionais((prev) => {
       const atual = prev.find((a) => a.produto_venda_item_id === pviId);
       const novaQtd = Math.max(0, (atual?.quantidade ?? 0) + delta);
       const restante = prev.filter((a) => a.produto_venda_item_id !== pviId);
       if (novaQtd === 0) return restante;
-      return [...restante, { produto_venda_item_id: pviId, nome: item.nome, quantidade: novaQtd, valor_unitario: preco, valor_total: novaQtd * preco }];
+      return [...restante, { produto_venda_item_id: pviId, adicional_id: item.adicional_id ?? undefined, nome: item.nome, quantidade: novaQtd, valor_unitario: preco, valor_total: novaQtd * preco }];
     });
   };
 
@@ -170,7 +170,7 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
                       const podeAdicionar = Boolean(pvi.pode_adicionar);
                       const marcado = pvRemovido(pvi.id);
                       const qtd = pvAdicionalQtd(pvi.id);
-                      const preco = Number(pvi.preco_adicional ?? 0);
+                      const preco = Number(pvi.adicional_preco ?? 0);
                       return (
                         <tr key={pvi.id} className="border-t border-border-primary">
                           <td className="px-3 py-2">

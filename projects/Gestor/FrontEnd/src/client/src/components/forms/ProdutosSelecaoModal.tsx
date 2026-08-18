@@ -48,10 +48,14 @@ export function ProdutosSelecaoModal({ isOpen, titulo, produtos, produtosVenda =
   useEffect(() => {
     if (!isOpen) return;
     setBusca('');
-    const map: Record<string, string> = {};
+    const somas = new Map<string, number>();
     for (const item of itens) {
       const chave = chaveDeItem(item);
-      if (chave) map[chave] = item.quantidade.toFixed(2).replace('.', ',');
+      if (chave) somas.set(chave, (somas.get(chave) ?? 0) + item.quantidade);
+    }
+    const map: Record<string, string> = {};
+    for (const [chave, qtd] of somas) {
+      map[chave] = qtd.toFixed(2).replace('.', ',');
     }
     setQtdsRaws(map);
   }, [isOpen, itens]);
@@ -115,16 +119,23 @@ export function ProdutosSelecaoModal({ isOpen, titulo, produtos, produtosVenda =
     );
     const novos: ProdutoSelecionado[] = cards
       .filter((p) => qtdsRaws[p.chave] !== undefined)
-      .map((p) => {
+      .flatMap((p) => {
         const quantidade = (parseInt(qtdsRaws[p.chave].replace(/\D/g, ''), 10) || 1) / 100;
+        const qtd = quantidade > 0 ? quantidade : 1;
         const valorUnitario = valorUnitarioAtual.get(p.chave) ?? p.preco;
-        return {
+        const base = {
           ...(p.ehVenda ? { produto_venda_id: p.vendaId } : { produto_fabricado_id: p.fabricadoId }),
           produto_nome: p.nome,
-          quantidade: quantidade > 0 ? quantidade : 1,
           valor_unitario: valorUnitario,
-          valor_total: quantidade * valorUnitario,
         };
+        if (p.ehVenda && Number.isInteger(qtd) && qtd > 1) {
+          return Array.from({ length: qtd }, () => ({
+            ...base,
+            quantidade: 1,
+            valor_total: valorUnitario,
+          }));
+        }
+        return [{ ...base, quantidade: qtd, valor_total: qtd * valorUnitario }];
       });
     onConfirmar(novos);
   };

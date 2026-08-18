@@ -211,7 +211,7 @@ export declare const produtoVendaItemBodySchema: z.ZodObject<{
     nome: z.ZodString;
     pode_remover: z.ZodOptional<z.ZodBoolean>;
     pode_adicionar: z.ZodOptional<z.ZodBoolean>;
-    preco_adicional: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
+    adicional_id: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     ordem: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
     codigo: z.ZodOptional<z.ZodNumber>;
     id: z.ZodOptional<z.ZodNumber>;

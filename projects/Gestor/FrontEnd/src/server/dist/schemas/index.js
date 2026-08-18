@@ -211,7 +211,7 @@ const produtoVendaItemSchema = zod_1.z.object({
     nome: zod_1.z.string().min(1, 'Nome e obrigatorio').max(200),
     pode_remover: zod_1.z.boolean().optional(),
     pode_adicionar: zod_1.z.boolean().optional(),
-    preco_adicional: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco adicional nao pode ser negativo').optional(),
+    adicional_id: zod_1.z.number().int().positive().nullable().optional(),
     ordem: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseInt(s, 10))]).optional(),
 });
 exports.produtoVendaBodySchema = zod_1.z.object({
