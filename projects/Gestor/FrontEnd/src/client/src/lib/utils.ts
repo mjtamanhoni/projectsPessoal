@@ -133,6 +133,12 @@ export function formatCelular(value: string): string {
   return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
 }
 
+export function formatCep(value: string): string {
+  const numbers = value.replace(/\D/g, '').slice(0, 8);
+  if (numbers.length <= 5) return numbers;
+  return `${numbers.slice(0, 5)}-${numbers.slice(5)}`;
+}
+
 export function formatCpfCnpj(value: string): string {
   const numbers = value.replace(/\D/g, '');
 

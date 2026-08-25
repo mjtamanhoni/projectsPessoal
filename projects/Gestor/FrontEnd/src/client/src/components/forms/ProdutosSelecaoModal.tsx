@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { Search, Check, ImageOff } from 'lucide-react';
+import { Minus, Plus, Search, Check, ImageOff } from 'lucide-react';
 import type { ProdutoFabricado, ProdutoVenda } from '@/types';
 import { formatCurrency, formatQuantityInput, fotoUrl } from '@/lib/utils';
 
@@ -12,6 +12,8 @@ export interface ProdutoSelecionado {
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
+  removidos?: (string | { nome: string; produto_venda_item_id?: number })[];
+  adicionais?: { adicional_id?: number; produto_venda_item_id?: number; nome: string; quantidade: number; valor_unitario: number; valor_total?: number }[];
 }
 
 interface CardProduto {
@@ -110,6 +112,15 @@ export function ProdutosSelecaoModal({ isOpen, titulo, produtos, produtosVenda =
     setQtdsRaws((prev) => ({ ...prev, [chave]: formatQuantityInput(raw, 2) }));
   };
 
+  const ajustarQtd = (chave: string, delta: number) => {
+    setQtdsRaws((prev) => {
+      const atual = prev[chave] ?? '1,00';
+      const qtd = (parseInt(atual.replace(/\D/g, ''), 10) || 100) / 100;
+      const nova = Math.max(1, qtd + delta);
+      return { ...prev, [chave]: nova.toFixed(2).replace('.', ',') };
+    });
+  };
+
   const confirmar = () => {
     const valorUnitarioAtual = new Map(
       itens.map((i) => {
@@ -117,26 +128,43 @@ export function ProdutosSelecaoModal({ isOpen, titulo, produtos, produtosVenda =
         return chave ? [chave, i.valor_unitario] : undefined;
       }).filter((x): x is [string, number] => Boolean(x)),
     );
-    const novos: ProdutoSelecionado[] = cards
-      .filter((p) => qtdsRaws[p.chave] !== undefined)
-      .flatMap((p) => {
-        const quantidade = (parseInt(qtdsRaws[p.chave].replace(/\D/g, ''), 10) || 1) / 100;
-        const qtd = quantidade > 0 ? quantidade : 1;
-        const valorUnitario = valorUnitarioAtual.get(p.chave) ?? p.preco;
-        const base = {
-          ...(p.ehVenda ? { produto_venda_id: p.vendaId } : { produto_fabricado_id: p.fabricadoId }),
-          produto_nome: p.nome,
-          valor_unitario: valorUnitario,
-        };
-        if (p.ehVenda && Number.isInteger(qtd) && qtd > 1) {
-          return Array.from({ length: qtd }, () => ({
-            ...base,
-            quantidade: 1,
-            valor_total: valorUnitario,
-          }));
+    const novos: ProdutoSelecionado[] = [];
+    for (const p of cards) {
+      const raw = qtdsRaws[p.chave];
+      if (raw === undefined) continue;
+      const quantidade = (parseInt(raw.replace(/\D/g, ''), 10) || 1) / 100;
+      const qtd = quantidade > 0 ? quantidade : 1;
+      const valorUnitario = valorUnitarioAtual.get(p.chave) ?? p.preco;
+      const base = {
+        ...(p.ehVenda ? { produto_venda_id: p.vendaId } : { produto_fabricado_id: p.fabricadoId }),
+        produto_nome: p.nome,
+        valor_unitario: valorUnitario,
+      };
+      const existentes = itens.filter((i) => chaveDeItem(i) === p.chave);
+      if (p.ehVenda && Number.isInteger(qtd) && qtd > 1) {
+        const preservados = existentes.slice(0, qtd);
+        const totalExistente = preservados.reduce((acc, e) => acc + e.quantidade, 0);
+        const faltante = Math.round((qtd - totalExistente) * 100) / 100;
+        novos.push(...preservados.map((e) => ({ ...e })));
+        if (faltante > 0) {
+          if (Number.isInteger(faltante)) {
+            for (let i = 0; i < faltante; i++) {
+              novos.push({ ...base, quantidade: 1, valor_total: valorUnitario });
+            }
+          } else {
+            novos.push({ ...base, quantidade: faltante, valor_total: faltante * valorUnitario });
+          }
         }
-        return [{ ...base, quantidade: qtd, valor_total: qtd * valorUnitario }];
-      });
+      } else {
+        const existente = existentes[0];
+        if (existente) {
+          const totalAdicionais = (existente.adicionais ?? []).reduce((acc, a) => acc + Number(a.valor_total ?? 0), 0);
+          novos.push({ ...existente, quantidade: qtd, valor_total: qtd * valorUnitario + totalAdicionais });
+        } else {
+          novos.push({ ...base, quantidade: qtd, valor_total: qtd * valorUnitario });
+        }
+      }
+    }
     onConfirmar(novos);
   };
 
@@ -185,14 +213,32 @@ export function ProdutosSelecaoModal({ isOpen, titulo, produtos, produtosVenda =
                 {p.descricao && <p className="line-clamp-2 text-[11px] text-text-tertiary">{p.descricao}</p>}
                 <p className="mt-0.5 text-sm font-semibold">{formatCurrency(p.preco)}</p>
                 {selecionado && (
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="input-field mt-1 text-xs"
-                    value={raw}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => mudarQtd(p.chave, e.target.value)}
-                  />
+                  <div className="mt-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => ajustarQtd(p.chave, -1)}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-primary hover:bg-bg-muted transition"
+                      title="Subtrair 1,00"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="input-field h-7 flex-1 px-1 text-center text-xs"
+                      value={raw}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => mudarQtd(p.chave, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => ajustarQtd(p.chave, 1)}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-primary hover:bg-bg-muted transition"
+                      title="Somar 1,00"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
                 )}
               </div>
             );

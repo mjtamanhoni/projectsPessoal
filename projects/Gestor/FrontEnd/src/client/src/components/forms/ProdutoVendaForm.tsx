@@ -6,7 +6,7 @@ import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus, ImageIcon, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 import { formatCurrencyInput, parseCurrencyInput, fotoUrl } from '@/lib/utils';
-import type { ProdutoVenda, ProdutoFabricado } from '@/types';
+import type { ProdutoVenda, ProdutoFabricado, ProdutoClassificacao } from '@/types';
 import { useEffect, useState, useRef } from 'react';
 import api from '@/lib/api';
 import type { FotoPayload } from '@/components/forms/ProdutoFabricadoForm';
@@ -18,6 +18,7 @@ const produtoVendaSchema = z.object({
   descricao: z.string().max(500).optional(),
   preco: z.number().min(0, 'Preco deve ser maior ou igual a zero'),
   produto_fabricado_id: z.number().int().positive().nullable().optional(),
+  produto_classificacao_id: z.number().int().positive().nullable().optional(),
   foto: z.string().optional(),
   ativo: z.boolean().optional(),
 });
@@ -72,9 +73,14 @@ function comprimirImagem(src: string, maxDim = 1400): Promise<string> {
 
 export function ProdutoVendaForm({ onSubmit, onCancel, initial }: ProdutoVendaFormProps) {
   const [produtosFabricados, setProdutosFabricados] = useState<ProdutoFabricado[]>([]);
+  const [classificacoes, setClassificacoes] = useState<ProdutoClassificacao[]>([]);
 
   useEffect(() => {
     api.get<ProdutoFabricado[]>('/produtos-fabricados').then((r) => setProdutosFabricados(r.data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get<ProdutoClassificacao[]>('/produto-classificacao').then((r) => setClassificacoes(r.data)).catch(() => {});
   }, []);
 
   const { handleSubmit, formState: { errors }, control } = useForm<ProdutoVendaInput>({
@@ -84,6 +90,7 @@ export function ProdutoVendaForm({ onSubmit, onCancel, initial }: ProdutoVendaFo
       descricao: initial.descricao || '',
       preco: initial.preco ?? 0,
       produto_fabricado_id: initial.produto_fabricado_id ?? null,
+      produto_classificacao_id: initial.produto_classificacao_id ?? null,
       foto: initial.foto || '',
       ativo: initial.ativo ?? true,
     } : {
@@ -91,6 +98,7 @@ export function ProdutoVendaForm({ onSubmit, onCancel, initial }: ProdutoVendaFo
       descricao: '',
       preco: 0,
       produto_fabricado_id: null,
+      produto_classificacao_id: null,
       foto: '',
       ativo: true,
     },
@@ -199,6 +207,25 @@ export function ProdutoVendaForm({ onSubmit, onCancel, initial }: ProdutoVendaFo
               options={produtosFabricados.map((p) => ({ value: (p.id ?? p.codigo)!, label: p.nome }))}
               title="Selecionar Produto Fabricado"
               placeholder="Sem origem (produto independente)"
+            />
+          </div>
+        )}
+      />
+      <Controller
+        name="produto_classificacao_id"
+        control={control}
+        render={({ field }) => (
+          <div className="space-y-1.5">
+            <label className="label-field">Classificação do Produto</label>
+            <RegistroSelect<number>
+              value={field.value ?? null}
+              onChange={(v) => field.onChange(v)}
+              onClear={() => field.onChange(null)}
+              options={classificacoes
+                .filter((c) => (c.status ?? 1) === 1)
+                .map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
+              title="Selecionar Classificação"
+              placeholder="Sem classificação"
             />
           </div>
         )}

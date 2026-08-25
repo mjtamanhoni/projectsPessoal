@@ -186,7 +186,45 @@ func (h *ProducaoHandler) AdicionalAtualizar(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *ProducaoHandler) AdicionalExcluir(w http.ResponseWriter, r *http.Request) {
-	h.BasicCRUD.Excluir(w, r, "adicional")
+	empresaID := middleware.GetEmpresaID(r)
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	if id == 0 {
+		jsonError(w, "ID não informado", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	_, err = tx.Exec(r.Context(),
+		"DELETE FROM produto_adicional WHERE adicional_id = $1 AND empresa_id = $2", id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, err = tx.Exec(r.Context(),
+		"DELETE FROM adicional_produto_classificacao WHERE adicional_id = $1 AND empresa_id = $2", id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tag, err := tx.Exec(r.Context(),
+		"DELETE FROM adicional WHERE id = $1 AND empresa_id = $2", id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+
+	tx.Commit(r.Context())
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Adicional excluído com sucesso"})
 }
 
 // --- Produto Adicional (vínculo produto -> adicionais disponíveis) ---
@@ -314,6 +352,156 @@ func (h *ProducaoHandler) ProdutoAdicionalExcluir(w http.ResponseWriter, r *http
 	tag, err := h.Pool.Exec(r.Context(), `
 		DELETE FROM produto_adicional WHERE produto_fabricado_id = $1 AND adicional_id = $2 AND empresa_id = $3`,
 		produtoFabricadoID, adicionalID, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Vínculo excluído com sucesso"})
+}
+
+// --- Adicional x Classificacao (vínculo adicional -> classificações contempladas) ---
+func (h *ProducaoHandler) AdicionalClassificacaoListar(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaID(r)
+	adicionalID := parseInt(r.URL.Query().Get("adicional_id"), 0)
+	classificacaoID := parseInt(r.URL.Query().Get("produto_classificacao_id"), 0)
+
+	query := `SELECT ac.adicional_id, ac.produto_classificacao_id, ac.status,
+		pc.nome as produto_classificacao_nome,
+		ad.nome as adicional_nome, ad.descricao as adicional_descricao,
+		ad.preco as adicional_preco, ad.ativo as adicional_ativo
+		FROM adicional_produto_classificacao ac
+		JOIN produto_classificacao pc ON pc.id = ac.produto_classificacao_id AND pc.empresa_id = ac.empresa_id
+		JOIN adicional ad ON ad.id = ac.adicional_id AND ad.empresa_id = ac.empresa_id
+		WHERE 1=1`
+	var args []interface{}
+	argN := 1
+	if adicionalID > 0 {
+		query += fmt.Sprintf(" AND ac.adicional_id = $%d", argN)
+		argN++
+		args = append(args, adicionalID)
+	}
+	if classificacaoID > 0 {
+		query += fmt.Sprintf(" AND ac.produto_classificacao_id = $%d", argN)
+		argN++
+		args = append(args, classificacaoID)
+	}
+	query += fmt.Sprintf(" AND (ac.empresa_id = $%d OR $%d = 0)", argN, argN)
+	args = append(args, empresaID)
+	query += " ORDER BY ad.nome"
+
+	rows, err := h.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonSuccess(w, rowsToMap(rows))
+}
+
+// AdicionalClassificacaoAtualizar substitui todos os vínculos de classificações do(s) adicional(is).
+// Body: { adicional_id, classificacoes: [produto_classificacao_id, ...] }
+// ou array de { adicional_id, produto_classificacao_id }.
+func (h *ProducaoHandler) AdicionalClassificacaoAtualizar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil || len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+	empresaID := middleware.GetEmpresaID(r)
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	replaceAll := false
+	pares := map[int]map[int]bool{}
+	if v, ok := items[0]["classificacoes"]; ok {
+		replaceAll = true
+		adicionalID := getInt(items[0], "adicional_id")
+		if adicionalID == 0 {
+			jsonError(w, "adicional_id é obrigatório", http.StatusBadRequest)
+			return
+		}
+		if arr, ok := v.([]interface{}); ok {
+			conj := map[int]bool{}
+			for _, raw := range arr {
+				switch val := raw.(type) {
+				case float64:
+					conj[int(val)] = true
+				default:
+					if obj, ok := val.(map[string]interface{}); ok {
+						conj[getInt(obj, "produto_classificacao_id")] = true
+					}
+				}
+			}
+			pares[adicionalID] = conj
+		}
+	} else {
+		for _, item := range items {
+			adicionalID := getInt(item, "adicional_id")
+			classificacaoID := getInt(item, "produto_classificacao_id")
+			if adicionalID == 0 || classificacaoID == 0 {
+				continue
+			}
+			if pares[adicionalID] == nil {
+				pares[adicionalID] = map[int]bool{}
+			}
+			pares[adicionalID][classificacaoID] = true
+		}
+	}
+
+	if len(pares) == 0 {
+		jsonError(w, "Nenhum vínculo informado", http.StatusBadRequest)
+		return
+	}
+
+	for adicionalID, classificacoesIDs := range pares {
+		if replaceAll {
+			_, err = tx.Exec(r.Context(), `
+				DELETE FROM adicional_produto_classificacao WHERE adicional_id = $1 AND empresa_id = $2`,
+				adicionalID, empresaID)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		for classificacaoID := range classificacoesIDs {
+			if classificacaoID == 0 {
+				continue
+			}
+			_, err = tx.Exec(r.Context(), `
+				INSERT INTO adicional_produto_classificacao (empresa_id, adicional_id, produto_classificacao_id, status)
+				VALUES ($1,$2,$3,1)
+				ON CONFLICT (empresa_id, adicional_id, produto_classificacao_id) DO NOTHING`,
+				empresaID, adicionalID, classificacaoID)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	tx.Commit(r.Context())
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Classificações do adicional atualizadas com sucesso"})
+}
+
+func (h *ProducaoHandler) AdicionalClassificacaoExcluir(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaID(r)
+	adicionalID := parseInt(r.URL.Query().Get("adicional_id"), 0)
+	classificacaoID := parseInt(r.URL.Query().Get("produto_classificacao_id"), 0)
+	if adicionalID == 0 || classificacaoID == 0 {
+		jsonError(w, "adicional_id e produto_classificacao_id são obrigatórios", http.StatusBadRequest)
+		return
+	}
+	tag, err := h.Pool.Exec(r.Context(), `
+		DELETE FROM adicional_produto_classificacao WHERE adicional_id = $1 AND produto_classificacao_id = $2 AND empresa_id = $3`,
+		adicionalID, classificacaoID, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return

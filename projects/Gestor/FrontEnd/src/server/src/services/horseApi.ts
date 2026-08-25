@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, ProdutoVenda, ProdutoVendaItem } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -1063,6 +1063,34 @@ class HorseApiService {
     }
   }
 
+  async listarProdutoClassificacoes(params?: Record<string, unknown>): Promise<unknown[]> {
+    try {
+      const res = await this.api.get('/produtoClassificacao', { params, headers: this.getAuthHeaders() });
+      return res.data as unknown[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarProdutoClassificacoes(items: unknown[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/produtoClassificacao', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirProdutoClassificacao(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/produtoClassificacao', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarMigracoes(): Promise<unknown> {
     try {
       const res = await this.api.get('/migracoes', { headers: this.getAuthHeaders() });
@@ -1232,6 +1260,36 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     }
   }
 
+  async listarAdicionaisClassificacoes(params?: Record<string, unknown>): Promise<AdicionalProdutoClassificacao[]> {
+    try {
+      const res = await this.api.get('/adicionalClassificacao', { params, headers: this.getAuthHeaders() });
+      return res.data as AdicionalProdutoClassificacao[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarAdicionaisClassificacoes(payload: { adicional_id: number; classificacoes?: number[] }): Promise<unknown> {
+    try {
+      const res = await this.api.post('/adicionalClassificacao', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirAdicionalClassificacao(adicionalId: number, classificacaoId: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/adicionalClassificacao', {
+        params: { adicional_id: adicionalId, produto_classificacao_id: classificacaoId },
+        headers: this.getAuthHeaders(),
+      });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarProdutosVenda(params?: Record<string, unknown>): Promise<ProdutoVenda[]> {
     try {
       const res = await this.api.get('/produtoVenda', { params, headers: this.getAuthHeaders() });
@@ -1376,6 +1434,7 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
         categoria_receber_id: header.categoria_receber_id ?? categoriaReceberPadrao ?? 0,
         itens: (header.itens ?? []).map((i) => ({
           produto_fabricado_id: i.produto_fabricado_id,
+          produto_venda_id: i.produto_venda_id,
           quantidade: Number(i.quantidade),
           valor_unitario: Number(i.valor_unitario),
           valor_total: Number(i.valor_total),
@@ -1384,6 +1443,15 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
         })),
       };
       const res = await this.api.post('/vendaProduto', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async receberVendaProduto(data: { id: number; data_recebimento?: string; valor: number; desconto?: number; acrescimo?: number }): Promise<unknown> {
+    try {
+      const res = await this.api.put('/vendaProduto/receber', data, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);
@@ -1419,6 +1487,7 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
         observacao: header.observacao ?? '',
         itens: (header.itens ?? []).map((i) => ({
           produto_fabricado_id: i.produto_fabricado_id,
+          produto_venda_id: i.produto_venda_id,
           quantidade: Number(i.quantidade),
           valor_unitario: Number(i.valor_unitario),
           valor_total: Number(i.valor_total),

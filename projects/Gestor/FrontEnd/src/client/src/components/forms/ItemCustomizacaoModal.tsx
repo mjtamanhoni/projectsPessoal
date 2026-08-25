@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Minus, Plus, SlidersHorizontal } from 'lucide-react';
-import type { AdicionalItemPedido, EncomendaItem, ProdutoAdicional, ProdutoVendaItem, ReceitaIngrediente, VendaProdutoItem } from '@/types';
+import type { AdicionalItemPedido, AdicionalProdutoClassificacao, EncomendaItem, ProdutoAdicional, ProdutoVenda, ProdutoVendaItem, ReceitaIngrediente, VendaProdutoItem } from '@/types';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 
@@ -35,19 +35,33 @@ const carregarItensDoProdutoVenda = async (produtoVendaId: number): Promise<Prod
   }
 };
 
+const carregarAdicionaisDaClassificacao = async (classificacaoId: number): Promise<AdicionalProdutoClassificacao[]> => {
+  try {
+    const res = await api.get('/adicionais-classificacoes', { params: { produto_classificacao_id: classificacaoId } });
+    return res.data as AdicionalProdutoClassificacao[];
+  } catch {
+    return [];
+  }
+};
+
 interface ItemCustomizacaoModalProps {
   isOpen: boolean;
   item: ItemCustomizavel | null;
+  produtosVenda?: ProdutoVenda[];
   onConfirmar: (item: ItemCustomizavel) => void;
   onFechar: () => void;
 }
 
-export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: ItemCustomizacaoModalProps) {
+export function ItemCustomizacaoModal({ isOpen, item, produtosVenda = [], onConfirmar, onFechar }: ItemCustomizacaoModalProps) {
   const produtoFabricadoId = item?.produto_fabricado_id ?? 0;
   const produtoVendaId = item?.produto_venda_id ?? 0;
+  const classificacaoId = produtoVendaId > 0
+    ? (produtosVenda.find((p) => (p.id ?? p.codigo) === produtoVendaId)?.produto_classificacao_id ?? null)
+    : null;
   const [ingredientes, setIngredientes] = useState<ReceitaIngrediente[]>([]);
   const [adicionaisDisponiveis, setAdicionaisDisponiveis] = useState<ProdutoAdicional[]>([]);
   const [pvItens, setPvItens] = useState<ProdutoVendaItem[]>([]);
+  const [classifAdicionais, setClassifAdicionais] = useState<AdicionalProdutoClassificacao[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [removidos, setRemovidos] = useState<(string | { nome: string; produto_venda_item_id?: number })[]>([]);
   const [adicionais, setAdicionais] = useState<AdicionalItemPedido[]>([]);
@@ -67,11 +81,15 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
     }
     if (produtoVendaId) {
       promessas.push(carregarItensDoProdutoVenda(produtoVendaId).then((itens) => setPvItens(itens)));
+      if (classificacaoId != null) {
+        promessas.push(carregarAdicionaisDaClassificacao(classificacaoId).then((adics) => setClassifAdicionais(adics)));
+      }
     }
     setRemovidos(normalizarRemovidos);
     setAdicionais(item?.adicionais ?? []);
+    setClassifAdicionais([]);
     Promise.all(promessas).finally(() => setCarregando(false));
-  }, [isOpen, produtoFabricadoId, produtoVendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, produtoFabricadoId, produtoVendaId, classificacaoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleRemovido = (nome: string) => {
     setRemovidos((prev) => {
@@ -126,6 +144,19 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
     });
   };
 
+  const mudarQuantidadeClassificacao = (adicional: AdicionalProdutoClassificacao, delta: number) => {
+    const id = adicional.adicional_id;
+    const nome = adicional.adicional_nome ?? `Adicional ${id}`;
+    const preco = Number(adicional.adicional_preco ?? 0);
+    setAdicionais((prev) => {
+      const atual = prev.find((a) => a.adicional_id === id);
+      const novaQtd = Math.max(0, (atual?.quantidade ?? 0) + delta);
+      const restante = prev.filter((a) => a.adicional_id !== id);
+      if (novaQtd === 0) return restante;
+      return [...restante, { adicional_id: id, nome, quantidade: novaQtd, valor_unitario: preco, valor_total: novaQtd * preco }];
+    });
+  };
+
   const totalAdicionais = useMemo(
     () => adicionais.reduce((acc, a) => acc + a.valor_unitario * a.quantidade, 0),
     [adicionais],
@@ -161,7 +192,9 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
                     <tr>
                       <th className="text-left px-3 py-2 text-text-secondary font-medium">Item</th>
                       <th className="text-left px-3 py-2 text-text-secondary font-medium">Remover</th>
-                      <th className="text-right px-3 py-2 text-text-secondary font-medium">Adicionar</th>
+                      {classificacaoId == null && (
+                        <th className="text-right px-3 py-2 text-text-secondary font-medium">Adicionar</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -175,7 +208,7 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
                         <tr key={pvi.id} className="border-t border-border-primary">
                           <td className="px-3 py-2">
                             <p className={`font-medium ${marcado ? 'line-through text-text-tertiary' : ''}`}>{pvi.nome}</p>
-                            {podeAdicionar && preco > 0 && (
+                            {classificacaoId == null && podeAdicionar && preco > 0 && (
                               <p className="text-xs text-text-tertiary">+ {formatCurrency(preco)} por unidade</p>
                             )}
                           </td>
@@ -195,7 +228,7 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
                             )}
                           </td>
                           <td className="px-3 py-2">
-                            {podeAdicionar ? (
+                            {classificacaoId == null && (
                               <div className="flex items-center justify-end gap-2">
                                 <button
                                   type="button"
@@ -214,8 +247,6 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
                                   <Plus size={12} />
                                 </button>
                               </div>
-                            ) : (
-                              <span className="text-xs text-text-tertiary">-</span>
                             )}
                           </td>
                         </tr>
@@ -267,56 +298,42 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
             {adicionaisDisponiveis.length === 0 ? (
               <p className="text-xs text-text-tertiary">Este produto não possui adicionais cadastrados.</p>
             ) : (
-              <div className="border border-border-primary rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-bg-muted">
-                    <tr>
-                      <th className="text-left px-3 py-2 text-text-secondary font-medium">Adicional</th>
-                      <th className="text-right px-3 py-2 text-text-secondary font-medium">Preço</th>
-                      <th className="text-center px-3 py-2 text-text-secondary font-medium">Quantidade</th>
-                      <th className="text-right px-3 py-2 text-text-secondary font-medium">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {adicionaisDisponiveis.map((adicional) => {
-                      const qtd = adicionalQuantidade(adicional.adicional_id);
-                      const preco = Number(adicional.adicional_preco ?? 0);
-                      return (
-                        <tr key={adicional.adicional_id} className="border-t border-border-primary">
-                          <td className="px-3 py-2">
-                            <p className="font-medium">{adicional.adicional_nome ?? `Adicional ${adicional.adicional_id}`}</p>
-                            {adicional.adicional_descricao && (
-                              <p className="text-xs text-text-tertiary">{adicional.adicional_descricao}</p>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right">{formatCurrency(preco)}</td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => mudarQuantidadeAdicional(adicional, -1)}
-                                disabled={qtd === 0}
-                                className="flex h-7 w-7 items-center justify-center rounded-full border border-border-primary hover:bg-bg-muted disabled:opacity-30 transition"
-                              >
-                                <Minus size={12} />
-                              </button>
-                              <span className="w-8 text-center text-sm font-medium">{qtd > 0 ? qtd : '-'}</span>
-                              <button
-                                type="button"
-                                onClick={() => mudarQuantidadeAdicional(adicional, 1)}
-                                className="flex h-7 w-7 items-center justify-center rounded-full border border-border-primary hover:bg-bg-muted transition"
-                              >
-                                <Plus size={12} />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-right font-medium">{qtd > 0 ? formatCurrency(qtd * preco) : '-'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <TabelaAdicionais
+                linhas={adicionaisDisponiveis.map((a) => ({
+                  id: a.adicional_id,
+                  nome: a.adicional_nome ?? `Adicional ${a.adicional_id}`,
+                  descricao: a.adicional_descricao,
+                  preco: Number(a.adicional_preco ?? 0),
+                }))}
+                quantidadeDe={adicionalQuantidade}
+                mudar={(id, delta) => {
+                  const adicional = adicionaisDisponiveis.find((a) => a.adicional_id === id);
+                  if (adicional) mudarQuantidadeAdicional(adicional, delta);
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        {classificacaoId != null && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-text-secondary">Adicionais</p>
+            {classifAdicionais.length === 0 ? (
+              <p className="text-xs text-text-tertiary">Nenhum adicional cadastrado para a classificação deste produto.</p>
+            ) : (
+              <TabelaAdicionais
+                linhas={classifAdicionais.map((a) => ({
+                  id: a.adicional_id,
+                  nome: a.adicional_nome ?? `Adicional ${a.adicional_id}`,
+                  descricao: a.adicional_descricao,
+                  preco: Number(a.adicional_preco ?? 0),
+                }))}
+                quantidadeDe={adicionalQuantidade}
+                mudar={(id, delta) => {
+                  const adicional = classifAdicionais.find((a) => a.adicional_id === id);
+                  if (adicional) mudarQuantidadeClassificacao(adicional, delta);
+                }}
+              />
             )}
           </div>
         )}
@@ -342,4 +359,73 @@ export function ItemCustomizacaoModal({ isOpen, item, onConfirmar, onFechar }: I
 
 function formatarQuantidade(valor: number): string {
   return `${valor.toFixed(3).replace('.', ',')}`;
+}
+
+interface LinhaAdicional {
+  id: number;
+  nome: string;
+  descricao?: string;
+  preco: number;
+}
+
+function TabelaAdicionais({
+  linhas,
+  quantidadeDe,
+  mudar,
+}: {
+  linhas: LinhaAdicional[];
+  quantidadeDe: (id: number) => number;
+  mudar: (id: number, delta: number) => void;
+}) {
+  return (
+    <div className="border border-border-primary rounded-lg overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-bg-muted">
+          <tr>
+            <th className="text-left px-3 py-2 text-text-secondary font-medium">Adicional</th>
+            <th className="text-right px-3 py-2 text-text-secondary font-medium">Preço</th>
+            <th className="text-center px-3 py-2 text-text-secondary font-medium">Quantidade</th>
+            <th className="text-right px-3 py-2 text-text-secondary font-medium">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {linhas.map((adicional) => {
+            const qtd = quantidadeDe(adicional.id);
+            return (
+              <tr key={adicional.id} className="border-t border-border-primary">
+                <td className="px-3 py-2">
+                  <p className="font-medium">{adicional.nome}</p>
+                  {adicional.descricao && (
+                    <p className="text-xs text-text-tertiary">{adicional.descricao}</p>
+                  )}
+                </td>
+                <td className="px-3 py-2 text-right">{formatCurrency(adicional.preco)}</td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => mudar(adicional.id, -1)}
+                      disabled={qtd === 0}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-border-primary hover:bg-bg-muted disabled:opacity-30 transition"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <span className="w-8 text-center text-sm font-medium">{qtd > 0 ? qtd : '-'}</span>
+                    <button
+                      type="button"
+                      onClick={() => mudar(adicional.id, 1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-border-primary hover:bg-bg-muted transition"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-right font-medium">{qtd > 0 ? formatCurrency(qtd * adicional.preco) : '-'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }

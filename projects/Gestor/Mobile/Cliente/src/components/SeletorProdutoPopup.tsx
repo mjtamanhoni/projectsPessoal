@@ -7,7 +7,8 @@ import type { ProdutoFabricado } from '../api';
 const QTD_CASAS = 2;
 
 export interface ProdutoSelecionado {
-  produto_fabricado_id: number;
+  produto_fabricado_id?: number;
+  produto_venda_id?: number;
   produto_nome?: string;
   quantidade: number;
   valor_unitario: number;

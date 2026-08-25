@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -37,6 +39,8 @@ func main() {
 	if err := database.InitMigracoes(pool); err != nil {
 		log.Fatalf("Erro ao init migrations: %v", err)
 	}
+
+	database.SeedSequences(pool)
 
 	basicCRUD := handlers.NewBasicCRUD(pool)
 	financeiro := &handlers.FinanceiroHandler{Pool: pool, BasicCRUD: basicCRUD}
@@ -78,6 +82,34 @@ func main() {
 	r.Post("/encomendaPublico/itens", producao.EncomendaPublicoItensAtualizar)
 	r.Get("/test", testPage.TestPage)
 	r.Get("/health", testPage.HealthCheck)
+	r.Get("/cep/{cep}", func(w http.ResponseWriter, r *http.Request) {
+		cep := strings.ReplaceAll(chi.URLParam(r, "cep"), "-", "")
+		if len(cep) != 8 {
+			handlers.JsonError(w, "CEP deve conter 8 dígitos", http.StatusBadRequest)
+			return
+		}
+		resp, err := http.Get("https://viacep.com.br/ws/" + cep + "/json/")
+		if err != nil {
+			handlers.JsonError(w, "Erro ao consultar CEP", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			handlers.JsonError(w, "Erro ao ler resposta", http.StatusBadGateway)
+			return
+		}
+		var result map[string]interface{}
+		if err := json.Unmarshal(body, &result); err != nil {
+			handlers.JsonError(w, "Erro ao processar resposta", http.StatusBadGateway)
+			return
+		}
+		if isError, ok := result["erro"].(bool); ok && isError {
+			handlers.JsonError(w, "CEP não encontrado", http.StatusNotFound)
+			return
+		}
+		handlers.JsonSuccess(w, result)
+	})
 	r.Get("/logs/json", func(w http.ResponseWriter, r *http.Request) {
 		anoMes := r.URL.Query().Get("mes")
 		if anoMes == "" {
@@ -433,6 +465,11 @@ carregar();
 		r.Post("/produtoAdicional", producao.ProdutoAdicionalAtualizar)
 		r.Delete("/produtoAdicional", producao.ProdutoAdicionalExcluir)
 
+		// Adicional Classificacao (vínculo adicional -> classificações)
+		r.Get("/adicionalClassificacao", producao.AdicionalClassificacaoListar)
+		r.Post("/adicionalClassificacao", producao.AdicionalClassificacaoAtualizar)
+		r.Delete("/adicionalClassificacao", producao.AdicionalClassificacaoExcluir)
+
 		// Produto de Venda (produto comercializável com itens removíveis/adicionáveis)
 		r.Get("/produtoVenda", producao.ProdutoVendaListar)
 		r.Post("/produtoVenda", producao.ProdutoVendaAtualizar)
@@ -457,6 +494,7 @@ carregar();
 		r.Get("/vendaProduto", producao.VendaProdutoListar)
 		r.Post("/vendaProduto", producao.VendaProdutoAtualizar)
 		r.Delete("/vendaProduto", producao.VendaProdutoExcluir)
+		r.Put("/vendaProduto/receber", producao.VendaProdutoReceber)
 
 		// Encomenda
 		r.Get("/encomenda", producao.EncomendaListar)
@@ -512,6 +550,11 @@ carregar();
 		r.Get("/marca", basicCRUD.MarcaListar)
 		r.Post("/marca", basicCRUD.MarcaAtualizar)
 		r.Delete("/marca", basicCRUD.MarcaExcluir)
+
+		// Produto Classificacao
+		r.Get("/produtoClassificacao", basicCRUD.ProdutoClassificacaoListar)
+		r.Post("/produtoClassificacao", basicCRUD.ProdutoClassificacaoAtualizar)
+		r.Delete("/produtoClassificacao", basicCRUD.ProdutoClassificacaoExcluir)
 
 		// Perda Insumo
 		r.Get("/perdaInsumo", producao.PerdaInsumoListar)

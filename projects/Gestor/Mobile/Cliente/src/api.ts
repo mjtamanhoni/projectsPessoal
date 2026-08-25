@@ -21,6 +21,12 @@ export interface Cliente {
   nome: string;
   telefone?: string;
   celular?: string;
+  nr?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  cep?: string;
   endereco?: string;
   email?: string;
   cnpj_cpf?: string;
@@ -63,9 +69,42 @@ export interface ProdutoFabricado {
   adicionais?: string;
 }
 
+export interface ProdutoVendaItemPublico {
+  id: number;
+  nome: string;
+  pode_remover: boolean;
+  pode_adicionar: boolean;
+  adicional_id?: number;
+  adicional_nome?: string;
+  adicional_preco?: number;
+  ordem?: number;
+}
+
+export interface ClassificacaoAdicionalPublico {
+  adicional_id: number;
+  nome: string;
+  descricao?: string;
+  preco: number;
+}
+
+export interface ProdutoVendaPublico {
+  id?: number;
+  nome: string;
+  descricao?: string;
+  preco?: number;
+  produto_fabricado_id?: number;
+  produto_classificacao_id?: number;
+  produto_fabricado_nome?: string;
+  produto_classificacao_nome?: string;
+  foto?: string;
+  itens?: ProdutoVendaItemPublico[] | string;
+  classificacao_adicionais?: ClassificacaoAdicionalPublico[] | string;
+}
+
 export interface EncomendaItem {
   id?: number;
-  produto_fabricado_id: number;
+  produto_fabricado_id?: number;
+  produto_venda_id?: number;
   produto_nome?: string;
   quantidade: number;
   valor_unitario: number;
@@ -95,7 +134,8 @@ export interface CupomPagamento {
 }
 
 export interface VendaProdutoItem {
-  produto_fabricado_id: number;
+  produto_fabricado_id?: number;
+  produto_venda_id?: number;
   produto_nome?: string;
   quantidade: number;
   valor_unitario: number;
@@ -323,6 +363,11 @@ export async function listarProdutosFabricadosPublico(empresa: number): Promise<
   return (await parseResponse(res)) as ProdutoFabricado[];
 }
 
+export async function listarProdutosVendaPublico(empresa: number): Promise<ProdutoVendaPublico[]> {
+  const res = await request(`/produtoVendaPublico?empresa=${empresa}`);
+  return (await parseResponse(res)) as ProdutoVendaPublico[];
+}
+
 export async function criarEncomendaPublica(
   empresa: number,
   data: Encomenda
@@ -397,7 +442,8 @@ export async function listarEncomendasPublicas(
       }
       e.itens?.push({
         id: Number(row.item_id),
-        produto_fabricado_id: Number(row.produto_fabricado_id ?? 0),
+        produto_fabricado_id: Number(row.produto_fabricado_id ?? 0) || undefined,
+        produto_venda_id: Number(row.produto_venda_id ?? 0) || undefined,
         produto_nome: row.produto_nome ? String(row.produto_nome) : undefined,
         quantidade: Number(row.quantidade ?? 0),
         valor_unitario: Number(row.valor_unitario ?? 0),

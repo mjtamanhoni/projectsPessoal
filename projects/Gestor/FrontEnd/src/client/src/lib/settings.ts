@@ -40,6 +40,10 @@ export function getDecimalPlaces(): number {
   return cache?.display?.number?.decimalPlaces ?? 4;
 }
 
+export function getEncomendasRefreshSegundos(): number {
+  return cache?.display?.encomendasRefreshSegundos ?? 60;
+}
+
 export function getLogo(): string | null {
   return sessionStorage.getItem(logoKey());
 }

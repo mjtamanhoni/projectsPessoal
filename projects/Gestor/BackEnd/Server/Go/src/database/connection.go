@@ -26,9 +26,8 @@ func Connect(cfg *config.Config) error {
 		return fmt.Errorf("unable to ping database: %w", err)
 	}
 
-	Pool.Exec(context.Background(), `DROP TABLE IF EXISTS public.empresa_sequences`)
 	_, err = Pool.Exec(context.Background(), `
-		CREATE TABLE public.empresa_sequences (
+		CREATE TABLE IF NOT EXISTS public.empresa_sequences (
 			empresa_id INTEGER NOT NULL,
 			tabela VARCHAR(100) NOT NULL,
 			last_id INTEGER NOT NULL DEFAULT 0,

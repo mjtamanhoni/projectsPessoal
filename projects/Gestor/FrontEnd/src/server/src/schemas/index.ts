@@ -10,6 +10,12 @@ export const clienteBodySchema = z.object({
     .refine((v) => v.replace(/\D/g, '').length >= 11, 'CPF/CNPJ invalido'),
   telefone: z.string().max(20).optional().or(z.literal('')),
   celular: z.string().max(20).optional().or(z.literal('')),
+  nr: z.string().max(10).optional().or(z.literal('')),
+  complemento: z.string().max(500).optional().or(z.literal('')),
+  bairro: z.string().max(100).optional().or(z.literal('')),
+  cidade: z.string().max(100).optional().or(z.literal('')),
+  uf: z.string().max(2).optional().or(z.literal('')),
+  cep: z.string().max(9).optional().or(z.literal('')),
   endereco: z.string().max(300).optional().or(z.literal('')),
   email: z.string().email('Email invalido').max(200).optional().or(z.literal('')),
 });
@@ -223,11 +229,24 @@ const produtoAdicionalItemSchema = z.object({
 });
 
 export const produtoAdicionalBodySchema = z.union([
+  produtoAdicionalItemSchema,
   z.object({
     produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
     adicionais: z.array(z.number().int().positive()).optional(),
   }),
-  produtoAdicionalItemSchema,
+]);
+
+const adicionalClassificacaoItemSchema = z.object({
+  adicional_id: z.number().int().positive('Adicional e obrigatorio'),
+  produto_classificacao_id: z.number().int().positive('Classificacao e obrigatoria'),
+});
+
+export const adicionalClassificacaoBodySchema = z.union([
+  adicionalClassificacaoItemSchema,
+  z.object({
+    adicional_id: z.number().int().positive('Adicional e obrigatorio'),
+    classificacoes: z.array(z.number().int().positive()).optional(),
+  }),
 ]);
 
 const produtoVendaItemSchema = z.object({
@@ -245,6 +264,7 @@ export const produtoVendaBodySchema = z.object({
   descricao: z.string().max(500).optional(),
   preco: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v >= 0, 'Preco nao pode ser negativo'),
   produto_fabricado_id: z.union([z.number().int().positive(), z.null()]).optional(),
+  produto_classificacao_id: z.union([z.number().int().positive(), z.null()]).optional(),
   foto: z.string().max(500).optional(),
   ativo: z.boolean().optional(),
 });
@@ -272,14 +292,22 @@ const adicionalPedidoItemSchema = z.object({
   valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
 });
 
-const vendaProdutoItemSchema = z.object({
-  produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
-  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
-  valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
-  valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
-  removidos: z.array(z.string()).optional(),
-  adicionais: z.array(adicionalPedidoItemSchema).optional(),
-});
+const itemRemovidoSchema = z.union([
+  z.string(),
+  z.object({ nome: z.string(), produto_venda_item_id: z.number().int().positive().optional() }),
+]);
+
+const vendaProdutoItemSchema = z
+  .object({
+    produto_fabricado_id: z.number().int().positive('Produto e obrigatorio').optional(),
+    produto_venda_id: z.number().int().positive('Produto de venda e obrigatorio').optional(),
+    quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+    valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
+    valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
+    removidos: z.array(itemRemovidoSchema).optional(),
+    adicionais: z.array(adicionalPedidoItemSchema).optional(),
+  })
+  .refine((v) => v.produto_fabricado_id || v.produto_venda_id, 'Informe o produto');
 
 export const vendaProdutoBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
@@ -294,14 +322,25 @@ export const vendaProdutoBodySchema = z.object({
   itens: z.array(vendaProdutoItemSchema).min(1, 'Adicione ao menos um item'),
 });
 
-const encomendaItemSchema = z.object({
-  produto_fabricado_id: z.number().int().positive('Produto e obrigatorio'),
-  quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
-  valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
-  valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
-  removidos: z.array(z.string()).optional(),
-  adicionais: z.array(adicionalPedidoItemSchema).optional(),
+export const vendaProdutoReceberSchema = z.object({
+  id: z.number().int().positive('Venda e obrigatoria'),
+  data_recebimento: z.string().min(1, 'Data de recebimento e obrigatoria').optional(),
+  valor: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor deve ser maior que zero'),
+  desconto: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
+  acrescimo: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
 });
+
+const encomendaItemSchema = z
+  .object({
+    produto_fabricado_id: z.number().int().positive('Produto e obrigatorio').optional(),
+    produto_venda_id: z.number().int().positive('Produto de venda e obrigatorio').optional(),
+    quantidade: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Quantidade deve ser maior que zero'),
+    valor_unitario: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor unitario deve ser maior que zero'),
+    valor_total: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).refine((v) => v > 0, 'Valor total deve ser maior que zero'),
+    removidos: z.array(itemRemovidoSchema).optional(),
+    adicionais: z.array(adicionalPedidoItemSchema).optional(),
+  })
+  .refine((v) => v.produto_fabricado_id || v.produto_venda_id, 'Informe o produto');
 
 export const encomendaBodySchema = z.object({
   codigo: z.number().int().positive().optional(),

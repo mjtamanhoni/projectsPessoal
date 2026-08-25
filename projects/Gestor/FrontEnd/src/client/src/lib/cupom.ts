@@ -179,3 +179,45 @@ export function imprimirCupomSerial(texto: string): string {
     })
     .join('\n') + '\n</corte_total>';
 }
+
+export function imprimirCupomComum(texto: string): void {
+  const escapar = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) {
+    iframe.remove();
+    return;
+  }
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cupom</title><style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 1.25; color: #000; background: #fff; margin: 0; }
+    pre { white-space: pre-wrap; word-break: break-word; padding: 8px 12px; margin: 0; }
+    @media print {
+      @page { margin: 0; }
+      body { margin: 0; }
+    }
+  </style></head><body><pre>${escapar(texto)}</pre></body></html>`);
+  doc.close();
+
+  const win = iframe.contentWindow;
+  if (!win) {
+    iframe.remove();
+    return;
+  }
+  win.focus();
+  setTimeout(() => {
+    win.print();
+    setTimeout(() => iframe.remove(), 2000);
+  }, 50);
+}

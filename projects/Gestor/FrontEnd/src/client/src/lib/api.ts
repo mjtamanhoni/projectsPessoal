@@ -35,3 +35,15 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+export async function buscarCep(cep: string): Promise<{ logradouro: string; bairro: string; localidade: string; uf: string } | null> {
+  const nums = cep.replace(/\D/g, '');
+  if (nums.length !== 8) return null;
+  try {
+    const { data } = await api.get(`/cep/${nums}`);
+    if (data?.erro) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}

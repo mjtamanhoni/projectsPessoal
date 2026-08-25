@@ -4,6 +4,7 @@ import { mesCorrente, passaPeriodo } from '../lib/filtros';
 import type { FiltroPeriodo } from '../lib/filtros';
 import { useNavigate } from 'react-router-dom';
 import {
+  criarContaReceber,
   excluirVendaProduto,
   extrairErro,
   listarClientes,
@@ -11,6 +12,7 @@ import {
   listarProdutosFabricados,
   listarVendaProdutoItens,
   listarVendasProduto,
+  receberVendaProduto,
   salvarVendaProduto,
   type VendaProduto,
   type VendaProdutoItem,
@@ -29,6 +31,7 @@ import { gerarPayloadPix, gerarQrPixDataUrl } from '../lib/pix';
 import { compartilharPDF } from '../lib/share';
 import { Clipboard } from '@capacitor/clipboard';
 import { useAuth } from '../auth';
+import { decimalParaNumero, mascaraMoeda, numeroParaDecimal } from '../format';
 
 function fmtMoeda(v: number | undefined): string {
   if (v == null || !Number.isFinite(v)) return 'R$ 0,00';
@@ -74,6 +77,23 @@ export default function VendasProduto() {
   const [pixPayload, setPixPayload] = useState<string | null>(null);
   const [pixBusy, setPixBusy] = useState(false);
   const [pixCopiado, setPixCopiado] = useState(false);
+
+  const [receberVenda, setReceberVenda] = useState<VendaProduto | null>(null);
+  const [receberData, setReceberData] = useState(new Date().toISOString().slice(0, 10));
+  const [receberValor, setReceberValor] = useState('');
+  const [recebendo, setRecebendo] = useState(false);
+  const [receberErro, setReceberErro] = useState('');
+  const [reviewInfo, setReviewInfo] = useState<{
+    venda: VendaProduto;
+    data: string;
+    valorInformado: number;
+    desconto: number;
+    acrescimo: number;
+    valorEfetivo: number;
+    diferenca: number;
+    tipo: 'maior' | 'menor';
+  } | null>(null);
+  const [cupomOrigem, setCupomOrigem] = useState<'salva' | 'recebida'>('salva');
 
   const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
 const [filtroAbertas, setFiltroAbertas] = useState(true);
@@ -172,6 +192,7 @@ const carregar = useCallback(async () => {
     setExpandido({});
     await carregar();
     if (isNova && novoId != null) {
+      setCupomOrigem('salva');
       setCupomVenda({ ...data, id: novoId, codigo: novoId });
     }
   };
@@ -260,6 +281,113 @@ const carregar = useCallback(async () => {
     } catch {
       setErro('Não foi possível copiar o código PIX');
     }
+  };
+
+  const hoje = () => new Date().toISOString().slice(0, 10);
+
+  const abrirRecebimento = (v: VendaProduto) => {
+    setReceberVenda(v);
+    setReceberData(hoje());
+    setReceberValor(mascaraMoeda(numeroParaDecimal(Number(v.valor_total) || 0, 2), 2));
+    setReceberErro('');
+  };
+
+  const executarRecebimento = async (
+    venda: VendaProduto,
+    dataRecebimento: string,
+    valorBaixa: number,
+    desconto: number,
+    acrescimo: number,
+    valorRestante = 0,
+  ) => {
+    const id = idVenda(venda);
+    if (id == null) return;
+    setRecebendo(true);
+    setErro('');
+    try {
+      await receberVendaProduto({
+        id,
+        data_recebimento: dataRecebimento,
+        valor: valorBaixa,
+        desconto: desconto > 0 ? desconto : undefined,
+        acrescimo: acrescimo > 0 ? acrescimo : undefined,
+      });
+      if (valorRestante > 0) {
+        try {
+          await criarContaReceber({
+            cliente_id: venda.cliente_id,
+            descricao: `Venda Produto #${id}${venda.cliente_nome ? ` - ${venda.cliente_nome}` : ''} (restante)`,
+            valor: valorRestante,
+            data_vencimento: hoje(),
+            recebido: false,
+          });
+        } catch {
+          setReceberErro('Venda recebida, mas houve erro ao gerar o lançamento do restante.');
+          setReviewInfo(null);
+          setRecebendo(false);
+          await carregar();
+          setCupomOrigem('recebida');
+          setCupomVenda({ ...venda, recebido: true });
+          return;
+        }
+      }
+      setReceberVenda(null);
+      setReviewInfo(null);
+      await carregar();
+      setCupomOrigem('recebida');
+      setCupomVenda({ ...venda, recebido: true });
+    } catch (e) {
+      setReceberErro(e instanceof Error ? e.message : 'Erro ao receber venda');
+      setReviewInfo(null);
+    } finally {
+      setRecebendo(false);
+    }
+  };
+
+  const confirmarRecebimento = () => {
+    if (!receberVenda) return;
+    const valorInformado = decimalParaNumero(receberValor) ?? 0;
+    if (!receberData) {
+      setReceberErro('Informe a data de recebimento');
+      return;
+    }
+    if (valorInformado <= 0) {
+      setReceberErro('Valor recebido deve ser maior que zero');
+      return;
+    }
+    const valorOriginal = Number(receberVenda.valor_total) || 0;
+    const valorEfetivo = valorInformado;
+    const diferenca = Math.abs(valorOriginal - valorEfetivo);
+    if (Math.abs(valorEfetivo - valorOriginal) < 0.005) {
+      void executarRecebimento(receberVenda, receberData, valorEfetivo, 0, 0);
+    } else {
+      setReceberErro('');
+      setReviewInfo({
+        venda: receberVenda,
+        data: receberData,
+        valorInformado,
+        desconto: 0,
+        acrescimo: 0,
+        valorEfetivo,
+        diferenca,
+        tipo: valorEfetivo > valorOriginal ? 'maior' : 'menor',
+      });
+    }
+  };
+
+  const reviewAcrecimo = () => {
+    if (!reviewInfo) return;
+    void executarRecebimento(reviewInfo.venda, reviewInfo.data, reviewInfo.valorInformado, 0, reviewInfo.acrescimo + reviewInfo.diferenca);
+  };
+
+  const reviewDesconto = () => {
+    if (!reviewInfo) return;
+    void executarRecebimento(reviewInfo.venda, reviewInfo.data, reviewInfo.valorInformado, reviewInfo.desconto + reviewInfo.diferenca, 0);
+  };
+
+  const reviewNovoLancamento = () => {
+    if (!reviewInfo) return;
+    void executarRecebimento(reviewInfo.venda, reviewInfo.data, reviewInfo.valorInformado, 0, 0, reviewInfo.diferenca);
   };
 
   const aoExcluir = async () => {
@@ -393,6 +521,9 @@ const carregar = useCallback(async () => {
                       fontSize={21}
                       opcoes={[
                         { rotulo: 'Editar', onPress: () => abrirEditar(v) },
+                        ...(v.recebido
+                          ? []
+                          : [{ rotulo: 'Receber', cor: '#16a34a', onPress: () => abrirRecebimento(v) }]),
                         { rotulo: 'Excluir', cor: '#dc2626', onPress: () => setConfirmDelete(v) },
                         ...(empresa?.chave_pix
                           ? [{ rotulo: 'PIX', cor: '#0a7a3d', onPress: () => abrirPix(v) }]
@@ -492,12 +623,100 @@ const carregar = useCallback(async () => {
         </div>
       )}
 
+      {receberVenda && !reviewInfo && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-head">
+              <div className="modal-title">Receber Venda</div>
+              <button className="modal-close" onClick={() => setReceberVenda(null)} disabled={recebendo}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ margin: '4px 4px 8px', fontSize: 12 }}>
+                <div style={{ fontWeight: 700 }}>#{idVenda(receberVenda)} {receberVenda.cliente_nome ? `- ${receberVenda.cliente_nome}` : ''}</div>
+                <div style={{ color: '#6b706c' }}>Valor Total: {fmtMoeda(Number(receberVenda.valor_total) || 0)}</div>
+              </div>
+
+              <div className="modal-label" style={{ position: 'static', margin: '12px 4px 4px' }}>Data de Recebimento *</div>
+              <input
+                className="modal-input"
+                style={{ position: 'static', width: 'calc(100% - 8px)', margin: '0 4px' }}
+                type="date"
+                value={receberData}
+                onChange={(e) => setReceberData(e.target.value)}
+              />
+
+              <div className="modal-label" style={{ position: 'static', margin: '12px 4px 4px' }}>Valor Recebido *</div>
+              <input
+                className="modal-input"
+                style={{ position: 'static', width: 'calc(100% - 8px)', margin: '0 4px' }}
+                inputMode="decimal"
+                placeholder="0,00"
+                value={receberValor}
+                onChange={(e) => setReceberValor(mascaraMoeda(e.target.value, 2))}
+              />
+
+              {receberErro && <div className="modal-erro" style={{ position: 'static', margin: '8px 4px' }}>{receberErro}</div>}
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 8 }}>
+                <button className="modal-btn cancel" style={{ position: 'static', top: 0 }} onClick={() => setReceberVenda(null)} disabled={recebendo}>
+                  Cancelar
+                </button>
+                <button className="modal-btn save" style={{ position: 'static', top: 0 }} onClick={confirmarRecebimento} disabled={recebendo}>
+                  {recebendo ? 'Recebendo...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reviewInfo && (
+        <div className="modal-overlay">
+          <div className="confirm-card" style={{ width: 'min(92vw, 360px)' }}>
+            <div className="confirm-title">{reviewInfo.tipo === 'maior' ? 'Valor Maior que o Original' : 'Valor Menor que o Original'}</div>
+            <div className="confirm-msg">
+              Valor informado <strong>{fmtMoeda(reviewInfo.valorEfetivo)}</strong> é {reviewInfo.tipo === 'maior' ? 'maior' : 'menor'} que o original{' '}
+              <strong>{fmtMoeda(Number(reviewInfo.venda.valor_total) || 0)}</strong>.
+              <br />
+              Diferença de <strong>{fmtMoeda(reviewInfo.diferenca)}</strong>.
+            </div>
+            {receberErro && (
+              <div className="confirm-msg" style={{ color: '#c0392b', fontSize: 11 }}>{receberErro}</div>
+            )}
+            <div className="confirm-actions" style={{ flexWrap: 'wrap' }}>
+              {reviewInfo.tipo === 'maior' && (
+                <button className="confirm-btn save" onClick={reviewAcrecimo} disabled={recebendo}>
+                  Lançar Diferença como Acréscimo ({numeroParaDecimal(reviewInfo.acrescimo + reviewInfo.diferenca, 2)})
+                </button>
+              )}
+              {reviewInfo.tipo === 'menor' && (
+                <>
+                  <button className="confirm-btn save" onClick={reviewDesconto} disabled={recebendo}>
+                    Lançar Diferença como Desconto ({numeroParaDecimal(reviewInfo.desconto + reviewInfo.diferenca, 2)})
+                  </button>
+                  <button className="confirm-btn save" onClick={reviewNovoLancamento} disabled={recebendo}>
+                    Gerar Novo Lançamento ({numeroParaDecimal(reviewInfo.diferenca, 2)})
+                  </button>
+                </>
+              )}
+              <button className="confirm-btn cancel" onClick={() => setReviewInfo(null)} disabled={recebendo}>
+                Corrigir Valor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {cupomVenda && (
         <div className="modal-overlay">
           <div className="confirm-card">
             <div className="confirm-title">Cupom Não Fiscal</div>
             <div className="confirm-msg">
-              Venda salva com sucesso! Deseja gerar o cupom não fiscal em PDF para enviar ao cliente{' '}
+              {cupomOrigem === 'recebida'
+                ? `Venda recebida com sucesso! Deseja gerar o cupom não fiscal em PDF para enviar ao cliente `
+                : `Venda salva com sucesso! Deseja gerar o cupom não fiscal em PDF para enviar ao cliente `}
               {cupomVenda.cliente_nome ? `(${cupomVenda.cliente_nome})` : ''}?
             </div>
             <div className="confirm-actions">

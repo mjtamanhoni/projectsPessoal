@@ -226,8 +226,10 @@ export function ContasReceber() {
   };
 
   const columns = [
-    columnHelper.accessor('descricao', {
-      header: 'Descrição',
+    columnHelper.accessor('dataVencimento', {
+      header: 'Vencimento',
+      cell: (info) => formatDate(info.getValue()),
+      sortingFn: 'datetime',
     }),
     columnHelper.accessor('clienteNome', {
       header: 'Cliente',
@@ -239,10 +241,8 @@ export function ContasReceber() {
       sortingFn: 'alphanumeric',
       meta: { align: 'right' } as Record<string, string>,
     }),
-    columnHelper.accessor('dataVencimento', {
-      header: 'Vencimento',
-      cell: (info) => formatDate(info.getValue()),
-      sortingFn: 'datetime',
+    columnHelper.accessor('descricao', {
+      header: 'Descrição',
     }),
     columnHelper.accessor((row) => (row.recebido ? 'recebido' : isOverdue(row.dataVencimento) ? 'atrasado' : 'pendente'), {
       id: 'status',
@@ -252,6 +252,16 @@ export function ContasReceber() {
         : isOverdue(row.original.dataVencimento) ? <span className="status-badge atrasado">Atrasado</span>
         : <span className="status-badge pendente">Pendente</span>
       ),
+    }),
+    columnHelper.display({
+      id: 'data_recebimento',
+      header: 'Data Recebimento',
+      cell: ({ row }) => (
+        row.original.recebido && row.original.dataRecebimento ? <span className="text-sm">{formatDate(row.original.dataRecebimento)}</span>
+        : <span className="text-text-secondary text-sm">-</span>
+      ),
+      enableColumnFilter: false,
+      enableSorting: false,
     }),
     columnHelper.display({
       id: 'valor_baixa',

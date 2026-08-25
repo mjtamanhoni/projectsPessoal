@@ -30,6 +30,7 @@ const servicos_1 = __importDefault(require("./routes/servicos"));
 const permissoes_1 = __importDefault(require("./routes/permissoes"));
 const insumos_1 = __importDefault(require("./routes/insumos"));
 const marcas_1 = __importDefault(require("./routes/marcas"));
+const produto_classificacao_1 = __importDefault(require("./routes/produto-classificacao"));
 const migracoes_1 = __importDefault(require("./routes/migracoes"));
 const perdas_insumo_1 = __importDefault(require("./routes/perdas-insumo"));
 const perdas_produto_1 = __importDefault(require("./routes/perdas-produto"));
@@ -53,6 +54,7 @@ const relatorios_producao_1 = __importDefault(require("./routes/relatorios-produ
 const lancamento_automatico_config_1 = __importDefault(require("./routes/lancamento-automatico-config"));
 const print_1 = __importDefault(require("./routes/print"));
 const adicionais_1 = __importDefault(require("./routes/adicionais"));
+const adicionais_classificacoes_1 = __importDefault(require("./routes/adicionais-classificacoes"));
 const produtos_adicionais_1 = __importDefault(require("./routes/produtos-adicionais"));
 const produtos_venda_1 = __importDefault(require("./routes/produtos-venda"));
 const produtos_venda_itens_1 = __importDefault(require("./routes/produtos-venda-itens"));
@@ -64,6 +66,24 @@ app.use(logger_1.requestLogger);
 app.use(rateLimit_1.apiLimiter);
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+app.get('/api/cep/:cep', async (req, res) => {
+    const cep = req.params.cep.replace(/\D/g, '');
+    if (cep.length !== 8) {
+        res.status(400).json({ error: 'CEP deve conter 8 dígitos' });
+        return;
+    }
+    try {
+        const upstream = await axios_1.default.get(`https://viacep.com.br/ws/${cep}/json/`, { timeout: 5000 });
+        if (upstream.data?.erro) {
+            res.status(404).json({ error: 'CEP não encontrado' });
+            return;
+        }
+        res.json(upstream.data);
+    }
+    catch {
+        res.status(502).json({ error: 'Erro ao consultar CEP' });
+    }
 });
 app.get('/api/uploads/*', async (req, res) => {
     const url = req.originalUrl.replace(/^\/api\/uploads/, '');
@@ -115,6 +135,7 @@ app.use('/api/servicos', servicos_1.default);
 app.use('/api/permissoes', permissoes_1.default);
 app.use('/api/insumos', insumos_1.default);
 app.use('/api/marcas', marcas_1.default);
+app.use('/api/produto-classificacao', produto_classificacao_1.default);
 app.use('/api/migracoes', migracoes_1.default);
 app.use('/api/compras-insumo', compras_insumo_1.default);
 app.use('/api/produtos-fabricados', produtos_fabricados_1.default);
@@ -138,6 +159,7 @@ app.use('/api/perdas-insumo', perdas_insumo_1.default);
 app.use('/api/perdas-produto', perdas_produto_1.default);
 app.use('/api/uso-consumo', uso_consumo_1.default);
 app.use('/api/adicionais', adicionais_1.default);
+app.use('/api/adicionais-classificacoes', adicionais_classificacoes_1.default);
 app.use('/api/produtos-adicionais', produtos_adicionais_1.default);
 app.use('/api/produtos-venda', produtos_venda_1.default);
 app.use('/api/produtos-venda-itens', produtos_venda_itens_1.default);

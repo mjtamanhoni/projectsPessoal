@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { horseApi } from '../services/horseApi';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { vendaProdutoBodySchema } from '../schemas';
+import { vendaProdutoBodySchema, vendaProdutoReceberSchema } from '../schemas';
 
 const router = Router();
 
@@ -21,6 +21,23 @@ router.post('/', authMiddleware, validate(vendaProdutoBodySchema), async (req: A
     const body = req.body;
     const items = Array.isArray(body) ? body : [body];
     const result = await horseApi.salvarVendasProduto(items, req.empresaId);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.put('/receber', authMiddleware, validate(vendaProdutoReceberSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, data_recebimento, valor, desconto, acrescimo } = req.body;
+    const result = await horseApi.receberVendaProduto({
+      id,
+      data_recebimento,
+      valor: Number(valor),
+      desconto: desconto != null ? Number(desconto) : 0,
+      acrescimo: acrescimo != null ? Number(acrescimo) : 0,
+    });
     res.json(result);
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;

@@ -43,7 +43,7 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
   Producao: [
     {
       label: 'Cadastro',
-      forms: ['Insumos', 'Marcas', 'Produtos Fabricados', 'Receitas Ingredientes', 'Custos Adicionais', 'Adicionais', 'Produtos de Venda'],
+      forms: ['Insumos', 'Marcas', 'Produtos Fabricados', 'Receitas Ingredientes', 'Custos Adicionais', 'Adicionais', 'Produtos de Venda', 'Classificacao Produtos'],
     },
     {
       label: 'Movimento',
@@ -57,7 +57,7 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
   'Producao V2': [
     {
       label: 'Cadastro',
-      forms: ['Insumos', 'Marcas', 'Produtos Fabricados', 'Receitas Ingredientes', 'Custos Adicionais', 'Adicionais', 'Produtos de Venda'],
+      forms: ['Insumos', 'Marcas', 'Produtos Fabricados', 'Receitas Ingredientes', 'Custos Adicionais', 'Adicionais', 'Produtos de Venda', 'Classificacao Produtos'],
     },
     {
       label: 'Movimento',

@@ -73,7 +73,7 @@ func (h *BasicCRUD) FornecedorListar(w http.ResponseWriter, r *http.Request) {
 		query += fmt.Sprintf(" AND upper(email) = upper($%d)", argN); argN++; args = append(args, email)
 	}
 	query += fmt.Sprintf(" AND (empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
-	query += " ORDER BY id"
+	query += " ORDER BY id DESC"
 
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
@@ -120,7 +120,7 @@ func (h *BasicCRUD) ClienteListar(w http.ResponseWriter, r *http.Request) {
 	nome := r.URL.Query().Get("nome")
 	email := r.URL.Query().Get("email")
 
-	query := `SELECT id, empresa_id, nome, telefone, celular, endereco, email, cnpj_cpf, usuario_id
+	query := `SELECT id, empresa_id, nome, telefone, celular, nr, complemento, bairro, cidade, uf, cep, endereco, email, cnpj_cpf, usuario_id, status
 		FROM public.cliente WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -135,7 +135,7 @@ func (h *BasicCRUD) ClienteListar(w http.ResponseWriter, r *http.Request) {
 		query += fmt.Sprintf(" AND upper(email) = upper($%d)", argN); argN++; args = append(args, email)
 	}
 	query += fmt.Sprintf(" AND (empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
-	query += " ORDER BY id"
+	query += " ORDER BY id DESC"
 
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
@@ -147,7 +147,7 @@ func (h *BasicCRUD) ClienteListar(w http.ResponseWriter, r *http.Request) {
 }
 func (h *BasicCRUD) ClienteAtualizar(w http.ResponseWriter, r *http.Request) {
 	h.genericUpsert(w, r, "", "cliente",
-		[]string{"nome", "telefone", "celular", "endereco", "email", "cnpj_cpf", "usuario_id"})
+		[]string{"nome", "telefone", "celular", "nr", "complemento", "bairro", "cidade", "uf", "cep", "endereco", "email", "cnpj_cpf", "usuario_id", "status"})
 }
 
 func (h *BasicCRUD) ClienteExcluir(w http.ResponseWriter, r *http.Request) {
@@ -197,6 +197,34 @@ func (h *BasicCRUD) MarcaExcluir(w http.ResponseWriter, r *http.Request) {
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Marca excluída com sucesso"})
 }
 
+// --- Produto Classificacao ---
+func (h *BasicCRUD) ProdutoClassificacaoListar(w http.ResponseWriter, r *http.Request) {
+	h.Listar(w, r, "public", "produto_classificacao", "", "id, empresa_id, nome, status, created_at", "")
+}
+
+func (h *BasicCRUD) ProdutoClassificacaoAtualizar(w http.ResponseWriter, r *http.Request) {
+	h.genericUpsert(w, r, "public", "produto_classificacao", []string{"nome", "status"})
+}
+
+func (h *BasicCRUD) ProdutoClassificacaoExcluir(w http.ResponseWriter, r *http.Request) {
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	empresaID := middleware.GetEmpresaID(r)
+	if id == 0 {
+		jsonError(w, "ID não informado", http.StatusBadRequest)
+		return
+	}
+	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM produto_classificacao WHERE id = $1 AND empresa_id = $2`, id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Classificação excluída com sucesso"})
+}
+
 // --- Categoria Pagar ---
 func (h *BasicCRUD) CategoriaPagarListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
@@ -213,7 +241,7 @@ func (h *BasicCRUD) CategoriaPagarListar(w http.ResponseWriter, r *http.Request)
 		query += fmt.Sprintf(" AND upper(nome) LIKE upper($%d)", argN); argN++; args = append(args, "%"+nome+"%")
 	}
 	query += fmt.Sprintf(" AND (empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
-	query += " ORDER BY id"
+	query += " ORDER BY id DESC"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -248,7 +276,7 @@ func (h *BasicCRUD) CategoriaReceberListar(w http.ResponseWriter, r *http.Reques
 		query += fmt.Sprintf(" AND upper(nome) LIKE upper($%d)", argN); argN++; args = append(args, "%"+nome+"%")
 	}
 	query += fmt.Sprintf(" AND (empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
-	query += " ORDER BY id"
+	query += " ORDER BY id DESC"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -292,7 +320,7 @@ func (h *BasicCRUD) UsuarioListar(w http.ResponseWriter, r *http.Request) {
 	if email != "" {
 		query += fmt.Sprintf(" AND upper(email) = upper($%d)", argN); argN++; args = append(args, email)
 	}
-	query += " ORDER BY id"
+	query += " ORDER BY id DESC"
 	rows, err := h.Pool.Query(r.Context(), query, append([]interface{}{empresaID}, args...)...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -499,7 +527,7 @@ func (h *BasicCRUD) ServicoListar(w http.ResponseWriter, r *http.Request) {
 		query += fmt.Sprintf(" AND upper(nome) LIKE upper($%d)", argN); argN++; args = append(args, "%"+nome+"%")
 	}
 	query += fmt.Sprintf(" AND (empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
-	query += " ORDER BY id"
+	query += " ORDER BY id DESC"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -672,23 +700,6 @@ func (h *BasicCRUD) EmpresaExcluir(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BasicCRUD) EmpresaAtualizarSequencias(w http.ResponseWriter, r *http.Request) {
-	tabelas := []string{
-		"fornecedor", "cliente", "categoria_pagar", "categoria_receber",
-		"servico", "usuario", "usuario_formulario", "empresa_modulo",
-		"contas_pagar", "contas_receber", "horas_trabalhadas",
-		"horas_abatidas", "horas_excedidas", "insumo", "produto_fabricado",
-		"receita_ingrediente", "custo_adicional_tipo", "fabricacao_custo_adicional",
-		"estoque_insumo", "estoque_produto_fabricado", "compra_insumo",
-		"fabricacao", "venda_produto", "venda_produto_item", "usuario_formulario_permissao",
-		"encomenda", "encomenda_item",
-		"adicional", "encomenda_item_removido", "encomenda_item_adicional",
-		"venda_produto_item_removido", "venda_produto_item_adicional",
-		"produto_venda", "produto_venda_item",
-	}
-	tabelasGlobais := []string{
-		"formulario", "modulo", "modulo_formulario",
-	}
-
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
 		jsonError(w, "Erro interno", http.StatusInternalServerError)
@@ -698,13 +709,16 @@ func (h *BasicCRUD) EmpresaAtualizarSequencias(w http.ResponseWriter, r *http.Re
 
 	total := 0
 
-	// Obtém todos os empresa_id distintos
-	empRows, err := tx.Query(r.Context(), `SELECT DISTINCT empresa_id FROM empresa_sequences ORDER BY empresa_id`)
+	var empresaIDs []int
+	empRows, err := tx.Query(r.Context(), `
+		SELECT id FROM public.empresa
+		UNION
+		SELECT DISTINCT empresa_id FROM public.usuario WHERE empresa_id IS NOT NULL
+		ORDER BY id`)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var empresaIDs []int
 	for empRows.Next() {
 		var eid int
 		empRows.Scan(&eid)
@@ -712,49 +726,22 @@ func (h *BasicCRUD) EmpresaAtualizarSequencias(w http.ResponseWriter, r *http.Re
 	}
 	empRows.Close()
 
-	// Se não houver registros, busca das tabelas
 	if len(empresaIDs) == 0 {
-		rows, err := tx.Query(r.Context(), `SELECT DISTINCT empresa_id FROM usuario WHERE empresa_id IS NOT NULL ORDER BY empresa_id`)
-		if err == nil {
-			for rows.Next() {
-				var eid int
-				rows.Scan(&eid)
-				empresaIDs = append(empresaIDs, eid)
-			}
-			rows.Close()
-		}
-		// Garante empresa_id = 0 para globais
-		empresaIDs = append(empresaIDs, 0)
-	}
-
-	if len(empresaIDs) == 0 {
-		// fallback: usa empresa 1 e 0
-		empresaIDs = []int{0, 1}
+		empresaIDs = []int{1}
 	}
 
 	for _, eid := range empresaIDs {
-		var lista []string
-		if eid == 0 {
-			lista = tabelasGlobais
-		} else {
-			lista = tabelas
-		}
-		for _, tabela := range lista {
+		for _, tabela := range database.TabelasEmpresa {
 			var maxID int
-			if eid == 0 {
-				err = tx.QueryRow(r.Context(),
-					fmt.Sprintf("SELECT COALESCE(MAX(id), 0) FROM %s", tabela)).Scan(&maxID)
-			} else {
-				err = tx.QueryRow(r.Context(),
-					fmt.Sprintf("SELECT COALESCE(MAX(id), 0) FROM %s WHERE empresa_id = $1", tabela), eid).Scan(&maxID)
-			}
+			err = tx.QueryRow(r.Context(),
+				fmt.Sprintf("SELECT COALESCE(MAX(id), 0) FROM %s WHERE empresa_id = $1", tabela), eid).Scan(&maxID)
 			if err != nil {
 				continue
 			}
 			_, err = tx.Exec(r.Context(), `
 				INSERT INTO public.empresa_sequences (empresa_id, tabela, last_id)
 				VALUES ($1, $2, $3)
-				ON CONFLICT (empresa_id, tabela) DO UPDATE SET last_id = $3
+				ON CONFLICT (empresa_id, tabela) DO UPDATE SET last_id = GREATEST(public.empresa_sequences.last_id, EXCLUDED.last_id)
 			`, eid, tabela, maxID)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -762,6 +749,25 @@ func (h *BasicCRUD) EmpresaAtualizarSequencias(w http.ResponseWriter, r *http.Re
 			}
 			total++
 		}
+	}
+
+	for _, tabela := range database.TabelasGlobais {
+		var maxID int
+		err = tx.QueryRow(r.Context(),
+			fmt.Sprintf("SELECT COALESCE(MAX(id), 0) FROM %s", tabela)).Scan(&maxID)
+		if err != nil {
+			continue
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO public.empresa_sequences (empresa_id, tabela, last_id)
+			VALUES (0, $1, $2)
+			ON CONFLICT (empresa_id, tabela) DO UPDATE SET last_id = GREATEST(public.empresa_sequences.last_id, EXCLUDED.last_id)
+		`, tabela, maxID)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		total++
 	}
 
 	tx.Commit(r.Context())
@@ -810,6 +816,7 @@ func (h *BasicCRUD) EmpresaLimparDados(w http.ResponseWriter, r *http.Request) {
 		"venda_produto",
 		"receita_ingrediente",
 		"produto_adicional",
+		"adicional_produto_classificacao",
 		"produto_venda_item",
 		"produto_venda",
 		"compra_insumo",
@@ -857,7 +864,7 @@ func (h *BasicCRUD) FormularioListar(w http.ResponseWriter, r *http.Request) {
 	if nome != "" {
 		query += fmt.Sprintf(" AND upper(nome) LIKE upper($%d)", argN); argN++; args = append(args, "%"+nome+"%")
 	}
-	query += " ORDER BY id"
+	query += " ORDER BY id DESC"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)

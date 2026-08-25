@@ -1,4 +1,4 @@
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, ProdutoVenda, ProdutoVendaItem } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem } from '../types';
 declare class HorseApiService {
     private api;
     private token;
@@ -69,6 +69,9 @@ declare class HorseApiService {
     listarMarcas(params?: Record<string, unknown>): Promise<unknown[]>;
     salvarMarcas(items: unknown[]): Promise<unknown>;
     excluirMarca(id: number): Promise<unknown>;
+    listarProdutoClassificacoes(params?: Record<string, unknown>): Promise<unknown[]>;
+    salvarProdutoClassificacoes(items: unknown[]): Promise<unknown>;
+    excluirProdutoClassificacao(id: number): Promise<unknown>;
     listarMigracoes(): Promise<unknown>;
     aplicarMigracao(nome: string): Promise<unknown>;
     listarComprasInsumo(params?: Record<string, unknown>): Promise<CompraInsumo[]>;
@@ -90,6 +93,12 @@ declare class HorseApiService {
         adicionais?: number[];
     }): Promise<unknown>;
     excluirProdutoAdicional(produtoFabricadoId: number, adicionalId: number): Promise<unknown>;
+    listarAdicionaisClassificacoes(params?: Record<string, unknown>): Promise<AdicionalProdutoClassificacao[]>;
+    salvarAdicionaisClassificacoes(payload: {
+        adicional_id: number;
+        classificacoes?: number[];
+    }): Promise<unknown>;
+    excluirAdicionalClassificacao(adicionalId: number, classificacaoId: number): Promise<unknown>;
     listarProdutosVenda(params?: Record<string, unknown>): Promise<ProdutoVenda[]>;
     salvarProdutosVenda(items: ProdutoVenda[]): Promise<unknown>;
     excluirProdutoVenda(id: number): Promise<unknown>;
@@ -105,6 +114,13 @@ declare class HorseApiService {
     excluirFabricacao(id: number): Promise<unknown>;
     listarVendasProduto(params?: Record<string, unknown>): Promise<VendaProduto[]>;
     salvarVendasProduto(items: VendaProduto[], empresaId?: number): Promise<unknown>;
+    receberVendaProduto(data: {
+        id: number;
+        data_recebimento?: string;
+        valor: number;
+        desconto?: number;
+        acrescimo?: number;
+    }): Promise<unknown>;
     excluirVendaProduto(id: number): Promise<unknown>;
     listarEncomendas(params?: Record<string, unknown>): Promise<Encomenda[]>;
     salvarEncomendas(items: Encomenda[], empresaId?: number): Promise<unknown>;

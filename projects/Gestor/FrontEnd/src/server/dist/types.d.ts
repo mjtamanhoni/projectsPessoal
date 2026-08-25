@@ -409,6 +409,12 @@ export interface ProdutoAdicional {
     adicional_preco?: number;
     adicional_ativo?: boolean;
 }
+export interface AdicionalProdutoClassificacao {
+    adicional_id: number;
+    produto_classificacao_id: number;
+    produto_classificacao_nome?: string;
+    status?: number;
+}
 export interface ProdutoVenda {
     codigo?: number;
     id?: number;
@@ -417,6 +423,8 @@ export interface ProdutoVenda {
     preco: number;
     produto_fabricado_id?: number | null;
     produto_fabricado_nome?: string | null;
+    produto_classificacao_id?: number | null;
+    produto_classificacao_nome?: string | null;
     foto?: string;
     ativo?: boolean;
 }
@@ -458,8 +466,10 @@ export interface FabricacaoCustoAdicional {
 export interface VendaProdutoItem {
     item_id?: number;
     id?: number;
-    produto_fabricado_id: number;
+    produto_fabricado_id?: number;
+    produto_venda_id?: number;
     produto_nome?: string;
+    produto_venda_nome?: string;
     quantidade: number;
     valor_unitario: number;
     valor_total: number;
@@ -484,8 +494,10 @@ export interface VendaProduto {
 export interface EncomendaItem {
     item_id?: number;
     id?: number;
-    produto_fabricado_id: number;
+    produto_fabricado_id?: number;
+    produto_venda_id?: number;
     produto_nome?: string;
+    produto_venda_nome?: string;
     quantidade: number;
     valor_unitario: number;
     valor_total: number;

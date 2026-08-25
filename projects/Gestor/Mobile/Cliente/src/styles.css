@@ -491,7 +491,8 @@ body {
 .list-card {
   position: absolute;
   left: 14px;
-  width: min(362px, calc(100% - 28px));
+  right: 14px;
+  width: auto;
   border-radius: 16px;
   background: #ffffff;
   border: 1px solid #d6ddd0;
@@ -1063,8 +1064,7 @@ body {
 }
 
 .compra-sub {
-  margin: 10px -44px 0 -16px;
-  width: calc(100% + 60px);
+  margin: 10px 0 0;
   background: #f9f8f6;
   border-radius: 8px;
   border: 1px solid #e8efea;
@@ -1098,11 +1098,10 @@ body {
 }
 
 .col-produto {
-  width: 160px;
-  flex-shrink: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .col-marca {

@@ -64,7 +64,7 @@ func (h *BasicCRUD) ClientePublicoBuscar(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	selects := `SELECT id, empresa_id, nome, telefone, celular, endereco, email, cnpj_cpf, usuario_id
+	selects := `SELECT id, empresa_id, nome, telefone, celular, nr, complemento, bairro, cidade, uf, cep, endereco, email, cnpj_cpf, usuario_id, status
 		FROM public.cliente`
 	var query string
 	var args []interface{}
@@ -154,10 +154,13 @@ func (h *BasicCRUD) ClientePublicoCriar(w http.ResponseWriter, r *http.Request) 
 	}
 
 	_, err = tx.Exec(r.Context(), `
-		INSERT INTO public.cliente (id, empresa_id, nome, telefone, celular, endereco, email, cnpj_cpf, usuario_id, status)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,1)`,
+		INSERT INTO public.cliente (id, empresa_id, nome, telefone, celular, nr, complemento, bairro, cidade, uf, cep, endereco, email, cnpj_cpf, usuario_id, status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,1)`,
 		id, empresaID, nome,
 		getStr(body, "telefone"), getStr(body, "celular"),
+		getStr(body, "nr"), getStr(body, "complemento"),
+		getStr(body, "bairro"), getStr(body, "cidade"),
+		getStr(body, "uf"), getStr(body, "cep"),
 		getStr(body, "endereco"), getStr(body, "email"),
 		documento, usuarioID)
 	if err != nil {
@@ -217,8 +220,8 @@ func (h *ProducaoHandler) ProdutoVendaListarPublico(w http.ResponseWriter, r *ht
 	}
 
 	query := `SELECT pv.id, pv.empresa_id, pv.nome, pv.descricao, pv.preco,
-		pv.produto_fabricado_id, pv.foto, pv.ativo,
-		pf.nome as produto_fabricado_nome,
+		pv.produto_fabricado_id, pv.produto_classificacao_id, pv.foto, pv.ativo,
+		pf.nome as produto_fabricado_nome, pc.nome as produto_classificacao_nome,
 		COALESCE((SELECT json_agg(x) FROM (
 			SELECT pvi.id, pvi.nome, pvi.pode_remover, pvi.pode_adicionar,
 				pvi.adicional_id, ad.nome as adicional_nome, ad.preco as adicional_preco,
@@ -228,9 +231,17 @@ func (h *ProducaoHandler) ProdutoVendaListarPublico(w http.ResponseWriter, r *ht
 			WHERE pvi.produto_venda_id = pv.id AND pvi.empresa_id = pv.empresa_id
 				AND pvi.ativo = true
 			ORDER BY pvi.ordem, pvi.id) x),
-			'[]'::json)::text as itens
+			'[]'::json)::text as itens,
+		COALESCE((SELECT json_agg(x) FROM (
+			SELECT ac.adicional_id, ad2.nome, ad2.descricao, ad2.preco
+			FROM adicional_produto_classificacao ac
+			JOIN adicional ad2 ON ad2.id = ac.adicional_id AND ad2.empresa_id = ac.empresa_id
+			WHERE ac.produto_classificacao_id = pv.produto_classificacao_id
+				AND ac.empresa_id = pv.empresa_id AND ad2.ativo = true) x),
+			'[]'::json)::text as classificacao_adicionais
 		FROM produto_venda pv
 		LEFT JOIN produto_fabricado pf ON pf.id = pv.produto_fabricado_id AND pf.empresa_id = pv.empresa_id
+		LEFT JOIN produto_classificacao pc ON pc.id = pv.produto_classificacao_id AND pc.empresa_id = pv.empresa_id
 		WHERE pv.empresa_id = $1 AND pv.ativo = true
 		ORDER BY pv.nome`
 	rows, err := h.Pool.Query(r.Context(), query, empresaID)
@@ -371,20 +382,12 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 			quantidadeUnidade = 1
 		}
 		for u := 0; u < unidades; u++ {
-			valorTotalItem := quantidadeUnidade * valorUnitario
-
 			itemID, err := database.GerarID(r.Context(), tx, empresaID, "encomenda_item")
 			if err != nil {
 				jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
-			adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
-				"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
-			if err != nil {
-				jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			valorTotalItem += adicionalValor
+			valorTotalItem := quantidadeUnidade * valorUnitario
 
 			_, err = tx.Exec(r.Context(), `
 				INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id, produto_venda_id,
@@ -396,6 +399,23 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+
+			adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
+				"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
+			if err != nil {
+				jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if adicionalValor > 0 {
+				_, err = tx.Exec(r.Context(),
+					`UPDATE encomenda_item SET valor_total = $1 WHERE id = $2 AND empresa_id = $3`,
+					valorTotalItem+adicionalValor, itemID, empresaID)
+				if err != nil {
+					jsonError(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+			valorTotalItem += adicionalValor
 			totalValor += valorTotalItem
 		}
 	}
@@ -432,9 +452,9 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 		e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 		c.nome as cliente_nome,
 		CASE WHEN e.status >= 2 THEN true ELSE false END as baixado,
-		ei.id as item_id, ei.produto_fabricado_id, ei.quantidade,
+		ei.id as item_id, ei.produto_fabricado_id, ei.produto_venda_id, ei.quantidade,
 		ei.valor_unitario, ei.valor_total as item_valor_total,
-		pf.nome as produto_nome,
+		COALESCE(pv.nome, pf.nome) as produto_nome,
 		COALESCE((SELECT json_agg(x) FROM (
 			SELECT ir.id, ir.nome FROM encomenda_item_removido ir
 			WHERE ir.encomenda_item_id = ei.id AND ir.empresa_id = ei.empresa_id) x),
@@ -444,10 +464,11 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 			FROM encomenda_item_adicional ia
 			WHERE ia.encomenda_item_id = ei.id AND ia.empresa_id = ei.empresa_id) x),
 			'[]'::json)::text as adicionais
-		FROM encomenda e
-		JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
-		JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
-		LEFT JOIN produto_fabricado pf ON pf.id = ei.produto_fabricado_id AND pf.empresa_id = ei.empresa_id
+	FROM encomenda e
+	JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
+	JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
+	LEFT JOIN produto_fabricado pf ON pf.id = ei.produto_fabricado_id AND pf.empresa_id = ei.empresa_id
+	LEFT JOIN produto_venda pv ON pv.id = ei.produto_venda_id AND pv.empresa_id = ei.empresa_id
 		WHERE e.empresa_id = $1`
 	args := []interface{}{empresaID}
 	argN := 2
@@ -591,16 +612,16 @@ func (h *ProducaoHandler) EncomendaPublicoItensAtualizar(w http.ResponseWriter, 
 	}
 	defer tx.Rollback(r.Context())
 
-	_, err = tx.Exec(r.Context(),
-		`DELETE FROM encomenda_item WHERE encomenda_id = $1 AND empresa_id = $2`,
-		encomendaID, empresaID)
+	err = apagarCustomizacaoDeItens(r.Context(), tx, empresaID, encomendaID,
+		"encomenda_item", "encomenda_id", "encomenda_item_id",
+		"encomenda_item_removido", "encomenda_item_adicional")
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = apagarCustomizacaoDeItens(r.Context(), tx, empresaID, encomendaID,
-		"encomenda_item", "encomenda_id", "encomenda_item_id",
-		"encomenda_item_removido", "encomenda_item_adicional")
+	_, err = tx.Exec(r.Context(),
+		`DELETE FROM encomenda_item WHERE encomenda_id = $1 AND empresa_id = $2`,
+		encomendaID, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -623,20 +644,12 @@ func (h *ProducaoHandler) EncomendaPublicoItensAtualizar(w http.ResponseWriter, 
 			quantidadeUnidade = 1
 		}
 		for u := 0; u < unidades; u++ {
-			valorTotalItem := quantidadeUnidade * valorUnitario
-
 			itemID, err := database.GerarID(r.Context(), tx, empresaID, "encomenda_item")
 			if err != nil {
 				jsonError(w, "Erro ao gerar ID do item: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
-			adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
-				"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
-			if err != nil {
-				jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			valorTotalItem += adicionalValor
+			valorTotalItem := quantidadeUnidade * valorUnitario
 
 			_, err = tx.Exec(r.Context(), `
 				INSERT INTO encomenda_item (id, empresa_id, encomenda_id, produto_fabricado_id, produto_venda_id,
@@ -648,6 +661,23 @@ func (h *ProducaoHandler) EncomendaPublicoItensAtualizar(w http.ResponseWriter, 
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+
+			adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
+				"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
+			if err != nil {
+				jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if adicionalValor > 0 {
+				_, err = tx.Exec(r.Context(),
+					`UPDATE encomenda_item SET valor_total = $1 WHERE id = $2 AND empresa_id = $3`,
+					valorTotalItem+adicionalValor, itemID, empresaID)
+				if err != nil {
+					jsonError(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+			valorTotalItem += adicionalValor
 			totalValor += valorTotalItem
 		}
 	}

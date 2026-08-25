@@ -10,6 +10,12 @@ export const clienteSchema = z.object({
     .refine((v) => v.replace(/\D/g, '').length >= 11, 'CPF/CNPJ invalido'),
   telefone: z.string().max(20).optional().or(z.literal('')),
   celular: z.string().max(20).optional().or(z.literal('')),
+  nr: z.string().max(10).optional().or(z.literal('')),
+  complemento: z.string().max(500).optional().or(z.literal('')),
+  bairro: z.string().max(100).optional().or(z.literal('')),
+  cidade: z.string().max(100).optional().or(z.literal('')),
+  uf: z.string().max(2).optional().or(z.literal('')),
+  cep: z.string().max(9).optional().or(z.literal('')),
   endereco: z.string().max(300).optional().or(z.literal('')),
   email: z.string().email('Email invalido').max(200).optional().or(z.literal('')),
 });

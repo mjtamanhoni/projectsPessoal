@@ -16,14 +16,25 @@ import { Spinner } from '@/components/ui/Spinner';
 import type { VendaProduto, VendaProdutoItem, ProdutoFabricado, ProdutoVenda, Cliente } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, RefreshCw, FileText } from 'lucide-react';
+import { Plus, RefreshCw, FileText, DollarSign, AlertTriangle } from 'lucide-react';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { formatCurrency, formatDate, formatDecimals, parseItemCustomizacao } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDecimals, parseItemCustomizacao, formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
 import api from '@/lib/api';
 import type { JSX } from 'react';
 
 const columnHelper = createColumnHelper<VendaProduto>();
+
+interface RecebimentoReviewInfo {
+  venda: VendaProduto;
+  dataRecebimento: string;
+  valorInformado: number;
+  desconto: number;
+  acrescimo: number;
+  valorEfetivo: number;
+  diferenca: number;
+  tipo: 'maior' | 'menor';
+}
 
 export function VendasProduto() {
   const { data: vendas, loading, error, create, update, remove, refetch } = useApi<VendaProduto>('/vendas-produto');
@@ -50,6 +61,10 @@ export function VendasProduto() {
   const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [loadedItens, setLoadedItens] = useState<Record<number, VendaProdutoItem[]>>({});
+  const [receberOpen, setReceberOpen] = useState(false);
+  const [recebendo, setRecebendo] = useState<VendaProduto | null>(null);
+  const [receiving, setReceiving] = useState(false);
+  const [reviewInfo, setReviewInfo] = useState<RecebimentoReviewInfo | null>(null);
   const { addToast } = useToast();
 
   const fetchItens = useCallback(async (vendaId: number) => {
@@ -147,6 +162,117 @@ export function VendasProduto() {
     setCupomVenda(full ?? venda);
   };
 
+  const abrirRecebimento = (venda: VendaProduto) => {
+    setRecebendo(venda);
+    setReceberOpen(true);
+  };
+
+  const executarRecebimento = async (
+    venda: VendaProduto,
+    dataRecebimento: string,
+    valorBaixa: number,
+    desconto: number,
+    acrescimo: number,
+    valorRestante = 0,
+  ) => {
+    const id = venda.id ?? venda.codigo ?? 0;
+    setReceiving(true);
+    try {
+      await api.put('/vendas-produto/receber', {
+        id,
+        data_recebimento: dataRecebimento,
+        valor: valorBaixa,
+        desconto,
+        acrescimo,
+      });
+      if (valorRestante > 0) {
+        try {
+          let categoriaId: number | undefined;
+          let descricaoBase = `Venda Produto #${id}`;
+          const contasResp = await api.get('/contas-receber');
+          const origem = (contasResp.data as Array<{ lancamentoOrigemId?: number; idCategoria?: number; descricao?: string }>)
+            .filter((c) => Number(c.lancamentoOrigemId) === Number(id))[0];
+          if (origem) {
+            categoriaId = origem.idCategoria;
+            descricaoBase = origem.descricao || descricaoBase;
+          }
+          await api.post('/contas-receber', {
+            descricao: `${descricaoBase} (restante)`,
+            valor: valorRestante,
+            dataVencimento: new Date().toISOString().split('T')[0],
+            clienteId: venda.cliente_id ?? null,
+            ...(categoriaId ? { idCategoria: categoriaId } : {}),
+            lancamentoOrigemId: id,
+          });
+        } catch {
+          addToast('warning', 'Venda recebida, mas houve erro ao gerar o lançamento do restante');
+        }
+      }
+      setReceberOpen(false);
+      setRecebendo(null);
+      setReviewInfo(null);
+      refetch();
+      addToast('success', 'Venda recebida com sucesso');
+      const full = await fetchFullVenda(id);
+      setCupomVenda(full ?? venda);
+    } catch (err: unknown) {
+      const errorData = err as { response?: { data?: { error?: string } }; message?: string };
+      addToast('error', errorData.response?.data?.error || errorData.message || 'Erro ao receber venda');
+    } finally {
+      setReceiving(false);
+    }
+  };
+
+  const handleReceberSubmit = (dataRecebimento: string, valorStr: string, descontoStr: string, acrescimoStr: string) => {
+    if (!recebendo) return;
+
+    const valorOriginal = Number(recebendo.valor_total);
+    const valorInformado = parseCurrencyInput(valorStr);
+    const desconto = parseCurrencyInput(descontoStr || '0');
+    const acrescimo = parseCurrencyInput(acrescimoStr || '0');
+    const valorEfetivo = valorInformado + acrescimo - desconto;
+    const diferenca = Math.abs(valorOriginal - valorEfetivo);
+
+    if (Math.abs(valorEfetivo - valorOriginal) < 0.005) {
+      executarRecebimento(recebendo, dataRecebimento, valorEfetivo, desconto, acrescimo);
+    } else {
+      setReviewInfo({
+        venda: recebendo,
+        dataRecebimento,
+        valorInformado,
+        desconto,
+        acrescimo,
+        valorEfetivo,
+        diferenca,
+        tipo: valorEfetivo > valorOriginal ? 'maior' : 'menor',
+      });
+    }
+  };
+
+  const handleReviewAcrescimo = () => {
+    if (!reviewInfo) return;
+    const { venda, dataRecebimento, valorInformado, desconto } = reviewInfo;
+    const novoAcrescimo = reviewInfo.acrescimo + reviewInfo.diferenca;
+    executarRecebimento(venda, dataRecebimento, valorInformado, desconto, novoAcrescimo);
+  };
+
+  const handleReviewDesconto = () => {
+    if (!reviewInfo) return;
+    const { venda, dataRecebimento, valorInformado, acrescimo } = reviewInfo;
+    const novoDesconto = reviewInfo.desconto + reviewInfo.diferenca;
+    executarRecebimento(venda, dataRecebimento, valorInformado, novoDesconto, acrescimo);
+  };
+
+  const handleReviewNewLancamento = () => {
+    if (!reviewInfo) return;
+    const { venda, dataRecebimento, valorInformado, desconto, acrescimo, diferenca } = reviewInfo;
+    executarRecebimento(venda, dataRecebimento, valorInformado, desconto, acrescimo, diferenca);
+  };
+
+  const handleReviewCorrigir = () => {
+    setReviewInfo(null);
+  };
+
   const columns = [
     columnHelper.display({
       id: 'expand',
@@ -199,6 +325,18 @@ export function VendasProduto() {
             onEdit={() => handleEdit(row.original)}
             onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
             extras={[
+              ...(row.original.recebido
+                ? []
+                : [
+                    {
+                      rotulo: 'Receber',
+                      icone: DollarSign,
+                      cor: '#16a34a',
+                      onClick: () => abrirRecebimento(row.original),
+                      permissaoRota: '/contas-receber',
+                      permissaoAcao: ACAO.BAIXAR,
+                    },
+                  ]),
               {
                 rotulo: 'Cupom',
                 icone: FileText,
@@ -342,6 +480,54 @@ export function VendasProduto() {
 
       <CupomVendaModal venda={cupomVenda} onClose={() => setCupomVenda(null)} clientes={clientes} />
 
+      <Modal isOpen={receberOpen} onClose={() => { setReceberOpen(false); setRecebendo(null); }} title="Receber Venda">
+        <ReceberVendaForm
+          key={`receber-venda-${recebendo?.id ?? recebendo?.codigo ?? 'new'}`}
+          venda={recebendo}
+          onSubmit={handleReceberSubmit}
+          onCancel={() => { setReceberOpen(false); setRecebendo(null); }}
+          loading={receiving}
+        />
+      </Modal>
+
+      <Modal isOpen={!!reviewInfo} onClose={() => setReviewInfo(null)} title={reviewInfo?.tipo === 'maior' ? 'Valor Maior que o Original' : 'Valor Menor que o Original'}>
+        {reviewInfo && (
+          <div className="space-y-4">
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${reviewInfo.tipo === 'maior' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+              <AlertTriangle size={24} className={`flex-shrink-0 ${reviewInfo.tipo === 'maior' ? 'text-red-500' : 'text-amber-500'}`} />
+              <div>
+                <p className="text-sm font-medium text-text-primary">
+                  Valor informado <strong>{formatCurrency(reviewInfo.valorEfetivo)}</strong> é {reviewInfo.tipo === 'maior' ? 'maior' : 'menor'} que o original <strong>{formatCurrency(Number(reviewInfo.venda.valor_total))}</strong>
+                </p>
+                <p className="text-sm text-text-secondary mt-1">
+                  Diferença de <strong>{formatCurrency(reviewInfo.diferenca)}</strong>
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {reviewInfo.tipo === 'maior' && (
+                <Button onClick={handleReviewAcrescimo} variant="secondary" className="w-full justify-center">
+                  Lançar Diferença como Acréscimo (R$ {formatCurrency(reviewInfo.acrescimo + reviewInfo.diferenca)})
+                </Button>
+              )}
+              {reviewInfo.tipo === 'menor' && (
+                <>
+                  <Button onClick={handleReviewDesconto} variant="secondary" className="w-full justify-center">
+                    Lançar Diferença como Desconto (R$ {formatCurrency(reviewInfo.desconto + reviewInfo.diferenca)})
+                  </Button>
+                  <Button onClick={handleReviewNewLancamento} variant="secondary" className="w-full justify-center">
+                    Gerar Novo Lançamento (R$ {formatCurrency(reviewInfo.diferenca)})
+                  </Button>
+                </>
+              )}
+              <Button onClick={handleReviewCorrigir} variant="secondary" className="w-full justify-center">
+                Corrigir Valor
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <ConfirmDialog
         isOpen={confirmDelete !== null}
         onClose={() => setConfirmDelete(null)}
@@ -353,5 +539,63 @@ export function VendasProduto() {
         loading={deleting}
       />
     </Layout>
+  );
+}
+
+function ReceberVendaForm({ venda, onSubmit, onCancel, loading }: {
+  venda: VendaProduto | null;
+  onSubmit: (dataRecebimento: string, valor: string, desconto: string, acrescimo: string) => void;
+  onCancel: () => void;
+  loading?: boolean;
+}) {
+  const [dataRecebimento, setDataRecebimento] = useState(() => new Date().toISOString().split('T')[0]);
+  const [valor, setValor] = useState(() => (venda ? formatCurrencyInput(Number(venda.valor_total).toFixed(2)) : ''));
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  if (!venda) return null;
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    if (!dataRecebimento) newErrors.dataRecebimento = 'Data de recebimento é obrigatória';
+    if (!valor || parseCurrencyInput(valor) <= 0) newErrors.valor = 'Valor deve ser maior que zero';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+    onSubmit(dataRecebimento, valor, '0', '0');
+  };
+
+  return (
+    <form onSubmit={handleFormSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <label className="label-field">Venda</label>
+        <p className="text-sm font-medium">
+          #{venda.id ?? venda.codigo} {venda.cliente_nome ? `- ${venda.cliente_nome}` : ''}
+        </p>
+        <p className="text-sm text-text-secondary">Valor Total: {formatCurrency(Number(venda.valor_total))}</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="label-field">Data de Recebimento *</label>
+        <input type="date" className="input-field" value={dataRecebimento} onChange={(e) => setDataRecebimento(e.target.value)} />
+        {errors.dataRecebimento && <p className="text-sm text-accent-red">{errors.dataRecebimento}</p>}
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="label-field">Valor Recebido *</label>
+        <input
+          type="text" inputMode="decimal" placeholder="0,00"
+          className={`input-field ${errors.valor ? 'ring-2 ring-accent-red/30 border-accent-red' : ''}`}
+          value={valor}
+          onChange={(e) => { const f = formatCurrencyInput(e.target.value); setValor(f); }}
+          onBlur={() => { if (valor && !valor.includes(',')) setValor(valor + ',00'); }}
+        />
+        {errors.valor && <p className="text-sm text-accent-red mt-1">{errors.valor}</p>}
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4">
+        <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
+        <Button type="submit" disabled={loading}>{loading ? 'Recebendo...' : 'Receber'}</Button>
+      </div>
+    </form>
   );
 }

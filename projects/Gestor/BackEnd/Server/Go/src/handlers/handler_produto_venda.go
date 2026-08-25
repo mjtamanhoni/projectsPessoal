@@ -16,9 +16,10 @@ func (h *ProducaoHandler) ProdutoVendaListar(w http.ResponseWriter, r *http.Requ
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	nome := r.URL.Query().Get("nome")
 
-	query := `SELECT pv.*, pf.nome as produto_fabricado_nome
+	query := `SELECT pv.*, pf.nome as produto_fabricado_nome, pc.nome as produto_classificacao_nome
 		FROM produto_venda pv
 		LEFT JOIN produto_fabricado pf ON pf.id = pv.produto_fabricado_id AND pf.empresa_id = pv.empresa_id
+		LEFT JOIN produto_classificacao pc ON pc.id = pv.produto_classificacao_id AND pc.empresa_id = pv.empresa_id
 		WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -29,7 +30,7 @@ func (h *ProducaoHandler) ProdutoVendaListar(w http.ResponseWriter, r *http.Requ
 		query += fmt.Sprintf(" AND upper(pv.nome) LIKE upper($%d)", argN); argN++; args = append(args, "%"+nome+"%")
 	}
 	query += fmt.Sprintf(" AND (pv.empresa_id = $%d OR $%d = 0)", argN, argN); args = append(args, empresaID)
-	query += " ORDER BY pv.id"
+	query += " ORDER BY pv.id DESC"
 
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
@@ -41,7 +42,7 @@ func (h *ProducaoHandler) ProdutoVendaListar(w http.ResponseWriter, r *http.Requ
 
 func (h *ProducaoHandler) ProdutoVendaAtualizar(w http.ResponseWriter, r *http.Request) {
 	h.BasicCRUD.Salvar(w, r, "produto_venda",
-		[]string{"nome", "descricao", "preco", "produto_fabricado_id", "foto", "ativo"})
+		[]string{"nome", "descricao", "preco", "produto_fabricado_id", "produto_classificacao_id", "foto", "ativo"})
 }
 
 func (h *ProducaoHandler) ProdutoVendaExcluir(w http.ResponseWriter, r *http.Request) {

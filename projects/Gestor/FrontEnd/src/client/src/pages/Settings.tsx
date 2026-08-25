@@ -7,11 +7,14 @@ import { fetchSettings, saveSettings } from '@/lib/settings';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { AppSettings, Categoria, Empresa } from '@/types';
-import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check } from 'lucide-react';
+import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
 import type { ModuleItem } from '@/context/ModuleContext';
+import { useAuth } from '@/context/AuthContext';
+import { listarImpressorasUSB, solicitarImpressoraUSB, imprimirTesteUSB, webusbDisponivel, listarDispositivosUSB, type ImpressoraLocal } from '@/lib/printer-local';
+import { imprimirCupomComum } from '@/lib/cupom';
 
 
 type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes';
@@ -33,7 +36,15 @@ export function Settings() {
   const [modulos, setModulos] = useState<ModuleItem[]>([]);
   const [aplicando, setAplicando] = useState<string | null>(null);
   const [msgMigracao, setMsgMigracao] = useState<{ tipo: string; texto: string } | null>(null);
+  const [filtroMigracao, setFiltroMigracao] = useState<'pendentes' | 'aplicadas' | 'todas'>('pendentes');
+  const [subTabImpressao, setSubTabImpressao] = useState<'termica' | 'comum'>('termica');
+  const [impressorasUSB, setImpressorasUSB] = useState<ImpressoraLocal[]>([]);
+  const [dispositivosUSB, setDispositivosUSB] = useState<ImpressoraLocal[]>([]);
+  const [procurandoUSB, setProcurandoUSB] = useState(false);
+  const [testandoImpressora, setTestandoImpressora] = useState(false);
+  const [msgImpressora, setMsgImpressora] = useState<{ tipo: string; texto: string } | null>(null);
   const { addToast } = useToast();
+  const { isSuperadmin } = useAuth();
 
   useEffect(() => {
     fetchSettings()
@@ -59,6 +70,86 @@ export function Settings() {
       api.get('/migracoes').then((r) => setMigracoes(r.data ?? [])).catch(() => {});
     }
   }, [tab]);
+
+  useEffect(() => {
+    if (!isSuperadmin && (tab === 'limpeza' || tab === 'migracoes')) {
+      setTab('servidor');
+    }
+  }, [isSuperadmin, tab]);
+
+  useEffect(() => {
+    if (tab === 'impressao') {
+      listarImpressorasUSB().then(setImpressorasUSB).catch(() => setImpressorasUSB([]));
+      listarDispositivosUSB().then(setDispositivosUSB).catch(() => setDispositivosUSB([]));
+    }
+  }, [tab]);
+
+  const procurarImpressora = async () => {
+    setProcurandoUSB(true);
+    setMsgImpressora(null);
+    try {
+      if (!webusbDisponivel()) {
+        setMsgImpressora({ tipo: 'erro', texto: 'WebUSB nao disponivel neste navegador (use Chrome/Edge com HTTPS). Configure a porta manualmente.' });
+        return;
+      }
+      const impressora = await solicitarImpressoraUSB();
+      if (!impressora) {
+        setMsgImpressora({ tipo: 'erro', texto: 'Nenhuma impressora selecionada.' });
+        return;
+      }
+      setImpressorasUSB((prev) => (prev.some((i) => i.porta === impressora.porta) ? prev : [...prev, impressora]));
+      setMsgImpressora({ tipo: 'sucesso', texto: `Impressora detectada: ${impressora.nome}` });
+    } finally {
+      setProcurandoUSB(false);
+    }
+  };
+
+  const usarImpressora = (imp: ImpressoraLocal) => {
+    if (!settings?.printer) return;
+    setSettings({ ...settings, printer: { ...settings.printer, porta: imp.porta } });
+    addToast('success', `Impressora configurada: ${imp.nome}`);
+  };
+
+  const testarImpressora = async () => {
+    if (!settings?.printer) return;
+    setTestandoImpressora(true);
+    setMsgImpressora(null);
+    try {
+      const porta = settings.printer.porta;
+      if (!porta) {
+        setMsgImpressora({ tipo: 'erro', texto: 'Configure a porta da impressora antes de testar.' });
+        return;
+      }
+      if (porta.toUpperCase().startsWith('USB:')) {
+        await imprimirTesteUSB(porta);
+        setMsgImpressora({ tipo: 'sucesso', texto: 'Teste enviado para a impressora USB.' });
+        return;
+      }
+      const texto = '*** TESTE DE IMPRESSÃO TÉRMICA ***\n\nSe o texto abaixo estiver correto,\na impressora está configurada.\n\nSistema Gestor\n';
+      await api.post('/print/cupom', {
+        texto,
+        modelo: settings.printer.modelo,
+        porta,
+        deviceParams: settings.printer.deviceParams,
+        colunas: settings.printer.colunas,
+        cortarPapel: settings.printer.cortarPapel,
+        espacoEntreLinhas: settings.printer.espacoEntreLinhas,
+        linhasBuffer: settings.printer.linhasBuffer,
+        linhasPular: settings.printer.linhasPular,
+      });
+      setMsgImpressora({ tipo: 'sucesso', texto: 'Teste enviado para impressão.' });
+    } catch (err) {
+      setMsgImpressora({ tipo: 'erro', texto: err instanceof Error ? err.message : 'Erro ao testar impressora' });
+    } finally {
+      setTestandoImpressora(false);
+    }
+  };
+
+  const testarImpressoraComum = () => {
+    imprimirCupomComum(
+      '*** TESTE DE IMPRESSORA COMUM ***\n\nSe você está vendo este texto,\na impressora comum está funcionando.\n\nSistema Gestor\n',
+    );
+  };
 
   async function aplicarMigracao(nome: string) {
     setAplicando(nome);
@@ -106,9 +197,9 @@ export function Settings() {
     { key: 'exibicao', label: 'Exibição', icon: <Monitor size={16} /> },
     { key: 'financeiro', label: 'Financeiro', icon: <DollarSign size={16} /> },
     { key: 'impressao', label: 'Impressao', icon: <Printer size={16} /> },
-    { key: 'limpeza', label: 'Limpeza', icon: <AlertTriangle size={16} /> },
+    ...(isSuperadmin ? [{ key: 'limpeza' as Tab, label: 'Limpeza', icon: <AlertTriangle size={16} /> }] : []),
     { key: 'sequencias', label: 'Sequências', icon: <Database size={16} /> },
-    { key: 'migracoes', label: 'Banco de Dados', icon: <HardDrive size={16} /> },
+    ...(isSuperadmin ? [{ key: 'migracoes' as Tab, label: 'Banco de Dados', icon: <HardDrive size={16} /> }] : []),
   ];
 
   return (
@@ -264,6 +355,28 @@ export function Settings() {
                   <span className="text-sm text-text-secondary">casas decimais</span>
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <label className="label-field">Atualização automática da tela de Encomendas (segundos)</label>
+                <p className="text-xs text-text-secondary mb-3">A lista de encomendas é recarregada automaticamente neste intervalo. Use 0 para desativar e atualizar apenas manualmente.</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    value={settings.display?.encomendasRefreshSegundos ?? 60}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        display: {
+                          ...(settings.display ?? { grid: { defaultPageSize: 10, pageSizeOptions: [5, 10, 15, 20, 30, 50] } }),
+                          encomendasRefreshSegundos: Number(e.target.value),
+                        },
+                      })
+                    }
+                    className="input-field w-32"
+                  />
+                  <span className="text-sm text-text-secondary">segundos</span>
+                </div>
+              </div>
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold text-text-primary mb-1">Módulo Inicial</h3>
                 <p className="text-xs text-text-secondary mb-3">Após o login, redirecionar automaticamente para o módulo e formulário selecionados</p>
@@ -410,16 +523,85 @@ export function Settings() {
             </div>
 
             <div className="border-t border-border-subtle pt-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <Printer size={20} className="text-amber-600" />
-                </div>
-                <h2 className="text-lg font-semibold text-text-primary">Impressora Termica (PosPrinter)</h2>
+              <div className="flex gap-1 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setSubTabImpressao('termica')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    subTabImpressao === 'termica'
+                      ? 'bg-accent-primary text-text-inverse'
+                      : 'bg-bg-muted text-text-secondary hover:bg-border-subtle'
+                  }`}
+                >
+                  Impressora Termica
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubTabImpressao('comum')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    subTabImpressao === 'comum'
+                      ? 'bg-accent-primary text-text-inverse'
+                      : 'bg-bg-muted text-text-secondary hover:bg-border-subtle'
+                  }`}
+                >
+                  Impressoras Comuns
+                </button>
               </div>
-            <p className="text-sm text-text-secondary mb-4">
-              Configure a impressora termica para impressao de cupons nao fiscais.
-              Modelos compativeis: Epson TM, Daruma, Bematech, Elgin, etc.
-            </p>
+
+              {subTabImpressao === 'termica' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <Printer size={20} className="text-amber-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-text-primary">Impressora Termica (PosPrinter)</h2>
+                  </div>
+                  <p className="text-sm text-text-secondary">
+                    Configure a impressora termica para impressao de cupons nao fiscais.
+                    Modelos compativeis: Epson TM, Daruma, Bematech, Elgin, etc.
+                  </p>
+                  <div className="rounded-lg border border-border-primary p-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-text-primary">Localizar impressora termica neste computador</h3>
+                    <p className="text-xs text-text-tertiary">
+                      Detecta impressoras termicas USB conectadas a este computador e define a porta automaticamente.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="secondary" disabled={procurandoUSB} onClick={procurarImpressora}>
+                        {procurandoUSB ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                        {procurandoUSB ? 'Procurando...' : 'Localizar Impressora'}
+                      </Button>
+                      <Button type="button" variant="secondary" disabled={testandoImpressora} onClick={testarImpressora}>
+                        {testandoImpressora ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+                        {testandoImpressora ? 'Testando...' : 'Testar Impressão'}
+                      </Button>
+                    </div>
+                    {!webusbDisponivel() && (
+                      <p className="text-xs text-amber-600">
+                        WebUSB nao disponivel neste navegador (requer Chrome/Edge com HTTPS). Configure a porta manualmente.
+                      </p>
+                    )}
+                    {impressorasUSB.length > 0 && (
+                      <div className="border border-border-primary rounded-lg divide-y divide-border-primary">
+                        {impressorasUSB.map((imp) => (
+                          <div key={imp.porta} className="flex items-center justify-between px-3 py-2 gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-text-primary truncate">{imp.nome}</p>
+                              <p className="text-xs text-text-tertiary">{imp.porta}</p>
+                            </div>
+                            <Button type="button" variant="secondary" className="px-2 py-1 text-xs" onClick={() => usarImpressora(imp)}>
+                              Usar
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {msgImpressora && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: msgImpressora.tipo === 'sucesso' ? '#f0fdf4' : '#fef2f2', color: msgImpressora.tipo === 'sucesso' ? '#166534' : '#991b1b' }}>
+                        {msgImpressora.tipo === 'sucesso' ? <Check size={16} /> : <AlertTriangle size={16} />}
+                        {msgImpressora.texto}
+                      </div>
+                    )}
+                  </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="space-y-1.5">
                 <label className="label-field">Modelo</label>
@@ -662,6 +844,73 @@ export function Settings() {
               </div>
             </div>
             </div>
+              )}
+
+              {subTabImpressao === 'comum' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <Printer size={20} className="text-amber-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-text-primary">Impressoras Comuns</h2>
+                  </div>
+                  <p className="text-sm text-text-secondary">
+                    Impressoras comuns (A4, carta) usam a janela de impressao do navegador, onde voce escolhe a
+                    impressora instalada neste computador. Nenhuma configuracao adicional e necessaria.
+                  </p>
+                  <p className="text-sm text-text-secondary">
+                    No cupom, use a opcao "Impressora Comum" para imprimir em uma impressora comum.
+                  </p>
+                  <div className="rounded-lg border border-border-primary p-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-text-primary">Detectar dispositivos USB deste computador</h3>
+                    <p className="text-xs text-text-tertiary">
+                      O navegador nao lista as impressoras instaladas, mas mostra os dispositivos USB autorizados.
+                      Use o teste abaixo para escolher a impressora na janela de impressao do sistema.
+                    </p>
+                    {!webusbDisponivel() && (
+                      <p className="text-xs text-amber-600">
+                        WebUSB nao disponivel neste navegador (requer Chrome/Edge com HTTPS). O teste via janela de impressao continua disponivel.
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="secondary" onClick={testarImpressoraComum}>
+                        <Play size={16} /> Testar Impressora Comum
+                      </Button>
+                    </div>
+                    {dispositivosUSB.length > 0 && (
+                      <div className="border border-border-primary rounded-lg divide-y divide-border-primary">
+                        {dispositivosUSB.map((disp) => (
+                          <div key={disp.porta} className="flex items-center justify-between px-3 py-2 gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-text-primary truncate">{disp.nome}</p>
+                              <p className="text-xs text-text-tertiary">{disp.porta}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="px-2 py-1 text-xs"
+                              onClick={() =>
+                                imprimirCupomComum(
+                                  `*** TESTE DE IMPRESSÃO COMUM ***\n\nDispositivo detectado:\n${disp.nome}\n\nSelecione a impressora na janela de impressao.\n\nSistema Gestor\n`,
+                                )
+                              }
+                            >
+                              Testar
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {dispositivosUSB.length === 0 && webusbDisponivel() && (
+                      <p className="text-xs text-text-tertiary">
+                        Nenhum dispositivo USB autorizado ainda. Se sua impressora comum estiver conectada via USB, clique em
+                        "Localizar Impressora" na aba Impressora Termica e autorize o acesso.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </Card>
         )}
 
@@ -761,16 +1010,41 @@ export function Settings() {
               <p className="text-sm text-text-secondary">
                 Execute scripts de atualização do banco de dados. Cada migração é executada uma única vez.
               </p>
+              <div className="space-y-1.5">
+                <label className="label-field">Situação</label>
+                <select
+                  value={filtroMigracao}
+                  onChange={(e) => setFiltroMigracao(e.target.value as 'pendentes' | 'aplicadas' | 'todas')}
+                  className="input-field w-48"
+                >
+                  <option value="pendentes">Pendentes</option>
+                  <option value="aplicadas">Aplicadas</option>
+                  <option value="todas">Todas</option>
+                </select>
+              </div>
               {migracoes === null ? (
                 <Spinner />
-              ) : migracoes.length === 0 ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-lg text-sm">
-                  <CheckCircle size={16} />
-                  Nenhuma migração pendente.
-                </div>
               ) : (
-                <div className="space-y-2">
-                  {migracoes.map((m) => (
+                (() => {
+                  const lista =
+                    filtroMigracao === 'todas'
+                      ? migracoes
+                      : migracoes.filter((m) => m.aplicada === (filtroMigracao === 'aplicadas'));
+                  if (lista.length === 0) {
+                    return (
+                      <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-lg text-sm">
+                        <CheckCircle size={16} />
+                        {filtroMigracao === 'pendentes'
+                          ? 'Nenhuma migração pendente.'
+                          : filtroMigracao === 'aplicadas'
+                            ? 'Nenhuma migração aplicada.'
+                            : 'Nenhuma migração cadastrada.'}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-2">
+                      {lista.map((m) => (
                     <div key={m.nome} className={`flex items-center justify-between p-3 rounded-lg border ${m.aplicada ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
                       <div>
                         <span className={`text-sm font-medium ${m.aplicada ? 'text-green-700' : 'text-amber-700'}`}>{m.nome}</span>
@@ -789,6 +1063,8 @@ export function Settings() {
                     </div>
                   ))}
                 </div>
+                  );
+                })()
               )}
               {msgMigracao && (
                 <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: msgMigracao.tipo === 'sucesso' ? '#f0fdf4' : '#fef2f2', color: msgMigracao.tipo === 'sucesso' ? '#166534' : '#991b1b' }}>

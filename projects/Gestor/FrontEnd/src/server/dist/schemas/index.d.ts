@@ -6,6 +6,12 @@ export declare const clienteBodySchema: z.ZodObject<{
     cpf_cnpj: z.ZodString;
     telefone: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     celular: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    nr: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    complemento: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    bairro: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    cidade: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    uf: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    cep: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     endereco: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     email: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
 }, z.core.$strip>;
@@ -192,10 +198,17 @@ export declare const adicionalBodySchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const produtoAdicionalBodySchema: z.ZodUnion<readonly [z.ZodObject<{
     produto_fabricado_id: z.ZodNumber;
-    adicionais: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+    adicional_id: z.ZodNumber;
 }, z.core.$strip>, z.ZodObject<{
     produto_fabricado_id: z.ZodNumber;
+    adicionais: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+}, z.core.$strip>]>;
+export declare const adicionalClassificacaoBodySchema: z.ZodUnion<readonly [z.ZodObject<{
     adicional_id: z.ZodNumber;
+    produto_classificacao_id: z.ZodNumber;
+}, z.core.$strip>, z.ZodObject<{
+    adicional_id: z.ZodNumber;
+    classificacoes: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
 }, z.core.$strip>]>;
 export declare const produtoVendaBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;
@@ -204,6 +217,7 @@ export declare const produtoVendaBodySchema: z.ZodObject<{
     descricao: z.ZodOptional<z.ZodString>;
     preco: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
     produto_fabricado_id: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodNull]>>;
+    produto_classificacao_id: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodNull]>>;
     foto: z.ZodOptional<z.ZodString>;
     ativo: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
@@ -236,11 +250,15 @@ export declare const vendaProdutoBodySchema: z.ZodObject<{
     categoria_receber_id: z.ZodOptional<z.ZodNumber>;
     recebido: z.ZodOptional<z.ZodBoolean>;
     itens: z.ZodArray<z.ZodObject<{
-        produto_fabricado_id: z.ZodNumber;
+        produto_fabricado_id: z.ZodOptional<z.ZodNumber>;
+        produto_venda_id: z.ZodOptional<z.ZodNumber>;
         quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_total: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
-        removidos: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        removidos: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+            nome: z.ZodString;
+            produto_venda_item_id: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>]>>>;
         adicionais: z.ZodOptional<z.ZodArray<z.ZodObject<{
             adicional_id: z.ZodOptional<z.ZodNumber>;
             nome: z.ZodString;
@@ -249,6 +267,13 @@ export declare const vendaProdutoBodySchema: z.ZodObject<{
             valor_total: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
         }, z.core.$strip>>>;
     }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const vendaProdutoReceberSchema: z.ZodObject<{
+    id: z.ZodNumber;
+    data_recebimento: z.ZodOptional<z.ZodString>;
+    valor: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
+    desconto: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
+    acrescimo: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
 }, z.core.$strip>;
 export declare const encomendaBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;
@@ -259,11 +284,15 @@ export declare const encomendaBodySchema: z.ZodObject<{
     data_entrega: z.ZodOptional<z.ZodString>;
     observacao: z.ZodOptional<z.ZodString>;
     itens: z.ZodArray<z.ZodObject<{
-        produto_fabricado_id: z.ZodNumber;
+        produto_fabricado_id: z.ZodOptional<z.ZodNumber>;
+        produto_venda_id: z.ZodOptional<z.ZodNumber>;
         quantidade: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_unitario: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
         valor_total: z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>;
-        removidos: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        removidos: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+            nome: z.ZodString;
+            produto_venda_item_id: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>]>>>;
         adicionais: z.ZodOptional<z.ZodArray<z.ZodObject<{
             adicional_id: z.ZodOptional<z.ZodNumber>;
             nome: z.ZodString;

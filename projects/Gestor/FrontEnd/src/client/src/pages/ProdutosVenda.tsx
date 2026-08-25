@@ -45,7 +45,7 @@ export function ProdutosVenda() {
   const produtosFiltrados = useMemo(
     () =>
       (produtos ?? []).filter(
-        (p) => passaStatusAtivo(p.ativo, filtroAtivo) && passaBusca([p.nome, p.descricao ?? ''], busca),
+        (p) => passaStatusAtivo(p.ativo, filtroAtivo) && passaBusca([p.nome, p.descricao ?? '', p.produto_classificacao_nome ?? ''], busca),
       ),
     [produtos, filtroAtivo, busca],
   );
@@ -99,6 +99,10 @@ export function ProdutosVenda() {
     }),
     columnHelper.accessor('produto_fabricado_nome', {
       header: 'Origem',
+      cell: (info) => info.getValue() ?? '-',
+    }),
+    columnHelper.accessor('produto_classificacao_nome', {
+      header: 'Classificação',
       cell: (info) => info.getValue() ?? '-',
     }),
     columnHelper.accessor('preco', {

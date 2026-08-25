@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect, Fragment } from 'react';
 import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
 import { mesCorrente, passaPeriodo } from '@/lib/filtros';
 import type { FiltroPeriodo } from '@/lib/filtros';
@@ -20,6 +20,7 @@ import { Plus, Edit2, Trash2, RefreshCw, ListChecks, FileText } from 'lucide-rea
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDecimals, parseItemCustomizacao } from '@/lib/utils';
+import { getEncomendasRefreshSegundos } from '@/lib/settings';
 import api from '@/lib/api';
 import type { JSX } from 'react';
 
@@ -40,6 +41,24 @@ function etapasPermitidas(status: number): number[] {
     case 2: return [3];
     default: return [];
   }
+}
+
+function descricaoPersonalizacao(item: EncomendaItem): string {
+  const partes: string[] = [];
+  const rems = Array.isArray(item.removidos) ? item.removidos : [];
+  const nomesRem = (rems as unknown[])
+    .map((r) => (typeof r === 'string' ? r : String((r as { nome?: unknown })?.nome ?? '')))
+    .filter(Boolean);
+  if (nomesRem.length > 0) partes.push(`Sem: ${nomesRem.join(', ')}`);
+  const adds = Array.isArray(item.adicionais) ? item.adicionais : [];
+  if (adds.length > 0) {
+    partes.push(
+      `+ ${adds
+        .map((a) => `${a.nome}${Number(a.quantidade) > 1 ? ` x${Number(a.quantidade)}` : ''}`)
+        .join(', ')}`,
+    );
+  }
+  return partes.join(' • ');
 }
 
 export function Encomendas() {
@@ -73,6 +92,22 @@ export function Encomendas() {
   const [etapaRecebido, setEtapaRecebido] = useState(true);
   const [salvandoEtapa, setSalvandoEtapa] = useState(false);
   const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
+
+  const [refreshSeg, setRefreshSeg] = useState<number>(() => getEncomendasRefreshSegundos());
+
+  useEffect(() => {
+    const onSaved = () => setRefreshSeg(getEncomendasRefreshSegundos());
+    window.addEventListener('settings:saved', onSaved);
+    return () => window.removeEventListener('settings:saved', onSaved);
+  }, []);
+
+  useEffect(() => {
+    if (!refreshSeg || refreshSeg <= 0) return;
+    const id = setInterval(() => {
+      void refetch();
+    }, refreshSeg * 1000);
+    return () => clearInterval(id);
+  }, [refreshSeg, refetch]);
 
   const { addToast } = useToast();
 
@@ -196,13 +231,26 @@ export function Encomendas() {
         <tbody>
           {itens.map((item, i) => {
             const produto = produtos.find((p) => (p.id ?? p.codigo) === item.produto_fabricado_id);
+            const personalizacao = descricaoPersonalizacao(item);
             return (
-              <tr key={i} className="border-t border-border-primary/50">
-                <td className="px-2 py-1.5">{produto?.nome ?? item.produto_venda_nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id ?? item.produto_venda_id}`}</td>
-                <td className="text-right px-2 py-1.5">{item.quantidade.toFixed(2).replace('.', ',')}</td>
-                <td className="text-right px-2 py-1.5">{formatDecimals(item.valor_unitario, 4)}</td>
-                <td className="text-right px-2 py-1.5 font-medium">{formatCurrency(item.valor_total)}</td>
-              </tr>
+              <Fragment key={i}>
+                <tr className="border-t border-border-primary/50">
+                  <td className="px-2 py-1.5">{produto?.nome ?? item.produto_venda_nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id ?? item.produto_venda_id}`}</td>
+                  <td className="text-right px-2 py-1.5">{item.quantidade.toFixed(2).replace('.', ',')}</td>
+                  <td className="text-right px-2 py-1.5">{formatDecimals(item.valor_unitario, 4)}</td>
+                  <td className="text-right px-2 py-1.5 font-medium">{formatCurrency(item.valor_total)}</td>
+                </tr>
+                {personalizacao && (
+                  <tr>
+                    <td colSpan={4} className="px-2 pb-1.5 pt-0 text-xs">
+                      <span className="text-text-secondary">
+                        <span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-[10px] font-semibold uppercase tracking-wide">Personalizado</span>
+                        {personalizacao}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             );
           })}
         </tbody>
@@ -396,7 +444,11 @@ export function Encomendas() {
 
       <Card>
         <div className="flex items-center justify-end mb-4">
-          <button onClick={() => refetch()} className="p-2 rounded-lg border border-border-primary hover:bg-background-hover transition-colors" title="Atualizar">
+          <button
+            onClick={() => refetch()}
+            className="p-2 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
+            title={refreshSeg > 0 ? `Atualizar (automático a cada ${refreshSeg}s)` : 'Atualizar manualmente'}
+          >
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
         </div>

@@ -183,6 +183,7 @@ export function VendaProdutoForm({ onSubmit, onCancel, initial, produtos, produt
       <ItemCustomizacaoModal
         isOpen={customizandoIdx !== null}
         item={customizandoIdx !== null ? (itens[customizandoIdx] ?? null) : null}
+        produtosVenda={produtosVenda}
         onConfirmar={confirmarCustomizacao}
         onFechar={() => setCustomizandoIdx(null)}
       />

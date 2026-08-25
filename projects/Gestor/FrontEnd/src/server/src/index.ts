@@ -25,6 +25,7 @@ import servicosRoutes from './routes/servicos';
 import permissoesRoutes from './routes/permissoes';
 import insumosRoutes from './routes/insumos';
 import marcasRoutes from './routes/marcas';
+import produtoClassificacaoRoutes from './routes/produto-classificacao';
 import migracoesRoutes from './routes/migracoes';
 import perdasInsumoRoutes from './routes/perdas-insumo';
 import perdasProdutoRoutes from './routes/perdas-produto';
@@ -48,6 +49,7 @@ import relatoriosProducaoRoutes from './routes/relatorios-producao';
 import lancamentoAutomaticoConfigRoutes from './routes/lancamento-automatico-config';
 import printRoutes from './routes/print';
 import adicionaisRoutes from './routes/adicionais';
+import adicionaisClassificacoesRoutes from './routes/adicionais-classificacoes';
 import produtosAdicionaisRoutes from './routes/produtos-adicionais';
 import produtosVendaRoutes from './routes/produtos-venda';
 import produtosVendaItensRoutes from './routes/produtos-venda-itens';
@@ -62,6 +64,24 @@ app.use(apiLimiter);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/cep/:cep', async (req, res) => {
+  const cep = req.params.cep.replace(/\D/g, '');
+  if (cep.length !== 8) {
+    res.status(400).json({ error: 'CEP deve conter 8 dígitos' });
+    return;
+  }
+  try {
+    const upstream = await axios.get(`https://viacep.com.br/ws/${cep}/json/`, { timeout: 5000 });
+    if (upstream.data?.erro) {
+      res.status(404).json({ error: 'CEP não encontrado' });
+      return;
+    }
+    res.json(upstream.data);
+  } catch {
+    res.status(502).json({ error: 'Erro ao consultar CEP' });
+  }
 });
 
 app.get('/api/uploads/*', async (req, res) => {
@@ -113,6 +133,7 @@ app.use('/api/servicos', servicosRoutes);
 app.use('/api/permissoes', permissoesRoutes);
 app.use('/api/insumos', insumosRoutes);
 app.use('/api/marcas', marcasRoutes);
+app.use('/api/produto-classificacao', produtoClassificacaoRoutes);
 app.use('/api/migracoes', migracoesRoutes);
 app.use('/api/compras-insumo', comprasInsumoRoutes);
 app.use('/api/produtos-fabricados', produtosFabricadosRoutes);
@@ -136,6 +157,7 @@ app.use('/api/perdas-insumo', perdasInsumoRoutes);
 app.use('/api/perdas-produto', perdasProdutoRoutes);
 app.use('/api/uso-consumo', usoConsumoRoutes);
 app.use('/api/adicionais', adicionaisRoutes);
+app.use('/api/adicionais-classificacoes', adicionaisClassificacoesRoutes);
 app.use('/api/produtos-adicionais', produtosAdicionaisRoutes);
 app.use('/api/produtos-venda', produtosVendaRoutes);
 app.use('/api/produtos-venda-itens', produtosVendaItensRoutes);

@@ -5,7 +5,7 @@ import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { FileText, Printer, Copy, Check, MessageCircle, Share2 } from 'lucide-react';
 import type { VendaProduto, Cliente } from '@/types';
-import { gerarTextoCupom, imprimirCupomSerial, type CupomData } from '@/lib/cupom';
+import { gerarTextoCupom, imprimirCupomSerial, imprimirCupomComum, type CupomData } from '@/lib/cupom';
 import { gerarPDFCupom } from '@/lib/cupom-pdf';
 import { gerarPayloadPix, gerarQrPixDataUrl } from '@/lib/pix';
 import { getCachedSettings, getLogo } from '@/lib/settings';
@@ -130,6 +130,16 @@ export function CupomVendaModal({ venda, onClose, clientes }: CupomVendaModalPro
       addToast('error', msg);
     } finally {
       setPrinting(false);
+    }
+  };
+
+  const handleCommonPrint = () => {
+    if (!venda) return;
+    try {
+      imprimirCupomComum(gerarTextoCupom(buildCupomData(venda)));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao imprimir cupom';
+      addToast('error', msg);
     }
   };
 
@@ -272,6 +282,9 @@ export function CupomVendaModal({ venda, onClose, clientes }: CupomVendaModalPro
             </Button>
             <Button variant="secondary" onClick={() => handleThermalPrint()} disabled={printing}>
               <Printer size={16} /> {printing ? 'Imprimindo...' : 'Impressora Termica'}
+            </Button>
+            <Button variant="secondary" onClick={() => handleCommonPrint()}>
+              <Printer size={16} /> Impressora Comum
             </Button>
             <Button variant="secondary" onClick={() => handleViewPdf()}>
               <FileText size={16} /> Visualizar PDF

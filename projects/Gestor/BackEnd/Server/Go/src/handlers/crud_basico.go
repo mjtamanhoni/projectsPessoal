@@ -98,7 +98,7 @@ func (b *BasicCRUD) Listar(w http.ResponseWriter, r *http.Request, schema, table
 	argN++
 	args = append(args, empresaID)
 
-	q += " ORDER BY id"
+	q += " ORDER BY id DESC"
 
 	rows, err := b.Pool.Query(r.Context(), q, args...)
 	if err != nil {

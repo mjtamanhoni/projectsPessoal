@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { criarClientePublico, extrairErro, setDocumentoLembrado, type EmpresaPublic } from '../api';
 import { useSessao } from '../auth';
 import BackButton from '../components/BackButton';
-import { mascaraCpfCnpj, mascaraTelefone } from '../format';
+import { mascaraCpfCnpj, mascaraTelefone, mascaraCep, buscarCep } from '../format';
 
 interface LocationState {
   documento?: string;
@@ -26,12 +26,36 @@ export default function Cadastro() {
   const [documento, setDocumento] = useState(state.documento || '');
   const [nome, setNome] = useState('');
   const [celular, setCelular] = useState('');
+  const [cep, setCep] = useState('');
   const [endereco, setEndereco] = useState('');
+  const [nr, setNr] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [uf, setUf] = useState('');
   const [email, setEmail] = useState('');
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   if (!empresa) return null;
+
+  const handleCepBlur = async (valor: string) => {
+    const nums = valor.replace(/\D/g, '');
+    if (nums.length !== 8) return;
+    setBuscandoCep(true);
+    try {
+      const result = await buscarCep(valor);
+      if (result) {
+        if (result.logradouro) setEndereco(result.logradouro);
+        if (result.bairro) setBairro(result.bairro);
+        if (result.localidade) setCidade(result.localidade);
+        if (result.uf) setUf(result.uf);
+      }
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
 
   const salvar = async () => {
     setErro('');
@@ -49,7 +73,13 @@ export default function Cadastro() {
         nome: nome.trim(),
         cnpj_cpf: documento,
         celular: celular.replace(/\D/g, ''),
+        cep: cep.replace(/\D/g, ''),
         endereco: endereco.trim(),
+        nr: nr.trim(),
+        complemento: complemento.trim(),
+        bairro: bairro.trim(),
+        cidade: cidade.trim(),
+        uf: uf.trim(),
         email: email.trim(),
         status: 1,
       });
@@ -62,7 +92,13 @@ export default function Cadastro() {
         nome: nome.trim(),
         cnpj_cpf: documento,
         celular: celular.replace(/\D/g, ''),
+        cep: cep.replace(/\D/g, ''),
         endereco: endereco.trim(),
+        nr: nr.trim(),
+        complemento: complemento.trim(),
+        bairro: bairro.trim(),
+        cidade: cidade.trim(),
+        uf: uf.trim(),
         email: email.trim(),
         status: 1,
       });
@@ -85,7 +121,7 @@ export default function Cadastro() {
         Ainda não temos seu cadastro
       </div>
 
-      <div className="auth-card" style={{ top: 110, height: '520px' }}>
+      <div className="auth-card" style={{ top: 110, height: '680px', overflowY: 'auto' }}>
         <div className="field-label" style={{ top: 16 }}>
           Documento (CPF/CNPJ) *
         </div>
@@ -124,22 +160,89 @@ export default function Cadastro() {
         />
 
         <div className="field-label" style={{ top: 280 }}>
-          Endereço (opcional)
+          CEP (opcional)
         </div>
         <input
           className="field-input"
           style={{ top: 300 }}
-          placeholder="Rua, número, bairro..."
-          value={endereco}
-          onChange={(e) => setEndereco(e.target.value)}
+          type="tel"
+          inputMode="numeric"
+          placeholder={buscandoCep ? 'Buscando endereço...' : '00000-000'}
+          value={cep}
+          onChange={(e) => setCep(mascaraCep(e.target.value))}
+          onBlur={() => handleCepBlur(cep)}
         />
 
         <div className="field-label" style={{ top: 368 }}>
-          E-mail (opcional)
+          Endereço (opcional)
         </div>
         <input
           className="field-input"
           style={{ top: 388 }}
+          placeholder="Endereço"
+          value={endereco}
+          onChange={(e) => setEndereco(e.target.value)}
+        />
+
+        <div className="field-label" style={{ top: 448 }}>
+          Complemento (opcional)
+        </div>
+        <textarea
+          className="field-input"
+          style={{ top: 468, height: 56, resize: 'none', paddingTop: 6 }}
+          placeholder="Complemento do endereço"
+          value={complemento}
+          onChange={(e) => setComplemento(e.target.value)}
+        />
+
+        <div style={{ display: 'flex', gap: 8, position: 'absolute', top: 544, left: 16, right: 16 }}>
+          <input
+            className="field-input"
+            style={{ flex: 1, position: 'static', width: 'auto' }}
+            placeholder="Nº"
+            value={nr}
+            onChange={(e) => setNr(e.target.value)}
+          />
+        </div>
+
+        <div className="field-label" style={{ top: 602 }}>
+          Bairro (opcional)
+        </div>
+        <input
+          className="field-input"
+          style={{ top: 622 }}
+          placeholder="Bairro"
+          value={bairro}
+          onChange={(e) => setBairro(e.target.value)}
+        />
+
+        <div style={{ display: 'flex', gap: 8, position: 'absolute', top: 690, left: 16, right: 16 }}>
+          <input
+            className="field-input"
+            style={{ flex: 1, position: 'static', width: 'auto' }}
+            placeholder="Cidade"
+            value={cidade}
+            onChange={(e) => setCidade(e.target.value)}
+          />
+          <select
+            className="field-input"
+            style={{ width: 60, position: 'static', padding: '6px 4px', fontSize: 13 }}
+            value={uf}
+            onChange={(e) => setUf(e.target.value)}
+          >
+            <option value="">UF</option>
+            {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((u) => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field-label" style={{ top: 758 }}>
+          E-mail (opcional)
+        </div>
+        <input
+          className="field-input"
+          style={{ top: 778 }}
           type="email"
           placeholder="voce@email.com"
           value={email}
@@ -147,18 +250,18 @@ export default function Cadastro() {
         />
 
         {erro && (
-          <div style={{ position: 'absolute', left: 20, top: 452, fontSize: 11, color: '#c0392b' }}>
+          <div style={{ position: 'absolute', left: 20, top: 838, fontSize: 11, color: '#c0392b' }}>
             {erro}
           </div>
         )}
 
-        <button className="green-button" style={{ top: 478 }} onClick={salvar} disabled={loading}>
+        <button className="green-button" style={{ top: 864 }} onClick={salvar} disabled={loading}>
           {loading ? 'Cadastrando...' : 'Cadastrar e continuar'}
         </button>
       </div>
 
-      <div className="version" style={{ top: 660 }}>
-        Cliente v1.2
+      <div className="version" style={{ top: 820 }}>
+        Cliente v1.3
       </div>
     </div>
   );

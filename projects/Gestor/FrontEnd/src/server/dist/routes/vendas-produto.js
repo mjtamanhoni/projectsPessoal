@@ -28,6 +28,23 @@ router.post('/', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.venda
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
+router.put('/receber', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.vendaProdutoReceberSchema), async (req, res) => {
+    try {
+        const { id, data_recebimento, valor, desconto, acrescimo } = req.body;
+        const result = await horseApi_1.horseApi.receberVendaProduto({
+            id,
+            data_recebimento,
+            valor: Number(valor),
+            desconto: desconto != null ? Number(desconto) : 0,
+            acrescimo: acrescimo != null ? Number(acrescimo) : 0,
+        });
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
 router.delete('/', auth_1.authMiddleware, async (req, res) => {
     try {
         const { id } = req.query;

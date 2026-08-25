@@ -12,14 +12,21 @@ import { Spinner } from '@/components/ui/Spinner';
 import type { Cliente } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
+import type { RowActionDef } from '@/components/ui/RowActions';
 import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
 import { passaBusca, passaStatusNumero } from '@/lib/filtros';
 import type { FiltroStatus } from '@/lib/filtros';
+import api from '@/lib/api';
 
-const columnHelper = createColumnHelper<Cliente>();
+const columnHelper = createColumnHelper<Cliente & { cnpj_cpf?: string }>();
+
+function enderecoCompleto(c: Cliente & { cnpj_cpf?: string }): string {
+  const parts = [c.endereco, c.nr, c.bairro, c.cidade, c.uf].filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : '-';
+}
 
 export function Clientes() {
   const { data: clientes, loading, error, create, update, remove, fetchOne, refetch } = useApi<Cliente>('/clientes');
@@ -36,12 +43,29 @@ export function Clientes() {
   const clientesFiltrados = useMemo(
     () =>
       (clientes ?? []).filter(
-        (c) =>
-          passaStatusNumero(c.status, filtroStatus) &&
-          passaBusca([c.nome, c.telefone, c.celular, c.email, c.cpf_cnpj], busca),
+        (c) => {
+          const cli = c as Cliente & { cnpj_cpf?: string };
+          return (
+            passaStatusNumero(cli.status, filtroStatus) &&
+            passaBusca([cli.nome, cli.celular, cli.email, cli.cpf_cnpj || cli.cnpj_cpf, cli.endereco, cli.bairro, cli.cidade], busca)
+          );
+        },
       ),
     [clientes, filtroStatus, busca],
   );
+
+  const handleToggleStatus = async (cliente: Cliente) => {
+    const novoStatus = cliente.status === 1 ? 0 : 1;
+    const label = novoStatus === 1 ? 'ativado' : 'inativado';
+    try {
+      await api.post('/clientes', { ...cliente, id: cliente.id ?? cliente.codigo, status: novoStatus });
+      addToast('success', `Cliente ${label} com sucesso`);
+      refetch();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao alterar status';
+      addToast('error', msg);
+    }
+  };
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -53,13 +77,19 @@ export function Clientes() {
       header: 'Nome',
       enableSorting: true,
     }),
-    columnHelper.accessor('telefone', {
-      header: 'Telefone',
+    columnHelper.accessor((row) => row.cpf_cnpj || (row as unknown as { cnpj_cpf?: string }).cnpj_cpf, {
+      id: 'cpf_cnpj',
+      header: 'CPF/CNPJ',
       cell: (info) => info.getValue() || '-',
     }),
     columnHelper.accessor('celular', {
       header: 'Celular',
       cell: (info) => info.getValue() || '-',
+    }),
+    columnHelper.display({
+      id: 'endereco',
+      header: 'Endereço',
+      cell: ({ row }) => <span className="truncate block max-w-[250px]" title={enderecoCompleto(row.original)}>{enderecoCompleto(row.original)}</span>,
     }),
     columnHelper.accessor('email', {
       header: 'Email',
@@ -71,15 +101,31 @@ export function Clientes() {
       enableColumnFilter: false,
       enableSorting: false,
       size: 60,
-      cell: ({ row }) => (
-        <div className="flex justify-end">
-          <RowActions
-            rota="/clientes"
-            onEdit={() => handleEdit(row.original)}
-            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const cli = row.original;
+        const statusLabel = cli.status === 1 ? 'Inativar' : 'Ativar';
+        const StatusIcon = cli.status === 1 ? ToggleLeft : ToggleRight;
+        const extras: RowActionDef[] = [
+          {
+            rotulo: statusLabel,
+            icone: StatusIcon,
+            cor: cli.status === 1 ? '#f59e0b' : '#22c55e',
+            onClick: () => handleToggleStatus(cli),
+            permissaoRota: '/clientes',
+            permissaoAcao: ACAO.EDITAR,
+          },
+        ];
+        return (
+          <div className="flex justify-end">
+            <RowActions
+              rota="/clientes"
+              onEdit={() => handleEdit(cli)}
+              onDelete={() => setConfirmDelete(cli.id ?? cli.codigo!)}
+              extras={extras}
+            />
+          </div>
+        );
+      },
     }),
   ];
 
@@ -160,13 +206,13 @@ export function Clientes() {
           </button>
         </div>
         <PaginaFiltros
-          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome, telefone ou email...' }}
+          busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar por nome, celular, email ou endereço...' }}
           status={{
             rotulo: 'Status',
             valor: filtroStatus,
             opcoes: [
               { valor: '1', label: 'Ativos' },
-              { valor: '2', label: 'Inativos' },
+              { valor: '0', label: 'Inativos' },
               { valor: 'todos', label: 'Todos' },
             ],
             onChange: (v) => setFiltroStatus(v as FiltroStatus),

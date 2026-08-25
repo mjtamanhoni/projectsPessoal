@@ -6,17 +6,27 @@ import {
   extrairErro,
   listarEncomendasPublicas,
   listarProdutosFabricadosPublico,
+  listarProdutosVendaPublico,
+  type AdicionalItemPedido,
   type Encomenda,
   type EncomendaItem,
   type ProdutoFabricado,
+  type ProdutoVendaPublico,
 } from '../api';
 import { useSessao } from '../auth';
 import BackButton from '../components/BackButton';
 import CupomModal from '../components/CupomModal';
+import PersonalizarModal from '../components/PersonalizarModal';
 import PlusButton from '../components/PlusButton';
 import RowMenu from '../components/RowMenu';
 import SeletorProdutoPopup from '../components/SeletorProdutoPopup';
 import SeletorRegistro from '../components/SeletorRegistro';
+import {
+  montarCatalogo,
+  chaveDeItem,
+  somaAdicionaisItem,
+  descricaoPersonalizacao,
+} from '../components/catalogo';
 import { formatarDataBR, formatarMoeda, numeroParaDecimal } from '../format';
 
 const ETAPAS: Record<number, { label: string; cor: string; fundo: string }> = {
@@ -65,20 +75,28 @@ export default function MinhasEncomendas() {
   const [editandoDe, setEditandoDe] = useState<Encomenda | null>(null);
   const [seletorAberto, setSeletorAberto] = useState(false);
   const [produtos, setProdutos] = useState<ProdutoFabricado[]>([]);
+  const [produtosVenda, setProdutosVenda] = useState<ProdutoVendaPublico[]>([]);
   const [produtosCarregados, setProdutosCarregados] = useState(false);
   const [produtosLoading, setProdutosLoading] = useState(false);
   const [excluirDe, setExcluirDe] = useState<Encomenda | null>(null);
+  const [personalizandoDe, setPersonalizandoDe] = useState<{ encId: number; idx: number } | null>(null);
 
   const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
 
+  const catalogo = useMemo(
+    () => montarCatalogo(produtos, produtosVenda),
+    [produtos, produtosVenda],
+  );
+
   useEffect(() => {
-    if (!seletorAberto || !empresa || produtos.length > 0 || produtosCarregados) return;
+    if (!empresa || produtosCarregados) return;
     let cancelado = false;
     setProdutosLoading(true);
-    listarProdutosFabricadosPublico(empresa.id)
-      .then((lista) => {
+    Promise.all([listarProdutosFabricadosPublico(empresa.id), listarProdutosVendaPublico(empresa.id)])
+      .then(([fabs, vds]) => {
         if (cancelado) return;
-        setProdutos(lista.filter((p) => Number(p.preco) > 0));
+        setProdutos(fabs.filter((p) => Number(p.preco) > 0));
+        setProdutosVenda(vds.filter((p) => Number(p.preco) > 0));
         setProdutosCarregados(true);
       })
       .catch((e) => {
@@ -91,7 +109,7 @@ export default function MinhasEncomendas() {
       cancelado = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seletorAberto, empresa]);
+  }, [empresa]);
 
   const carregar = async () => {
     if (!empresa || !documento) return;
@@ -149,6 +167,28 @@ export default function MinhasEncomendas() {
     setSeletorAberto(true);
   };
 
+  const confirmarPersonalizacaoItem = (
+    encId: number,
+    idx: number,
+    removidos: string[],
+    adicionais: AdicionalItemPedido[],
+  ) => {
+    const enc = encomendas.find((x) => (x.id ?? 0) === encId);
+    setPersonalizandoDe(null);
+    if (!enc) return;
+    const itens = (enc.itens ?? []).map((it, i) => {
+      if (i !== idx) return it;
+      const valorAdicionais = adicionais.reduce((acc, a) => acc + a.quantidade * a.valor_unitario, 0);
+      return {
+        ...it,
+        removidos: removidos.length > 0 ? removidos : undefined,
+        adicionais: adicionais.length > 0 ? adicionais : undefined,
+        valor_total: Math.round((it.quantidade * it.valor_unitario + valorAdicionais) * 100) / 100,
+      };
+    });
+    void salvarItens(enc, itens);
+  };
+
   const confirmarExclusao = (item: EncomendaItem) => {
     if (!excluirDe) return;
     const e = excluirDe;
@@ -159,51 +199,56 @@ export default function MinhasEncomendas() {
 
   const renderItens = (e: Encomenda) => {
     const itens = e.itens ?? [];
+    const editavel = podeEditarItens(e);
     return (
-      <div className="compra-sub">
+      <div className="compra-sub" style={{ marginRight: -28 }}>
         <div className="compra-sub-row compra-hdr" style={{ padding: '4px 4px 0' }}>
-          <span className="col-produto" style={{ flex: 1 }}>Produto</span>
+          <span className="col-produto">Produto</span>
           <span className="col-qtd">Qtd</span>
-          <span className="col-unit">Valor Un.</span>
-          <span className="col-total" style={{ width: 64 }}>Valor Total</span>
+          <span className="col-unit">Un.</span>
+          <span className="col-total" style={{ width: 64 }}>Total</span>
         </div>
         <div className="compra-sub-sep" />
         {itens.length === 0 ? (
           <div style={{ padding: 8, fontSize: 10, color: '#9ca09d' }}>Nenhum item</div>
         ) : (
           itens.map((item, i) => (
-            <div key={i}>
-              <div className="compra-sub-row compra-item" style={{ padding: '4px 4px 0' }}>
-                <span className="col-produto" style={{ flex: 1 }}>
-                  {item.produto_nome || `ID ${item.produto_fabricado_id}`}
-                  {(item.removidos && item.removidos.length > 0) || (item.adicionais && item.adicionais.length > 0) ? (
-                    <span style={{ marginLeft: 4, display: 'inline-block', background: '#e8f0ea', color: '#2d6a4f', borderRadius: 8, padding: '0 6px', fontSize: 9, fontWeight: 700 }}>
-                      Personalizado
-                    </span>
-                  ) : null}
-                </span>
-                <span className="col-qtd">{numeroParaDecimal(item.quantidade, QTD_CASAS)}</span>
-                <span className="col-unit">{numeroParaDecimal(item.valor_unitario, QTD_CASAS)}</span>
-                <span className="col-total" style={{ width: 64 }}>
-                  {numeroParaDecimal(item.valor_total, QTD_CASAS)}
-                </span>
-              </div>
-              {(item.removidos && item.removidos.length > 0) || (item.adicionais && item.adicionais.length > 0) ? (
-                <div style={{ padding: '2px 8px 0', fontSize: 10, color: '#6b706c' }}>
-                  {item.removidos && item.removidos.length > 0 ? (
-                    <span>Sem: {item.removidos.join(', ')}</span>
-                  ) : null}
-                  {item.removidos && item.removidos.length > 0 && item.adicionais && item.adicionais.length > 0 ? ' • ' : ''}
-                  {item.adicionais && item.adicionais.length > 0
-                    ? `+ ${item.adicionais
-                        .map((a) => `${a.nome}${a.quantidade > 1 ? ` x${a.quantidade}` : ''}`)
-                        .join(', ')}`
-                    : null}
+            <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #eef2ec' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="compra-sub-row compra-item" style={{ padding: '4px 4px 0', flex: 1, minWidth: 0 }}>
+                  <span className="col-produto">
+                    {item.produto_nome || `ID ${item.produto_venda_id ?? item.produto_fabricado_id ?? '?'}`}
+                  </span>
+                  <span className="col-qtd">{numeroParaDecimal(item.quantidade, QTD_CASAS)}</span>
+                  <span className="col-unit">{numeroParaDecimal(item.valor_unitario, QTD_CASAS)}</span>
+                  <span className="col-total" style={{ width: 64 }}>
+                    {numeroParaDecimal(item.valor_total, QTD_CASAS)}
+                  </span>
                 </div>
-              ) : null}
+                {editavel && (
+                  <button
+                    className="row-btn"
+                    style={{ position: 'static', width: 44, height: 44, flexShrink: 0, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eaf3ee', border: '1.5px solid #2d6a4f', color: '#2d6a4f', fontSize: 20, textAlign: 'center', marginRight: 4 }}
+                    onClick={() => setPersonalizandoDe({ encId: e.id ?? 0, idx: i })}
+                    aria-label="Personalizar item"
+                  >
+                    ✎
+                  </button>
+                )}
+              </div>
+              {descricaoPersonalizacao(item) && (
+                <div style={{ padding: '3px 8px 0', fontSize: 10, color: '#6b706c', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                  {descricaoPersonalizacao(item)}
+                </div>
+              )}
               <div className="compra-sub-sep" />
             </div>
           ))
+        )}
+        {editavel && itens.length > 0 && (
+          <div style={{ padding: '6px 8px 0', fontSize: 10, color: '#6b706c' }}>
+            Toque no ✎ para personalizar cada item.
+          </div>
         )}
         {e.observacao && (
           <div style={{ padding: '4px 8px 0', fontSize: 10, color: '#6b706c' }}>Obs.: {e.observacao}</div>
@@ -250,6 +295,20 @@ export default function MinhasEncomendas() {
       <div className="dashboard-subtitle" style={{ left: 42, top: 56, fontSize: 12 }}>
         Acompanhe o status das suas encomendas
       </div>
+      <button
+        className="menu-back"
+        style={{ left: 'auto', right: 16, opacity: carregando ? 0.6 : 1 }}
+        onClick={() => {
+          if (!carregando) void carregar();
+        }}
+        disabled={carregando}
+        aria-label="Atualizar lista"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+          <polyline points="21 3 21 9 15 9" />
+        </svg>
+      </button>
       <PlusButton onClick={() => navigate('/pedido')} />
 
       <div className="list-card" style={{ top: 88, bottom: 12 }}>
@@ -417,19 +476,44 @@ export default function MinhasEncomendas() {
           onConfirmar={(novos) =>
             salvarItens(
               editandoDe,
-              novos.map((i) => ({ ...i, valor_total: i.quantidade * i.valor_unitario })),
+              novos.map((i) => ({
+                ...i,
+                valor_total:
+                  Math.round((i.quantidade * i.valor_unitario + somaAdicionaisItem(i as EncomendaItem)) * 100) / 100,
+              })),
             )
           }
           fechar={() => setSeletorAberto(false)}
         />
       )}
 
+      {(() => {
+        if (!personalizandoDe) return null;
+        const enc = encomendas.find((x) => (x.id ?? 0) === personalizandoDe.encId);
+        const alvo = enc?.itens?.[personalizandoDe.idx];
+        if (!enc || !alvo) return null;
+        const cat = catalogo.find((c) => c.chave === chaveDeItem(alvo));
+        return (
+          <PersonalizarModal
+            titulo={`Personalizar ${alvo.produto_nome || 'Produto'}`}
+            removiveis={cat?.removiveis ?? []}
+            adicionais={cat?.extras ?? []}
+            iniciaisRemovidos={alvo.removidos ?? []}
+            iniciaisAdicionais={alvo.adicionais ?? []}
+            onConfirmar={(removidos, adicionais) =>
+              confirmarPersonalizacaoItem(personalizandoDe.encId, personalizandoDe.idx, removidos, adicionais)
+            }
+            onFechar={() => setPersonalizandoDe(null)}
+          />
+        );
+      })()}
+
       {excluirDe && (
         <SeletorRegistro<EncomendaItem>
           titulo="Excluir Item"
           placeholder="Buscar item..."
           registros={excluirDe.itens ?? []}
-          rotulo={(i) => i.produto_nome || `Produto #${i.produto_fabricado_id}`}
+          rotulo={(i) => i.produto_nome || `Produto #${i.produto_venda_id ?? i.produto_fabricado_id ?? '?'}`}
           subtitulo={(i) =>
             `${numeroParaDecimal(i.quantidade, QTD_CASAS)} × ${formatarMoeda(Number(i.valor_unitario) || 0)}`
           }

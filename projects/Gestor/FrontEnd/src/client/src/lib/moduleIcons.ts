@@ -297,6 +297,11 @@ const moduleIconMap: Record<string, ModuleIconInfo> = {
     color: '#eab308',
     bgGradient: 'from-yellow-500/20 to-yellow-600/10',
   },
+  'Classificacao Produtos': {
+    icon: Tags,
+    color: '#0d9488',
+    bgGradient: 'from-teal-600/20 to-teal-700/10',
+  },
 };
 
 const fallbackColors = [

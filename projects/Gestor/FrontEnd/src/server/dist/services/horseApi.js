@@ -1036,6 +1036,34 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
+    async listarProdutoClassificacoes(params) {
+        try {
+            const res = await this.api.get('/produtoClassificacao', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarProdutoClassificacoes(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/produtoClassificacao', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirProdutoClassificacao(id) {
+        try {
+            const res = await this.api.delete('/produtoClassificacao', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
     async listarMigracoes() {
         try {
             const res = await this.api.get('/migracoes', { headers: this.getAuthHeaders() });
@@ -1205,6 +1233,36 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
+    async listarAdicionaisClassificacoes(params) {
+        try {
+            const res = await this.api.get('/adicionalClassificacao', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarAdicionaisClassificacoes(payload) {
+        try {
+            const res = await this.api.post('/adicionalClassificacao', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirAdicionalClassificacao(adicionalId, classificacaoId) {
+        try {
+            const res = await this.api.delete('/adicionalClassificacao', {
+                params: { adicional_id: adicionalId, produto_classificacao_id: classificacaoId },
+                headers: this.getAuthHeaders(),
+            });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
     async listarProdutosVenda(params) {
         try {
             const res = await this.api.get('/produtoVenda', { params, headers: this.getAuthHeaders() });
@@ -1349,6 +1407,7 @@ class HorseApiService {
                 categoria_receber_id: header.categoria_receber_id ?? categoriaReceberPadrao ?? 0,
                 itens: (header.itens ?? []).map((i) => ({
                     produto_fabricado_id: i.produto_fabricado_id,
+                    produto_venda_id: i.produto_venda_id,
                     quantidade: Number(i.quantidade),
                     valor_unitario: Number(i.valor_unitario),
                     valor_total: Number(i.valor_total),
@@ -1357,6 +1416,15 @@ class HorseApiService {
                 })),
             };
             const res = await this.api.post('/vendaProduto', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async receberVendaProduto(data) {
+        try {
+            const res = await this.api.put('/vendaProduto/receber', data, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {
@@ -1392,6 +1460,7 @@ class HorseApiService {
                 observacao: header.observacao ?? '',
                 itens: (header.itens ?? []).map((i) => ({
                     produto_fabricado_id: i.produto_fabricado_id,
+                    produto_venda_id: i.produto_venda_id,
                     quantidade: Number(i.quantidade),
                     valor_unitario: Number(i.valor_unitario),
                     valor_total: Number(i.valor_total),

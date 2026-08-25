@@ -42,6 +42,12 @@ export interface Cliente {
   nome: string;
   telefone?: string;
   celular?: string;
+  nr?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  cep?: string;
   endereco?: string;
   email?: string;
   cnpj_cpf?: string;
@@ -385,6 +391,10 @@ function descricaoOperacao(path: string, options: RequestInit): string {
     if (path.includes('/login')) return 'Entrando no sistema...';
     return 'Salvando dados...';
   }
+  if (metodo === 'PUT') {
+    if (path.includes('/receber')) return 'Registrando recebimento...';
+    return 'Salvando dados...';
+  }
   if (metodo === 'DELETE') return 'Excluindo registro...';
   if (path.includes('Dashboard')) return 'Carregando relatórios...';
   if (path.includes('Relatorio')) return 'Gerando relatório...';
@@ -547,6 +557,28 @@ export async function salvarVendaProduto(data: VendaProduto): Promise<{ id?: num
 
 export async function excluirVendaProduto(id: number): Promise<void> {
   const res = await request(`/vendaProduto?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function receberVendaProduto(input: {
+  id: number;
+  data_recebimento?: string;
+  valor: number;
+  desconto?: number;
+  acrescimo?: number;
+}): Promise<void> {
+  const res = await request('/vendaProduto/receber', { method: 'PUT', body: JSON.stringify(input) }, true);
+  await parseResponse(res);
+}
+
+export async function criarContaReceber(data: {
+  cliente_id?: number;
+  descricao: string;
+  valor: number;
+  data_vencimento: string;
+  recebido: boolean;
+}): Promise<void> {
+  const res = await request('/contasReceber', { method: 'POST', body: JSON.stringify(data) }, true);
   await parseResponse(res);
 }
 

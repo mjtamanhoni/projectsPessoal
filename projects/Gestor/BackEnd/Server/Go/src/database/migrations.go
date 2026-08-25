@@ -457,6 +457,43 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "016_criar_produto_classificacao",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.produto_classificacao (
+				empresa_id INTEGER NOT NULL,
+				id INTEGER NOT NULL,
+				nome VARCHAR(100) NOT NULL,
+				status INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				PRIMARY KEY (empresa_id, id)
+			);
+		`,
+	},
+	{
+		Nome: "017_produto_venda_classificacao",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produto_venda' AND column_name='produto_classificacao_id') THEN
+					ALTER TABLE public.produto_venda ADD COLUMN produto_classificacao_id INTEGER;
+				END IF;
+			END $$;
+		`,
+	},
+	{
+		Nome: "018_criar_adicional_produto_classificacao",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.adicional_produto_classificacao (
+				empresa_id INTEGER NOT NULL,
+				adicional_id INTEGER NOT NULL,
+				produto_classificacao_id INTEGER NOT NULL,
+				status INTEGER NOT NULL,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY (empresa_id, adicional_id, produto_classificacao_id)
+			);
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

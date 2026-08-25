@@ -19,6 +19,12 @@ export interface Cliente {
   nome: string;
   telefone?: string;
   celular?: string;
+  nr?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  cep?: string;
   email?: string;
   endereco?: string;
   cpf_cnpj?: string;
@@ -119,6 +125,7 @@ export interface DisplaySettings {
   number?: NumberSettings;
   moduloInicialId?: number;
   formularioInicialId?: number;
+  encomendasRefreshSegundos?: number;
 }
 
 export interface NumberSettings {
@@ -271,6 +278,13 @@ export interface Marca {
   ativo?: boolean;
 }
 
+export interface ProdutoClassificacao {
+  codigo?: number;
+  id?: number;
+  nome: string;
+  status?: number;
+}
+
 export interface CompraInsumoItem {
   insumo_id: number;
   insumo_nome?: string;
@@ -345,6 +359,17 @@ export interface ProdutoAdicional {
   adicional_ativo?: boolean;
 }
 
+export interface AdicionalProdutoClassificacao {
+  adicional_id: number;
+  produto_classificacao_id: number;
+  produto_classificacao_nome?: string;
+  status?: number;
+  adicional_nome?: string;
+  adicional_descricao?: string;
+  adicional_preco?: number;
+  adicional_ativo?: boolean;
+}
+
 export interface ProdutoVenda {
   codigo?: number;
   id?: number;
@@ -353,6 +378,8 @@ export interface ProdutoVenda {
   preco: number;
   produto_fabricado_id?: number | null;
   produto_fabricado_nome?: string | null;
+  produto_classificacao_id?: number | null;
+  produto_classificacao_nome?: string | null;
   foto?: string;
   ativo?: boolean;
 }
