@@ -33,16 +33,18 @@ const ETAPAS: Record<number, { label: string; cor: string; fundo: string }> = {
   0: { label: 'Aguardando', cor: '#92400e', fundo: '#fef3c7' },
   1: { label: 'Em produção', cor: '#1e40af', fundo: '#dbeafe' },
   2: { label: 'Finalizado', cor: '#166534', fundo: '#dcfce7' },
-  3: { label: 'Entregue', cor: '#065f46', fundo: '#d1fae5' },
-  4: { label: 'Cancelada', cor: '#991b1b', fundo: '#fee2e2' },
+  3: { label: 'Saiu p/ Entrega', cor: '#7e22ce', fundo: '#f3e8ff' },
+  4: { label: 'Entregue', cor: '#065f46', fundo: '#d1fae5' },
+  5: { label: 'Cancelada', cor: '#991b1b', fundo: '#fee2e2' },
 };
 
 const CHIPS_FILTRO: { valor: number; label: string }[] = [
   { valor: 0, label: 'Aguardando' },
   { valor: 1, label: 'Em produção' },
   { valor: 2, label: 'Finalizado' },
-  { valor: 3, label: 'Entregue' },
-  { valor: 4, label: 'Cancelada' },
+  { valor: 3, label: 'Saiu p/ Entrega' },
+  { valor: 4, label: 'Entregue' },
+  { valor: 5, label: 'Cancelada' },
 ];
 
 function estiloBadge(status: number): CSSProperties {
@@ -137,7 +139,7 @@ export default function MinhasEncomendas() {
     [encomendas, filtroStatus],
   );
 
-  const podeCancelar = (e: Encomenda) => Number(e.status ?? 0) < 2;
+  const podeCancelar = (e: Encomenda) => Number(e.status ?? 0) < 4;
   const podeEditarItens = (e: Encomenda) => Number(e.status ?? 0) === 0;
   const precoDe = (p: ProdutoFabricado) => Number(p.preco) || 0;
 
@@ -207,6 +209,7 @@ export default function MinhasEncomendas() {
           <span className="col-qtd">Qtd</span>
           <span className="col-unit">Un.</span>
           <span className="col-total" style={{ width: 64 }}>Total</span>
+          {editavel && <span style={{ width: 56, flexShrink: 0 }} />}
         </div>
         <div className="compra-sub-sep" />
         {itens.length === 0 ? (
@@ -391,7 +394,7 @@ export default function MinhasEncomendas() {
                               { rotulo: 'Excluir Item', cor: '#dc2626', onPress: () => setExcluirDe(e) },
                             ]
                           : []),
-                        ...(status >= 2
+                        ...(status >= 3
                           ? [{ rotulo: 'Ver Cupom', cor: '#10b981', onPress: () => setCupomDe(e) }]
                           : []),
                         ...(podeCancelar(e)

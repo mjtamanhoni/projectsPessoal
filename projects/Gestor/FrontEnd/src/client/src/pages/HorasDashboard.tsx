@@ -9,8 +9,9 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
 import {
-  Clock, TrendingUp, TrendingDown, DollarSign, Calendar, Activity, ChevronLeft, ChevronRight, Loader2, RefreshCw, CalendarDays, User, Users, Wrench, Filter, ChevronDown, ChevronUp,
+  Clock, TrendingUp, TrendingDown, DollarSign, Calendar, Activity, ChevronLeft, ChevronRight, Loader2, RefreshCw, CalendarDays, User, Users, Wrench, Filter, ChevronDown, ChevronUp, Calculator,
 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import api from '@/lib/api';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import type { HorasDashboardData, HoraExcedida, Cliente, Usuario, Servico } from '@/types';
@@ -61,6 +62,125 @@ function mediaDiaria(total: number, dias: number): string {
   return formatHoras(total / dias);
 }
 
+function calcularDiasUteisRestantes(ano: number, mes: number): number {
+  const hoje = new Date();
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  const hojeDia = hoje.getDate();
+  const hojeMes = hoje.getMonth() + 1;
+  const hojeAno = hoje.getFullYear();
+  if (hojeAno > ano || (hojeAno === ano && hojeMes > mes)) return 0;
+  if (hojeAno < ano || (hojeAno === ano && hojeMes < mes)) {
+    let count = 0;
+    for (let d = 1; d <= ultimoDia; d++) {
+      const dow = new Date(ano, mes - 1, d).getDay();
+      if (dow >= 1 && dow <= 5) count++;
+    }
+    return count;
+  }
+  let count = 0;
+  for (let d = hojeDia; d <= ultimoDia; d++) {
+    const dow = new Date(ano, mes - 1, d).getDay();
+    if (dow >= 1 && dow <= 5) count++;
+  }
+  return count;
+}
+
+function parseTimeToDecimal(time: string): number {
+  const parts = time.split(':').map(Number);
+  if (parts.length === 3 && parts.every((p) => !isNaN(p))) {
+    return parts[0] + parts[1] / 60 + parts[2] / 3600;
+  }
+  if (parts.length === 2 && parts.every((p) => !isNaN(p))) {
+    return parts[0] + parts[1] / 60;
+  }
+  return 0;
+}
+
+function SimulacaoContent({ kpis, ano, mes, horasPorDia, valorHora, onHorasChange, onValorChange }: {
+  kpis: HorasDashboardData['kpis'] | undefined;
+  ano: number;
+  mes: number;
+  horasPorDia: string;
+  valorHora: number;
+  onHorasChange: (v: string) => void;
+  onValorChange: (v: number) => void;
+}) {
+  const totalHorasAtual = kpis?.totalHoras ?? 0;
+  const totalValorAtual = kpis?.totalValor ?? 0;
+  const diasUteisRestantes = calcularDiasUteisRestantes(ano, mes);
+  const horasPorDiaDecimal = parseTimeToDecimal(horasPorDia);
+  const horasRestantes = diasUteisRestantes * horasPorDiaDecimal;
+  const valorRestante = horasRestantes * valorHora;
+  const totalProjetadoHoras = totalHorasAtual + horasRestantes;
+  const totalProjetadoValor = totalValorAtual + valorRestante;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-bg-muted rounded-lg p-4 space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-text-secondary">Horas trabalhadas no mês</span>
+          <span className="font-semibold text-text-primary">{formatHoras(totalHorasAtual)}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-text-secondary">Valor recebido no mês</span>
+          <span className="font-semibold text-text-primary">{formatCurrency(totalValorAtual)}</span>
+        </div>
+      </div>
+
+      <div className="border-t border-border-subtle pt-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-text-secondary">Horas previstas / dia</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={horasPorDia}
+            onChange={(e) => onHorasChange(e.target.value)}
+            className="w-28 px-3 py-1.5 rounded-lg border border-border-primary bg-bg-primary text-text-primary text-sm text-right focus:outline-none focus:ring-2 focus:ring-accent-primary font-mono"
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-text-secondary">Valor da hora (R$)</label>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={valorHora || ''}
+            onChange={(e) => onValorChange(Number(e.target.value))}
+            placeholder="0,00"
+            className="w-24 px-3 py-1.5 rounded-lg border border-border-primary bg-bg-primary text-text-primary text-sm text-right focus:outline-none focus:ring-2 focus:ring-accent-primary"
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-border-subtle pt-4 space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-text-secondary">Dias úteis restantes</span>
+          <span className="font-medium text-text-primary">{diasUteisRestantes} dias</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-text-secondary">Horas restantes (simuladas)</span>
+          <span className="font-medium text-text-primary">{formatHoras(horasRestantes)}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-text-secondary">Valor restante (simulado)</span>
+          <span className="font-medium text-text-primary">{formatCurrency(valorRestante)}</span>
+        </div>
+      </div>
+
+      <div className="border-t border-border-subtle pt-4 space-y-2">
+        <div className="flex justify-between">
+          <span className="text-sm font-semibold text-text-primary">Total projetado de horas</span>
+          <span className="text-sm font-bold text-accent-primary">{formatHoras(totalProjetadoHoras)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-sm font-semibold text-text-primary">Total projetado de valor</span>
+          <span className="text-sm font-bold text-accent-primary">{formatCurrency(totalProjetadoValor)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function HorasDashboard() {
   const hoje = new Date();
   const savedFilters = useMemo(() => loadFilters(), []);
@@ -87,6 +207,23 @@ export function HorasDashboard() {
       return true;
     }
   });
+  const [simulacaoAberto, setSimulacaoAberto] = useState(false);
+  const [horasPorDia, setHorasPorDia] = useState('08:00:00');
+  const [valorHora, setValorHora] = useState(0);
+
+  function handleTimeChange(val: string) {
+    const digits = val.replace(/\D/g, '').slice(0, 6);
+    if (digits.length === 0) {
+      setHorasPorDia('');
+      return;
+    }
+    let result = '';
+    for (let i = 0; i < digits.length; i++) {
+      if (i === 2 || i === 4) result += ':';
+      result += digits[i];
+    }
+    setHorasPorDia(result);
+  }
 
   const toggleFiltros = () => {
     setFiltrosAbertos((v) => {
@@ -213,7 +350,10 @@ export function HorasDashboard() {
     <Layout>
       <PageHeader title="Dashboard Horas" subtitle="Visão geral das horas trabalhadas" />
 
-      <div className="flex items-center justify-end mb-6">
+      <div className="flex items-center justify-end gap-2 mb-6">
+        <Button variant="secondary" onClick={() => setSimulacaoAberto(true)} title="Simular projeção">
+          <Calculator size={16} />
+        </Button>
         <Button variant="secondary" onClick={() => fetchData()} title="Atualizar dados">
           <RefreshCw size={16} />
         </Button>
@@ -522,6 +662,17 @@ export function HorasDashboard() {
           </div>
         </div>
       )}
+      <Modal isOpen={simulacaoAberto} onClose={() => setSimulacaoAberto(false)} title="Simulação de Projeção" maxWidth="max-w-md">
+        <SimulacaoContent
+          kpis={kpis}
+          ano={ano}
+          mes={mes}
+          horasPorDia={horasPorDia}
+          valorHora={valorHora}
+          onHorasChange={handleTimeChange}
+          onValorChange={setValorHora}
+        />
+      </Modal>
     </Layout>
   );
 }

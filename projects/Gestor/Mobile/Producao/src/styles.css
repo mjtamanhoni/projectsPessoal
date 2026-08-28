@@ -480,6 +480,25 @@ body {
   box-shadow: 0 1px 3px rgba(45, 94, 58, 0.12);
 }
 
+.list-refresh {
+  position: absolute;
+  right: 54px;
+  top: 15px;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: #e9f0ea;
+  color: #2d5e3a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 32;
+  box-shadow: 0 1px 3px rgba(45, 94, 58, 0.12);
+}
+
 .list-card {
   position: absolute;
   left: 14px;
@@ -1040,6 +1059,15 @@ body {
   font-size: 12px;
   font-weight: 600;
   color: #1b1f1c;
+}
+
+.compra-personalizacao {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #6b706c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .compra-btn {

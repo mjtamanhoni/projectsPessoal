@@ -28,6 +28,8 @@ export interface Cliente {
     endereco?: string;
     email?: string;
     cpf_cnpj?: string;
+    cnpj_cpf?: string;
+    status?: number;
 }
 export interface Fornecedor {
     codigo?: number;

@@ -6,7 +6,19 @@ export interface ImpressoraLocal {
 }
 
 export function webusbDisponivel(): boolean {
-  return typeof navigator !== 'undefined' && 'usb' in navigator;
+  if (typeof navigator === 'undefined') return false;
+  const nav = navigator as unknown as Record<string, unknown>;
+  if (!nav.usb) return false;
+  if (typeof window !== 'undefined' && window.isSecureContext === false) return false;
+  return true;
+}
+
+export function diagnosWebUSB(): string {
+  if (typeof navigator === 'undefined') return 'navigator indisponivel';
+  const nav = navigator as unknown as Record<string, unknown>;
+  if (!nav.usb) return 'navigator.usb nao existe - verifique se esta em HTTPS ou localhost';
+  if (typeof window !== 'undefined' && window.isSecureContext === false) return 'Contexto inseguro - use HTTPS ou localhost';
+  return 'ok';
 }
 
 function hex4(n: number): string {

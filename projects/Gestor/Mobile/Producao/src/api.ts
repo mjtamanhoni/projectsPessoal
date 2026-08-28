@@ -170,6 +170,14 @@ export interface VendaProduto {
   itens?: VendaProdutoItem[];
 }
 
+export interface AdicionalItemPedido {
+  adicional_id?: number;
+  nome: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total?: number;
+}
+
 export interface EncomendaItem {
   id?: number;
   produto_fabricado_id: number;
@@ -177,6 +185,8 @@ export interface EncomendaItem {
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
+  removidos?: string[];
+  adicionais?: AdicionalItemPedido[];
 }
 
 export interface Encomenda {
@@ -597,6 +607,18 @@ export async function listarEncomendaItens(id: number): Promise<EncomendaItem[]>
     quantidade: Number(row.quantidade) || 0,
     valor_unitario: Number(row.valor_unitario) || 0,
     valor_total: Number(row.item_valor_total ?? row.valor_total) || 0,
+    removidos: Array.isArray(row.removidos)
+      ? (row.removidos as Record<string, unknown>[]).map((r) => String(r.nome ?? ''))
+      : undefined,
+    adicionais: Array.isArray(row.adicionais)
+      ? (row.adicionais as Record<string, unknown>[]).map((a) => ({
+          adicional_id: a.adicional_id != null ? Number(a.adicional_id) : undefined,
+          nome: String(a.nome ?? ''),
+          quantidade: Number(a.quantidade) || 1,
+          valor_unitario: Number(a.valor_unitario) || 0,
+          valor_total: Number(a.valor_total) || 0,
+        }))
+      : undefined,
   }));
 }
 

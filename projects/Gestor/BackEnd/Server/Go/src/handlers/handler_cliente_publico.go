@@ -451,7 +451,7 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 	query := `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 		e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 		c.nome as cliente_nome,
-		CASE WHEN e.status >= 2 THEN true ELSE false END as baixado,
+		CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
 		ei.id as item_id, ei.produto_fabricado_id, ei.produto_venda_id, ei.quantidade,
 		ei.valor_unitario, ei.valor_total as item_valor_total,
 		COALESCE(pv.nome, pf.nome) as produto_nome,
@@ -496,7 +496,7 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 }
 
 // EncomendaPublicoCancelar cancela uma encomenda do cliente (sem autenticação).
-// Só permite cancelar encomendas em Aguardando (0) ou Em produção (1).
+// Só permite cancelar encomendas em Aguardando (0), Em produção (1), Finalizado (2) ou Saiu para Entrega (3).
 // POST /encomendaPublico/cancelar  body: { empresa, id, cliente_id?, documento?, telefone? }
 func (h *ProducaoHandler) EncomendaPublicoCancelar(w http.ResponseWriter, r *http.Request) {
 	items, err := h.BasicCRUD.parseBody(r)
@@ -529,8 +529,8 @@ func (h *ProducaoHandler) EncomendaPublicoCancelar(w http.ResponseWriter, r *htt
 	}
 
 	res, err := h.Pool.Exec(r.Context(),
-		`UPDATE encomenda SET status = 4
-		WHERE id = $1 AND empresa_id = $2 AND cliente_id = $3 AND status < 2`,
+		`UPDATE encomenda SET status = 5
+		WHERE id = $1 AND empresa_id = $2 AND cliente_id = $3 AND status < 4`,
 		encomendaID, empresaID, clienteID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -538,7 +538,7 @@ func (h *ProducaoHandler) EncomendaPublicoCancelar(w http.ResponseWriter, r *htt
 	}
 	afetadas := res.RowsAffected()
 	if afetadas == 0 {
-		jsonError(w, "Encomenda não encontrada ou não pode ser cancelada (já finalizada ou entregue)", http.StatusBadRequest)
+		jsonError(w, "Encomenda não encontrada ou não pode ser cancelada (já foi entregue ou cancelada)", http.StatusBadRequest)
 		return
 	}
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Encomenda cancelada com sucesso"})

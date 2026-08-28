@@ -1344,7 +1344,7 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 			c.nome as cliente_nome,
-			CASE WHEN e.status >= 2 THEN true ELSE false END as baixado,
+			CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
 			ei.id as item_id, ei.produto_fabricado_id, ei.produto_venda_id, ei.quantidade,
 			ei.valor_unitario, ei.valor_total as item_valor_total,
 			pf.nome as produto_nome, pv.nome as produto_venda_nome,
@@ -1390,7 +1390,7 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 			c.nome as cliente_nome,
-			CASE WHEN e.status >= 2 THEN true ELSE false END as baixado,
+			CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
 			COALESCE(agg.qtd_itens, 0) as qtd_itens
 			FROM encomenda e
 			LEFT JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
@@ -1503,8 +1503,8 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		if temItens && statusAtual >= 2 {
-			jsonError(w, "Encomenda finalizada/entregue, não é possível editar", http.StatusBadRequest)
+		if temItens && statusAtual >= 3 {
+			jsonError(w, "Encomenda finalizada/saiu para entrega, não é possível editar", http.StatusBadRequest)
 			return
 		}
 
@@ -1513,8 +1513,8 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 		if temStatus {
 			switch statusNovo {
 			case 2:
-				if statusAtual == 3 {
-					jsonError(w, "Encomenda entregue não pode voltar para finalizada", http.StatusBadRequest)
+				if statusAtual >= 4 {
+					jsonError(w, "Encomenda entregue/cancelada não pode voltar para finalizada", http.StatusBadRequest)
 					return
 				}
 				if statusAtual < 2 {
@@ -1536,16 +1536,22 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 				novoStatus = 2
 			case 3:
 				if statusAtual != 2 {
-					jsonError(w, "Encomenda só pode ser entregue após ser finalizada", http.StatusBadRequest)
+					jsonError(w, "Encomenda só pode sair para entrega após ser finalizada", http.StatusBadRequest)
 					return
 				}
 				novoStatus = 3
 			case 4:
-				if statusAtual >= 2 {
-					jsonError(w, "Encomenda finalizada/entregue não pode ser cancelada", http.StatusBadRequest)
+				if statusAtual != 3 {
+					jsonError(w, "Encomenda só pode ser entregue após sair para entrega", http.StatusBadRequest)
 					return
 				}
 				novoStatus = 4
+			case 5:
+				if statusAtual >= 4 {
+					jsonError(w, "Encomenda entregue/cancelada não pode ser cancelada", http.StatusBadRequest)
+					return
+				}
+				novoStatus = 5
 			case 0, 1:
 				novoStatus = statusNovo
 			default:
@@ -1690,8 +1696,8 @@ func (h *ProducaoHandler) EncomendaExcluir(w http.ResponseWriter, r *http.Reques
 		jsonError(w, "Registro não encontrado", http.StatusNotFound)
 		return
 	}
-	if status >= 2 {
-		jsonError(w, "Encomenda finalizada/entregue, não é possível excluir", http.StatusBadRequest)
+	if status >= 3 {
+		jsonError(w, "Encomenda finalizada/saiu para entrega, não é possível excluir", http.StatusBadRequest)
 		return
 	}
 
@@ -1728,7 +1734,7 @@ func (h *ProducaoHandler) EncomendaExcluir(w http.ResponseWriter, r *http.Reques
 
 // gerarVendaDeEncomendaTx cria a venda de produto a partir dos itens da encomenda,
 // com baixa de estoque de produtos fabricados e geração de contas a receber.
-// A encomenda deve estar com status < 2 (não finalizada). Executa dentro da transação informada.
+// A encomenda deve estar com status < 3 (não finalizada/saiu para entrega). Executa dentro da transação informada.
 func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx, empresaID, usuarioID, encomendaID int, dataVenda string, recebido bool, categoriaReceberID int) (int, error) {
 	if dataVenda == "" {
 		dataVenda = time.Now().Format("2006-01-02")
@@ -1743,7 +1749,7 @@ func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx
 	if err != nil {
 		return 0, fmt.Errorf("Encomenda não encontrada")
 	}
-	if status >= 2 {
+	if status >= 3 {
 		return 0, fmt.Errorf("Encomenda já finalizada")
 	}
 
@@ -2046,7 +2052,7 @@ func (h *ProducaoHandler) EncomendaGerarVenda(w http.ResponseWriter, r *http.Req
 		jsonError(w, "Encomenda não encontrada", http.StatusNotFound)
 		return
 	}
-	if status >= 2 {
+	if status >= 3 {
 		jsonError(w, "Encomenda já finalizada", http.StatusBadRequest)
 		return
 	}

@@ -30,15 +30,17 @@ const ETAPAS_ENCOMENDA: Record<number, { label: string; badge: string; descricao
   0: { label: 'Aguardando', badge: 'bg-yellow-100 text-yellow-800', descricao: 'Encomenda aguardando o início da produção' },
   1: { label: 'Em produção', badge: 'bg-blue-100 text-blue-800', descricao: 'Encomenda em produção' },
   2: { label: 'Finalizado', badge: 'bg-green-100 text-green-800', descricao: 'Produção finalizada - gera a venda do pedido' },
-  3: { label: 'Entregue', badge: 'bg-emerald-100 text-emerald-800', descricao: 'Encomenda entregue ao cliente' },
-  4: { label: 'Cancelada', badge: 'bg-red-100 text-red-800', descricao: 'Encomenda cancelada' },
+  3: { label: 'Saiu p/ Entrega', badge: 'bg-purple-100 text-purple-800', descricao: 'Encomenda saiu para entrega ao cliente' },
+  4: { label: 'Entregue', badge: 'bg-emerald-100 text-emerald-800', descricao: 'Encomenda entregue ao cliente' },
+  5: { label: 'Cancelada', badge: 'bg-red-100 text-red-800', descricao: 'Encomenda cancelada' },
 };
 
 function etapasPermitidas(status: number): number[] {
   switch (status) {
-    case 0: return [1, 4];
-    case 1: return [2, 4];
+    case 0: return [1, 5];
+    case 1: return [2, 5];
     case 2: return [3];
+    case 3: return [4, 5];
     default: return [];
   }
 }
@@ -467,8 +469,9 @@ export function Encomendas() {
               { valor: '0', label: 'Aguardando' },
               { valor: '1', label: 'Em produção' },
               { valor: '2', label: 'Finalizado' },
-              { valor: '3', label: 'Entregue' },
-              { valor: '4', label: 'Cancelada' },
+              { valor: '3', label: 'Saiu p/ Entrega' },
+              { valor: '4', label: 'Entregue' },
+              { valor: '5', label: 'Cancelada' },
             ],
             onChange: setFiltroStatus,
           }}

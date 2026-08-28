@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
 import type { ModuleItem } from '@/context/ModuleContext';
 import { useAuth } from '@/context/AuthContext';
-import { listarImpressorasUSB, solicitarImpressoraUSB, imprimirTesteUSB, webusbDisponivel, listarDispositivosUSB, type ImpressoraLocal } from '@/lib/printer-local';
+import { listarImpressorasUSB, solicitarImpressoraUSB, imprimirTesteUSB, webusbDisponivel, diagnosWebUSB, listarDispositivosUSB, type ImpressoraLocal } from '@/lib/printer-local';
 import { imprimirCupomComum } from '@/lib/cupom';
 
 
@@ -89,7 +89,7 @@ export function Settings() {
     setMsgImpressora(null);
     try {
       if (!webusbDisponivel()) {
-        setMsgImpressora({ tipo: 'erro', texto: 'WebUSB nao disponivel neste navegador (use Chrome/Edge com HTTPS). Configure a porta manualmente.' });
+        setMsgImpressora({ tipo: 'erro', texto: `WebUSB indisponivel: acesso via HTTP externo nao permite acesso USB. Configure a porta manualmente (ex: USB:0456:0808).` });
         return;
       }
       const impressora = await solicitarImpressoraUSB();
@@ -576,9 +576,16 @@ export function Settings() {
                       </Button>
                     </div>
                     {!webusbDisponivel() && (
-                      <p className="text-xs text-amber-600">
-                        WebUSB nao disponivel neste navegador (requer Chrome/Edge com HTTPS). Configure a porta manualmente.
-                      </p>
+                      <div className="rounded-md bg-amber-50 border border-amber-200 p-3 space-y-1">
+                        <p className="text-xs font-semibold text-amber-800">WebUSB nao disponivel</p>
+                        <p className="text-xs text-amber-700">
+                          O WebUSB so funciona em <strong>HTTPS</strong> ou <strong>localhost</strong>.
+                          Acesso via HTTP externo ({window.location.hostname}) nao permite acesso USB.
+                        </p>
+                        <p className="text-xs text-amber-700">
+                          Configure a porta manualmente no campo abaixo (ex: USB:0456:0808).
+                        </p>
+                      </div>
                     )}
                     {impressorasUSB.length > 0 && (
                       <div className="border border-border-primary rounded-lg divide-y divide-border-primary">
@@ -869,7 +876,7 @@ export function Settings() {
                     </p>
                     {!webusbDisponivel() && (
                       <p className="text-xs text-amber-600">
-                        WebUSB nao disponivel neste navegador (requer Chrome/Edge com HTTPS). O teste via janela de impressao continua disponivel.
+                        WebUSB indisponivel (acesso via HTTP externo). O teste via janela de impressao continua disponivel.
                       </p>
                     )}
                     <div className="flex flex-wrap items-center gap-2">

@@ -6,6 +6,12 @@ const auth_1 = require("../middleware/auth");
 const validate_1 = require("../middleware/validate");
 const schemas_1 = require("../schemas");
 const router = (0, express_1.Router)();
+const normalizeCliente = (req, _res, next) => {
+    if (req.body && req.body.cnpj_cpf && !req.body.cpf_cnpj) {
+        req.body.cpf_cnpj = req.body.cnpj_cpf;
+    }
+    next();
+};
 router.get('/', auth_1.authMiddleware, async (req, res) => {
     try {
         const result = await horseApi_1.horseApi.listarClientes(req.query);
@@ -16,7 +22,7 @@ router.get('/', auth_1.authMiddleware, async (req, res) => {
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
-router.post('/', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.clienteBodySchema), async (req, res) => {
+router.post('/', auth_1.authMiddleware, normalizeCliente, (0, validate_1.validate)(schemas_1.clienteBodySchema), async (req, res) => {
     try {
         const body = req.body;
         const clientes = Array.isArray(body) ? body : [body];

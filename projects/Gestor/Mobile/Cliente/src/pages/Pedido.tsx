@@ -314,6 +314,7 @@ export default function Pedido() {
           <span className="col-qtd">Qtd</span>
           <span className="col-unit">Un.</span>
           <span className="col-total">Total</span>
+          <span style={{ width: 96, flexShrink: 0 }} />
         </div>
 
         {itens.length === 0 ? (

@@ -55,22 +55,40 @@ function fmtValor(v: number): string {
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function descricaoPersonalizacao(item: EncomendaItem): string {
+  const partes: string[] = [];
+  if (item.removidos && item.removidos.length > 0) {
+    partes.push(`Sem: ${item.removidos.join(', ')}`);
+  }
+  if (item.adicionais && item.adicionais.length > 0) {
+    partes.push(
+      `+ ${item.adicionais
+        .map((a) => `${a.nome}${a.quantidade > 1 ? ` x${a.quantidade}` : ''}`)
+        .join(', ')}`,
+    );
+  }
+  return partes.join(' · ');
+}
+
 const ETAPAS_ENCOMENDA: Record<number, { label: string; cor: string; fundo: string }> = {
   0: { label: 'Aguardando', cor: '#92400e', fundo: '#fef3c7' },
   1: { label: 'Em produção', cor: '#1e40af', fundo: '#dbeafe' },
   2: { label: 'Finalizado', cor: '#166534', fundo: '#dcfce7' },
-  3: { label: 'Entregue', cor: '#065f46', fundo: '#d1fae5' },
-  4: { label: 'Cancelada', cor: '#991b1b', fundo: '#fee2e2' },
+  3: { label: 'Saiu p/ Entrega', cor: '#7e22ce', fundo: '#f3e8ff' },
+  4: { label: 'Entregue', cor: '#065f46', fundo: '#d1fae5' },
+  5: { label: 'Cancelada', cor: '#991b1b', fundo: '#fee2e2' },
 };
 
 function etapasPermitidas(status: number): number[] {
   switch (status) {
     case 0:
-      return [1, 4];
+      return [1, 5];
     case 1:
-      return [2, 4];
+      return [2, 5];
     case 2:
       return [3];
+    case 3:
+      return [4, 5];
     default:
       return [];
   }
@@ -473,6 +491,13 @@ const carregar = useCallback(async () => {
       <div className="dashboard-subtitle" style={{ left: 42, top: 56, fontSize: 12 }}>
         Gerencie encomendas de produtos
       </div>
+      <button className="list-refresh" onClick={() => carregar()} aria-label="Atualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="23 4 23 10 17 10" />
+          <polyline points="1 20 1 14 7 14" />
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+        </svg>
+      </button>
       <PlusButton onClick={abrirNovo} />
 
             <div className="list-card" style={{ top: 88, bottom: 12 }}>
@@ -490,8 +515,9 @@ const carregar = useCallback(async () => {
                 { valor: 0, label: 'Aguardando' },
                 { valor: 1, label: 'Em produção' },
                 { valor: 2, label: 'Finalizado' },
-                { valor: 3, label: 'Entregue' },
-                { valor: 4, label: 'Cancelada' },
+                { valor: 3, label: 'Saiu p/ Entrega' },
+                { valor: 4, label: 'Entregue' },
+                { valor: 5, label: 'Cancelada' },
               ],
               onChange: setFiltroStatus,
             }}
@@ -515,23 +541,35 @@ const carregar = useCallback(async () => {
               const status = Number(e.status ?? 0);
               const podeEditar = status < 2;
               const alvos = etapasPermitidas(status);
+              const itensCarregados = id != null && Array.isArray(expandido[id]);
+              const textoPers = itensCarregados
+                ? (expandido[id] as EncomendaItem[])
+                    .map((it) => descricaoPersonalizacao(it))
+                    .filter(Boolean)
+                    .join(' · ')
+                : '';
               return (
                 <div key={id ?? `${e.cliente_id}-${e.data_encomenda}`}>
                   <div className="compra-row">
                     <div className="compra-cod">#{id}</div>
                     <div className="compra-nome">{e.cliente_nome || '—'}</div>
                     <div className="compra-det">
-                      {fmtData(e.data_encomenda)} &nbsp;•&nbsp;
+                      {fmtData(e.data_encomenda)}
+                      {' • '}
                       <span style={estiloBadge(status)}>{ETAPAS_ENCOMENDA[status]?.label ?? '—'}</span>
                       {e.data_entrega ? (
                         <>
-                          {' '}
-                          &nbsp;•&nbsp; Entrega: {fmtData(e.data_entrega)}
+                          {' • Entrega: '}
+                          {fmtData(e.data_entrega)}
                         </>
                       ) : null}
-                      {e.venda_id ? ` &nbsp;•&nbsp; venda #${e.venda_id}` : ''} &nbsp;•&nbsp;{' '}
+                      {e.venda_id ? ` • venda #${e.venda_id}` : ''}
+                      {' • '}
                       {nItens != null ? `${nItens} ${nItens === 1 ? 'item' : 'itens'}` : '—'}
                     </div>
+                    {textoPers ? (
+                      <div className="compra-personalizacao">{textoPers}</div>
+                    ) : null}
                     <div className="compra-total">{fmtMoeda(e.valor_total)}</div>
                     {id != null && renderProntaEntrega(e)}
                     <RowMenu
@@ -635,7 +673,7 @@ const carregar = useCallback(async () => {
               <div style={{ fontSize: 12, color: '#6b706c', lineHeight: 1.5, margin: '0 4px 12px', padding: 8, background: '#f4f6f4', borderRadius: 6 }}>
                 Etapa atual: <span style={estiloBadge(etapa.status)}>{ETAPAS_ENCOMENDA[etapa.status]?.label ?? '—'}</span>
                 {etapa.cliente ? `  Cliente: ${etapa.cliente}.` : ''}
-                {etapa.status === 2 ? ' A encomenda já foi finalizada e gerou uma venda.' : ''}
+                {etapa.status === 2 ? ' A encomenda já foi finalizada e gerou uma venda.' : etapa.status === 3 ? ' A encomenda saiu para entrega.' : ''}
               </div>
 
               {alvosDoModal.length > 0 && (
@@ -666,12 +704,14 @@ const carregar = useCallback(async () => {
                           {alvo === 2
                             ? 'Finalizar: gera venda de produto (baixa de estoque e contas a receber)'
                             : alvo === 3
-                              ? 'Marcar como entregue ao cliente'
+                              ? 'Sair para entrega ao cliente'
                               : alvo === 4
-                                ? 'Cancelar esta encomenda'
-                                : alvo === 1
-                                  ? 'Iniciar a produção'
-                                  : ''}
+                                ? 'Marcar como entregue ao cliente'
+                                : alvo === 5
+                                  ? 'Cancelar esta encomenda'
+                                  : alvo === 1
+                                    ? 'Iniciar a produção'
+                                    : ''}
                         </span>
                       </button>
                     );

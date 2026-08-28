@@ -3,7 +3,8 @@ export declare const clienteBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;
     id: z.ZodOptional<z.ZodNumber>;
     nome: z.ZodString;
-    cpf_cnpj: z.ZodString;
+    cpf_cnpj: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    cnpj_cpf: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     telefone: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     celular: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     nr: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
@@ -14,6 +15,7 @@ export declare const clienteBodySchema: z.ZodObject<{
     cep: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     endereco: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     email: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    status: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const fornecedorBodySchema: z.ZodObject<{
     codigo: z.ZodOptional<z.ZodNumber>;

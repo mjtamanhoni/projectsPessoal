@@ -1,10 +1,17 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { horseApi } from '../services/horseApi';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { clienteBodySchema } from '../schemas';
 
 const router = Router();
+
+const normalizeCliente = (req: Request, _res: Response, next: NextFunction) => {
+  if (req.body && req.body.cnpj_cpf && !req.body.cpf_cnpj) {
+    req.body.cpf_cnpj = req.body.cnpj_cpf;
+  }
+  next();
+};
 
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -16,7 +23,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', authMiddleware, validate(clienteBodySchema), async (req: AuthRequest, res: Response) => {
+router.post('/', authMiddleware, normalizeCliente, validate(clienteBodySchema), async (req: AuthRequest, res: Response) => {
   try {
     const body = req.body;
     const clientes = Array.isArray(body) ? body : [body];

@@ -6,10 +6,8 @@ exports.clienteBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),
     id: zod_1.z.number().int().positive().optional(),
     nome: zod_1.z.string().min(1, 'Nome e obrigatorio').max(200),
-    cpf_cnpj: zod_1.z.string()
-        .min(1, 'CPF/CNPJ e obrigatorio')
-        .max(18)
-        .refine((v) => v.replace(/\D/g, '').length >= 11, 'CPF/CNPJ invalido'),
+    cpf_cnpj: zod_1.z.string().max(18).optional().or(zod_1.z.literal('')),
+    cnpj_cpf: zod_1.z.string().max(18).optional().or(zod_1.z.literal('')),
     telefone: zod_1.z.string().max(20).optional().or(zod_1.z.literal('')),
     celular: zod_1.z.string().max(20).optional().or(zod_1.z.literal('')),
     nr: zod_1.z.string().max(10).optional().or(zod_1.z.literal('')),
@@ -20,7 +18,11 @@ exports.clienteBodySchema = zod_1.z.object({
     cep: zod_1.z.string().max(9).optional().or(zod_1.z.literal('')),
     endereco: zod_1.z.string().max(300).optional().or(zod_1.z.literal('')),
     email: zod_1.z.string().email('Email invalido').max(200).optional().or(zod_1.z.literal('')),
-});
+    status: zod_1.z.number().int().min(0).max(1).optional(),
+}).refine((data) => {
+    const doc = (data.cpf_cnpj || data.cnpj_cpf || '').replace(/\D/g, '');
+    return doc.length >= 11;
+}, { message: 'CPF/CNPJ invalido' });
 exports.fornecedorBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),
     id: zod_1.z.number().int().positive().optional(),
@@ -319,7 +321,7 @@ exports.encomendaBodySchema = zod_1.z.object({
 });
 exports.encomendaStatusSchema = zod_1.z.object({
     id: zod_1.z.number().int().positive('Encomenda e obrigatoria'),
-    status: zod_1.z.number().int().min(0).max(4, 'Status invalido'),
+    status: zod_1.z.number().int().min(0).max(5, 'Status invalido'),
     data_venda: zod_1.z.string().optional(),
     recebido: zod_1.z.boolean().optional(),
     categoria_receber_id: zod_1.z.number().int().positive().optional(),

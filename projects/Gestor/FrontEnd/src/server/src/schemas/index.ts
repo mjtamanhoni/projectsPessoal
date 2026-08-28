@@ -4,10 +4,8 @@ export const clienteBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),
   nome: z.string().min(1, 'Nome e obrigatorio').max(200),
-  cpf_cnpj: z.string()
-    .min(1, 'CPF/CNPJ e obrigatorio')
-    .max(18)
-    .refine((v) => v.replace(/\D/g, '').length >= 11, 'CPF/CNPJ invalido'),
+  cpf_cnpj: z.string().max(18).optional().or(z.literal('')),
+  cnpj_cpf: z.string().max(18).optional().or(z.literal('')),
   telefone: z.string().max(20).optional().or(z.literal('')),
   celular: z.string().max(20).optional().or(z.literal('')),
   nr: z.string().max(10).optional().or(z.literal('')),
@@ -18,7 +16,14 @@ export const clienteBodySchema = z.object({
   cep: z.string().max(9).optional().or(z.literal('')),
   endereco: z.string().max(300).optional().or(z.literal('')),
   email: z.string().email('Email invalido').max(200).optional().or(z.literal('')),
-});
+  status: z.number().int().min(0).max(1).optional(),
+}).refine(
+  (data) => {
+    const doc = (data.cpf_cnpj || data.cnpj_cpf || '').replace(/\D/g, '');
+    return doc.length >= 11;
+  },
+  { message: 'CPF/CNPJ invalido' },
+);
 
 export const fornecedorBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
@@ -355,7 +360,7 @@ export const encomendaBodySchema = z.object({
 
 export const encomendaStatusSchema = z.object({
   id: z.number().int().positive('Encomenda e obrigatoria'),
-  status: z.number().int().min(0).max(4, 'Status invalido'),
+  status: z.number().int().min(0).max(5, 'Status invalido'),
   data_venda: z.string().optional(),
   recebido: z.boolean().optional(),
   categoria_receber_id: z.number().int().positive().optional(),
