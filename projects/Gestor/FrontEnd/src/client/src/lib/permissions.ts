@@ -59,6 +59,8 @@ export const formRouteMap: Record<string, string> = {
   'Perdas Insumo': '/perdas-insumo',
   'Perdas Produto': '/perdas-produto',
   'Uso Consumo': '/uso-consumo',
+  'Formas de Pagamento': '/formas-pagamento',
+  'Condicoes de Pagamento': '/condicoes-pagamento',
 };
 
 export const routeFormMap: Record<string, string> = Object.fromEntries(

@@ -255,3 +255,28 @@ export type EmpresaInput = z.infer<typeof empresaSchema>;
 export type ModuloInput = z.infer<typeof moduloSchema>;
 export type ModuloFormularioInput = z.infer<typeof moduloFormularioSchema>;
 export type EmpresaModuloInput = z.infer<typeof empresaModuloSchema>;
+
+export const formaPagamentoSchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  descricao: z.string().min(1, 'Descricao e obrigatoria').max(100),
+  classificacao: z.string().max(50).optional(),
+  status: z.number().int().min(0).max(1).optional(),
+});
+
+export type FormaPagamentoInput = z.infer<typeof formaPagamentoSchema>;
+
+export const condicaoPagamentoSchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  descricao: z.string().min(1, 'Descricao e obrigatoria').max(100),
+  qtd_parcelas: z.number().int().positive('Quantidade de parcelas e obrigatoria'),
+  dias_primeiro_vencimento: z.number().int().min(0).optional(),
+  dias_intervalo: z.number().int().min(0).optional(),
+  status: z.number().int().min(0).max(1).optional(),
+  parcelamento_fixo: z.number().int().min(0).max(1).optional(),
+  dia_vencimento_fixo: z.number().int().min(1).max(31).nullable().optional(),
+  a_vista: z.number().int().min(0).max(1).optional(),
+});
+
+export type CondicaoPagamentoInput = z.infer<typeof condicaoPagamentoSchema>;

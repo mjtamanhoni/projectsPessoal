@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -1479,7 +1479,7 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
   async salvarEncomendas(items: Encomenda[], empresaId?: number): Promise<unknown> {
     try {
       const header = (Array.isArray(items) ? items : [items])[0] ?? {} as Encomenda;
-      const payload = {
+      const payload: Record<string, unknown> = {
         id: header.id ?? header.codigo ?? 0,
         cliente_id: header.cliente_id,
         data_encomenda: header.data_encomenda,
@@ -1495,6 +1495,12 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
           adicionais: i.adicionais,
         })),
       };
+      if (header.forma_pagamento_id) {
+        payload.forma_pagamento_id = header.forma_pagamento_id;
+      }
+      if (header.troco_para != null) {
+        payload.troco_para = header.troco_para;
+      }
       const res = await this.api.post('/encomenda', payload, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
@@ -1934,6 +1940,83 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     try {
       const res = await this.api.post('/empresa/atualizar-sequencias', {}, { headers: this.getAuthHeaders() });
       return res.data as { mensagem: string; total: number };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // --- Forma Pagamento ---
+  async listarFormasPagamento(params?: Record<string, unknown>): Promise<FormaPagamento[]> {
+    try {
+      const res = await this.api.get('/formaPagamento', { params, headers: this.getAuthHeaders() });
+      return res.data as FormaPagamento[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarFormasPagamento(items: FormaPagamento[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/formaPagamento', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirFormaPagamento(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/formaPagamento', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // --- Condicao Pagamento ---
+  async listarCondicoesPagamento(params?: Record<string, unknown>): Promise<CondicaoPagamento[]> {
+    try {
+      const res = await this.api.get('/condicaoPagamento', { params, headers: this.getAuthHeaders() });
+      return res.data as CondicaoPagamento[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarCondicoesPagamento(items: CondicaoPagamento[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/condicaoPagamento', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirCondicaoPagamento(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/condicaoPagamento', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // --- Forma Pagamento x Condicao ---
+  async listarFormaPagamentoCondicoes(params?: Record<string, unknown>): Promise<FormaPagamentoCondicao[]> {
+    try {
+      const res = await this.api.get('/formaPagamentoCondicao', { params, headers: this.getAuthHeaders() });
+      return res.data as FormaPagamentoCondicao[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarFormaPagamentoCondicoes(data: { forma_pagamento_id: number; condicao_pagamento_ids: number[] }): Promise<unknown> {
+    try {
+      const res = await this.api.post('/formaPagamentoCondicao', data, { headers: this.getAuthHeaders() });
+      return res.data;
     } catch (error) {
       return this.handleError(error);
     }

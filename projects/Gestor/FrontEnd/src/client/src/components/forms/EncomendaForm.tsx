@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
-import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente } from '@/types';
+import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, FormaPagamento } from '@/types';
 import { formatCurrency, formatDecimals } from '@/lib/utils';
 import { ProdutosSelecaoModal, type ProdutoSelecionado } from '@/components/forms/ProdutosSelecaoModal';
 import { ItemCustomizacaoModal, type ItemCustomizavel } from '@/components/forms/ItemCustomizacaoModal';
@@ -15,13 +15,15 @@ interface EncomendaFormProps {
   produtos: ProdutoFabricado[];
   produtosVenda?: ProdutoVenda[];
   clientes: Cliente[];
+  formasPagamento?: FormaPagamento[];
 }
 
-export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosVenda = [], clientes }: EncomendaFormProps) {
+export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosVenda = [], clientes, formasPagamento = [] }: EncomendaFormProps) {
   const [clienteId, setClienteId] = useState<number>(initial?.cliente_id ?? 0);
   const [dataEncomenda, setDataEncomenda] = useState(initial?.data_encomenda ?? new Date().toISOString().slice(0, 10));
   const [dataEntrega, setDataEntrega] = useState(initial?.data_entrega ?? '');
   const [observacao, setObservacao] = useState(initial?.observacao ?? '');
+  const [formaPagamentoId, setFormaPagamentoId] = useState<number | null>(initial?.forma_pagamento_id ?? null);
 
   const [itens, setItens] = useState<EncomendaItem[]>(initial?.itens ?? []);
   const [seletorAberto, setSeletorAberto] = useState(false);
@@ -54,6 +56,7 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
       data_entrega: dataEntrega,
       observacao,
       valor_total: total,
+      forma_pagamento_id: formaPagamentoId ?? undefined,
       itens,
     });
   };
@@ -68,6 +71,15 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
             onChange={setClienteId}
             options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
             title="Selecionar Cliente"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="label-field">Forma de Pagamento</label>
+          <RegistroSelect<number>
+            value={formaPagamentoId}
+            onChange={setFormaPagamentoId}
+            options={formasPagamento.map((fp) => ({ value: (fp.id ?? fp.codigo)!, label: fp.descricao }))}
+            title="Selecionar Forma de Pagamento"
           />
         </div>
         <div className="flex items-end gap-3">

@@ -138,7 +138,7 @@ export default function Encomendas() {
   const { empresa, empresaNome } = useAuth();
 
   const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
-  const [filtroStatus, setFiltroStatus] = useState<number[]>([0, 1]);
+  const [filtroStatus, setFiltroStatus] = useState<number[]>([0, 1, 2, 3]);
 
   const encomendasFiltradas = useMemo(() => {
     return encomendas.filter(
@@ -569,6 +569,19 @@ const carregar = useCallback(async () => {
                     </div>
                     {textoPers ? (
                       <div className="compra-personalizacao">{textoPers}</div>
+                    ) : null}
+                    {(e.eee_endereco || e.eee_cep || e.eee_retira_estabelecimento) ? (
+                      <div className="compra-det" style={{ fontSize: 10, color: '#7e22ce', fontWeight: 600, marginTop: 2 }}>
+                        {e.eee_retira_estabelecimento === 1 ? (
+                          <>🏪 Retirar no estabelecimento</>
+                        ) : (
+                          <>📍 {e.eee_endereco}{e.eee_nr ? `, ${e.eee_nr}` : ''}
+                          {e.eee_complemento ? ` - ${e.eee_complemento}` : ''}
+                          {e.eee_bairro ? ` - ${e.eee_bairro}` : ''}
+                          {e.eee_cidade ? ` - ${e.eee_cidade}` : ''}
+                          {e.eee_uf ? `/${e.eee_uf}` : ''}</>
+                        )}
+                      </div>
                     ) : null}
                     <div className="compra-total">{fmtMoeda(e.valor_total)}</div>
                     {id != null && renderProntaEntrega(e)}

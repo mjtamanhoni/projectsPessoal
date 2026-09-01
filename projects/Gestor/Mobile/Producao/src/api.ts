@@ -203,6 +203,17 @@ export interface Encomenda {
   venda_id?: number;
   qtd_itens?: number;
   itens?: EncomendaItem[];
+  eee_cep?: string;
+  eee_endereco?: string;
+  eee_nr?: string;
+  eee_complemento?: string;
+  eee_bairro?: string;
+  eee_cidade?: string;
+  eee_uf?: string;
+  eee_retira_estabelecimento?: number;
+  eee_latitude?: number;
+  eee_longitude?: number;
+  eee_place_id?: string;
 }
 
 export interface EstoqueInsumo {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginBodySchema = exports.usoConsumoBodySchema = exports.perdaProdutoFabricadoBodySchema = exports.perdaInsumoBodySchema = exports.usuarioEmpresaBodySchema = exports.empresaModuloBodySchema = exports.moduloFormularioBodySchema = exports.moduloBodySchema = exports.empresaBodySchema = exports.logomarcaBodySchema = exports.estoqueProdutoFabricadoBodySchema = exports.estoqueInsumoBodySchema = exports.fabricacaoCustoAdicionalBodySchema = exports.encomendaBaixaSchema = exports.encomendaStatusSchema = exports.encomendaBodySchema = exports.vendaProdutoReceberSchema = exports.vendaProdutoBodySchema = exports.fabricacaoBodySchema = exports.produtoVendaItemBodySchema = exports.produtoVendaBodySchema = exports.adicionalClassificacaoBodySchema = exports.produtoAdicionalBodySchema = exports.adicionalBodySchema = exports.custoAdicionalTipoBodySchema = exports.receitaIngredienteBodySchema = exports.produtoFabricadoBodySchema = exports.compraInsumoBodySchema = exports.insumoBodySchema = exports.horaAbatidaBodySchema = exports.servicoBodySchema = exports.horaTrabalhadaBodySchema = exports.usuarioFormularioBodySchema = exports.formularioBodySchema = exports.usuarioPinBodySchema = exports.usuarioSenhaBodySchema = exports.usuarioBodySchema = exports.contaReceberBodySchema = exports.contaPagarBodySchema = exports.categoriaSaveSchema = exports.categoriaBodySchema = exports.fornecedorBodySchema = exports.clienteBodySchema = void 0;
+exports.condicaoPagamentoSaveSchema = exports.condicaoPagamentoBodySchema = exports.formaPagamentoSaveSchema = exports.formaPagamentoBodySchema = exports.loginBodySchema = exports.usoConsumoBodySchema = exports.perdaProdutoFabricadoBodySchema = exports.perdaInsumoBodySchema = exports.usuarioEmpresaBodySchema = exports.empresaModuloBodySchema = exports.moduloFormularioBodySchema = exports.moduloBodySchema = exports.empresaBodySchema = exports.logomarcaBodySchema = exports.estoqueProdutoFabricadoBodySchema = exports.estoqueInsumoBodySchema = exports.fabricacaoCustoAdicionalBodySchema = exports.encomendaBaixaSchema = exports.encomendaStatusSchema = exports.encomendaBodySchema = exports.vendaProdutoReceberSchema = exports.vendaProdutoBodySchema = exports.fabricacaoBodySchema = exports.produtoVendaItemBodySchema = exports.produtoVendaBodySchema = exports.adicionalClassificacaoBodySchema = exports.produtoAdicionalBodySchema = exports.adicionalBodySchema = exports.custoAdicionalTipoBodySchema = exports.receitaIngredienteBodySchema = exports.produtoFabricadoBodySchema = exports.compraInsumoBodySchema = exports.insumoBodySchema = exports.horaAbatidaBodySchema = exports.servicoBodySchema = exports.horaTrabalhadaBodySchema = exports.usuarioFormularioBodySchema = exports.formularioBodySchema = exports.usuarioPinBodySchema = exports.usuarioSenhaBodySchema = exports.usuarioBodySchema = exports.contaReceberBodySchema = exports.contaPagarBodySchema = exports.categoriaSaveSchema = exports.categoriaBodySchema = exports.fornecedorBodySchema = exports.clienteBodySchema = void 0;
 const zod_1 = require("zod");
 exports.clienteBodySchema = zod_1.z.object({
     codigo: zod_1.z.number().int().positive().optional(),
@@ -317,6 +317,8 @@ exports.encomendaBodySchema = zod_1.z.object({
     data_encomenda: zod_1.z.string().min(1, 'Data e obrigatoria'),
     data_entrega: zod_1.z.string().optional(),
     observacao: zod_1.z.string().max(500).optional(),
+    forma_pagamento_id: zod_1.z.number().int().positive().optional(),
+    troco_para: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).optional(),
     itens: zod_1.z.array(encomendaItemSchema).min(1, 'Adicione ao menos um item'),
 });
 exports.encomendaStatusSchema = zod_1.z.object({
@@ -429,4 +431,31 @@ exports.loginBodySchema = zod_1.z.object({
         return true;
     return !!data.login && !!data.senha;
 }, { message: 'Informe login e senha, ou PIN', path: ['login'] });
+exports.formaPagamentoBodySchema = zod_1.z.object({
+    codigo: zod_1.z.number().int().positive().optional(),
+    id: zod_1.z.number().int().positive().optional(),
+    descricao: zod_1.z.string().min(1, 'Descricao e obrigatoria').max(100),
+    classificacao: zod_1.z.string().max(50).optional(),
+    status: zod_1.z.number().int().min(0).max(1).optional(),
+});
+exports.formaPagamentoSaveSchema = zod_1.z.union([
+    exports.formaPagamentoBodySchema,
+    exports.formaPagamentoBodySchema.array(),
+]);
+exports.condicaoPagamentoBodySchema = zod_1.z.object({
+    codigo: zod_1.z.number().int().positive().optional(),
+    id: zod_1.z.number().int().positive().optional(),
+    descricao: zod_1.z.string().min(1, 'Descricao e obrigatoria').max(100),
+    qtd_parcelas: zod_1.z.number().int().positive().optional(),
+    dias_primeiro_vencimento: zod_1.z.number().int().min(0).optional(),
+    dias_intervalo: zod_1.z.number().int().min(0).optional(),
+    status: zod_1.z.number().int().min(0).max(1).optional(),
+    parcelamento_fixo: zod_1.z.number().int().min(0).max(1).optional(),
+    dia_vencimento_fixo: zod_1.z.number().int().min(1).max(31).nullable().optional(),
+    a_vista: zod_1.z.number().int().min(0).max(1).optional(),
+});
+exports.condicaoPagamentoSaveSchema = zod_1.z.union([
+    exports.condicaoPagamentoBodySchema,
+    exports.condicaoPagamentoBodySchema.array(),
+]);
 //# sourceMappingURL=index.js.map

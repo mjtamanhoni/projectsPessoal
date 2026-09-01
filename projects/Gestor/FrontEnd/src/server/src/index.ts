@@ -53,6 +53,9 @@ import adicionaisClassificacoesRoutes from './routes/adicionais-classificacoes';
 import produtosAdicionaisRoutes from './routes/produtos-adicionais';
 import produtosVendaRoutes from './routes/produtos-venda';
 import produtosVendaItensRoutes from './routes/produtos-venda-itens';
+import formasPagamentoRoutes from './routes/formas-pagamento';
+import condicoesPagamentoRoutes from './routes/condicoes-pagamento';
+import formasPagamentoCondicoesRoutes from './routes/formas-pagamento-condicoes';
 
 const app = express();
 
@@ -161,6 +164,9 @@ app.use('/api/adicionais-classificacoes', adicionaisClassificacoesRoutes);
 app.use('/api/produtos-adicionais', produtosAdicionaisRoutes);
 app.use('/api/produtos-venda', produtosVendaRoutes);
 app.use('/api/produtos-venda-itens', produtosVendaItensRoutes);
+app.use('/api/formas-pagamento', formasPagamentoRoutes);
+app.use('/api/condicoes-pagamento', condicoesPagamentoRoutes);
+app.use('/api/formas-pagamento-condicoes', formasPagamentoCondicoesRoutes);
 
 const clientDistPath = path.resolve(__dirname, '../../client/dist');
 app.use(express.static(clientDistPath));

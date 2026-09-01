@@ -58,6 +58,9 @@ const adicionais_classificacoes_1 = __importDefault(require("./routes/adicionais
 const produtos_adicionais_1 = __importDefault(require("./routes/produtos-adicionais"));
 const produtos_venda_1 = __importDefault(require("./routes/produtos-venda"));
 const produtos_venda_itens_1 = __importDefault(require("./routes/produtos-venda-itens"));
+const formas_pagamento_1 = __importDefault(require("./routes/formas-pagamento"));
+const condicoes_pagamento_1 = __importDefault(require("./routes/condicoes-pagamento"));
+const formas_pagamento_condicoes_1 = __importDefault(require("./routes/formas-pagamento-condicoes"));
 const app = (0, express_1.default)();
 const corsOrigins = config_1.config.corsOrigin === '*' ? '*' : config_1.config.corsOrigin.split(',').map((s) => s.trim());
 app.use((0, cors_1.default)({ origin: corsOrigins }));
@@ -163,6 +166,9 @@ app.use('/api/adicionais-classificacoes', adicionais_classificacoes_1.default);
 app.use('/api/produtos-adicionais', produtos_adicionais_1.default);
 app.use('/api/produtos-venda', produtos_venda_1.default);
 app.use('/api/produtos-venda-itens', produtos_venda_itens_1.default);
+app.use('/api/formas-pagamento', formas_pagamento_1.default);
+app.use('/api/condicoes-pagamento', condicoes_pagamento_1.default);
+app.use('/api/formas-pagamento-condicoes', formas_pagamento_condicoes_1.default);
 const clientDistPath = path_1.default.resolve(__dirname, '../../client/dist');
 app.use(express_1.default.static(clientDistPath));
 app.get('*', (req, res, next) => {

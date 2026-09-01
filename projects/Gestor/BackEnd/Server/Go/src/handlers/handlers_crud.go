@@ -1251,6 +1251,27 @@ func dataOuNil(s string) interface{} {
 	return s
 }
 
+func formaPagamentoIDOrNil(id int) interface{} {
+	if id == 0 {
+		return nil
+	}
+	return id
+}
+
+func nullStr(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func trocoParaOrNil(v float64) interface{} {
+	if v == 0 {
+		return nil
+	}
+	return v
+}
+
 type LancamentoAutomaticoConfig struct {
 	CategoriaID       int
 	DiasVencimento    int
@@ -1279,4 +1300,159 @@ func queryLancamentoConfig(ctx context.Context, pool *pgxpool.Pool, empresaID in
 	return &cfg, nil
 }
 
+// --- Forma Pagamento ---
+func (h *BasicCRUD) FormaPagamentoListar(w http.ResponseWriter, r *http.Request) {
+	h.Listar(w, r, "public", "forma_pagamento", "", "id, empresa_id, descricao, classificacao, status, created_at", "")
+}
+
+func (h *BasicCRUD) FormaPagamentoAtualizar(w http.ResponseWriter, r *http.Request) {
+	h.genericUpsert(w, r, "public", "forma_pagamento", []string{"descricao", "classificacao", "status"})
+}
+
+func (h *BasicCRUD) FormaPagamentoExcluir(w http.ResponseWriter, r *http.Request) {
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	empresaID := middleware.GetEmpresaID(r)
+	if id == 0 {
+		jsonError(w, "ID não informado", http.StatusBadRequest)
+		return
+	}
+	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM forma_pagamento WHERE id = $1 AND empresa_id = $2`, id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Forma de pagamento excluída com sucesso"})
+}
+
+// --- Condicao Pagamento ---
+func (h *BasicCRUD) CondicaoPagamentoListar(w http.ResponseWriter, r *http.Request) {
+	h.Listar(w, r, "public", "condicao_pagamento", "", "id, empresa_id, descricao, qtd_parcelas, dias_primeiro_vencimento, dias_intervalo, status, created_at, parcelamento_fixo, dia_vencimento_fixo, a_vista", "")
+}
+
+func (h *BasicCRUD) CondicaoPagamentoAtualizar(w http.ResponseWriter, r *http.Request) {
+	h.genericUpsert(w, r, "public", "condicao_pagamento", []string{"descricao", "qtd_parcelas", "dias_primeiro_vencimento", "dias_intervalo", "status", "parcelamento_fixo", "dia_vencimento_fixo", "a_vista"})
+}
+
+func (h *BasicCRUD) CondicaoPagamentoExcluir(w http.ResponseWriter, r *http.Request) {
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	empresaID := middleware.GetEmpresaID(r)
+	if id == 0 {
+		jsonError(w, "ID não informado", http.StatusBadRequest)
+		return
+	}
+	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM condicao_pagamento WHERE id = $1 AND empresa_id = $2`, id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Condição de pagamento excluída com sucesso"})
+}
+
+// --- Forma Pagamento Condicao ---
+func (h *BasicCRUD) FormaPagamentoCondicaoListar(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaID(r)
+	formaID := parseInt(r.URL.Query().Get("forma_pagamento_id"), 0)
+
+	query := `SELECT fpc.empresa_id, fpc.forma_pagamento_id, fpc.condicao_pagamento_id, fpc.status, fpc.created_at,
+		cp.descricao AS condicao_pagamento_descricao, cp.qtd_parcelas, cp.dias_primeiro_vencimento, cp.dias_intervalo,
+		cp.parcelamento_fixo, cp.dia_vencimento_fixo, cp.a_vista
+		FROM forma_pagamento_condicao fpc
+		JOIN condicao_pagamento cp ON cp.empresa_id = fpc.empresa_id AND cp.id = fpc.condicao_pagamento_id
+		WHERE 1=1`
+	var args []interface{}
+	argN := 1
+
+	if formaID > 0 {
+		query += fmt.Sprintf(" AND fpc.forma_pagamento_id = $%d", argN)
+		argN++
+		args = append(args, formaID)
+	}
+	query += fmt.Sprintf(" AND (fpc.empresa_id = $%d OR $%d = 0)", argN, argN)
+	args = append(args, empresaID)
+	query += " ORDER BY fpc.forma_pagamento_id, cp.descricao"
+
+	rows, err := h.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	jsonSuccess(w, rowsToMap(rows))
+}
+
+func (h *BasicCRUD) FormaPagamentoCondicaoSalvar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	empresaID := middleware.GetEmpresaID(r)
+
+	if len(items) == 0 {
+		jsonError(w, "Nenhum registro informado", http.StatusBadRequest)
+		return
+	}
+
+	// Expect: { forma_pagamento_id, condicao_pagamento_ids: [...] }
+	item := items[0]
+	formaID := getInt(item, "forma_pagamento_id")
+	condicoesRaw, _ := item["condicao_pagamento_ids"]
+	condicaoIDs, ok := condicoesRaw.([]interface{})
+	if !ok {
+		jsonError(w, "condicao_pagamento_ids deve ser um array", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	// Delete all existing associations for this forma
+	_, err = tx.Exec(r.Context(),
+		`DELETE FROM forma_pagamento_condicao WHERE empresa_id = $1 AND forma_pagamento_id = $2`,
+		empresaID, formaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Insert new associations
+	for _, cid := range condicaoIDs {
+		condID := 0
+		switch v := cid.(type) {
+		case float64:
+			condID = int(v)
+		case json.Number:
+			condID, _ = strconv.Atoi(v.String())
+		}
+		if condID > 0 {
+			_, err = tx.Exec(r.Context(),
+				`INSERT INTO forma_pagamento_condicao (empresa_id, forma_pagamento_id, condicao_pagamento_id, status)
+				VALUES ($1, $2, $3, 1)`,
+				empresaID, formaID, condID)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Condições atualizadas com sucesso"})
+}
 

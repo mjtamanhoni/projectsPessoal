@@ -322,6 +322,9 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 	}
 	dataEntrega := getStr(header, "data_entrega")
 	observacao := getStr(header, "observacao")
+	formaPagamentoID := getInt(header, "forma_pagamento_id")
+	formaPagamentoNome := getStr(header, "forma_pagamento_nome")
+	trocoPara := getFloat(header, "troco_para")
 
 	rawItens, ok := header["itens"]
 	if !ok {
@@ -357,9 +360,11 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 		return
 	}
 	_, err = tx.Exec(r.Context(), `
-		INSERT INTO encomenda (id, empresa_id, cliente_id, data_encomenda, data_entrega, valor_total, observacao, usuario_id, status)
-		VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0)`,
-		id, empresaID, clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, usuarioID)
+		INSERT INTO encomenda (id, empresa_id, cliente_id, data_encomenda, data_entrega, valor_total, observacao, usuario_id, status,
+			forma_pagamento_id, forma_pagamento_nome, troco_para)
+		VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0,$8,$9,$10)`,
+		id, empresaID, clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, usuarioID,
+		formaPagamentoIDOrNil(formaPagamentoID), nullStr(formaPagamentoNome), trocoParaOrNil(trocoPara))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -450,8 +455,10 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 
 	query := `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 		e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
+		e.forma_pagamento_id, e.forma_pagamento_nome, e.troco_para,
 		c.nome as cliente_nome,
 		CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
+		fp.classificacao as forma_pagamento_classificacao,
 		ei.id as item_id, ei.produto_fabricado_id, ei.produto_venda_id, ei.quantidade,
 		ei.valor_unitario, ei.valor_total as item_valor_total,
 		COALESCE(pv.nome, pf.nome) as produto_nome,
@@ -463,12 +470,20 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 			SELECT ia.id, ia.adicional_id, ia.nome, ia.quantidade, ia.valor_unitario, ia.valor_total
 			FROM encomenda_item_adicional ia
 			WHERE ia.encomenda_item_id = ei.id AND ia.empresa_id = ei.empresa_id) x),
-			'[]'::json)::text as adicionais
+			'[]'::json)::text as adicionais,
+		eee.cep as eee_cep, eee.endereco as eee_endereco, eee.nr as eee_nr,
+		eee.complemento as eee_complemento, eee.bairro as eee_bairro,
+		eee.cidade as eee_cidade, eee.uf as eee_uf,
+		eee.retira_estabelecimento as eee_retira_estabelecimento,
+		eee.latitude as eee_latitude, eee.longitude as eee_longitude,
+		eee.place_id as eee_place_id
 	FROM encomenda e
 	JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
 	JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
 	LEFT JOIN produto_fabricado pf ON pf.id = ei.produto_fabricado_id AND pf.empresa_id = ei.empresa_id
 	LEFT JOIN produto_venda pv ON pv.id = ei.produto_venda_id AND pv.empresa_id = ei.empresa_id
+	LEFT JOIN forma_pagamento fp ON fp.id = e.forma_pagamento_id AND fp.empresa_id = e.empresa_id
+	LEFT JOIN encomenda_endereco_entrega eee ON eee.encomenda_id = e.id AND eee.empresa_id = e.empresa_id
 		WHERE e.empresa_id = $1`
 	args := []interface{}{empresaID}
 	argN := 2
@@ -692,4 +707,237 @@ func (h *ProducaoHandler) EncomendaPublicoItensAtualizar(w http.ResponseWriter, 
 
 	tx.Commit(r.Context())
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Itens da encomenda atualizados com sucesso", "id": encomendaID})
+}
+
+// EncomendaPublicoAtualizarFormaPagamento atualiza a forma de pagamento de uma encomenda (público).
+// POST /encomendaPublico/formaPagamento  body: { empresa, id, cliente_id?, documento?, telefone?, forma_pagamento_id, forma_pagamento_nome?, troco_para? }
+func (h *ProducaoHandler) EncomendaPublicoAtualizarFormaPagamento(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+	header := items[0]
+	empresaID := getInt(header, "empresa")
+	if empresaID == 0 {
+		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
+		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	encomendaID := getInt(header, "id")
+	if encomendaID == 0 {
+		jsonError(w, "ID da encomenda é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	formaPagamentoID := getInt(header, "forma_pagamento_id")
+	formaPagamentoNome := getStr(header, "forma_pagamento_nome")
+	trocoPara := getFloat(header, "troco_para")
+
+	if formaPagamentoID == 0 && formaPagamentoNome == "" {
+		jsonError(w, "Informe a forma de pagamento", http.StatusBadRequest)
+		return
+	}
+
+	if formaPagamentoID > 0 && formaPagamentoNome == "" {
+		_ = h.Pool.QueryRow(r.Context(),
+			`SELECT descricao FROM forma_pagamento WHERE id=$1 AND empresa_id=$2`,
+			formaPagamentoID, empresaID).Scan(&formaPagamentoNome)
+	}
+
+	var fpID interface{} = nil
+	var fpNome interface{} = nil
+	var troco interface{} = nil
+	if formaPagamentoID > 0 {
+		fpID = formaPagamentoID
+	}
+	if formaPagamentoNome != "" {
+		fpNome = formaPagamentoNome
+	}
+	if trocoPara > 0 {
+		troco = trocoPara
+	}
+
+	result, err := h.Pool.Exec(r.Context(),
+		`UPDATE encomenda SET forma_pagamento_id=$1, forma_pagamento_nome=$2, troco_para=$3
+		WHERE id=$4 AND empresa_id=$5 AND cliente_id=$6`,
+		fpID, fpNome, troco, encomendaID, empresaID, clienteID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if result.RowsAffected() == 0 {
+		jsonError(w, "Encomenda não encontrada", http.StatusNotFound)
+		return
+	}
+
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Forma de pagamento atualizada com sucesso"})
+}
+
+// FormaPagamentoPublicoListar lista formas de pagamento ativas de uma empresa (público).
+// GET /formaPagamentoPublico?empresa=<id>
+func (h *ProducaoHandler) FormaPagamentoPublicoListar(w http.ResponseWriter, r *http.Request) {
+	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
+	if empresaID == 0 {
+		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := h.Pool.Query(r.Context(),
+		`SELECT id, descricao, classificacao FROM forma_pagamento
+		WHERE empresa_id = $1 AND status = 1 ORDER BY descricao`, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type fp struct {
+		ID            int    `json:"id"`
+		Descricao     string `json:"descricao"`
+		Classificacao string `json:"classificacao"`
+	}
+	var result []fp
+	for rows.Next() {
+		var f fp
+		if err := rows.Scan(&f.ID, &f.Descricao, &f.Classificacao); err != nil {
+			continue
+		}
+		result = append(result, f)
+	}
+	if result == nil {
+		result = []fp{}
+	}
+	jsonSuccess(w, result)
+}
+
+// EncomendaPublicoSalvarEnderecoEntrega salva ou atualiza o endereço de entrega de uma encomenda.
+// POST /encomendaPublico/enderecoEntrega  body: { empresa, id, cliente_id?, documento?, telefone?,
+//   cep?, endereco?, nr?, complemento?, bairro?, cidade?, uf? }
+func (h *ProducaoHandler) EncomendaPublicoSalvarEnderecoEntrega(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+	header := items[0]
+	empresaID := getInt(header, "empresa")
+	if empresaID == 0 {
+		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
+		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	encomendaID := getInt(header, "id")
+	if encomendaID == 0 {
+		jsonError(w, "ID da encomenda é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	cep := getStr(header, "cep")
+	endereco := getStr(header, "endereco")
+	nr := getStr(header, "nr")
+	complemento := getStr(header, "complemento")
+	bairro := getStr(header, "bairro")
+	cidade := getStr(header, "cidade")
+	uf := getStr(header, "uf")
+	retiraEstabelecimento := getInt(header, "retira_estabelecimento")
+	latitude := getFloat(header, "latitude")
+	longitude := getFloat(header, "longitude")
+	placeID := getStr(header, "place_id")
+
+	var cepVal, enderecoVal, nrVal, complementoVal, bairroVal, cidadeVal, ufVal interface{}
+	if cep != "" {
+		cepVal = cep
+	}
+	if endereco != "" {
+		enderecoVal = endereco
+	}
+	if nr != "" {
+		nrVal = nr
+	}
+	if complemento != "" {
+		complementoVal = complemento
+	}
+	if bairro != "" {
+		bairroVal = bairro
+	}
+	if cidade != "" {
+		cidadeVal = cidade
+	}
+	if uf != "" {
+		ufVal = uf
+	}
+
+	var latVal, lngVal, placeIDVal interface{}
+	if latitude != 0 {
+		latVal = latitude
+	}
+	if longitude != 0 {
+		lngVal = longitude
+	}
+	if placeID != "" {
+		placeIDVal = placeID
+	}
+
+	var exists bool
+	err = h.Pool.QueryRow(r.Context(),
+		`SELECT EXISTS(SELECT 1 FROM encomenda WHERE id=$1 AND empresa_id=$2 AND cliente_id=$3)`,
+		encomendaID, empresaID, clienteID).Scan(&exists)
+	if err != nil {
+		jsonError(w, "Erro ao validar encomenda: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		jsonError(w, "Encomenda não encontrada para este cliente", http.StatusNotFound)
+		return
+	}
+
+	_, err = h.Pool.Exec(r.Context(), `
+		INSERT INTO encomenda_endereco_entrega
+			(empresa_id, encomenda_id, cep, endereco, nr, complemento, bairro, cidade, uf, retira_estabelecimento,
+			 latitude, longitude, place_id, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
+		ON CONFLICT (empresa_id, encomenda_id) DO UPDATE SET
+			cep = EXCLUDED.cep,
+			endereco = EXCLUDED.endereco,
+			nr = EXCLUDED.nr,
+			complemento = EXCLUDED.complemento,
+			bairro = EXCLUDED.bairro,
+			cidade = EXCLUDED.cidade,
+			uf = EXCLUDED.uf,
+			retira_estabelecimento = EXCLUDED.retira_estabelecimento,
+			latitude = EXCLUDED.latitude,
+			longitude = EXCLUDED.longitude,
+			place_id = EXCLUDED.place_id,
+			updated_at = NOW()`,
+		empresaID, encomendaID, cepVal, enderecoVal, nrVal, complementoVal, bairroVal, cidadeVal, ufVal,
+		retiraEstabelecimento, latVal, lngVal, placeIDVal)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Endereço de entrega salvo com sucesso"})
 }

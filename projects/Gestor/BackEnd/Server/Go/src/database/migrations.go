@@ -494,6 +494,117 @@ var Migracoes = []Migracao{
 			);
 		`,
 	},
+	{
+		Nome: "019_forma_condicao_pagamento",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_classificacao_pagamento') THEN
+					CREATE TYPE public.enum_classificacao_pagamento AS ENUM ('DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'PIX', 'BOLETO', 'TRANSFERENCIA', 'CHEQUE', 'OUTROS');
+				END IF;
+			END $$;
+
+			CREATE TABLE IF NOT EXISTS public.forma_pagamento (
+				empresa_id INTEGER NOT NULL,
+				id INTEGER NOT NULL,
+				descricao VARCHAR(100) NOT NULL,
+				classificacao public.enum_classificacao_pagamento NOT NULL DEFAULT 'OUTROS',
+				status SMALLINT NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				CONSTRAINT forma_pagamento_status_check CHECK ((status = ANY (ARRAY[0, 1]))),
+				CONSTRAINT pk_forma_pagamento PRIMARY KEY (empresa_id, id)
+			);
+
+			CREATE TABLE IF NOT EXISTS public.condicao_pagamento (
+				empresa_id INTEGER NOT NULL,
+				id INTEGER NOT NULL,
+				descricao VARCHAR(100) NOT NULL,
+				qtd_parcelas INTEGER NOT NULL DEFAULT 1,
+				dias_primeiro_vencimento INTEGER NOT NULL DEFAULT 0,
+				dias_intervalo INTEGER NOT NULL DEFAULT 30,
+				status SMALLINT NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				parcelamento_fixo SMALLINT NOT NULL DEFAULT 0,
+				dia_vencimento_fixo INTEGER,
+				a_vista SMALLINT NOT NULL DEFAULT 0,
+				CONSTRAINT ck_dia_vencimento_fixo CHECK (((parcelamento_fixo = 0) OR ((parcelamento_fixo = 1) AND ((dia_vencimento_fixo >= 1) AND (dia_vencimento_fixo <= 31))))),
+				CONSTRAINT condicao_pagamento_fixo_check CHECK ((parcelamento_fixo = ANY (ARRAY[0, 1]))),
+				CONSTRAINT condicao_pagamento_status_check CHECK ((status = ANY (ARRAY[0, 1]))),
+				CONSTRAINT condicao_pagamento_a_vista_check CHECK ((a_vista = ANY (ARRAY[0, 1]))),
+				CONSTRAINT pk_condicao_pagamento PRIMARY KEY (empresa_id, id)
+			);
+
+			CREATE TABLE IF NOT EXISTS public.forma_pagamento_condicao (
+				empresa_id INTEGER NOT NULL,
+				forma_pagamento_id INTEGER NOT NULL,
+				condicao_pagamento_id INTEGER NOT NULL,
+				status SMALLINT NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				CONSTRAINT forma_pagamento_condicao_status_check CHECK ((status = ANY (ARRAY[0, 1]))),
+				CONSTRAINT pk_forma_pagamento_condicao PRIMARY KEY (empresa_id, forma_pagamento_id, condicao_pagamento_id),
+				CONSTRAINT fk_fpc_forma_pagamento FOREIGN KEY (empresa_id, forma_pagamento_id) REFERENCES public.forma_pagamento(empresa_id, id) ON DELETE CASCADE,
+				CONSTRAINT fk_fpc_condicao_pagamento FOREIGN KEY (empresa_id, condicao_pagamento_id) REFERENCES public.condicao_pagamento(empresa_id, id) ON DELETE CASCADE
+			);
+		`,
+	},
+	{
+		Nome: "020_condicao_pagamento_add_a_vista",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='condicao_pagamento' AND column_name='a_vista') THEN
+					ALTER TABLE public.condicao_pagamento ADD COLUMN a_vista SMALLINT NOT NULL DEFAULT 0;
+				END IF;
+			END $$;
+		`,
+	},
+	{
+		Nome: "021_encomenda_forma_pagamento",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encomenda' AND column_name='forma_pagamento_id') THEN
+					ALTER TABLE public.encomenda ADD COLUMN forma_pagamento_id INTEGER;
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encomenda' AND column_name='forma_pagamento_nome') THEN
+					ALTER TABLE public.encomenda ADD COLUMN forma_pagamento_nome VARCHAR(100);
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encomenda' AND column_name='troco_para') THEN
+					ALTER TABLE public.encomenda ADD COLUMN troco_para NUMERIC;
+				END IF;
+			END $$;
+		`,
+	},
+	{
+		Nome: "022_encomenda_endereco_entrega",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.encomenda_endereco_entrega (
+				empresa_id INTEGER NOT NULL,
+				encomenda_id INTEGER NOT NULL,
+				cep VARCHAR(9),
+				endereco VARCHAR(200),
+				nr VARCHAR(10),
+				complemento VARCHAR(500),
+				bairro VARCHAR(100),
+				cidade VARCHAR(100),
+				uf CHAR(2),
+				retira_estabelecimento SMALLINT NOT NULL DEFAULT 0,
+				latitude NUMERIC(10, 8),
+				longitude NUMERIC(11, 8),
+				place_id VARCHAR(255),
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP,
+				CONSTRAINT encomenda_endereco_entrega_pkey PRIMARY KEY (empresa_id, encomenda_id),
+				CONSTRAINT fk_eee_encomenda FOREIGN KEY (empresa_id, encomenda_id)
+					REFERENCES public.encomenda(empresa_id, id) ON DELETE CASCADE,
+				CONSTRAINT encomenda_endereco_retira_check CHECK ((retira_estabelecimento = ANY (ARRAY[0, 1])))
+			);
+			CREATE INDEX IF NOT EXISTS encomenda_endereco_empresa_cidade_idx
+				ON public.encomenda_endereco_entrega USING btree (empresa_id, cidade);
+			CREATE INDEX IF NOT EXISTS encomenda_endereco_lat_long_idx
+				ON public.encomenda_endereco_entrega USING btree (empresa_id, latitude, longitude);
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

@@ -1468,6 +1468,12 @@ class HorseApiService {
                     adicionais: i.adicionais,
                 })),
             };
+            if (header.forma_pagamento_id) {
+                payload.forma_pagamento_id = header.forma_pagamento_id;
+            }
+            if (header.troco_para != null) {
+                payload.troco_para = header.troco_para;
+            }
             const res = await this.api.post('/encomenda', payload, { headers: this.getAuthHeaders() });
             return res.data;
         }
@@ -1910,6 +1916,83 @@ class HorseApiService {
     async atualizarSequencias() {
         try {
             const res = await this.api.post('/empresa/atualizar-sequencias', {}, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    // --- Forma Pagamento ---
+    async listarFormasPagamento(params) {
+        try {
+            const res = await this.api.get('/formaPagamento', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarFormasPagamento(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/formaPagamento', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirFormaPagamento(id) {
+        try {
+            const res = await this.api.delete('/formaPagamento', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    // --- Condicao Pagamento ---
+    async listarCondicoesPagamento(params) {
+        try {
+            const res = await this.api.get('/condicaoPagamento', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarCondicoesPagamento(items) {
+        try {
+            const payload = items.length === 1 ? items[0] : items;
+            const res = await this.api.post('/condicaoPagamento', payload, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async excluirCondicaoPagamento(id) {
+        try {
+            const res = await this.api.delete('/condicaoPagamento', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    // --- Forma Pagamento x Condicao ---
+    async listarFormaPagamentoCondicoes(params) {
+        try {
+            const res = await this.api.get('/formaPagamentoCondicao', { params, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarFormaPagamentoCondicoes(data) {
+        try {
+            const res = await this.api.post('/formaPagamentoCondicao', data, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {

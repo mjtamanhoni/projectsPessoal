@@ -126,6 +126,31 @@ export interface Encomenda {
   baixado?: boolean;
   venda_id?: number;
   itens?: EncomendaItem[];
+  forma_pagamento_id?: number;
+  forma_pagamento_nome?: string;
+  forma_pagamento_classificacao?: string;
+  troco_para?: number;
+  endereco_entrega?: EnderecoEntrega;
+}
+
+export interface EnderecoEntrega {
+  cep?: string;
+  endereco?: string;
+  nr?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  retira_estabelecimento?: number;
+  latitude?: number;
+  longitude?: number;
+  place_id?: string;
+}
+
+export interface FormaPagamentoPublica {
+  id: number;
+  descricao: string;
+  classificacao: string;
 }
 
 export interface CupomPagamento {
@@ -381,6 +406,18 @@ export async function criarEncomendaPublica(
   };
 }
 
+export async function listarFormasPagamentoPublico(
+  empresa: number
+): Promise<FormaPagamentoPublica[]> {
+  const res = await request(`/formaPagamentoPublico?empresa=${empresa}`);
+  const rows = (await parseResponse(res)) as Record<string, unknown>[];
+  return (rows ?? []).map((r) => ({
+    id: Number(r.id ?? 0),
+    descricao: String(r.descricao ?? ''),
+    classificacao: String(r.classificacao ?? 'OUTROS'),
+  }));
+}
+
 export async function listarEncomendasPublicas(
   empresa: number,
   documento: string
@@ -406,6 +443,23 @@ export async function listarEncomendasPublicas(
         baixado: !!row.baixado,
         venda_id: row.venda_id != null ? Number(row.venda_id) : undefined,
         itens: [],
+        forma_pagamento_id: row.forma_pagamento_id != null ? Number(row.forma_pagamento_id) : undefined,
+        forma_pagamento_nome: row.forma_pagamento_nome ? String(row.forma_pagamento_nome) : undefined,
+        forma_pagamento_classificacao: row.forma_pagamento_classificacao ? String(row.forma_pagamento_classificacao) : undefined,
+        troco_para: row.troco_para != null ? Number(row.troco_para) : undefined,
+        endereco_entrega: (row.eee_endereco || row.eee_cep || row.eee_retira_estabelecimento) ? {
+          cep: row.eee_cep ? String(row.eee_cep) : undefined,
+          endereco: row.eee_endereco ? String(row.eee_endereco) : undefined,
+          nr: row.eee_nr ? String(row.eee_nr) : undefined,
+          complemento: row.eee_complemento ? String(row.eee_complemento) : undefined,
+          bairro: row.eee_bairro ? String(row.eee_bairro) : undefined,
+          cidade: row.eee_cidade ? String(row.eee_cidade) : undefined,
+          uf: row.eee_uf ? String(row.eee_uf) : undefined,
+          retira_estabelecimento: row.eee_retira_estabelecimento != null ? Number(row.eee_retira_estabelecimento) : undefined,
+          latitude: row.eee_latitude != null ? Number(row.eee_latitude) : undefined,
+          longitude: row.eee_longitude != null ? Number(row.eee_longitude) : undefined,
+          place_id: row.eee_place_id ? String(row.eee_place_id) : undefined,
+        } : undefined,
       };
       porId.set(id, e);
     }
@@ -476,4 +530,42 @@ export async function atualizarItensEncomendaPublica(
     body: JSON.stringify({ empresa, ...data }),
   });
   return (await parseResponse(res)) as { mensagem?: string; id?: number } | null;
+}
+
+export async function atualizarFormaPagamentoEncomendaPublica(
+  empresa: number,
+  data: { id: number; cliente_id?: number; documento?: string; telefone?: string; forma_pagamento_id: number; forma_pagamento_nome?: string; troco_para?: number }
+): Promise<{ mensagem?: string } | null> {
+  const res = await request('/encomendaPublico/formaPagamento', {
+    method: 'POST',
+    body: JSON.stringify({ empresa, ...data }),
+  });
+  return (await parseResponse(res)) as { mensagem?: string } | null;
+}
+
+export async function salvarEnderecoEntregaPublico(
+  empresa: number,
+  data: {
+    id: number;
+    cliente_id?: number;
+    documento?: string;
+    telefone?: string;
+    cep?: string;
+    endereco?: string;
+    nr?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    uf?: string;
+    retira_estabelecimento?: number;
+    latitude?: number;
+    longitude?: number;
+    place_id?: string;
+  }
+): Promise<{ mensagem?: string } | null> {
+  const res = await request('/encomendaPublico/enderecoEntrega', {
+    method: 'POST',
+    body: JSON.stringify({ empresa, ...data }),
+  });
+  return (await parseResponse(res)) as { mensagem?: string } | null;
 }

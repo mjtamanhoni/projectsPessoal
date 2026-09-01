@@ -80,6 +80,9 @@ func main() {
 	r.Post("/encomendaPublico", producao.EncomendaPublicoCriar)
 	r.Post("/encomendaPublico/cancelar", producao.EncomendaPublicoCancelar)
 	r.Post("/encomendaPublico/itens", producao.EncomendaPublicoItensAtualizar)
+	r.Post("/encomendaPublico/formaPagamento", producao.EncomendaPublicoAtualizarFormaPagamento)
+	r.Post("/encomendaPublico/enderecoEntrega", producao.EncomendaPublicoSalvarEnderecoEntrega)
+	r.Get("/formaPagamentoPublico", producao.FormaPagamentoPublicoListar)
 	r.Get("/test", testPage.TestPage)
 	r.Get("/health", testPage.HealthCheck)
 	r.Get("/cep/{cep}", func(w http.ResponseWriter, r *http.Request) {
@@ -570,6 +573,20 @@ carregar();
 		r.Get("/usoConsumo", producao.UsoConsumoListar)
 		r.Post("/usoConsumo", producao.UsoConsumoAtualizar)
 		r.Delete("/usoConsumo", producao.UsoConsumoExcluir)
+
+		// Forma Pagamento
+		r.Get("/formaPagamento", basicCRUD.FormaPagamentoListar)
+		r.Post("/formaPagamento", basicCRUD.FormaPagamentoAtualizar)
+		r.Delete("/formaPagamento", basicCRUD.FormaPagamentoExcluir)
+
+		// Condicao Pagamento
+		r.Get("/condicaoPagamento", basicCRUD.CondicaoPagamentoListar)
+		r.Post("/condicaoPagamento", basicCRUD.CondicaoPagamentoAtualizar)
+		r.Delete("/condicaoPagamento", basicCRUD.CondicaoPagamentoExcluir)
+
+		// Forma Pagamento x Condicao
+		r.Get("/formaPagamentoCondicao", basicCRUD.FormaPagamentoCondicaoListar)
+		r.Post("/formaPagamentoCondicao", basicCRUD.FormaPagamentoCondicaoSalvar)
 
 		// Migracoes
 		r.Get("/migracoes", handlers.MigracoesListar(pool))

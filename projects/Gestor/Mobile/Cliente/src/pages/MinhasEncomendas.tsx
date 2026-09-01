@@ -71,7 +71,7 @@ export default function MinhasEncomendas() {
   const [erro, setErro] = useState('');
   const [expandida, setExpandida] = useState<number | null>(null);
   const [cupomDe, setCupomDe] = useState<Encomenda | null>(null);
-  const [filtroStatus, setFiltroStatus] = useState<number[]>([0, 1]);
+  const [filtroStatus, setFiltroStatus] = useState<number[]>([0, 1, 2, 3]);
   const [cancelarDe, setCancelarDe] = useState<Encomenda | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [editandoDe, setEditandoDe] = useState<Encomenda | null>(null);
@@ -374,6 +374,27 @@ export default function MinhasEncomendas() {
                       {' • '}
                       {nItens} {nItens === 1 ? 'item' : 'itens'}
                     </div>
+                    {e.forma_pagamento_nome && (
+                      <div style={{ fontSize: 11, color: '#6b706c', padding: '2px 0' }}>
+                        Pagamento: {e.forma_pagamento_nome}
+                        {(e.forma_pagamento_classificacao === 'CARTAO_CREDITO' || e.forma_pagamento_classificacao === 'CARTAO_DEBITO') && (
+                          <span style={{ marginLeft: 6, color: '#7e22ce', fontWeight: 700 }}>💳 Levar máquina de cartão</span>
+                        )}
+                      </div>
+                    )}
+                    {e.endereco_entrega && (
+                      <div style={{ fontSize: 11, color: '#6b706c', padding: '2px 0' }}>
+                        {e.endereco_entrega.retira_estabelecimento === 1 ? (
+                          <span style={{ fontWeight: 600 }}>🏪 Retirar no estabelecimento</span>
+                        ) : (
+                          <>📍 {e.endereco_entrega.endereco}{e.endereco_entrega.nr ? `, ${e.endereco_entrega.nr}` : ''}
+                          {e.endereco_entrega.complemento ? ` - ${e.endereco_entrega.complemento}` : ''}
+                          {e.endereco_entrega.bairro ? ` - ${e.endereco_entrega.bairro}` : ''}
+                          {e.endereco_entrega.cidade ? ` - ${e.endereco_entrega.cidade}` : ''}
+                          {e.endereco_entrega.uf ? `/${e.endereco_entrega.uf}` : ''}</>
+                        )}
+                      </div>
+                    )}
                     <div
                       className="compra-total"
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}

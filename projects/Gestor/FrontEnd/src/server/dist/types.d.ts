@@ -521,6 +521,24 @@ export interface Encomenda {
     venda_id?: number;
     qtd_itens?: number;
     itens?: EncomendaItem[];
+    forma_pagamento_id?: number;
+    forma_pagamento_nome?: string;
+    forma_pagamento_classificacao?: string;
+    troco_para?: number;
+    endereco_entrega?: EnderecoEntrega;
+}
+export interface EnderecoEntrega {
+    cep?: string;
+    endereco?: string;
+    nr?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    uf?: string;
+    retira_estabelecimento?: number;
+    latitude?: number;
+    longitude?: number;
+    place_id?: string;
 }
 export interface EstoqueInsumo {
     codigo?: number;
@@ -606,6 +624,38 @@ export interface UsoConsumo {
     data_uso: string;
     motivo?: string;
     usuario_id?: number;
+}
+export interface FormaPagamento {
+    codigo?: number;
+    id?: number;
+    descricao: string;
+    classificacao?: string;
+    status?: number;
+}
+export interface CondicaoPagamento {
+    codigo?: number;
+    id?: number;
+    descricao: string;
+    qtd_parcelas?: number;
+    dias_primeiro_vencimento?: number;
+    dias_intervalo?: number;
+    status?: number;
+    parcelamento_fixo?: number;
+    dia_vencimento_fixo?: number | null;
+    a_vista?: number;
+}
+export interface FormaPagamentoCondicao {
+    empresa_id?: number;
+    forma_pagamento_id: number;
+    condicao_pagamento_id: number;
+    status?: number;
+    condicao_pagamento_descricao?: string;
+    qtd_parcelas?: number;
+    dias_primeiro_vencimento?: number;
+    dias_intervalo?: number;
+    parcelamento_fixo?: number;
+    dia_vencimento_fixo?: number | null;
+    a_vista?: number;
 }
 export declare class AppError extends Error {
     status: number;

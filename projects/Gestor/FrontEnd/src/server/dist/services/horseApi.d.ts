@@ -1,4 +1,4 @@
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao } from '../types';
 declare class HorseApiService {
     private api;
     private token;
@@ -186,6 +186,17 @@ declare class HorseApiService {
         mensagem: string;
         total: number;
     }>;
+    listarFormasPagamento(params?: Record<string, unknown>): Promise<FormaPagamento[]>;
+    salvarFormasPagamento(items: FormaPagamento[]): Promise<unknown>;
+    excluirFormaPagamento(id: number): Promise<unknown>;
+    listarCondicoesPagamento(params?: Record<string, unknown>): Promise<CondicaoPagamento[]>;
+    salvarCondicoesPagamento(items: CondicaoPagamento[]): Promise<unknown>;
+    excluirCondicaoPagamento(id: number): Promise<unknown>;
+    listarFormaPagamentoCondicoes(params?: Record<string, unknown>): Promise<FormaPagamentoCondicao[]>;
+    salvarFormaPagamentoCondicoes(data: {
+        forma_pagamento_id: number;
+        condicao_pagamento_ids: number[];
+    }): Promise<unknown>;
 }
 export declare const horseApi: HorseApiService;
 export {};

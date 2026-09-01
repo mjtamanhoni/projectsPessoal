@@ -285,6 +285,8 @@ export declare const encomendaBodySchema: z.ZodObject<{
     data_encomenda: z.ZodString;
     data_entrega: z.ZodOptional<z.ZodString>;
     observacao: z.ZodOptional<z.ZodString>;
+    forma_pagamento_id: z.ZodOptional<z.ZodNumber>;
+    troco_para: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
     itens: z.ZodArray<z.ZodObject<{
         produto_fabricado_id: z.ZodOptional<z.ZodNumber>;
         produto_venda_id: z.ZodOptional<z.ZodNumber>;
@@ -410,4 +412,59 @@ export declare const loginBodySchema: z.ZodObject<{
     pin: z.ZodOptional<z.ZodString>;
     empresa: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>>;
 }, z.core.$strip>;
+export declare const formaPagamentoBodySchema: z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    descricao: z.ZodString;
+    classificacao: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>;
+export declare const formaPagamentoSaveSchema: z.ZodUnion<readonly [z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    descricao: z.ZodString;
+    classificacao: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>, z.ZodArray<z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    descricao: z.ZodString;
+    classificacao: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>>]>;
+export declare const condicaoPagamentoBodySchema: z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    descricao: z.ZodString;
+    qtd_parcelas: z.ZodOptional<z.ZodNumber>;
+    dias_primeiro_vencimento: z.ZodOptional<z.ZodNumber>;
+    dias_intervalo: z.ZodOptional<z.ZodNumber>;
+    status: z.ZodOptional<z.ZodNumber>;
+    parcelamento_fixo: z.ZodOptional<z.ZodNumber>;
+    dia_vencimento_fixo: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    a_vista: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>;
+export declare const condicaoPagamentoSaveSchema: z.ZodUnion<readonly [z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    descricao: z.ZodString;
+    qtd_parcelas: z.ZodOptional<z.ZodNumber>;
+    dias_primeiro_vencimento: z.ZodOptional<z.ZodNumber>;
+    dias_intervalo: z.ZodOptional<z.ZodNumber>;
+    status: z.ZodOptional<z.ZodNumber>;
+    parcelamento_fixo: z.ZodOptional<z.ZodNumber>;
+    dia_vencimento_fixo: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    a_vista: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>, z.ZodArray<z.ZodObject<{
+    codigo: z.ZodOptional<z.ZodNumber>;
+    id: z.ZodOptional<z.ZodNumber>;
+    descricao: z.ZodString;
+    qtd_parcelas: z.ZodOptional<z.ZodNumber>;
+    dias_primeiro_vencimento: z.ZodOptional<z.ZodNumber>;
+    dias_intervalo: z.ZodOptional<z.ZodNumber>;
+    status: z.ZodOptional<z.ZodNumber>;
+    parcelamento_fixo: z.ZodOptional<z.ZodNumber>;
+    dia_vencimento_fixo: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    a_vista: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>>]>;
 //# sourceMappingURL=index.d.ts.map

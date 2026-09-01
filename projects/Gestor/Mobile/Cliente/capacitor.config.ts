@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.conesoft.cliente',
-  appName: 'Cliente',
+  appName: 'Chegou',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
@@ -11,8 +11,16 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
-      backgroundColor: '#0F172A',
+      launchShowDuration: 3500,
+      backgroundColor: '#0a1a12',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+      launchAutoHide: true,
+    },
+    Geolocation: {
+      permissions: ['location'],
     },
   },
 };

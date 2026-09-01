@@ -60,6 +60,8 @@ const UsoConsumoPage = lazy(() => import('@/pages/UsoConsumo').then((m) => ({ de
 const RelatorioVendasProduto = lazy(() => import('@/pages/RelatorioVendasProduto').then((m) => ({ default: m.RelatorioVendasProduto })));
 const Marcas = lazy(() => import('@/pages/Marcas').then((m) => ({ default: m.Marcas })));
 const ProdutoClassificacoes = lazy(() => import('@/pages/ProdutoClassificacoes').then((m) => ({ default: m.ProdutoClassificacoes })));
+const FormasPagamento = lazy(() => import('@/pages/FormasPagamento').then((m) => ({ default: m.FormasPagamento })));
+const CondicoesPagamento = lazy(() => import('@/pages/CondicoesPagamento').then((m) => ({ default: m.CondicoesPagamento })));
 const Help = lazy(() => import('@/pages/Help').then((m) => ({ default: m.Help })));
 const ServerConfigPage = lazy(() => import('@/pages/ServerConfig').then((m) => ({ default: m.ServerConfig })));
 
@@ -159,6 +161,8 @@ export default function App() {
           {routesFor(GESTOR, mode) && <Route path="/contas-pagar" element={<Private><ContasPagar /></Private>} />}
           {routesFor(GESTOR, mode) && <Route path="/contas-receber" element={<Private><ContasReceber /></Private>} />}
           {routesFor(GESTOR, mode) && <Route path="/categorias" element={<Private><Categorias /></Private>} />}
+          {routesFor(GESTOR, mode) && <Route path="/formas-pagamento" element={<Private><FormasPagamento /></Private>} />}
+          {routesFor(GESTOR, mode) && <Route path="/condicoes-pagamento" element={<Private><CondicoesPagamento /></Private>} />}
           {routesFor(GESTOR, mode) && <Route path="/relatorios" element={<Private><Relatorios /></Private>} />}
           {routesFor(GESTOR, mode) && <Route path="/relatorios/financeiro" element={<Private><RelatorioFinanceiro /></Private>} />}
           {routesFor(GESTOR, mode) && <Route path="/relatorios/cadastros/clientes" element={<Private><RelatorioClientes /></Private>} />}

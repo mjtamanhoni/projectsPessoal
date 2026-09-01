@@ -13,7 +13,7 @@ import { CupomVendaModal } from '@/components/cupom/CupomVendaModal';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { Spinner } from '@/components/ui/Spinner';
-import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, VendaProduto } from '@/types';
+import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, VendaProduto, FormaPagamento } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw, ListChecks, FileText } from 'lucide-react';
@@ -66,7 +66,7 @@ function descricaoPersonalizacao(item: EncomendaItem): string {
 export function Encomendas() {
   const { data: encomendas, loading, error, create, update, remove, refetch } = useApi<Encomenda>('/encomendas');
   const [periodo, setPeriodo] = useState<FiltroPeriodo>(mesCorrente());
-  const [filtroStatus, setFiltroStatus] = useState<string[]>(['0', '1']);
+  const [filtroStatus, setFiltroStatus] = useState<string[]>(['0', '1', '2', '3']);
 
   const encomendasFiltradas = useMemo(
     () =>
@@ -80,6 +80,7 @@ export function Encomendas() {
   const { data: produtos } = useApi<ProdutoFabricado>('/produtos-fabricados');
   const { data: produtosVenda } = useApi<ProdutoVenda>('/produtos-venda');
   const { data: clientes } = useApi<Cliente>('/clientes');
+  const { data: formasPagamento } = useApi<FormaPagamento>('/formas-pagamento');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Encomenda | null>(null);
   const [fetchingOne, setFetchingOne] = useState(false);
@@ -87,6 +88,7 @@ export function Encomendas() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [loadedItens, setLoadedItens] = useState<Record<number, EncomendaItem[]>>({});
+  const [loadedEnderecos, setLoadedEnderecos] = useState<Record<number, { endereco?: string; nr?: string; complemento?: string; bairro?: string; cidade?: string; uf?: string; retira_estabelecimento?: number; latitude?: number; longitude?: number; place_id?: string }>>({});
 
   const [etapa, setEtapa] = useState<{ id: number; cliente?: string; status: number } | null>(null);
   const [etapaAlvo, setEtapaAlvo] = useState<number | null>(null);
@@ -136,6 +138,26 @@ export function Encomendas() {
         ...parseItemCustomizacao(row),
       }));
       setLoadedItens((prev) => ({ ...prev, [encomendaId]: itens }));
+      if (rows.length > 0) {
+        const first = rows[0];
+        if (first.eee_endereco || first.eee_cep || first.eee_retira_estabelecimento) {
+          setLoadedEnderecos((prev) => ({
+            ...prev,
+            [encomendaId]: {
+              endereco: first.eee_endereco,
+              nr: first.eee_nr,
+              complemento: first.eee_complemento,
+              bairro: first.eee_bairro,
+              cidade: first.eee_cidade,
+              uf: first.eee_uf,
+              retira_estabelecimento: first.eee_retira_estabelecimento,
+              latitude: first.eee_latitude != null ? Number(first.eee_latitude) : undefined,
+              longitude: first.eee_longitude != null ? Number(first.eee_longitude) : undefined,
+              place_id: first.eee_place_id,
+            },
+          }));
+        }
+      }
     } catch {
       setLoadedItens((prev) => ({ ...prev, [encomendaId]: [] }));
     }
@@ -170,6 +192,9 @@ export function Encomendas() {
         status: first.status,
         baixado: first.baixado,
         venda_id: first.venda_id,
+        forma_pagamento_id: first.forma_pagamento_id,
+        forma_pagamento_nome: first.forma_pagamento_nome,
+        forma_pagamento_classificacao: first.forma_pagamento_classificacao,
         itens,
       };
     } catch {
@@ -214,51 +239,101 @@ export function Encomendas() {
   const renderSubComponent = useCallback((row: Encomenda): JSX.Element => {
     const id = row.id!;
     const itens = loadedItens[id];
-    if (!itens) {
-      return <span className="text-text-tertiary text-sm">Carregando...</span>;
-    }
-    if (itens.length === 0) {
-      return <span className="text-text-tertiary text-sm">Nenhum item</span>;
-    }
+    const endereco = loadedEnderecos[id];
+    const fpId = row.forma_pagamento_id;
+    const fp = fpId ? formasPagamento.find((f) => (f.id ?? f.codigo) === fpId) : null;
+    const classificacao = (row.forma_pagamento_classificacao ?? fp?.classificacao ?? '').toUpperCase();
+    const isCartao = classificacao === 'CARTAO_CREDITO' || classificacao === 'CARTAO_DEBITO';
     return (
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-text-secondary text-xs uppercase tracking-wider">
-            <th className="text-left px-2 py-1 font-medium">Produto</th>
-            <th className="text-right px-2 py-1 font-medium">Qtd.</th>
-            <th className="text-right px-2 py-1 font-medium">Valor Unit.</th>
-            <th className="text-right px-2 py-1 font-medium">Valor Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {itens.map((item, i) => {
-            const produto = produtos.find((p) => (p.id ?? p.codigo) === item.produto_fabricado_id);
-            const personalizacao = descricaoPersonalizacao(item);
-            return (
-              <Fragment key={i}>
-                <tr className="border-t border-border-primary/50">
-                  <td className="px-2 py-1.5">{produto?.nome ?? item.produto_venda_nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id ?? item.produto_venda_id}`}</td>
-                  <td className="text-right px-2 py-1.5">{item.quantidade.toFixed(2).replace('.', ',')}</td>
-                  <td className="text-right px-2 py-1.5">{formatDecimals(item.valor_unitario, 4)}</td>
-                  <td className="text-right px-2 py-1.5 font-medium">{formatCurrency(item.valor_total)}</td>
-                </tr>
-                {personalizacao && (
-                  <tr>
-                    <td colSpan={4} className="px-2 pb-1.5 pt-0 text-xs">
-                      <span className="text-text-secondary">
-                        <span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-[10px] font-semibold uppercase tracking-wide">Personalizado</span>
-                        {personalizacao}
-                      </span>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+      <div>
+        {isCartao && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-3 py-2 text-sm text-purple-800">
+            <span className="text-lg">💳</span>
+            <span className="font-semibold">Levar máquina de cartão ao cliente</span>
+          </div>
+        )}
+        {endereco && (
+          <div className="mb-2 rounded-lg border border-purple-200 bg-purple-50/50 px-3 py-2 text-sm text-purple-900">
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-semibold text-xs uppercase tracking-wide text-purple-700">📍 Endereço de Entrega</div>
+              {endereco.retira_estabelecimento !== 1 && (endereco.place_id || (endereco.latitude && endereco.longitude)) && (
+                <a
+                  href={
+                    endereco.place_id
+                      ? `https://www.google.com/maps/place/?q=place_id:${endereco.place_id}`
+                      : `https://www.google.com/maps?q=${endereco.latitude},${endereco.longitude}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md bg-white border border-purple-300 px-2 py-0.5 text-xs font-medium text-purple-700 hover:bg-purple-100 transition-colors"
+                  title="Abrir no Google Maps"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  Maps
+                </a>
+              )}
+            </div>
+            {endereco.retira_estabelecimento === 1 ? (
+              <span className="font-semibold">🏪 Retirar no estabelecimento</span>
+            ) : (
+              <span>
+                {endereco.endereco}{endereco.nr ? `, ${endereco.nr}` : ''}
+                {endereco.complemento ? ` - ${endereco.complemento}` : ''}
+                {endereco.bairro ? ` - ${endereco.bairro}` : ''}
+                {endereco.cidade ? ` - ${endereco.cidade}` : ''}
+                {endereco.uf ? `/${endereco.uf}` : ''}
+              </span>
+            )}
+          </div>
+        )}
+        {!itens ? (
+          <span className="text-text-tertiary text-sm">Carregando...</span>
+        ) : itens.length === 0 ? (
+          <span className="text-text-tertiary text-sm">Nenhum item</span>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-text-secondary text-xs uppercase tracking-wider">
+                <th className="text-left px-2 py-1 font-medium">Produto</th>
+                <th className="text-right px-2 py-1 font-medium">Qtd.</th>
+                <th className="text-right px-2 py-1 font-medium">Valor Unit.</th>
+                <th className="text-right px-2 py-1 font-medium">Valor Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {itens.map((item, i) => {
+                const produto = produtos.find((p) => (p.id ?? p.codigo) === item.produto_fabricado_id);
+                const personalizacao = descricaoPersonalizacao(item);
+                return (
+                  <Fragment key={i}>
+                    <tr className="border-t border-border-primary/50">
+                      <td className="px-2 py-1.5">{produto?.nome ?? item.produto_venda_nome ?? item.produto_nome ?? `ID ${item.produto_fabricado_id ?? item.produto_venda_id}`}</td>
+                      <td className="text-right px-2 py-1.5">{item.quantidade.toFixed(2).replace('.', ',')}</td>
+                      <td className="text-right px-2 py-1.5">{formatDecimals(item.valor_unitario, 4)}</td>
+                      <td className="text-right px-2 py-1.5 font-medium">{formatCurrency(item.valor_total)}</td>
+                    </tr>
+                    {personalizacao && (
+                      <tr>
+                        <td colSpan={4} className="px-2 pb-1.5 pt-0 text-xs">
+                          <span className="text-text-secondary">
+                            <span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-[10px] font-semibold uppercase tracking-wide">Personalizado</span>
+                            {personalizacao}
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     );
-  }, [loadedItens, produtos]);
+  }, [loadedItens, loadedEnderecos, produtos, formasPagamento]);
 
   const columns = [
     columnHelper.display({
@@ -302,6 +377,23 @@ export function Encomendas() {
       header: 'Valor Total',
       cell: (info) => formatCurrency(Number(info.getValue())),
       meta: { align: 'right' } as Record<string, string>,
+    }),
+    columnHelper.accessor('forma_pagamento_nome', {
+      header: 'Pagamento',
+      cell: (info) => {
+        const nome = info.getValue();
+        if (!nome) return '-';
+        const row = info.row.original;
+        const fpId = row.forma_pagamento_id;
+        const fp = fpId ? formasPagamento.find((f) => (f.id ?? f.codigo) === fpId) : null;
+        const classificacao = (row.forma_pagamento_classificacao ?? fp?.classificacao ?? '').toUpperCase();
+        const isCartao = classificacao === 'CARTAO_CREDITO' || classificacao === 'CARTAO_DEBITO';
+        return (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${isCartao ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-700'}`}>
+            {isCartao && '💳 '}{nome}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor('observacao', {
       header: 'Observação',
@@ -380,6 +472,7 @@ export function Encomendas() {
       setModalOpen(false);
       setEditing(null);
       setLoadedItens({});
+      setLoadedEnderecos({});
       addToast('success', editing ? 'Encomenda atualizada com sucesso' : 'Encomenda cadastrada com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar encomenda';
@@ -400,6 +493,7 @@ export function Encomendas() {
       setEtapa(null);
       setEtapaAlvo(null);
       setLoadedItens({});
+      setLoadedEnderecos({});
       await refetch();
       addToast('success', `Encomenda movida para "${ETAPAS_ENCOMENDA[etapaAlvo].label}"`);
       if (etapaAlvo === 2) {
@@ -464,7 +558,7 @@ export function Encomendas() {
           multiStatus={{
             rotulo: 'Situação',
             valor: filtroStatus,
-            padrao: ['0', '1'],
+            padrao: ['0', '1', '2', '3'],
             opcoes: [
               { valor: '0', label: 'Aguardando' },
               { valor: '1', label: 'Em produção' },
@@ -477,7 +571,7 @@ export function Encomendas() {
           }}
           onLimpar={() => {
             setPeriodo({ inicio: '', fim: '' });
-            setFiltroStatus(['0', '1']);
+            setFiltroStatus(['0', '1', '2', '3']);
           }}
         />
         <DataTable
@@ -503,6 +597,7 @@ export function Encomendas() {
             produtos={produtos}
             produtosVenda={produtosVenda}
             clientes={clientes}
+            formasPagamento={formasPagamento}
           />
         )}
       </Modal>

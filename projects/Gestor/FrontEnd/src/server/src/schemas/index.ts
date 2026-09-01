@@ -355,6 +355,8 @@ export const encomendaBodySchema = z.object({
   data_encomenda: z.string().min(1, 'Data e obrigatoria'),
   data_entrega: z.string().optional(),
   observacao: z.string().max(500).optional(),
+  forma_pagamento_id: z.number().int().positive().optional(),
+  troco_para: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
   itens: z.array(encomendaItemSchema).min(1, 'Adicione ao menos um item'),
 });
 
@@ -484,3 +486,34 @@ export const loginBodySchema = z.object({
   },
   { message: 'Informe login e senha, ou PIN', path: ['login'] }
 );
+
+export const formaPagamentoBodySchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  descricao: z.string().min(1, 'Descricao e obrigatoria').max(100),
+  classificacao: z.string().max(50).optional(),
+  status: z.number().int().min(0).max(1).optional(),
+});
+
+export const formaPagamentoSaveSchema = z.union([
+  formaPagamentoBodySchema,
+  formaPagamentoBodySchema.array(),
+]);
+
+export const condicaoPagamentoBodySchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  descricao: z.string().min(1, 'Descricao e obrigatoria').max(100),
+  qtd_parcelas: z.number().int().positive().optional(),
+  dias_primeiro_vencimento: z.number().int().min(0).optional(),
+  dias_intervalo: z.number().int().min(0).optional(),
+  status: z.number().int().min(0).max(1).optional(),
+  parcelamento_fixo: z.number().int().min(0).max(1).optional(),
+  dia_vencimento_fixo: z.number().int().min(1).max(31).nullable().optional(),
+  a_vista: z.number().int().min(0).max(1).optional(),
+});
+
+export const condicaoPagamentoSaveSchema = z.union([
+  condicaoPagamentoBodySchema,
+  condicaoPagamentoBodySchema.array(),
+]);

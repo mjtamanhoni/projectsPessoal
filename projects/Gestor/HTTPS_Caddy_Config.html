@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuração HTTPS - Caddy + DuckDNS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #27ae60;
+        }
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning-box {
+            background: #fef3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', monospace;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #3498db;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .flow-diagram {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Consolas', monospace;
+            margin: 20px 0;
+        }
+        .date {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        @media print {
+            body {
+                padding: 20px;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Configuração HTTPS com Caddy + DuckDNS</h1>
+    <p class="date">Documento gerado em: 27/08/2026</p>
+
+    <h2>1. Situação Atual</h2>
+    
+    <div class="info-box">
+        <strong>Servidor:</strong> IP Fixo 192.168.0.111<br>
+        <strong>Domínio:</strong> mjtsystems-gestor.duckdns.org<br>
+        <strong>Certificado:</strong> Obtido via DNS-01 (Let's Encrypt + DuckDNS)<br>
+        <strong>Acesso externo atual:</strong> http://mjtsystems-gestor.duckdns.org:3001
+    </div>
+
+    <h3>Arquitetura Atual</h3>
+    <div class="flow-diagram">
+        Internet → Roteador (portas 3001/9000) → 192.168.0.111:3001 → Express (HTTP)
+    </div>
+
+    <h3>Portas Encaminhadas no Roteador</h3>
+    <table>
+        <tr>
+            <th>Porta Externa</th>
+            <th>Protocolo</th>
+            <th>IP de Destino</th>
+            <th>Porta Interna</th>
+        </tr>
+        <tr>
+            <td>3001</td>
+            <td>TCP</td>
+            <td>192.168.0.111</td>
+            <td>3001</td>
+        </tr>
+        <tr>
+            <td>9000</td>
+            <td>TCP</td>
+            <td>192.168.0.111</td>
+            <td>9000</td>
+        </tr>
+    </table>
+
+    <h2>2. O que foi feito até agora</h2>
+
+    <div class="success-box">
+        <strong>✓ Caddy compilado com plugin DuckDNS</strong><br>
+        O módulo <code>dns.providers.duckdns</code> foi adicionado ao Caddy para permitir validação DNS-01.
+    </div>
+
+    <div class="success-box">
+        <strong>✓ Certificado TLS obtido com sucesso</strong><br>
+        O Let's Encrypt emitiu o certificado para <code>mjtsystems-gestor.duckdns.org</code> via desafio DNS-01.
+    </div>
+
+    <h3>Caddyfile Configurado</h3>
+    <pre>{
+    http_port 80
+    https_port 443
+}
+
+mjtsystems-gestor.duckdns.org {
+    tls {
+        dns duckdns 9fc5de1c-89ef-4a25-add9-a8934f27402b
+    }
+    reverse_proxy localhost:3001
+}</pre>
+
+    <h2>3. Problema Identificado</h2>
+
+    <div class="warning-box">
+        <strong>⚠ HTTPS não funciona externamente porque:</strong><br><br>
+        O Caddy escuta na porta <strong>443</strong>, mas o roteador só encaminha as portas <strong>3001</strong> e <strong>9000</strong>.<br>
+        O tráfego externo na porta 443 nunca chega ao Caddy.
+    </div>
+
+    <h2>4. Soluções Possíveis</h2>
+
+    <h3>Opção 1: Encaminhar porta 443 no roteador (RECOMENDADO)</h3>
+
+    <div class="success-box">
+        <strong>Vantagens:</strong>
+        <ul>
+            <li>Não altera nada para quem já usa o sistema</li>
+            <li>URL continua a mesma, só muda http → https</li>
+            <li>Sem risco de quebra para empresas clientes</li>
+        </ul>
+    </div>
+
+    <p><strong>Ação necessária:</strong> Solicitar ao administrador do roteador para adicionar:</p>
+
+    <table>
+        <tr>
+            <th>Porta Externa</th>
+            <th>Protocolo</th>
+            <th>IP de Destino</th>
+            <th>Porta Interna</th>
+        </tr>
+        <tr>
+            <td><strong>443</strong></td>
+            <td>TCP</td>
+            <td>192.168.0.111</td>
+            <td>443</td>
+        </tr>
+    </table>
+
+    <h3>Opção 2: Rodar Caddy na porta 3001</h3>
+
+    <div class="warning-box">
+        <strong>Impactos:</strong>
+        <ul>
+            <li>Todos os usuários precisam atualizar de <code>http://</code> para <code>https://</code></li>
+            <li>Apps mobile precisam de atualização com nova URL</li>
+            <li>Risco de quebra se alguém não atualizar</li>
+            <li>Porta do Express precisa mudar (ex: 3002)</li>
+        </ul>
+    </div>
+
+    <p><strong>URL mudaria de:</strong></p>
+    <ul>
+        <li>Antes: <code>http://mjtsystems-gestor.duckdns.org:3001</code></li>
+        <li>Depois: <code>https://mjtsystems-gestor.duckdns.org:3001</code></li>
+    </ul>
+
+    <h2>5. Fluxo dos Dados</h2>
+
+    <h3>Com Opção 1 (Porta 443)</h3>
+    <div class="flow-diagram">
+        Internet → Roteador (:443) → Caddy (HTTPS:443) → Express (:3001) → Go Backend (:9000)
+    </div>
+
+    <h3>Com Opção 2 (Porta 3001)</h3>
+    <div class="flow-diagram">
+        Internet → Roteador (:3001) → Caddy (HTTPS:3001) → Express (:3002) → Go Backend (:9000)
+    </div>
+
+    <h2>6. Arquivos Importantes</h2>
+
+    <table>
+        <tr>
+            <th>Arquivo</th>
+            <th>Localização</th>
+            <th>Função</th>
+        </tr>
+        <tr>
+            <td>Caddyfile</td>
+            <td><code>C:\Caddy\Caddyfile</code></td>
+            <td>Configuração do Caddy</td>
+        </tr>
+        <tr>
+            <td>caddy.exe</td>
+            <td><code>C:\Caddy\caddy.exe</code></td>
+            <td>Servidor web com DuckDNS</td>
+        </tr>
+        <tr>
+            <td>publicar.bat</td>
+            <td><code>FrontEnd\publicar.bat</code></td>
+            <td>Sobe servidores (Express + Go)</td>
+        </tr>
+    </table>
+
+    <h2>7. Comandos Úteis</h2>
+
+    <pre># Iniciar Caddy
+C:\Caddy\caddy.exe start --config C:\Caddy\Caddyfile
+
+# Parar Caddy
+C:\Caddy\caddy.exe stop
+
+# Verificar módulos instalados
+C:\Caddy\caddy.exe list-modules
+
+# Verificar logs
+C:\Caddy\caddy.exe version</pre>
+
+    <h2>8. Recomendação</h2>
+
+    <div class="success-box">
+        <strong>Recomendação: Solicitar encaminhamento da porta 443</strong><br><br>
+        Esta é a opção mais segura para manter a continuidade do sistema para as empresas que já estão usando.<br>
+        Não há necessidade de alterar URLs ou atualizar aplicativos mobile.
+    </div>
+
+    <h2>9. Checklist para Solicitação ao Administrador do Roteador</h2>
+
+    <ul>
+        <li>☐ Solicitar encaminhamento da porta 443 (TCP) para 192.168.0.111</li>
+        <li>☐ Confirmar se porta 443 está disponível (não bloqueada por ISP)</li>
+        <li>☐ Testar acesso externo após configuração: <code>https://mjtsystems-gestor.duckdns.org</code></li>
+        <li>☐ Verificar se firewall do Windows permite tráfego na porta 443</li>
+    </ul>
+
+    <h2>10. Troubleshooting</h2>
+
+    <h3>Se HTTPS não funcionar após encaminhar porta 443:</h3>
+    <ol>
+        <li>Verificar se o firewall do Windows permite conexões nas portas 80 e 443:</li>
+    </ol>
+    <pre>netsh advfirewall firewall add rule name="Caddy HTTP" dir=in action=allow protocol=TCP localport=80
+netsh advfirewall firewall add rule name="Caddy HTTPS" dir=in action=allow protocol=TCP localport=443</pre>
+
+    <ol start="2">
+        <li>Reiniciar o Caddy:</li>
+    </ol>
+    <pre>C:\Caddy\caddy.exe stop
+C:\Caddy\caddy.exe start --config C:\Caddy\Caddyfile</pre>
+
+    <ol start="3">
+        <li>Verificar se o certificado foi emitido:</li>
+    </ol>
+    <pre>C:\Caddy\caddy.exe list-modules</pre>
+
+    <hr>
+    <p><strong>Fim do documento</strong></p>
+</body>
+</html>

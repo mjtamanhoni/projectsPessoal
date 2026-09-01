@@ -1,19 +1,25 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  atualizarFormaPagamentoEncomendaPublica,
   criarEncomendaPublica,
   extrairErro,
   listarProdutosFabricadosPublico,
   listarProdutosVendaPublico,
+  salvarEnderecoEntregaPublico,
   type AdicionalItemPedido,
   type Encomenda,
   type EncomendaItem,
+  type EnderecoEntrega,
+  type FormaPagamentoPublica,
   type ProdutoFabricado,
   type ProdutoVendaPublico,
 } from '../api';
 import { useSessao } from '../auth';
 import BackButton from '../components/BackButton';
 import CupomModal from '../components/CupomModal';
+import EnderecoEntregaModal from '../components/EnderecoEntregaModal';
+import FormaPagamentoModal from '../components/FormaPagamentoModal';
 import FotoProduto from '../components/FotoProduto';
 import PersonalizarModal from '../components/PersonalizarModal';
 import {
@@ -45,6 +51,10 @@ export default function Pedido() {
   const [encomendaCriada, setEncomendaCriada] = useState<Encomenda | null>(null);
 
   const [customizandoIdx, setCustomizandoIdx] = useState<number | null>(null);
+  const [mostrarFormaPagamento, setMostrarFormaPagamento] = useState(false);
+  const [encomendaParaPagamento, setEncomendaParaPagamento] = useState<Encomenda | null>(null);
+  const [mostrarEnderecoEntrega, setMostrarEnderecoEntrega] = useState(false);
+  const [encomendaParaEndereco, setEncomendaParaEndereco] = useState<Encomenda | null>(null);
 
   const totalEncomenda = itens.reduce((acc, i) => acc + (Number(i.valor_total) || 0), 0);
 
@@ -196,13 +206,91 @@ export default function Pedido() {
         baixado: false,
         itens,
       };
-      setEncomendaCriada(completa);
+      setEncomendaParaEndereco(completa);
+      setMostrarEnderecoEntrega(true);
       setItens([]);
     } catch (e) {
       setErro(extrairErro(e));
     } finally {
       setSalvando(false);
     }
+  };
+
+  const confirmarFormaPagamento = async (forma: FormaPagamentoPublica, trocoPara?: number) => {
+    if (!encomendaParaPagamento || !empresa) return;
+    const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
+    try {
+      await atualizarFormaPagamentoEncomendaPublica(empresa.id, {
+        id: encomendaParaPagamento.id ?? 0,
+        cliente_id: cliente?.id,
+        documento,
+        forma_pagamento_id: forma.id,
+        forma_pagamento_nome: forma.descricao,
+        troco_para: trocoPara,
+      });
+    } catch {
+      /* forma de pagamento salva localmente mesmo se o server falhar */
+    }
+    const atualizada: Encomenda = {
+      ...encomendaParaPagamento,
+      forma_pagamento_id: forma.id,
+      forma_pagamento_nome: forma.descricao,
+      forma_pagamento_classificacao: forma.classificacao,
+      troco_para: trocoPara,
+    };
+    setEncomendaCriada(atualizada);
+    setMostrarFormaPagamento(false);
+    setEncomendaParaPagamento(null);
+  };
+
+  const fecharFormaPagamento = () => {
+    setMostrarFormaPagamento(false);
+    const atualizada: Encomenda = {
+      ...encomendaParaPagamento!,
+      forma_pagamento_nome: 'Não informada',
+    };
+    setEncomendaCriada(atualizada);
+    setEncomendaParaPagamento(null);
+  };
+
+  const confirmarEnderecoEntrega = async (endereco: EnderecoEntrega) => {
+    if (!encomendaParaEndereco || !empresa) return;
+    const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
+    try {
+      await salvarEnderecoEntregaPublico(empresa.id, {
+        id: encomendaParaEndereco.id ?? 0,
+        cliente_id: cliente?.id,
+        documento,
+        cep: endereco.cep,
+        endereco: endereco.endereco,
+        nr: endereco.nr,
+        complemento: endereco.complemento,
+        bairro: endereco.bairro,
+        cidade: endereco.cidade,
+        uf: endereco.uf,
+        retira_estabelecimento: endereco.retira_estabelecimento,
+        latitude: endereco.latitude,
+        longitude: endereco.longitude,
+        place_id: endereco.place_id,
+      });
+    } catch {
+      /* endereco salvo localmente mesmo se o server falhar */
+    }
+    const comEndereco: Encomenda = {
+      ...encomendaParaEndereco,
+      endereco_entrega: endereco,
+    };
+    setEncomendaParaPagamento(comEndereco);
+    setMostrarEnderecoEntrega(false);
+    setEncomendaParaEndereco(null);
+    setMostrarFormaPagamento(true);
+  };
+
+  const fecharEnderecoEntrega = () => {
+    setMostrarEnderecoEntrega(false);
+    setEncomendaParaPagamento(encomendaParaEndereco);
+    setEncomendaParaEndereco(null);
+    setMostrarFormaPagamento(true);
   };
 
   const itemCustomizando = customizandoIdx !== null ? itens[customizandoIdx] : undefined;
@@ -403,6 +491,24 @@ export default function Pedido() {
             setEncomendaCriada(null);
             navigate('/minhas-encomendas');
           }}
+        />
+      )}
+
+      {mostrarFormaPagamento && encomendaParaPagamento && (
+        <FormaPagamentoModal
+          empresa={empresa}
+          encomenda={encomendaParaPagamento}
+          onConfirmar={confirmarFormaPagamento}
+          onFechar={fecharFormaPagamento}
+        />
+      )}
+
+      {mostrarEnderecoEntrega && encomendaParaEndereco && cliente && (
+        <EnderecoEntregaModal
+          cliente={cliente}
+          enderecoAtual={encomendaParaEndereco.endereco_entrega}
+          onConfirmar={confirmarEnderecoEntrega}
+          onFechar={fecharEnderecoEntrega}
         />
       )}
     </div>

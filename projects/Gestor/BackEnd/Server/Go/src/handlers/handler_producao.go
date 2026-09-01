@@ -1343,8 +1343,10 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 	if id > 0 || r.URL.Query().Get("detalhado") == "1" {
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
+			e.forma_pagamento_id, e.forma_pagamento_nome, e.troco_para,
 			c.nome as cliente_nome,
 			CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
+			fp.classificacao as forma_pagamento_classificacao,
 			ei.id as item_id, ei.produto_fabricado_id, ei.produto_venda_id, ei.quantidade,
 			ei.valor_unitario, ei.valor_total as item_valor_total,
 			pf.nome as produto_nome, pv.nome as produto_venda_nome,
@@ -1356,12 +1358,20 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 				SELECT ia.id, ia.adicional_id, ia.nome, ia.quantidade, ia.valor_unitario, ia.valor_total, ia.produto_venda_item_id
 				FROM encomenda_item_adicional ia
 				WHERE ia.encomenda_item_id = ei.id AND ia.empresa_id = ei.empresa_id) x),
-				'[]'::json)::text as adicionais
+				'[]'::json)::text as adicionais,
+			eee.cep as eee_cep, eee.endereco as eee_endereco, eee.nr as eee_nr,
+			eee.complemento as eee_complemento, eee.bairro as eee_bairro,
+			eee.cidade as eee_cidade, eee.uf as eee_uf,
+			eee.retira_estabelecimento as eee_retira_estabelecimento,
+			eee.latitude as eee_latitude, eee.longitude as eee_longitude,
+			eee.place_id as eee_place_id
 			FROM encomenda e
 			JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
 			LEFT JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
 			LEFT JOIN produto_fabricado pf ON pf.id = ei.produto_fabricado_id AND pf.empresa_id = ei.empresa_id
 			LEFT JOIN produto_venda pv ON pv.id = ei.produto_venda_id AND pv.empresa_id = ei.empresa_id
+			LEFT JOIN forma_pagamento fp ON fp.id = e.forma_pagamento_id AND fp.empresa_id = e.empresa_id
+			LEFT JOIN encomenda_endereco_entrega eee ON eee.encomenda_id = e.id AND eee.empresa_id = e.empresa_id
 			WHERE 1=1`
 		if id > 0 {
 			query += fmt.Sprintf(" AND e.id = $%d", argN)
@@ -1389,11 +1399,21 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 	} else {
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
+			e.forma_pagamento_id, e.forma_pagamento_nome, e.troco_para,
 			c.nome as cliente_nome,
 			CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
-			COALESCE(agg.qtd_itens, 0) as qtd_itens
+			fp.classificacao as forma_pagamento_classificacao,
+			COALESCE(agg.qtd_itens, 0) as qtd_itens,
+			eee.cep as eee_cep, eee.endereco as eee_endereco, eee.nr as eee_nr,
+			eee.complemento as eee_complemento, eee.bairro as eee_bairro,
+			eee.cidade as eee_cidade, eee.uf as eee_uf,
+			eee.retira_estabelecimento as eee_retira_estabelecimento,
+			eee.latitude as eee_latitude, eee.longitude as eee_longitude,
+			eee.place_id as eee_place_id
 			FROM encomenda e
 			LEFT JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
+			LEFT JOIN forma_pagamento fp ON fp.id = e.forma_pagamento_id AND fp.empresa_id = e.empresa_id
+			LEFT JOIN encomenda_endereco_entrega eee ON eee.encomenda_id = e.id AND eee.empresa_id = e.empresa_id
 			LEFT JOIN LATERAL (
 				SELECT COUNT(*) as qtd_itens, SUM(ei.valor_total) as total_valor
 				FROM encomenda_item ei
@@ -1457,6 +1477,9 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 	observacao := getStr(header, "observacao")
 	statusNovo := getInt(header, "status")
 	_, temStatus := header["status"]
+	formaPagamentoID := getInt(header, "forma_pagamento_id")
+	formaPagamentoNome := getStr(header, "forma_pagamento_nome")
+	trocoPara := getFloat(header, "troco_para")
 
 	rawItens, temItens := header["itens"]
 
@@ -1483,11 +1506,28 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 			jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		var fpID interface{} = nil
+		var fpNome interface{} = nil
+		var troco interface{} = nil
+		if formaPagamentoID > 0 {
+			fpID = formaPagamentoID
+			if formaPagamentoNome == "" {
+				_ = tx.QueryRow(r.Context(), `SELECT descricao FROM forma_pagamento WHERE id=$1 AND empresa_id=$2`, formaPagamentoID, empresaID).Scan(&formaPagamentoNome)
+			}
+			if formaPagamentoNome != "" {
+				fpNome = formaPagamentoNome
+			}
+		}
+		if trocoPara > 0 {
+			troco = trocoPara
+		}
 		_, err = tx.Exec(r.Context(), `
 			INSERT INTO encomenda (id, empresa_id, cliente_id,
-				data_encomenda, data_entrega, valor_total, observacao, usuario_id, status)
-			VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0)`,
-			id, empresaID, clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, usuarioID)
+				data_encomenda, data_entrega, valor_total, observacao, usuario_id, status,
+				forma_pagamento_id, forma_pagamento_nome, troco_para)
+			VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0,$8,$9,$10)`,
+			id, empresaID, clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, usuarioID,
+			fpID, fpNome, troco)
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -1561,11 +1601,28 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 		}
 
 		if temItens {
+			var fpIDUpd interface{} = nil
+			var fpNomeUpd interface{} = nil
+			var trocoUpd interface{} = nil
+			if formaPagamentoID > 0 {
+				fpIDUpd = formaPagamentoID
+				if formaPagamentoNome == "" {
+					_ = tx.QueryRow(r.Context(), `SELECT descricao FROM forma_pagamento WHERE id=$1 AND empresa_id=$2`, formaPagamentoID, empresaID).Scan(&formaPagamentoNome)
+				}
+				if formaPagamentoNome != "" {
+					fpNomeUpd = formaPagamentoNome
+				}
+			}
+			if trocoPara > 0 {
+				trocoUpd = trocoPara
+			}
 			_, err = tx.Exec(r.Context(), `
 				UPDATE encomenda SET cliente_id=$1,
-					data_encomenda=$2::date, data_entrega=$3::date, observacao=$4, status=$5, venda_id=$6
+					data_encomenda=$2::date, data_entrega=$3::date, observacao=$4, status=$5, venda_id=$6,
+					forma_pagamento_id=$9, forma_pagamento_nome=$10, troco_para=$11
 				WHERE id=$7 AND empresa_id=$8`,
-				clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, novoStatus, vendaID, id, empresaID)
+				clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, novoStatus, vendaID, id, empresaID,
+				fpIDUpd, fpNomeUpd, trocoUpd)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return

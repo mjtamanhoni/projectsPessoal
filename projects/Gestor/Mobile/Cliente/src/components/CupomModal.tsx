@@ -26,6 +26,8 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
   const baixada = !!encomenda.baixado;
   const chave = empresa.chave_pix || '';
   const numeroCupom = encomenda.id ?? encomenda.codigo ?? 0;
+  const ehPIX = (encomenda.forma_pagamento_nome || '').toUpperCase().includes('PIX') || !encomenda.forma_pagamento_nome;
+  const ehDinheiro = (encomenda.forma_pagamento_nome || '').toUpperCase().includes('DINHEIRO');
 
   useEffect(() => {
     if (!chave) return;
@@ -106,7 +108,7 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
     },
     cliente,
     numeroCupom,
-    formaPagamento: baixada ? 'A VISTA (PIX)' : 'PIX',
+    formaPagamento: encomenda.forma_pagamento_nome || (baixada ? 'A VISTA (PIX)' : 'PIX'),
     parcelas: [],
     desconto: 0,
   };
@@ -167,7 +169,28 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
             {gerarTextoCupom(cupomData)}
           </div>
 
-          {chave && (
+          {encomenda.forma_pagamento_nome && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 4px 12px', padding: '8px 12px', borderRadius: 8, background: '#f9fafb', border: '1px solid #d6ddd0' }}>
+              <span style={{ fontSize: 14 }}>
+                {ehDinheiro ? '💵' : ehPIX ? '📱' : '💳'}
+              </span>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#1b1f1c' }}>
+                  Forma de Pagamento: {encomenda.forma_pagamento_nome}
+                </div>
+                {ehDinheiro && encomenda.troco_para && encomenda.troco_para > 0 && (
+                  <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                    Troco para: {Number(encomenda.troco_para).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {encomenda.troco_para > (Number(encomenda.valor_total) || 0) && (
+                      <> — Troco: {(Number(encomenda.troco_para) - (Number(encomenda.valor_total) || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {chave && ehPIX && (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '0 4px 12px' }}>
               {qrBusy ? (
                 <div style={{ width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9ca09d' }}>
@@ -204,12 +227,12 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
           {erro && <div className="modal-erro" style={{ position: 'static', margin: '0 4px 8px' }}>{erro}</div>}
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
-            {chave && !baixada && (
+            {chave && !baixada && ehPIX && (
               <button className="confirm-btn save" onClick={() => copiar('chave')} disabled={pdfBusy}>
                 {copiado === 'chave' ? 'Chave copiada!' : 'Copiar chave PIX'}
               </button>
             )}
-            {payload && !baixada && (
+            {payload && !baixada && ehPIX && (
               <button
                 className="confirm-btn save"
                 onClick={() => copiar('payload')}
