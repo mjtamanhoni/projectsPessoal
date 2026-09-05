@@ -120,7 +120,7 @@ export default function SeletorProdutoPopup({ titulo, produtos, selecionados, pr
         </div>
 
         <div className="modal-body">
-          <div style={{ fontSize: 11, color: '#6b706c', margin: '0 4px 8px' }}>
+          <div style={{ fontSize: 11, color: '#B0B0B0', margin: '0 4px 8px' }}>
             Toque no card: adiciona/remove com quantidade 1. Toque longo (segure ~2s): informar a quantidade.
           </div>
 
@@ -147,38 +147,38 @@ export default function SeletorProdutoPopup({ titulo, produtos, selecionados, pr
                     position: 'relative',
                     cursor: 'pointer',
                     borderRadius: 10,
-                    border: selecionado ? '2px solid #2d6a4f' : '1px solid #d6ddd0',
-                    background: selecionado ? '#f0f7f1' : '#ffffff',
+                    border: selecionado ? '2px solid #FF3B30' : '1px solid rgba(255, 255, 255, 0.15)',
+                    background: selecionado ? 'rgba(255, 59, 48, 0.15)' : 'rgba(42, 42, 42, 0.6)',
                     padding: 8,
                   }}
                 >
                   {selecionado && (
-                    <div style={{ position: 'absolute', top: 4, right: 4, background: '#2d6a4f', color: '#fff', borderRadius: 10, padding: '0 8px', fontSize: 11, fontWeight: 700 }}>
+                    <div style={{ position: 'absolute', top: 4, right: 4, background: '#FF3B30', color: '#fff', borderRadius: 10, padding: '0 8px', fontSize: 11, fontWeight: 700 }}>
                       {numeroParaDecimal(qtd, QTD_CASAS)}
                     </div>
                   )}
                   <FotoProduto foto={p.foto} alt={p.nome} height={64} />
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#1b1f1c', marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#FFFFFF', marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {p.nome}
                   </div>
                   {p.descricao ? (
-                    <div style={{ fontSize: 10, color: '#6b706c', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <div style={{ fontSize: 10, color: '#B0B0B0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {p.descricao}
                     </div>
                   ) : null}
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#2d5e3a', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#FF3B30', marginTop: 2 }}>
                     {fmtMoeda(precoDe(p))}
                   </div>
                 </div>
               );
             })}
             {carregando && (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 11, color: '#9ca09d', padding: 12 }}>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 11, color: '#707070', padding: 12 }}>
                 Carregando produtos...
               </div>
             )}
             {filtrados.length === 0 && !carregando && (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 11, color: '#9ca09d', padding: 12 }}>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 11, color: '#707070', padding: 12 }}>
                 Nenhum produto encontrado
               </div>
             )}
@@ -205,8 +205,8 @@ export default function SeletorProdutoPopup({ titulo, produtos, selecionados, pr
 
       {qtdPopup && (
         <div className="modal-overlay" style={{ zIndex: 70 }}>
-          <div style={{ width: 300, background: '#fff', borderRadius: 14, padding: 20, border: '1px solid #d6ddd0' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#1b1f1c' }}>
+          <div style={{ width: 300, background: 'rgba(42, 42, 42, 0.95)', borderRadius: 14, padding: 20, border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#FFFFFF' }}>
               Quantidade — {qtdPopup.nome}
             </div>
             <input

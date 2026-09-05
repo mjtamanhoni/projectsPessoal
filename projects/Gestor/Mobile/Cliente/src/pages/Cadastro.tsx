@@ -250,7 +250,7 @@ export default function Cadastro() {
         />
 
         {erro && (
-          <div style={{ position: 'absolute', left: 20, top: 838, fontSize: 11, color: '#c0392b' }}>
+          <div style={{ position: 'absolute', left: 20, top: 838, fontSize: 11, color: '#FF3B30' }}>
             {erro}
           </div>
         )}

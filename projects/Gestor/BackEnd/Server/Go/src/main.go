@@ -83,6 +83,7 @@ func main() {
 	r.Post("/encomendaPublico/formaPagamento", producao.EncomendaPublicoAtualizarFormaPagamento)
 	r.Post("/encomendaPublico/enderecoEntrega", producao.EncomendaPublicoSalvarEnderecoEntrega)
 	r.Get("/formaPagamentoPublico", producao.FormaPagamentoPublicoListar)
+	r.Get("/bandeiraCartaoPublico", basicCRUD.BandeiraCartaoPublicoListar)
 	r.Get("/test", testPage.TestPage)
 	r.Get("/health", testPage.HealthCheck)
 	r.Get("/cep/{cep}", func(w http.ResponseWriter, r *http.Request) {
@@ -553,6 +554,11 @@ carregar();
 		r.Get("/marca", basicCRUD.MarcaListar)
 		r.Post("/marca", basicCRUD.MarcaAtualizar)
 		r.Delete("/marca", basicCRUD.MarcaExcluir)
+
+		// Bandeira Cartao
+		r.Get("/bandeiraCartao", basicCRUD.BandeiraCartaoListar)
+		r.Post("/bandeiraCartao", basicCRUD.BandeiraCartaoAtualizar)
+		r.Delete("/bandeiraCartao", basicCRUD.BandeiraCartaoExcluir)
 
 		// Produto Classificacao
 		r.Get("/produtoClassificacao", basicCRUD.ProdutoClassificacaoListar)

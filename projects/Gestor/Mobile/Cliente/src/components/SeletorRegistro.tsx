@@ -83,13 +83,13 @@ export function CampoSeletor({ texto, placeholder = 'Selecione...', aoAbrir, sty
         textAlign: 'left',
         cursor: 'pointer',
         paddingRight: 32,
-        background: '#f9f8f6',
+        background: 'rgba(50, 50, 50, 0.5)',
       }}
       onClick={aoAbrir}
     >
       <span
         style={{
-          color: texto ? '#1b1f1c' : '#9ca09d',
+          color: texto ? '#FFFFFF' : '#707070',
           fontSize: 14,
           whiteSpace: 'nowrap',
           overflow: 'hidden',

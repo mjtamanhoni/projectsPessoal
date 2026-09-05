@@ -28,7 +28,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(180deg, #0a1a12 0%, #1b3a28 40%, #0a1a12 100%)',
+        background: 'linear-gradient(180deg, #1a0a0a 0%, #2d1515 40%, #1a0a0a 100%)',
         transition: 'opacity 0.6s ease-out',
         opacity: saindo ? 0 : 1,
       }}
@@ -47,7 +47,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
             position: 'absolute',
             inset: -12,
             borderRadius: '50%',
-            border: '2px solid rgba(45, 106, 79, 0.4)',
+            border: '2px solid rgba(255, 59, 48, 0.4)',
             transition: 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
             transform: visivel ? 'scale(1.3)' : 'scale(0.8)',
             opacity: visivel ? 0 : 0.6,
@@ -60,7 +60,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
             position: 'absolute',
             inset: -4,
             borderRadius: '50%',
-            border: '1.5px solid rgba(45, 106, 79, 0.25)',
+            border: '1.5px solid rgba(255, 59, 48, 0.25)',
             transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s',
             transform: visivel ? 'scale(1.15)' : 'scale(0.9)',
             opacity: visivel ? 0 : 0.4,
@@ -77,7 +77,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
             borderRadius: 32,
             transition: 'all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)',
             transform: visivel ? 'scale(1) rotate(0deg)' : 'scale(0.3) rotate(-15deg)',
-            filter: visivel ? 'drop-shadow(0 8px 24px rgba(45, 106, 79, 0.5))' : 'none',
+            filter: visivel ? 'drop-shadow(0 8px 24px rgba(255, 59, 48, 0.5))' : 'none',
           }}
         />
       </div>
@@ -121,7 +121,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
         style={{
           width: 40,
           height: 2,
-          background: 'linear-gradient(90deg, transparent, #2d6a4f, transparent)',
+          background: 'linear-gradient(90deg, transparent, #FF3B30, transparent)',
           marginTop: 16,
           borderRadius: 1,
           transition: 'all 0.8s ease-out 0.6s',
@@ -147,7 +147,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
               width: 6,
               height: 6,
               borderRadius: '50%',
-              background: '#2d6a4f',
+              background: '#FF3B30',
               animation: visivel ? `pulse 1.2s ease-in-out ${i * 0.2}s infinite` : 'none',
             }}
           />

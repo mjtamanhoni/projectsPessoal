@@ -98,7 +98,7 @@ export default function ServerConfig() {
                 left: 350,
                 border: 'none',
                 background: 'transparent',
-                color: servers.length <= 1 ? '#bbb' : '#c0392b',
+                color: servers.length <= 1 ? '#bbb' : '#FF3B30',
                 fontSize: 18,
                 cursor: servers.length <= 1 ? 'default' : 'pointer',
               }}
@@ -134,7 +134,7 @@ export default function ServerConfig() {
             width: 'calc(100% - 40px)',
             textAlign: 'center',
             fontSize: 11,
-            color: status.ok ? '#2d5e3a' : '#c0392b',
+            color: status.ok ? '#34C759' : '#FF3B30',
           }}
         >
           {status.msg}

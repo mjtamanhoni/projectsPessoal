@@ -19,13 +19,13 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
             alignItems: 'center',
             justifyContent: 'center',
             minHeight: '100vh',
-            background: '#f6f8f5',
+            background: '#1E1E1E',
             padding: 24,
           }}
         >
-          <div style={{ textAlign: 'center', fontSize: 13, color: '#1b1f1c' }}>
+          <div style={{ textAlign: 'center', fontSize: 13, color: '#FFFFFF' }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Algo deu errado</div>
-            <div style={{ fontSize: 12, color: '#c0392b', marginBottom: 12 }}>{this.state.erro}</div>
+            <div style={{ fontSize: 12, color: '#FF3B30', marginBottom: 12 }}>{this.state.erro}</div>
             <button
               className="confirm-btn save"
               onClick={() => window.location.reload()}

@@ -278,6 +278,14 @@ export interface Marca {
   ativo?: boolean;
 }
 
+export interface BandeiraCartao {
+  codigo?: number;
+  id?: number;
+  nome: string;
+  imagem?: string | null;
+  status?: number;
+}
+
 export interface ProdutoClassificacao {
   codigo?: number;
   id?: number;
@@ -507,6 +515,8 @@ export interface Encomenda {
   forma_pagamento_nome?: string;
   forma_pagamento_classificacao?: string;
   troco_para?: number;
+  bandeira_cartao_id?: number;
+  bandeira_cartao_nome?: string;
   endereco_entrega?: EnderecoEntrega;
 }
 

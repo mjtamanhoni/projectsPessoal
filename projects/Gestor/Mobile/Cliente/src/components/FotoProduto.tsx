@@ -19,7 +19,7 @@ export default function FotoProduto({
   height,
   maxHeight,
   borderRadius = 6,
-  background = '#eef2ee',
+  background = 'rgba(50, 50, 50, 0.5)',
   fontSize = 10,
 }: FotoProdutoProps) {
   const [src, setSrc] = useState<string | null>(null);
@@ -75,7 +75,7 @@ export default function FotoProduto({
           alignItems: 'center',
           justifyContent: 'center',
           fontSize,
-          color: '#9ca09d',
+          color: '#707070',
         }}
       >
         Sem foto

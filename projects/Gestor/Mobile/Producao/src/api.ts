@@ -203,6 +203,11 @@ export interface Encomenda {
   venda_id?: number;
   qtd_itens?: number;
   itens?: EncomendaItem[];
+  forma_pagamento_id?: number;
+  forma_pagamento_nome?: string;
+  forma_pagamento_classificacao?: string;
+  bandeira_cartao_id?: number;
+  bandeira_cartao_nome?: string;
   eee_cep?: string;
   eee_endereco?: string;
   eee_nr?: string;

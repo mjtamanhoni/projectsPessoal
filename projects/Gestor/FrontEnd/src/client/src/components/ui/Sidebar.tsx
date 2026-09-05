@@ -25,7 +25,7 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
   Geral: [
     {
       label: 'Cadastro',
-      forms: ['Clientes', 'Fornecedores', 'Usuarios', 'Marcas', 'Formas de Pagamento', 'Condicoes de Pagamento'],
+      forms: ['Clientes', 'Fornecedores', 'Usuarios', 'Marcas', 'Bandeiras Cartao', 'Formas de Pagamento', 'Condicoes de Pagamento'],
     },
     {
       label: 'Configuracoes',

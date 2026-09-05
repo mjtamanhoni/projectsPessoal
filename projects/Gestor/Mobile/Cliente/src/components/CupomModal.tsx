@@ -165,21 +165,26 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
           </button>
         </div>
         <div className="modal-body" style={{ overflowY: 'auto', maxHeight: 'calc(92vh - 120px)' }}>
-          <div style={{ fontFamily: 'monospace', fontSize: 10, whiteSpace: 'pre-wrap', background: '#f4f6f4', borderRadius: 6, padding: 10, margin: '0 4px 12px', lineHeight: 1.45 }}>
+          <div style={{ fontFamily: 'monospace', fontSize: 10, whiteSpace: 'pre-wrap', background: 'rgba(50, 50, 50, 0.5)', borderRadius: 6, padding: 10, margin: '0 4px 12px', lineHeight: 1.45 }}>
             {gerarTextoCupom(cupomData)}
           </div>
 
           {encomenda.forma_pagamento_nome && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 4px 12px', padding: '8px 12px', borderRadius: 8, background: '#f9fafb', border: '1px solid #d6ddd0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 4px 12px', padding: '8px 12px', borderRadius: 8, background: 'rgba(50, 50, 50, 0.5)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <span style={{ fontSize: 14 }}>
                 {ehDinheiro ? '💵' : ehPIX ? '📱' : '💳'}
               </span>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#1b1f1c' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF' }}>
                   Forma de Pagamento: {encomenda.forma_pagamento_nome}
                 </div>
+                {encomenda.bandeira_cartao_nome && (
+                  <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 600, marginTop: 2 }}>
+                    Bandeira: {encomenda.bandeira_cartao_nome}
+                  </div>
+                )}
                 {ehDinheiro && encomenda.troco_para && encomenda.troco_para > 0 && (
-                  <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                  <div style={{ fontSize: 10, color: '#34C759', fontWeight: 600, marginTop: 2 }}>
                     Troco para: {Number(encomenda.troco_para).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     {encomenda.troco_para > (Number(encomenda.valor_total) || 0) && (
                       <> — Troco: {(Number(encomenda.troco_para) - (Number(encomenda.valor_total) || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</>
@@ -193,30 +198,30 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
           {chave && ehPIX && (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '0 4px 12px' }}>
               {qrBusy ? (
-                <div style={{ width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9ca09d' }}>
+                <div style={{ width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#707070' }}>
                   Gerando QR Code...
                 </div>
               ) : qr ? (
                 <img src={qr} alt="QR Code PIX" style={{ width: 150, height: 150 }} />
               ) : (
-                <div style={{ width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9ca09d' }}>
+                <div style={{ width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#707070' }}>
                   QR indisponível
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#1b1f1c', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', marginBottom: 4 }}>
                   {baixada ? 'Pagamento confirmado (PIX)' : 'Pagar com PIX'}
                 </div>
                 {baixada && (
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#0a7a3d', marginBottom: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#34C759', marginBottom: 4 }}>
                     PAGO: R$ {(Number(encomenda.valor_total) || 0).toFixed(2).replace('.', ',')}
                   </div>
                 )}
-                <div style={{ fontSize: 10, color: '#4b5563', wordBreak: 'break-all', marginBottom: 8 }}>
+                <div style={{ fontSize: 10, color: '#B0B0B0', wordBreak: 'break-all', marginBottom: 8 }}>
                   {chave}
                 </div>
                 {payload && !baixada && (
-                  <div style={{ fontSize: 10, color: '#6b706c', wordBreak: 'break-all', marginBottom: 8 }}>
+                <div style={{ fontSize: 10, color: '#B0B0B0', wordBreak: 'break-all', marginBottom: 8 }}>
                     Copia e cola: {payload.slice(0, 40)}...
                   </div>
                 )}
@@ -237,7 +242,7 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
                 className="confirm-btn save"
                 onClick={() => copiar('payload')}
                 disabled={pdfBusy}
-                style={{ background: '#0a7a3d' }}
+                style={{ background: '#34C759' }}
               >
                 {copiado === 'payload' ? 'Código copiado!' : 'Copiar código PIX'}
               </button>

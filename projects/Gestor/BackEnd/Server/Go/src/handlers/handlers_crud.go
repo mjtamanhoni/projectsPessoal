@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -1386,6 +1387,168 @@ func (h *BasicCRUD) FormaPagamentoCondicaoListar(w http.ResponseWriter, r *http.
 	}
 	defer rows.Close()
 	jsonSuccess(w, rowsToMap(rows))
+}
+
+// --- Bandeira Cartao ---
+func (h *BasicCRUD) BandeiraCartaoListar(w http.ResponseWriter, r *http.Request) {
+	h.Listar(w, r, "public", "bandeira_cartao", "", "id, empresa_id, nome, imagem, status, created_at, updated_at", "")
+}
+
+func (h *BasicCRUD) BandeiraCartaoAtualizar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	empresaID := middleware.GetEmpresaID(r)
+
+	if len(items) > 0 {
+		if v, ok := getFieldValue(items[0], "empresa_id"); ok {
+			switch n := v.(type) {
+			case float64:
+				if n != 0 {
+					empresaID = int(n)
+				}
+			case json.Number:
+				if i, err := n.Int64(); err == nil && i != 0 {
+					empresaID = int(i)
+				}
+			case int:
+				if n != 0 {
+					empresaID = n
+				}
+			}
+		}
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	for _, item := range items {
+		id := getID(item)
+		nome := getStr(item, "nome")
+		status := 1
+		if v, ok := item["status"]; ok && v != nil {
+			switch val := v.(type) {
+			case float64:
+				status = int(val)
+			case json.Number:
+				n, _ := val.Int64()
+				status = int(n)
+			}
+		}
+
+		var imagemBytes []byte
+		if imgStr := getStr(item, "imagem"); imgStr != "" {
+			imagemBytes, err = decodeBase64(imgStr)
+			if err != nil {
+				jsonError(w, "Imagem invalida: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+
+		if id == 0 {
+			id, err = database.GerarID(r.Context(), tx, empresaID, "bandeira_cartao")
+			if err != nil {
+				jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			_, err = tx.Exec(r.Context(),
+				`INSERT INTO public.bandeira_cartao (id, empresa_id, nome, imagem, status)
+				VALUES ($1, $2, $3, $4, $5)`,
+				id, empresaID, nome, imagemBytes, status)
+		} else {
+			setClauses := []string{"nome = $1", "status = $2", "updated_at = now()"}
+			vals := []interface{}{nome, status}
+			paramIdx := 3
+
+			if imagemBytes != nil {
+				setClauses = append(setClauses, fmt.Sprintf("imagem = $%d", paramIdx))
+				vals = append(vals, imagemBytes)
+				paramIdx++
+			}
+
+			vals = append(vals, id, empresaID)
+			_, err = tx.Exec(r.Context(),
+				fmt.Sprintf("UPDATE public.bandeira_cartao SET %s WHERE id = $%d AND empresa_id = $%d",
+					strings.Join(setClauses, ", "), paramIdx, paramIdx+1),
+				vals...)
+		}
+
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	tx.Commit(r.Context())
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Bandeira de cartao salva com sucesso"})
+}
+
+func (h *BasicCRUD) BandeiraCartaoExcluir(w http.ResponseWriter, r *http.Request) {
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	empresaID := middleware.GetEmpresaID(r)
+	if id == 0 {
+		jsonError(w, "ID nao informado", http.StatusBadRequest)
+		return
+	}
+	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM public.bandeira_cartao WHERE id = $1 AND empresa_id = $2`, id, empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Registro nao encontrado", http.StatusNotFound)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Bandeira de cartao excluida com sucesso"})
+}
+
+// BandeiraCartaoPublicoListar lista bandeiras de cartao ativas (publico, sem auth).
+func (h *BasicCRUD) BandeiraCartaoPublicoListar(w http.ResponseWriter, r *http.Request) {
+	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
+	if empresaID == 0 {
+		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		return
+	}
+	rows, err := h.Pool.Query(r.Context(),
+		`SELECT id, nome FROM public.bandeira_cartao WHERE empresa_id = $1 AND COALESCE(status, 1) = 1 ORDER BY nome`,
+		empresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type bc struct {
+		ID   int    `json:"id"`
+		Nome string `json:"nome"`
+	}
+	var result []bc
+	for rows.Next() {
+		var b bc
+		if err := rows.Scan(&b.ID, &b.Nome); err != nil {
+			continue
+		}
+		result = append(result, b)
+	}
+	if result == nil {
+		result = []bc{}
+	}
+	jsonSuccess(w, result)
+}
+
+// decodeBase64 decodifica uma string base64 em bytes, removendo o prefixo data:... se presente.
+func decodeBase64(s string) ([]byte, error) {
+	if idx := strings.Index(s, ","); idx != -1 {
+		s = s[idx+1:]
+	}
+	return base64.StdEncoding.DecodeString(s)
 }
 
 func (h *BasicCRUD) FormaPagamentoCondicaoSalvar(w http.ResponseWriter, r *http.Request) {

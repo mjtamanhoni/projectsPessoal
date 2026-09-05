@@ -59,6 +59,7 @@ const PerdasProduto = lazy(() => import('@/pages/PerdasProduto').then((m) => ({ 
 const UsoConsumoPage = lazy(() => import('@/pages/UsoConsumo').then((m) => ({ default: m.UsoConsumoPage })));
 const RelatorioVendasProduto = lazy(() => import('@/pages/RelatorioVendasProduto').then((m) => ({ default: m.RelatorioVendasProduto })));
 const Marcas = lazy(() => import('@/pages/Marcas').then((m) => ({ default: m.Marcas })));
+const BandeiraCartao = lazy(() => import('@/pages/BandeiraCartao').then((m) => ({ default: m.BandeiraCartaoPage })));
 const ProdutoClassificacoes = lazy(() => import('@/pages/ProdutoClassificacoes').then((m) => ({ default: m.ProdutoClassificacoes })));
 const FormasPagamento = lazy(() => import('@/pages/FormasPagamento').then((m) => ({ default: m.FormasPagamento })));
 const CondicoesPagamento = lazy(() => import('@/pages/CondicoesPagamento').then((m) => ({ default: m.CondicoesPagamento })));
@@ -178,6 +179,7 @@ export default function App() {
           {routesFor(PRODUCAO, mode) && <Route path="/producao-dashboard" element={<Private><ProducaoDashboard /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/insumos" element={<Private><Insumos /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/marcas" element={<Private><Marcas /></Private>} />}
+          {routesFor(PRODUCAO, mode) && <Route path="/bandeiras-cartao" element={<Private><BandeiraCartao /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/produto-classificacao" element={<Private><ProdutoClassificacoes /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/compras-insumo" element={<Private><ComprasInsumo /></Private>} />}
           {routesFor(PRODUCAO, mode) && <Route path="/produtos-fabricados" element={<Private><ProdutosFabricados /></Private>} />}

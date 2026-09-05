@@ -525,6 +525,8 @@ export interface Encomenda {
     forma_pagamento_nome?: string;
     forma_pagamento_classificacao?: string;
     troco_para?: number;
+    bandeira_cartao_id?: number;
+    bandeira_cartao_nome?: string;
     endereco_entrega?: EnderecoEntrega;
 }
 export interface EnderecoEntrega {

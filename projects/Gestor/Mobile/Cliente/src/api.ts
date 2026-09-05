@@ -130,6 +130,8 @@ export interface Encomenda {
   forma_pagamento_nome?: string;
   forma_pagamento_classificacao?: string;
   troco_para?: number;
+  bandeira_cartao_id?: number;
+  bandeira_cartao_nome?: string;
   endereco_entrega?: EnderecoEntrega;
 }
 
@@ -418,6 +420,20 @@ export async function listarFormasPagamentoPublico(
   }));
 }
 
+export interface BandeiraCartaoPublica {
+  id: number;
+  nome: string;
+}
+
+export async function listarBandeirasCartaoPublico(empresaId: number): Promise<BandeiraCartaoPublica[]> {
+  const res = await request(`/bandeiraCartaoPublico?empresa=${empresaId}`);
+  const rows = (await parseResponse(res)) as Record<string, unknown>[];
+  return (rows ?? []).map((r) => ({
+    id: Number(r.id ?? r.codigo ?? 0),
+    nome: String(r.nome ?? ''),
+  }));
+}
+
 export async function listarEncomendasPublicas(
   empresa: number,
   documento: string
@@ -447,6 +463,8 @@ export async function listarEncomendasPublicas(
         forma_pagamento_nome: row.forma_pagamento_nome ? String(row.forma_pagamento_nome) : undefined,
         forma_pagamento_classificacao: row.forma_pagamento_classificacao ? String(row.forma_pagamento_classificacao) : undefined,
         troco_para: row.troco_para != null ? Number(row.troco_para) : undefined,
+        bandeira_cartao_id: row.bandeira_cartao_id != null ? Number(row.bandeira_cartao_id) : undefined,
+        bandeira_cartao_nome: row.bandeira_cartao_nome ? String(row.bandeira_cartao_nome) : undefined,
         endereco_entrega: (row.eee_endereco || row.eee_cep || row.eee_retira_estabelecimento) ? {
           cep: row.eee_cep ? String(row.eee_cep) : undefined,
           endereco: row.eee_endereco ? String(row.eee_endereco) : undefined,
@@ -534,7 +552,7 @@ export async function atualizarItensEncomendaPublica(
 
 export async function atualizarFormaPagamentoEncomendaPublica(
   empresa: number,
-  data: { id: number; cliente_id?: number; documento?: string; telefone?: string; forma_pagamento_id: number; forma_pagamento_nome?: string; troco_para?: number }
+  data: { id: number; cliente_id?: number; documento?: string; telefone?: string; forma_pagamento_id: number; forma_pagamento_nome?: string; troco_para?: number; bandeira_cartao_id?: number; bandeira_cartao_nome?: string }
 ): Promise<{ mensagem?: string } | null> {
   const res = await request('/encomendaPublico/formaPagamento', {
     method: 'POST',

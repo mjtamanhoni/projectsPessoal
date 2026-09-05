@@ -47,7 +47,7 @@ export default function RowMenu({ opcoes, style, className = 'row-btn', fontSize
               <button
                 key={o.rotulo}
                 className="row-menu-item"
-                style={{ color: o.cor ?? '#1b1f1c' }}
+                style={{ color: o.cor ?? '#FFFFFF' }}
                 disabled={o.disabled}
                 onClick={(e) => {
                   e.stopPropagation();

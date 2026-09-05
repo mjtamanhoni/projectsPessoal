@@ -22,8 +22,8 @@ function fmtMoeda(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-const BTN_MENOS = { position: 'static' as const, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e9f0ea', color: '#2d5e3a', fontSize: 24, fontWeight: 700, lineHeight: 1 };
-const BTN_MAIS = { position: 'static' as const, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2d5e3a', color: '#ffffff', fontSize: 24, fontWeight: 700, lineHeight: 1 };
+const BTN_MENOS = { position: 'static' as const, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 59, 48, 0.2)', color: '#FF3B30', fontSize: 24, fontWeight: 700, lineHeight: 1 };
+const BTN_MAIS = { position: 'static' as const, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FF3B30', color: '#ffffff', fontSize: 24, fontWeight: 700, lineHeight: 1 };
 
 export default function PersonalizarModal({
   titulo,
@@ -108,7 +108,7 @@ export default function PersonalizarModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#ffffff',
+          background: 'rgba(42, 42, 42, 0.95)',
           width: '100%',
           maxWidth: 480,
           maxHeight: '88%',
@@ -119,19 +119,19 @@ export default function PersonalizarModal({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#1b1f1c', flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', flex: 1 }}>
             {titulo}
           </div>
           <button
             className="row-btn"
-            style={{ position: 'static', color: '#9ca09d', fontSize: 16, width: 36, height: 36 }}
+            style={{ position: 'static', color: '#707070', fontSize: 16, width: 36, height: 36 }}
             onClick={onFechar}
             aria-label="Fechar"
           >
             ✕
           </button>
         </div>
-        <div style={{ fontSize: 11, color: '#6b706c', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, color: '#B0B0B0', marginBottom: 12 }}>
           {temRemovidos
             ? 'Remova itens da receita ou acrescente adicionais.'
             : 'Acrescente adicionais ao produto.'}
@@ -154,8 +154,8 @@ export default function PersonalizarModal({
                       gap: 10,
                       padding: '10px 12px',
                       borderRadius: 10,
-                      border: '1px solid #d6ddd0',
-                      background: removido ? '#fdf0ef' : '#ffffff',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: removido ? 'rgba(255, 59, 48, 0.15)' : 'rgba(42, 42, 42, 0.6)',
                       cursor: 'pointer',
                     }}
                   >
@@ -163,13 +163,13 @@ export default function PersonalizarModal({
                       type="checkbox"
                       checked={removido}
                       onChange={() => toggleRemovido(nome)}
-                      style={{ width: 20, height: 20, accentColor: '#b84a4a' }}
+                      style={{ width: 20, height: 20, accentColor: '#FF3B30' }}
                     />
-                    <span style={{ fontSize: 13, color: '#1b1f1c', textDecoration: removido ? 'line-through' : 'none', flex: 1 }}>
+                    <span style={{ fontSize: 13, color: '#FFFFFF', textDecoration: removido ? 'line-through' : 'none', flex: 1 }}>
                       {nome}
                     </span>
                     {removido && (
-                      <span style={{ fontSize: 9, color: '#b84a4a', fontWeight: 700, background: '#f8dedc', borderRadius: 8, padding: '2px 8px' }}>
+                      <span style={{ fontSize: 9, color: '#FF3B30', fontWeight: 700, background: 'rgba(255, 59, 48, 0.2)', borderRadius: 8, padding: '2px 8px' }}>
                         Remover
                       </span>
                     )}
@@ -198,16 +198,16 @@ export default function PersonalizarModal({
                       gap: 8,
                       padding: '10px 12px',
                       borderRadius: 10,
-                      border: '1px solid #d6ddd0',
-                      background: qtd > 0 ? '#f0f7f1' : '#ffffff',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: qtd > 0 ? 'rgba(255, 59, 48, 0.15)' : 'rgba(42, 42, 42, 0.6)',
                     }}
                   >
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1b1f1c' }}>{ad.nome}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF' }}>{ad.nome}</div>
                       {ad.descricao ? (
-                        <div style={{ fontSize: 10, color: '#6b706c' }}>{ad.descricao}</div>
+                        <div style={{ fontSize: 10, color: '#B0B0B0' }}>{ad.descricao}</div>
                       ) : null}
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#2d5e3a' }}>{fmtMoeda(ad.preco)}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#FF3B30' }}>{fmtMoeda(ad.preco)}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {qtd > 0 && (
@@ -221,7 +221,7 @@ export default function PersonalizarModal({
                         </button>
                       )}
                       {qtd > 0 && (
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1b1f1c', minWidth: 20, textAlign: 'center' }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', minWidth: 20, textAlign: 'center' }}>
                           {qtd}
                         </span>
                       )}
@@ -242,14 +242,14 @@ export default function PersonalizarModal({
         )}
 
         {!temRemovidos && !temAdicionais && (
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#9ca09d', padding: '16px 0' }}>
+          <div style={{ textAlign: 'center', fontSize: 11, color: '#707070', padding: '16px 0' }}>
             Este produto não possui opções de personalização.
           </div>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '2px 2px 12px' }}>
-          <span style={{ fontSize: 12, color: '#6b706c' }}>Valor dos adicionais</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#2d5e3a' }}>{fmtMoeda(valorExtras)}</span>
+          <span style={{ fontSize: 12, color: '#B0B0B0' }}>Valor dos adicionais</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#FF3B30' }}>{fmtMoeda(valorExtras)}</span>
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>

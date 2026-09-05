@@ -213,10 +213,10 @@ export default function MinhasEncomendas() {
         </div>
         <div className="compra-sub-sep" />
         {itens.length === 0 ? (
-          <div style={{ padding: 8, fontSize: 10, color: '#9ca09d' }}>Nenhum item</div>
+          <div style={{ padding: 8, fontSize: 10, color: '#707070' }}>Nenhum item</div>
         ) : (
           itens.map((item, i) => (
-            <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #eef2ec' }}>
+            <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div className="compra-sub-row compra-item" style={{ padding: '4px 4px 0', flex: 1, minWidth: 0 }}>
                   <span className="col-produto">
@@ -231,7 +231,7 @@ export default function MinhasEncomendas() {
                 {editavel && (
                   <button
                     className="row-btn"
-                    style={{ position: 'static', width: 44, height: 44, flexShrink: 0, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eaf3ee', border: '1.5px solid #2d6a4f', color: '#2d6a4f', fontSize: 20, textAlign: 'center', marginRight: 4 }}
+                    style={{ position: 'static', width: 44, height: 44, flexShrink: 0, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 59, 48, 0.15)', border: '1.5px solid #FF3B30', color: '#FF3B30', fontSize: 20, textAlign: 'center', marginRight: 4 }}
                     onClick={() => setPersonalizandoDe({ encId: e.id ?? 0, idx: i })}
                     aria-label="Personalizar item"
                   >
@@ -240,7 +240,7 @@ export default function MinhasEncomendas() {
                 )}
               </div>
               {descricaoPersonalizacao(item) && (
-                <div style={{ padding: '3px 8px 0', fontSize: 10, color: '#6b706c', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                <div style={{ padding: '3px 8px 0', fontSize: 10, color: '#B0B0B0', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                   {descricaoPersonalizacao(item)}
                 </div>
               )}
@@ -249,12 +249,12 @@ export default function MinhasEncomendas() {
           ))
         )}
         {editavel && itens.length > 0 && (
-          <div style={{ padding: '6px 8px 0', fontSize: 10, color: '#6b706c' }}>
+          <div style={{ padding: '6px 8px 0', fontSize: 10, color: '#B0B0B0' }}>
             Toque no ✎ para personalizar cada item.
           </div>
         )}
         {e.observacao && (
-          <div style={{ padding: '4px 8px 0', fontSize: 10, color: '#6b706c' }}>Obs.: {e.observacao}</div>
+          <div style={{ padding: '4px 8px 0', fontSize: 10, color: '#B0B0B0' }}>Obs.: {e.observacao}</div>
         )}
         <div className="compra-sub-total">Total: {formatarMoeda(Number(e.valor_total) || 0)}</div>
       </div>
@@ -330,9 +330,9 @@ export default function MinhasEncomendas() {
                   style={{
                     padding: '5px 12px',
                     borderRadius: 999,
-                    border: ativo ? '1px solid #2d5e3a' : '1px solid #d6ddd0',
-                    background: ativo ? '#2d5e3a' : '#ffffff',
-                    color: ativo ? '#ffffff' : '#6b706c',
+                    border: ativo ? '1px solid #FF3B30' : '1px solid rgba(255, 255, 255, 0.15)',
+                    background: ativo ? '#FF3B30' : 'rgba(42, 42, 42, 0.6)',
+                    color: ativo ? '#ffffff' : '#B0B0B0',
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -347,7 +347,7 @@ export default function MinhasEncomendas() {
 
         {carregando && <div className="list-empty">Carregando...</div>}
         {!carregando && erro && (
-          <div className="list-empty" style={{ color: '#c0392b' }}>
+          <div className="list-empty" style={{ color: '#FF3B30' }}>
             {erro}
           </div>
         )}
@@ -375,15 +375,18 @@ export default function MinhasEncomendas() {
                       {nItens} {nItens === 1 ? 'item' : 'itens'}
                     </div>
                     {e.forma_pagamento_nome && (
-                      <div style={{ fontSize: 11, color: '#6b706c', padding: '2px 0' }}>
+                      <div style={{ fontSize: 11, color: '#B0B0B0', padding: '2px 0' }}>
                         Pagamento: {e.forma_pagamento_nome}
                         {(e.forma_pagamento_classificacao === 'CARTAO_CREDITO' || e.forma_pagamento_classificacao === 'CARTAO_DEBITO') && (
                           <span style={{ marginLeft: 6, color: '#7e22ce', fontWeight: 700 }}>💳 Levar máquina de cartão</span>
                         )}
+                        {e.bandeira_cartao_nome && (
+                          <span style={{ marginLeft: 6, color: '#a78bfa', fontWeight: 600 }}>• {e.bandeira_cartao_nome}</span>
+                        )}
                       </div>
                     )}
                     {e.endereco_entrega && (
-                      <div style={{ fontSize: 11, color: '#6b706c', padding: '2px 0' }}>
+                      <div style={{ fontSize: 11, color: '#B0B0B0', padding: '2px 0' }}>
                         {e.endereco_entrega.retira_estabelecimento === 1 ? (
                           <span style={{ fontWeight: 600 }}>🏪 Retirar no estabelecimento</span>
                         ) : (
@@ -399,7 +402,7 @@ export default function MinhasEncomendas() {
                       className="compra-total"
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                     >
-                      <span style={{ fontSize: 11, fontWeight: 400, color: '#6b706c' }}>
+                      <span style={{ fontSize: 11, fontWeight: 400, color: '#B0B0B0' }}>
                         {e.data_entrega ? `Entrega: ${formatarDataBR(e.data_entrega)}` : ''}
                       </span>
                       <span>{formatarMoeda(Number(e.valor_total) || 0)}</span>
@@ -412,20 +415,20 @@ export default function MinhasEncomendas() {
                         ...(podeEditar
                           ? [
                               { rotulo: 'Incluir Item', cor: '#10b981', onPress: () => abrirSeletorItens(e) },
-                              { rotulo: 'Excluir Item', cor: '#dc2626', onPress: () => setExcluirDe(e) },
+                              { rotulo: 'Excluir Item', cor: '#FF3B30', onPress: () => setExcluirDe(e) },
                             ]
                           : []),
                         ...(status >= 3
                           ? [{ rotulo: 'Ver Cupom', cor: '#10b981', onPress: () => setCupomDe(e) }]
                           : []),
                         ...(podeCancelar(e)
-                          ? [{ rotulo: 'Cancelar Encomenda', cor: '#dc2626', onPress: () => setCancelarDe(e) }]
+                          ? [{ rotulo: 'Cancelar Encomenda', cor: '#FF3B30', onPress: () => setCancelarDe(e) }]
                           : []),
                       ]}
                     />
                     <button
                       className="compra-btn"
-                      style={{ top: 50, height: 36, color: '#9ca09d', fontSize: 16 }}
+                      style={{ top: 50, height: 36, color: '#707070', fontSize: 16 }}
                       onClick={() => setExpandida(aberto ? null : (e.id ?? null))}
                     >
                       {aberto ? '▲' : '▼'}
@@ -455,7 +458,7 @@ export default function MinhasEncomendas() {
               </button>
             </div>
             <div className="modal-body">
-              <div style={{ fontSize: 12, color: '#6b706c', lineHeight: 1.5, margin: '0 4px 16px', padding: 8, background: '#f4f6f4', borderRadius: 6 }}>
+              <div style={{ fontSize: 12, color: '#B0B0B0', lineHeight: 1.5, margin: '0 4px 16px', padding: 8, background: 'rgba(50, 50, 50, 0.5)', borderRadius: 6 }}>
                 Deseja cancelar a encomenda #{cancelarDe.codigo ?? cancelarDe.id}? Esta ação não pode ser desfeita.
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>

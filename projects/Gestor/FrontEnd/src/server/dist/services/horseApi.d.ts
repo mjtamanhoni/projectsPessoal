@@ -69,6 +69,9 @@ declare class HorseApiService {
     listarMarcas(params?: Record<string, unknown>): Promise<unknown[]>;
     salvarMarcas(items: unknown[]): Promise<unknown>;
     excluirMarca(id: number): Promise<unknown>;
+    listarBandeirasCartao(params?: Record<string, unknown>): Promise<unknown[]>;
+    salvarBandeirasCartao(items: unknown[]): Promise<unknown>;
+    excluirBandeiraCartao(id: number): Promise<unknown>;
     listarProdutoClassificacoes(params?: Record<string, unknown>): Promise<unknown[]>;
     salvarProdutoClassificacoes(items: unknown[]): Promise<unknown>;
     excluirProdutoClassificacao(id: number): Promise<unknown>;

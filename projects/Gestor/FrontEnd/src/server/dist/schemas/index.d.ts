@@ -287,6 +287,8 @@ export declare const encomendaBodySchema: z.ZodObject<{
     observacao: z.ZodOptional<z.ZodString>;
     forma_pagamento_id: z.ZodOptional<z.ZodNumber>;
     troco_para: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>]>>;
+    bandeira_cartao_id: z.ZodOptional<z.ZodNumber>;
+    bandeira_cartao_nome: z.ZodOptional<z.ZodString>;
     itens: z.ZodArray<z.ZodObject<{
         produto_fabricado_id: z.ZodOptional<z.ZodNumber>;
         produto_venda_id: z.ZodOptional<z.ZodNumber>;

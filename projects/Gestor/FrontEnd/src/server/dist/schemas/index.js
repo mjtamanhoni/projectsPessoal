@@ -319,6 +319,8 @@ exports.encomendaBodySchema = zod_1.z.object({
     observacao: zod_1.z.string().max(500).optional(),
     forma_pagamento_id: zod_1.z.number().int().positive().optional(),
     troco_para: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform((s) => parseFloat(s))]).optional(),
+    bandeira_cartao_id: zod_1.z.number().int().positive().optional(),
+    bandeira_cartao_nome: zod_1.z.string().max(100).optional(),
     itens: zod_1.z.array(encomendaItemSchema).min(1, 'Adicione ao menos um item'),
 });
 exports.encomendaStatusSchema = zod_1.z.object({

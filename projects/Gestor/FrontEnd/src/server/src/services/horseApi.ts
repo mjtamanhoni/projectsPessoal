@@ -1063,6 +1063,34 @@ class HorseApiService {
     }
   }
 
+  async listarBandeirasCartao(params?: Record<string, unknown>): Promise<unknown[]> {
+    try {
+      const res = await this.api.get('/bandeiraCartao', { params, headers: this.getAuthHeaders() });
+      return res.data as unknown[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarBandeirasCartao(items: unknown[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post('/bandeiraCartao', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirBandeiraCartao(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/bandeiraCartao', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarProdutoClassificacoes(params?: Record<string, unknown>): Promise<unknown[]> {
     try {
       const res = await this.api.get('/produtoClassificacao', { params, headers: this.getAuthHeaders() });
@@ -1500,6 +1528,12 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
       }
       if (header.troco_para != null) {
         payload.troco_para = header.troco_para;
+      }
+      if (header.bandeira_cartao_id) {
+        payload.bandeira_cartao_id = header.bandeira_cartao_id;
+      }
+      if (header.bandeira_cartao_nome) {
+        payload.bandeira_cartao_nome = header.bandeira_cartao_nome;
       }
       const res = await this.api.post('/encomenda', payload, { headers: this.getAuthHeaders() });
       return res.data;

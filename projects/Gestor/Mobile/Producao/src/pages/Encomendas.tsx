@@ -583,6 +583,17 @@ const carregar = useCallback(async () => {
                         )}
                       </div>
                     ) : null}
+                    {e.forma_pagamento_nome && (
+                      <div className="compra-det" style={{ fontSize: 10, color: '#B0B0B0', marginTop: 2 }}>
+                        Pagamento: {e.forma_pagamento_nome}
+                        {e.bandeira_cartao_nome && (
+                          <span style={{ marginLeft: 4, color: '#a78bfa', fontWeight: 600 }}>• {e.bandeira_cartao_nome}</span>
+                        )}
+                        {(e.forma_pagamento_classificacao === 'CARTAO_CREDITO' || e.forma_pagamento_classificacao === 'CARTAO_DEBITO') && (
+                          <span style={{ marginLeft: 4, color: '#7e22ce', fontWeight: 700 }}>💳 Levar máquina</span>
+                        )}
+                      </div>
+                    ) : null}
                     <div className="compra-total">{fmtMoeda(e.valor_total)}</div>
                     {id != null && renderProntaEntrega(e)}
                     <RowMenu

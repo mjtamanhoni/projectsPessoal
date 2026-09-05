@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Clipboard } from '@capacitor/clipboard';
-import type { EmpresaPublic, Encomenda, FormaPagamentoPublica } from '../api';
-import { listarFormasPagamentoPublico, extrairErro } from '../api';
+import type { EmpresaPublic, Encomenda, FormaPagamentoPublica, BandeiraCartaoPublica } from '../api';
+import { listarFormasPagamentoPublico, listarBandeirasCartaoPublico, extrairErro } from '../api';
 import { gerarPayloadPix, gerarQrPixDataUrl } from '../lib/pix';
 
 interface Props {
   empresa: EmpresaPublic;
   encomenda: Encomenda;
-  onConfirmar: (forma: FormaPagamentoPublica, trocoPara?: number) => void;
+  onConfirmar: (forma: FormaPagamentoPublica, trocoPara?: number, bandeiraCartao?: BandeiraCartaoPublica) => void;
   onFechar: () => void;
 }
 
@@ -23,8 +23,8 @@ const CLASSIFICACAO_ICONE: Record<string, string> = {
 };
 
 const CLASSIFICACAO_COR: Record<string, string> = {
-  DINHEIRO: '#16a34a',
-  PIX: '#0a7a3d',
+  DINHEIRO: '#34C759',
+  PIX: '#FF3B30',
   CARTAO_CREDITO: '#7c3aed',
   CARTAO_DEBITO: '#2563eb',
   BOLETO: '#d97706',
@@ -43,6 +43,9 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
   const [payloadPix, setPayloadPix] = useState<string | null>(null);
   const [copiado, setCopiado] = useState<'chave' | 'payload' | null>(null);
   const [confirmado, setConfirmado] = useState(false);
+  const [bandeiras, setBandeiras] = useState<BandeiraCartaoPublica[]>([]);
+  const [bandeiraSelecionada, setBandeiraSelecionada] = useState<BandeiraCartaoPublica | null>(null);
+  const [bandeiraCarregando, setBandeiraCarregando] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -86,6 +89,27 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
     return () => { cancelado = true; };
   }, [selecionada, empresa, encomenda]);
 
+  useEffect(() => {
+    if (!selecionada || (selecionada.classificacao !== 'CARTAO_CREDITO' && selecionada.classificacao !== 'CARTAO_DEBITO')) {
+      setBandeiras([]);
+      setBandeiraSelecionada(null);
+      return;
+    }
+    let cancelado = false;
+    setBandeiraCarregando(true);
+    setErro('');
+    listarBandeirasCartaoPublico(empresa.id)
+      .then((b) => {
+        if (!cancelado) setBandeiras(b);
+      })
+      .catch((e) => {
+        console.error('Erro ao listar bandeiras:', e);
+        if (!cancelado) setErro(extrairErro(e));
+      })
+      .finally(() => { if (!cancelado) setBandeiraCarregando(false); });
+    return () => { cancelado = true; };
+  }, [selecionada, empresa.id]);
+
   const copiarPix = async (modo: 'chave' | 'payload') => {
     const texto = modo === 'payload' ? payloadPix : empresa.chave_pix;
     if (!texto) return;
@@ -100,11 +124,13 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
 
   const confirmar = () => {
     if (!selecionada) return;
+    const isCartao = selecionada.classificacao === 'CARTAO_CREDITO' || selecionada.classificacao === 'CARTAO_DEBITO';
+    if (isCartao && !bandeiraSelecionada) return;
     if (selecionada.classificacao === 'DINHEIRO') {
       const valor = parseFloat(trocoPara.replace(',', '.'));
-      onConfirmar(selecionada, isNaN(valor) ? undefined : valor);
+      onConfirmar(selecionada, isNaN(valor) ? undefined : valor, isCartao ? bandeiraSelecionada! : undefined);
     } else {
-      onConfirmar(selecionada);
+      onConfirmar(selecionada, undefined, isCartao ? bandeiraSelecionada! : undefined);
     }
     setConfirmado(true);
   };
@@ -136,7 +162,7 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
         </div>
         <div className="modal-body" style={{ overflowY: 'auto', maxHeight: 'calc(92vh - 120px)' }}>
           {carregando && (
-            <div style={{ textAlign: 'center', fontSize: 12, color: '#9ca09d', padding: 20 }}>
+            <div style={{ textAlign: 'center', fontSize: 12, color: '#707070', padding: 20 }}>
               Carregando formas de pagamento...
             </div>
           )}
@@ -148,14 +174,14 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
           )}
 
           {!carregando && !erro && formas.length === 0 && (
-            <div style={{ textAlign: 'center', fontSize: 12, color: '#9ca09d', padding: 20 }}>
+            <div style={{ textAlign: 'center', fontSize: 12, color: '#707070', padding: 20 }}>
               Nenhuma forma de pagamento cadastrada
             </div>
           )}
 
           {!carregando && formas.length > 0 && !selecionada && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 4px 12px' }}>
-              <div style={{ fontSize: 11, color: '#6b706c', marginBottom: 4 }}>
+              <div style={{ fontSize: 11, color: '#B0B0B0', marginBottom: 4 }}>
                 Selecione como você vai pagar:
               </div>
               {formas.map((f) => (
@@ -168,8 +194,8 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                     gap: 12,
                     padding: '14px 16px',
                     borderRadius: 10,
-                    border: '1.5px solid #d6ddd0',
-                    background: '#ffffff',
+                    border: '1.5px solid rgba(255, 255, 255, 0.15)',
+                        background: 'rgba(50, 50, 50, 0.6)',
                     cursor: 'pointer',
                     textAlign: 'left',
                   }}
@@ -178,20 +204,20 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                     {CLASSIFICACAO_ICONE[f.classificacao] || '📋'}
                   </span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1b1f1c' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF' }}>
                       {f.descricao}
                     </div>
                     <div style={{
                       fontSize: 10,
                       fontWeight: 600,
-                      color: CLASSIFICACAO_COR[f.classificacao] || '#6b706c',
+                      color: CLASSIFICACAO_COR[f.classificacao] || '#555555',
                       textTransform: 'uppercase',
                       marginTop: 2,
                     }}>
                       {f.classificacao.replace('_', ' ')}
                     </div>
                   </div>
-                  <span style={{ fontSize: 14, color: '#9ca09d' }}>›</span>
+                  <span style={{ fontSize: 14, color: '#707070' }}>›</span>
                 </button>
               ))}
             </div>
@@ -207,7 +233,7 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                   gap: 6,
                   background: 'none',
                   border: 'none',
-                  color: '#6b706c',
+                  color: '#B0B0B0',
                   fontSize: 12,
                   padding: '4px 0',
                   cursor: 'pointer',
@@ -223,34 +249,34 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                 gap: 10,
                 padding: '12px 16px',
                 borderRadius: 10,
-                border: `2px solid ${CLASSIFICACAO_COR[selecionada.classificacao] || '#d6ddd0'}`,
-                background: '#f9fafb',
+                border: `2px solid ${CLASSIFICACAO_COR[selecionada.classificacao] || 'rgba(255, 255, 255, 0.15)'}`,
+                background: 'rgba(50, 50, 50, 0.5)',
                 marginBottom: 12,
               }}>
                 <span style={{ fontSize: 24 }}>
                   {CLASSIFICACAO_ICONE[selecionada.classificacao] || '📋'}
                 </span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1b1f1c' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF' }}>
                     {selecionada.descricao}
                   </div>
                   <div style={{
                     fontSize: 10,
                     fontWeight: 600,
-                    color: CLASSIFICACAO_COR[selecionada.classificacao] || '#6b706c',
+                    color: CLASSIFICACAO_COR[selecionada.classificacao] || '#555555',
                     textTransform: 'uppercase',
                   }}>
                     {selecionada.classificacao.replace('_', ' ')}
                   </div>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#2d5e3a' }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#FF3B30' }}>
                   {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </div>
               </div>
 
               {selecionada.classificacao === 'DINHEIRO' && (
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#1b1f1c', marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#FFFFFF', marginBottom: 6 }}>
                     Troco para:
                   </div>
                   <div style={{ position: 'relative' }}>
@@ -260,7 +286,7 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                       top: '50%',
                       transform: 'translateY(-50%)',
                       fontSize: 14,
-                      color: '#6b706c',
+                  color: '#B0B0B0',
                       fontWeight: 600,
                     }}>
                       R$
@@ -288,11 +314,11 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                         width: '100%',
                         padding: '12px 12px 12px 40px',
                         borderRadius: 8,
-                        border: '1.5px solid #d6ddd0',
+                    border: '1.5px solid rgba(255, 255, 255, 0.15)',
                         fontSize: 16,
                         fontWeight: 600,
-                        color: '#1b1f1c',
-                        background: '#ffffff',
+                        color: '#FFFFFF',
+                    background: 'rgba(42, 42, 42, 0.6)',
                         boxSizing: 'border-box',
                       }}
                     />
@@ -302,16 +328,16 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                       marginTop: 6,
                       padding: '8px 12px',
                       borderRadius: 8,
-                      background: '#f0f7f1',
-                      border: '1px solid #2d6a4f',
+                      background: 'rgba(52, 199, 89, 0.15)',
+                      border: '1px solid #34C759',
                       fontSize: 13,
                       fontWeight: 600,
-                      color: '#2d5e3a',
+                      color: '#34C759',
                     }}>
                       Troco: {trocoCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
                   )}
-                  <div style={{ fontSize: 10, color: '#6b706c', marginTop: 4 }}>
+                  <div style={{ fontSize: 10, color: '#B0B0B0', marginTop: 4 }}>
                     Informe o valor que o cliente vai pagar para calcular o troco
                   </div>
                 </div>
@@ -325,16 +351,16 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                         {qrPix ? (
                           <img src={qrPix} alt="QR Code PIX" style={{ width: 140, height: 140 }} />
                         ) : (
-                          <div style={{ width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#9ca09d', background: '#f4f6f4', borderRadius: 8 }}>
+                          <div style={{ width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#707070', background: 'rgba(50, 50, 50, 0.5)', borderRadius: 8 }}>
                             Gerando QR Code...
                           </div>
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 11, color: '#4b5563', wordBreak: 'break-all', marginBottom: 8 }}>
+                          <div style={{ fontSize: 11, color: '#B0B0B0', wordBreak: 'break-all', marginBottom: 8 }}>
                             Chave PIX: {empresa.chave_pix}
                           </div>
                           {payloadPix && (
-                            <div style={{ fontSize: 10, color: '#6b706c', wordBreak: 'break-all' }}>
+                            <div style={{ fontSize: 10, color: '#B0B0B0', wordBreak: 'break-all' }}>
                               Copia e cola: {payloadPix.slice(0, 30)}...
                             </div>
                           )}
@@ -347,9 +373,9 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                             flex: 1,
                             padding: '10px 16px',
                             borderRadius: 8,
-                            border: '1.5px solid #0a7a3d',
-                            background: '#f0f7f1',
-                            color: '#0a7a3d',
+                            border: '1.5px solid #FF3B30',
+                            background: 'rgba(52, 199, 89, 0.15)',
+                            color: '#FF3B30',
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -364,8 +390,8 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                               flex: 1,
                               padding: '10px 16px',
                               borderRadius: 8,
-                              border: '1.5px solid #0a7a3d',
-                              background: '#0a7a3d',
+                              border: '1.5px solid #FF3B30',
+                              background: '#FF3B30',
                               color: '#ffffff',
                               fontSize: 12,
                               fontWeight: 600,
@@ -378,7 +404,7 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                       </div>
                     </>
                   ) : (
-                    <div style={{ textAlign: 'center', fontSize: 12, color: '#9ca09d', padding: 16 }}>
+                    <div style={{ textAlign: 'center', fontSize: 12, color: '#707070', padding: 16 }}>
                       Chave PIX não configurada pela empresa
                     </div>
                   )}
@@ -386,21 +412,57 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
               )}
 
               {(selecionada.classificacao === 'CARTAO_CREDITO' || selecionada.classificacao === 'CARTAO_DEBITO') && (
-                <div style={{
-                  padding: '12px 16px',
-                  borderRadius: 10,
-                  background: '#fef3c7',
-                  border: '1px solid #d97706',
-                  marginBottom: 12,
-                  fontSize: 12,
-                  color: '#92400e',
-                }}>
-                  <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                    {selecionada.classificacao === 'CARTAO_CREDITO' ? 'Cartão de Crédito' : 'Cartão de Débito'}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{
+                    padding: '12px 16px',
+                    borderRadius: 10,
+                    background: '#fef3c7',
+                    border: '1px solid #d97706',
+                    marginBottom: 12,
+                    fontSize: 12,
+                    color: '#92400e',
+                  }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                      {selecionada.classificacao === 'CARTAO_CREDITO' ? 'Cartão de Crédito' : 'Cartão de Débito'}
+                    </div>
+                    <div>
+                      Selecione a bandeira do cartão abaixo.
+                    </div>
                   </div>
-                  <div>
-                    O estabelecimento será notificado para usar a máquina de cartão.
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#FFFFFF', marginBottom: 6 }}>
+                    Bandeira do Cartão:
                   </div>
+                  {bandeiraCarregando ? (
+                    <div style={{ fontSize: 11, color: '#B0B0B0', padding: '8px 0' }}>Carregando bandeiras...</div>
+                  ) : bandeiras.length === 0 ? (
+                    <div style={{ fontSize: 11, color: '#B0B0B0', padding: '8px 0' }}>Nenhuma bandeira cadastrada</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {bandeiras.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => setBandeiraSelecionada(b)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '12px 14px',
+                            borderRadius: 8,
+                            border: `1.5px solid ${bandeiraSelecionada?.id === b.id ? '#7c3aed' : 'rgba(255, 255, 255, 0.15)'}`,
+                            background: bandeiraSelecionada?.id === b.id ? 'rgba(124, 58, 237, 0.2)' : 'rgba(50, 50, 50, 0.6)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                          }}
+                        >
+                          <span style={{ fontSize: 16 }}>💳</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF' }}>{b.nome}</span>
+                          {bandeiraSelecionada?.id === b.id && (
+                            <span style={{ marginLeft: 'auto', color: '#7c3aed', fontSize: 16 }}>✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -411,11 +473,11 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                 <div style={{
                   padding: '12px 16px',
                   borderRadius: 10,
-                  background: '#f4f6f4',
-                  border: '1px solid #d6ddd0',
+                  background: 'rgba(50, 50, 50, 0.5)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
                   marginBottom: 12,
                   fontSize: 12,
-                  color: '#6b706c',
+                  color: '#B0B0B0',
                 }}>
                   Pagamento registrado. O cupom não fiscal será gerado com esta forma de pagamento.
                 </div>
@@ -428,7 +490,7 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
                 <button
                   className="confirm-btn save"
                   onClick={confirmar}
-                  disabled={selecionada.classificacao === 'DINHEIRO' && !trocoPara}
+                  disabled={(selecionada.classificacao === 'DINHEIRO' && !trocoPara) || ((selecionada.classificacao === 'CARTAO_CREDITO' || selecionada.classificacao === 'CARTAO_DEBITO') && !bandeiraSelecionada)}
                 >
                   Confirmar Pagamento
                 </button>
@@ -439,7 +501,7 @@ export default function FormaPagamentoModal({ empresa, encomenda, onConfirmar, o
           {confirmado && (
             <div style={{ textAlign: 'center', padding: 20 }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#1b1f1c' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF' }}>
                 Pagamento registrado!
               </div>
             </div>

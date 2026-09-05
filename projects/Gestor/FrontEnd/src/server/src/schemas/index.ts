@@ -357,6 +357,8 @@ export const encomendaBodySchema = z.object({
   observacao: z.string().max(500).optional(),
   forma_pagamento_id: z.number().int().positive().optional(),
   troco_para: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
+  bandeira_cartao_id: z.number().int().positive().optional(),
+  bandeira_cartao_nome: z.string().max(100).optional(),
   itens: z.array(encomendaItemSchema).min(1, 'Adicione ao menos um item'),
 });
 

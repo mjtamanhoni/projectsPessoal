@@ -1344,6 +1344,7 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 			e.forma_pagamento_id, e.forma_pagamento_nome, e.troco_para,
+			e.bandeira_cartao_id, e.bandeira_cartao_nome,
 			c.nome as cliente_nome,
 			CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
 			fp.classificacao as forma_pagamento_classificacao,
@@ -1400,6 +1401,7 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 			e.forma_pagamento_id, e.forma_pagamento_nome, e.troco_para,
+			e.bandeira_cartao_id, e.bandeira_cartao_nome,
 			c.nome as cliente_nome,
 			CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
 			fp.classificacao as forma_pagamento_classificacao,
@@ -1480,6 +1482,8 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 	formaPagamentoID := getInt(header, "forma_pagamento_id")
 	formaPagamentoNome := getStr(header, "forma_pagamento_nome")
 	trocoPara := getFloat(header, "troco_para")
+	bandeiraCartaoID := getInt(header, "bandeira_cartao_id")
+	bandeiraCartaoNome := getStr(header, "bandeira_cartao_nome")
 
 	rawItens, temItens := header["itens"]
 
@@ -1509,6 +1513,8 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 		var fpID interface{} = nil
 		var fpNome interface{} = nil
 		var troco interface{} = nil
+		var bcID interface{} = nil
+		var bcNome interface{} = nil
 		if formaPagamentoID > 0 {
 			fpID = formaPagamentoID
 			if formaPagamentoNome == "" {
@@ -1521,13 +1527,22 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 		if trocoPara > 0 {
 			troco = trocoPara
 		}
+		if bandeiraCartaoID > 0 {
+			bcID = bandeiraCartaoID
+			if bandeiraCartaoNome == "" {
+				_ = tx.QueryRow(r.Context(), `SELECT nome FROM bandeira_cartao WHERE id=$1 AND empresa_id=$2`, bandeiraCartaoID, empresaID).Scan(&bandeiraCartaoNome)
+			}
+			if bandeiraCartaoNome != "" {
+				bcNome = bandeiraCartaoNome
+			}
+		}
 		_, err = tx.Exec(r.Context(), `
 			INSERT INTO encomenda (id, empresa_id, cliente_id,
 				data_encomenda, data_entrega, valor_total, observacao, usuario_id, status,
-				forma_pagamento_id, forma_pagamento_nome, troco_para)
-			VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0,$8,$9,$10)`,
+				forma_pagamento_id, forma_pagamento_nome, troco_para, bandeira_cartao_id, bandeira_cartao_nome)
+			VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0,$8,$9,$10,$11,$12)`,
 			id, empresaID, clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, usuarioID,
-			fpID, fpNome, troco)
+			fpID, fpNome, troco, bcID, bcNome)
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -1604,6 +1619,8 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 			var fpIDUpd interface{} = nil
 			var fpNomeUpd interface{} = nil
 			var trocoUpd interface{} = nil
+			var bcIDUpd interface{} = nil
+			var bcNomeUpd interface{} = nil
 			if formaPagamentoID > 0 {
 				fpIDUpd = formaPagamentoID
 				if formaPagamentoNome == "" {
@@ -1616,13 +1633,23 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 			if trocoPara > 0 {
 				trocoUpd = trocoPara
 			}
+			if bandeiraCartaoID > 0 {
+				bcIDUpd = bandeiraCartaoID
+				if bandeiraCartaoNome == "" {
+					_ = tx.QueryRow(r.Context(), `SELECT nome FROM bandeira_cartao WHERE id=$1 AND empresa_id=$2`, bandeiraCartaoID, empresaID).Scan(&bandeiraCartaoNome)
+				}
+				if bandeiraCartaoNome != "" {
+					bcNomeUpd = bandeiraCartaoNome
+				}
+			}
 			_, err = tx.Exec(r.Context(), `
 				UPDATE encomenda SET cliente_id=$1,
 					data_encomenda=$2::date, data_entrega=$3::date, observacao=$4, status=$5, venda_id=$6,
-					forma_pagamento_id=$9, forma_pagamento_nome=$10, troco_para=$11
+					forma_pagamento_id=$9, forma_pagamento_nome=$10, troco_para=$11,
+					bandeira_cartao_id=$12, bandeira_cartao_nome=$13
 				WHERE id=$7 AND empresa_id=$8`,
 				clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, novoStatus, vendaID, id, empresaID,
-				fpIDUpd, fpNomeUpd, trocoUpd)
+				fpIDUpd, fpNomeUpd, trocoUpd, bcIDUpd, bcNomeUpd)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return

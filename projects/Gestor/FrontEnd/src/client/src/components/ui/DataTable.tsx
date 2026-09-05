@@ -110,6 +110,14 @@ export function DataTable<T>({
                       } ${
                         canSort ? 'cursor-pointer select-none' : ''
                       }`}
+                      style={{
+                        width: header.column.columnDef.size && header.column.columnDef.size > 0
+                          ? `${header.column.columnDef.size}px`
+                          : undefined,
+                        minWidth: header.column.columnDef.size && header.column.columnDef.size > 0
+                          ? `${header.column.columnDef.size}px`
+                          : undefined,
+                      }}
                     >
                       <div
                         className={`flex items-center gap-1 hover:text-text-primary transition-colors ${
@@ -154,9 +162,18 @@ export function DataTable<T>({
                     {row.getVisibleCells().map((cell) => {
                       const isExpand = (cell.column.columnDef.meta as Record<string, unknown> | undefined)?.expand;
                       return (
-                        <td key={cell.id} className={`py-3 px-4 text-sm text-text-primary ${
-                            (cell.column.columnDef.meta as Record<string, string> | undefined)?.align === 'right' ? 'text-right' : 'text-left'
-                          }`}>
+                      <td key={cell.id} className={`py-3 px-4 text-sm text-text-primary ${
+                          (cell.column.columnDef.meta as Record<string, string> | undefined)?.align === 'right' ? 'text-right' : 'text-left'
+                        }`}
+                        style={{
+                          width: cell.column.columnDef.size && cell.column.columnDef.size > 0
+                            ? `${cell.column.columnDef.size}px`
+                            : undefined,
+                          minWidth: cell.column.columnDef.size && cell.column.columnDef.size > 0
+                            ? `${cell.column.columnDef.size}px`
+                            : undefined,
+                        }}
+                      >
                           {isExpand ? (
                             <button
                               onClick={() => {

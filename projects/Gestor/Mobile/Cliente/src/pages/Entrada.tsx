@@ -109,7 +109,7 @@ export default function Entrada() {
             style={{
               position: 'static',
               width: '100%',
-              ...(documentoBloqueado ? { background: '#f0f2f0', color: '#9ca09d' } : {}),
+              ...(documentoBloqueado ? { background: 'rgba(50, 50, 50, 0.5)', color: '#707070' } : {}),
             }}
             type="tel"
             inputMode="numeric"
@@ -128,9 +128,9 @@ export default function Entrada() {
           )}
         </div>
         <div className="entrada-rodape">
-          <span style={{ fontSize: 11, color: '#9ca09d' }}>Cliente v1.2</span>
+          <span style={{ fontSize: 11, color: '#707070' }}>Cliente v1.2</span>
           <span
-            style={{ fontSize: 11, color: '#2d5e3a', cursor: 'pointer' }}
+            style={{ fontSize: 11, color: '#FF3B30', cursor: 'pointer' }}
             onClick={() => navigate('/server-config')}
           >
             Configurações do Servidor

@@ -456,6 +456,7 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 	query := `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 		e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 		e.forma_pagamento_id, e.forma_pagamento_nome, e.troco_para,
+		e.bandeira_cartao_id, e.bandeira_cartao_nome,
 		c.nome as cliente_nome,
 		CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
 		fp.classificacao as forma_pagamento_classificacao,
@@ -710,7 +711,7 @@ func (h *ProducaoHandler) EncomendaPublicoItensAtualizar(w http.ResponseWriter, 
 }
 
 // EncomendaPublicoAtualizarFormaPagamento atualiza a forma de pagamento de uma encomenda (público).
-// POST /encomendaPublico/formaPagamento  body: { empresa, id, cliente_id?, documento?, telefone?, forma_pagamento_id, forma_pagamento_nome?, troco_para? }
+// POST /encomendaPublico/formaPagamento  body: { empresa, id, cliente_id?, documento?, telefone?, forma_pagamento_id, forma_pagamento_nome?, troco_para?, bandeira_cartao_id?, bandeira_cartao_nome? }
 func (h *ProducaoHandler) EncomendaPublicoAtualizarFormaPagamento(w http.ResponseWriter, r *http.Request) {
 	items, err := h.BasicCRUD.parseBody(r)
 	if err != nil {
@@ -744,6 +745,8 @@ func (h *ProducaoHandler) EncomendaPublicoAtualizarFormaPagamento(w http.Respons
 	formaPagamentoID := getInt(header, "forma_pagamento_id")
 	formaPagamentoNome := getStr(header, "forma_pagamento_nome")
 	trocoPara := getFloat(header, "troco_para")
+	bandeiraCartaoID := getInt(header, "bandeira_cartao_id")
+	bandeiraCartaoNome := getStr(header, "bandeira_cartao_nome")
 
 	if formaPagamentoID == 0 && formaPagamentoNome == "" {
 		jsonError(w, "Informe a forma de pagamento", http.StatusBadRequest)
@@ -756,9 +759,17 @@ func (h *ProducaoHandler) EncomendaPublicoAtualizarFormaPagamento(w http.Respons
 			formaPagamentoID, empresaID).Scan(&formaPagamentoNome)
 	}
 
+	if bandeiraCartaoID > 0 && bandeiraCartaoNome == "" {
+		_ = h.Pool.QueryRow(r.Context(),
+			`SELECT nome FROM bandeira_cartao WHERE id=$1 AND empresa_id=$2`,
+			bandeiraCartaoID, empresaID).Scan(&bandeiraCartaoNome)
+	}
+
 	var fpID interface{} = nil
 	var fpNome interface{} = nil
 	var troco interface{} = nil
+	var bcID interface{} = nil
+	var bcNome interface{} = nil
 	if formaPagamentoID > 0 {
 		fpID = formaPagamentoID
 	}
@@ -768,11 +779,18 @@ func (h *ProducaoHandler) EncomendaPublicoAtualizarFormaPagamento(w http.Respons
 	if trocoPara > 0 {
 		troco = trocoPara
 	}
+	if bandeiraCartaoID > 0 {
+		bcID = bandeiraCartaoID
+	}
+	if bandeiraCartaoNome != "" {
+		bcNome = bandeiraCartaoNome
+	}
 
 	result, err := h.Pool.Exec(r.Context(),
-		`UPDATE encomenda SET forma_pagamento_id=$1, forma_pagamento_nome=$2, troco_para=$3
-		WHERE id=$4 AND empresa_id=$5 AND cliente_id=$6`,
-		fpID, fpNome, troco, encomendaID, empresaID, clienteID)
+		`UPDATE encomenda SET forma_pagamento_id=$1, forma_pagamento_nome=$2, troco_para=$3,
+		bandeira_cartao_id=$4, bandeira_cartao_nome=$5
+		WHERE id=$6 AND empresa_id=$7 AND cliente_id=$8`,
+		fpID, fpNome, troco, bcID, bcNome, encomendaID, empresaID, clienteID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return

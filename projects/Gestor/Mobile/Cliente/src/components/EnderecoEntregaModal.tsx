@@ -18,10 +18,10 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: 8,
-  border: '1.5px solid #d6ddd0',
+  border: '1.5px solid rgba(255, 255, 255, 0.15)',
   fontSize: 14,
-  color: '#1b1f1c',
-  background: '#ffffff',
+  color: '#FFFFFF',
+  background: 'rgba(50, 50, 50, 0.6)',
   boxSizing: 'border-box',
   fontFamily: "'Inter', sans-serif",
   outline: 'none',
@@ -30,7 +30,7 @@ const inputStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
-  color: '#6b706c',
+  color: '#B0B0B0',
   marginBottom: 4,
 };
 
@@ -195,7 +195,7 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
         </div>
         <div className="modal-body" style={{ overflowY: 'auto', maxHeight: 'calc(92vh - 120px)' }}>
           <div style={{ padding: '4px 20px 16px' }}>
-            <div style={{ fontSize: 11, color: '#6b706c', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: '#B0B0B0', marginBottom: 12 }}>
               Confirme ou altere o endereço para entrega
             </div>
 
@@ -208,8 +208,8 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
                 gap: 10,
                 padding: '12px 14px',
                 borderRadius: 10,
-                border: '1.5px solid #d6ddd0',
-                background: retira ? '#f0f7f1' : '#ffffff',
+                border: '1.5px solid rgba(255, 255, 255, 0.15)',
+                background: retira ? 'rgba(255, 59, 48, 0.15)' : 'rgba(42, 42, 42, 0.6)',
                 cursor: 'pointer',
                 marginBottom: 14,
               }}
@@ -219,7 +219,7 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
                   width: 40,
                   height: 22,
                   borderRadius: 11,
-                  background: retira ? '#2d5e3a' : '#d6ddd0',
+                  background: retira ? '#FF3B30' : '#3A3A3A',
                   position: 'relative',
                   transition: 'background 0.2s',
                   flexShrink: 0,
@@ -230,7 +230,7 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
                     width: 18,
                     height: 18,
                     borderRadius: '50%',
-                    background: '#ffffff',
+                    background: 'rgba(50, 50, 50, 0.6)',
                     position: 'absolute',
                     top: 2,
                     left: retira ? 20 : 2,
@@ -240,10 +240,10 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
                 />
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#1b1f1c' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF' }}>
                   Retirar no estabelecimento
                 </div>
-                <div style={{ fontSize: 10, color: '#6b706c' }}>
+                <div style={{ fontSize: 10, color: '#B0B0B0' }}>
                   Vou buscar pessoalmente
                 </div>
               </div>
@@ -262,9 +262,9 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
-                  background: (latitude && longitude && localizacaoMsg === 'Endereço preenchido via GPS') ? '#2d5e3a' : '#ffffff',
-                  color: (latitude && longitude && localizacaoMsg === 'Endereço preenchido via GPS') ? '#ffffff' : '#2d5e3a',
-                  border: '1.5px solid #2d5e3a',
+                  background: (latitude && longitude && localizacaoMsg === 'Endereço preenchido via GPS') ? '#FF3B30' : 'rgba(42, 42, 42, 0.6)',
+                  color: (latitude && longitude && localizacaoMsg === 'Endereço preenchido via GPS') ? '#ffffff' : '#FF3B30',
+                  border: '1.5px solid #FF3B30',
                 }}
                 onClick={usarMinhaLocalizacao}
                 disabled={buscandoLocal}
@@ -282,7 +282,7 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
               {localizacaoMsg && (
                 <div style={{
                   fontSize: 10,
-                  color: localizacaoMsg.includes('Erro') || localizacaoMsg.includes('negada') || localizacaoMsg.includes('indisponível') || localizacaoMsg.includes('Tempo') ? '#dc2626' : '#2d5e3a',
+                  color: localizacaoMsg.includes('Erro') || localizacaoMsg.includes('negada') || localizacaoMsg.includes('indisponível') || localizacaoMsg.includes('Tempo') ? '#FF3B30' : '#34C759',
                   marginTop: 4,
                   textAlign: 'center',
                 }}>
@@ -313,7 +313,7 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
                 </button>
               </div>
               {erroCep && (
-                <div style={{ fontSize: 10, color: '#dc2626', marginTop: 4 }}>{erroCep}</div>
+                <div style={{ fontSize: 10, color: '#FF3B30', marginTop: 4 }}>{erroCep}</div>
               )}
             </div>
 
@@ -384,7 +384,7 @@ export default function EnderecoEntregaModal({ cliente, enderecoAtual, onConfirm
                   style={{
                     ...inputStyle,
                     appearance: 'none' as const,
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b706c' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555555' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 10px center',
                     paddingRight: 28,

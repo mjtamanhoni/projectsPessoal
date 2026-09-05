@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
-import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, FormaPagamento } from '@/types';
+import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, FormaPagamento, BandeiraCartao } from '@/types';
 import { formatCurrency, formatDecimals } from '@/lib/utils';
 import { ProdutosSelecaoModal, type ProdutoSelecionado } from '@/components/forms/ProdutosSelecaoModal';
 import { ItemCustomizacaoModal, type ItemCustomizavel } from '@/components/forms/ItemCustomizacaoModal';
@@ -16,14 +16,16 @@ interface EncomendaFormProps {
   produtosVenda?: ProdutoVenda[];
   clientes: Cliente[];
   formasPagamento?: FormaPagamento[];
+  bandeirasCartao?: BandeiraCartao[];
 }
 
-export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosVenda = [], clientes, formasPagamento = [] }: EncomendaFormProps) {
+export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosVenda = [], clientes, formasPagamento = [], bandeirasCartao = [] }: EncomendaFormProps) {
   const [clienteId, setClienteId] = useState<number>(initial?.cliente_id ?? 0);
   const [dataEncomenda, setDataEncomenda] = useState(initial?.data_encomenda ?? new Date().toISOString().slice(0, 10));
   const [dataEntrega, setDataEntrega] = useState(initial?.data_entrega ?? '');
   const [observacao, setObservacao] = useState(initial?.observacao ?? '');
   const [formaPagamentoId, setFormaPagamentoId] = useState<number | null>(initial?.forma_pagamento_id ?? null);
+  const [bandeiraCartaoId, setBandeiraCartaoId] = useState<number | null>(initial?.bandeira_cartao_id ?? null);
 
   const [itens, setItens] = useState<EncomendaItem[]>(initial?.itens ?? []);
   const [seletorAberto, setSeletorAberto] = useState(false);
@@ -49,6 +51,9 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (itens.length === 0) return;
+    const formaPagamento = formasPagamento.find((fp) => (fp.id ?? fp.codigo) === formaPagamentoId);
+    const isCartao = formaPagamento?.classificacao === 'CARTAO_CREDITO' || formaPagamento?.classificacao === 'CARTAO_DEBITO';
+    const bandeiraSelecionada = isCartao ? bandeirasCartao.find((b) => (b.id ?? b.codigo) === bandeiraCartaoId) : null;
     onSubmit({
       id: initial?.id ?? initial?.codigo,
       cliente_id: clienteId,
@@ -57,6 +62,8 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
       observacao,
       valor_total: total,
       forma_pagamento_id: formaPagamentoId ?? undefined,
+      bandeira_cartao_id: bandeiraSelecionada?.id ?? bandeiraSelecionada?.codigo ?? undefined,
+      bandeira_cartao_nome: bandeiraSelecionada?.nome ?? undefined,
       itens,
     });
   };
@@ -82,6 +89,22 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
             title="Selecionar Forma de Pagamento"
           />
         </div>
+        {(() => {
+          const fp = formasPagamento.find((f) => (f.id ?? f.codigo) === formaPagamentoId);
+          const isCartao = fp?.classificacao === 'CARTAO_CREDITO' || fp?.classificacao === 'CARTAO_DEBITO';
+          if (!isCartao || bandeirasCartao.length === 0) return null;
+          return (
+            <div className="space-y-1.5">
+              <label className="label-field">Bandeira do Cartao</label>
+              <RegistroSelect<number>
+                value={bandeiraCartaoId}
+                onChange={setBandeiraCartaoId}
+                options={bandeirasCartao.map((b) => ({ value: (b.id ?? b.codigo)!, label: b.nome }))}
+                title="Selecionar Bandeira do Cartao"
+              />
+            </div>
+          );
+        })()}
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <Input label="Data da Encomenda *" type="date" value={dataEncomenda} onChange={(e) => setDataEncomenda(e.target.value)} />

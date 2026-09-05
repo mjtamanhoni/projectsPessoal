@@ -216,7 +216,7 @@ export default function Pedido() {
     }
   };
 
-  const confirmarFormaPagamento = async (forma: FormaPagamentoPublica, trocoPara?: number) => {
+  const confirmarFormaPagamento = async (forma: FormaPagamentoPublica, trocoPara?: number, bandeiraCartao?: { id: number; nome: string }) => {
     if (!encomendaParaPagamento || !empresa) return;
     const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
     try {
@@ -227,6 +227,8 @@ export default function Pedido() {
         forma_pagamento_id: forma.id,
         forma_pagamento_nome: forma.descricao,
         troco_para: trocoPara,
+        bandeira_cartao_id: bandeiraCartao?.id,
+        bandeira_cartao_nome: bandeiraCartao?.nome,
       });
     } catch {
       /* forma de pagamento salva localmente mesmo se o server falhar */
@@ -237,6 +239,8 @@ export default function Pedido() {
       forma_pagamento_nome: forma.descricao,
       forma_pagamento_classificacao: forma.classificacao,
       troco_para: trocoPara,
+      bandeira_cartao_id: bandeiraCartao?.id,
+      bandeira_cartao_nome: bandeiraCartao?.nome,
     };
     setEncomendaCriada(atualizada);
     setMostrarFormaPagamento(false);
@@ -313,7 +317,7 @@ export default function Pedido() {
         <div className="modal-label" style={{ position: 'static', margin: '0 4px 4px', fontWeight: 700 }}>
           Escolha seus produtos
         </div>
-        <div style={{ fontSize: 11, color: '#6b706c', margin: '0 4px 8px' }}>
+        <div style={{ fontSize: 11, color: '#B0B0B0', margin: '0 4px 8px' }}>
           Toque no produto para adicionar e use + / − para ajustar a quantidade (produtos de venda somam 1 unidade por vez). Depois personalize cada item da lista pelo ✎.
         </div>
 
@@ -330,30 +334,30 @@ export default function Pedido() {
                   position: 'relative',
                   cursor: 'pointer',
                   borderRadius: 10,
-                  border: selecionado ? '2px solid #2d6a4f' : '1px solid #d6ddd0',
-                  background: selecionado ? '#f0f7f1' : '#ffffff',
+                  border: selecionado ? '2px solid #FF3B30' : '1px solid rgba(255, 255, 255, 0.15)',
+                  background: selecionado ? 'rgba(255, 59, 48, 0.15)' : 'rgba(42, 42, 42, 0.6)',
                   padding: 8,
                 }}
               >
                 {selecionado && (
-                  <div style={{ position: 'absolute', top: 4, right: 4, background: '#2d6a4f', color: '#fff', borderRadius: 10, padding: '0 8px', fontSize: 11, fontWeight: 700 }}>
+                  <div style={{ position: 'absolute', top: 4, right: 4, background: '#FF3B30', color: '#fff', borderRadius: 10, padding: '0 8px', fontSize: 11, fontWeight: 700 }}>
                     {qtd}
                   </div>
                 )}
                 <FotoProduto foto={cat.foto} alt={cat.nome} height={64} />
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#1b1f1c', marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#FFFFFF', marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {cat.nome}
                 </div>
                 {cat.descricao ? (
-                  <div style={{ fontSize: 10, color: '#6b706c', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <div style={{ fontSize: 10, color: '#B0B0B0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {cat.descricao}
                   </div>
                 ) : null}
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#2d5e3a', marginTop: 2 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#FF3B30', marginTop: 2 }}>
                   {fmtMoeda(cat.preco)}
                 </div>
                 {temOpcoes && (
-                  <div style={{ fontSize: 9, color: '#2d6a4f', fontWeight: 600, marginTop: 2 }}>
+                  <div style={{ fontSize: 9, color: '#FF3B30', fontWeight: 600, marginTop: 2 }}>
                     Personalizável
                   </div>
                 )}
@@ -365,7 +369,7 @@ export default function Pedido() {
                     {qtd > 1 && (
                       <button
                         className="row-btn"
-                        style={{ position: 'static', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e9f0ea', color: '#2d5e3a', fontSize: 20, fontWeight: 700, lineHeight: 1 }}
+                        style={{ position: 'static', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 59, 48, 0.2)', color: '#FF3B30', fontSize: 20, fontWeight: 700, lineHeight: 1 }}
                         onClick={() => diminuirProduto(cat)}
                         aria-label="Diminuir quantidade"
                       >
@@ -374,7 +378,7 @@ export default function Pedido() {
                     )}
                     <button
                       className="row-btn"
-                      style={{ position: 'static', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2d5e3a', color: '#ffffff', fontSize: 20, fontWeight: 700, lineHeight: 1 }}
+                      style={{ position: 'static', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FF3B30', color: '#ffffff', fontSize: 20, fontWeight: 700, lineHeight: 1 }}
                       onClick={() => aumentarProduto(cat)}
                       aria-label="Aumentar quantidade"
                     >
@@ -386,12 +390,12 @@ export default function Pedido() {
             );
           })}
           {produtosLoading && (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 11, color: '#9ca09d', padding: 12 }}>
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 11, color: '#707070', padding: 12 }}>
               Carregando produtos...
             </div>
           )}
           {produtos.length === 0 && !produtosLoading && (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 11, color: '#9ca09d', padding: 12 }}>
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 11, color: '#707070', padding: 12 }}>
               Nenhum produto disponível
             </div>
           )}
@@ -406,14 +410,14 @@ export default function Pedido() {
         </div>
 
         {itens.length === 0 ? (
-          <div style={{ margin: '0 4px', textAlign: 'center', fontSize: 11, color: '#9ca09d', padding: '10px 0' }}>
+          <div style={{ margin: '0 4px', textAlign: 'center', fontSize: 11, color: '#707070', padding: '10px 0' }}>
             Nenhum item adicionado
           </div>
         ) : (
           itens.map((item, idx) => (
             <div
               key={`${chaveDeItem(item)}-${idx}`}
-              style={{ margin: '0 4px 10px', padding: '6px 0', borderBottom: '1px solid #e4eae3' }}
+              style={{ margin: '0 4px 10px', padding: '6px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <div className="compra-sub-row compra-item" style={{ position: 'static', padding: 0, flex: 1, minWidth: 0 }}>
@@ -426,7 +430,7 @@ export default function Pedido() {
                 </div>
                 <button
                   className="row-btn"
-                  style={{ position: 'static', width: 44, height: 44, flexShrink: 0, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eaf3ee', border: '1.5px solid #2d6a4f', color: '#2d6a4f', fontSize: 20, textAlign: 'center' }}
+                  style={{ position: 'static', width: 44, height: 44, flexShrink: 0, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 59, 48, 0.15)', border: '1.5px solid #FF3B30', color: '#FF3B30', fontSize: 20, textAlign: 'center' }}
                   onClick={() => setCustomizandoIdx(idx)}
                   aria-label="Personalizar item"
                 >
@@ -434,7 +438,7 @@ export default function Pedido() {
                 </button>
                 <button
                   className="row-btn"
-                  style={{ position: 'static', width: 44, height: 44, flexShrink: 0, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fdeeee', border: '1.5px solid #dc2626', color: '#dc2626', fontSize: 18, textAlign: 'center' }}
+                  style={{ position: 'static', width: 44, height: 44, flexShrink: 0, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 59, 48, 0.15)', border: '1.5px solid #FF3B30', color: '#FF3B30', fontSize: 18, textAlign: 'center' }}
                   onClick={() => setItens(itens.filter((_, i) => i !== idx))}
                   aria-label="Remover item"
                 >
@@ -442,7 +446,7 @@ export default function Pedido() {
                 </button>
               </div>
               {descricaoPersonalizacao(item) && (
-                <div style={{ padding: '3px 4px 0', fontSize: 10, color: '#6b706c', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                <div style={{ padding: '3px 4px 0', fontSize: 10, color: '#B0B0B0', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                   {descricaoPersonalizacao(item)}
                 </div>
               )}
@@ -450,7 +454,7 @@ export default function Pedido() {
           ))
         )}
 
-        <div style={{ margin: '8px 4px 4px', fontSize: 12, fontWeight: 700, color: '#1b1f1c' }}>
+        <div style={{ margin: '8px 4px 4px', fontSize: 12, fontWeight: 700, color: '#FFFFFF' }}>
           Total: {formatarMoeda(totalEncomenda)}
         </div>
 

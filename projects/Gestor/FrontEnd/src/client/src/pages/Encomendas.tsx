@@ -13,16 +13,17 @@ import { CupomVendaModal } from '@/components/cupom/CupomVendaModal';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { Spinner } from '@/components/ui/Spinner';
-import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, VendaProduto, FormaPagamento } from '@/types';
+import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, VendaProduto, FormaPagamento, BandeiraCartao } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw, ListChecks, FileText } from 'lucide-react';
+import { Plus, Edit2, Trash2, RefreshCw, ListChecks, FileText, Eye } from 'lucide-react';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDecimals, parseItemCustomizacao } from '@/lib/utils';
 import { getEncomendasRefreshSegundos } from '@/lib/settings';
 import api from '@/lib/api';
 import type { JSX } from 'react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 const columnHelper = createColumnHelper<Encomenda>();
 
@@ -81,6 +82,7 @@ export function Encomendas() {
   const { data: produtosVenda } = useApi<ProdutoVenda>('/produtos-venda');
   const { data: clientes } = useApi<Cliente>('/clientes');
   const { data: formasPagamento } = useApi<FormaPagamento>('/formas-pagamento');
+  const { data: bandeirasCartao } = useApi<BandeiraCartao>('/bandeiras-cartao');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Encomenda | null>(null);
   const [fetchingOne, setFetchingOne] = useState(false);
@@ -96,6 +98,8 @@ export function Encomendas() {
   const [etapaRecebido, setEtapaRecebido] = useState(true);
   const [salvandoEtapa, setSalvandoEtapa] = useState(false);
   const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
+  const [viewEncomenda, setViewEncomenda] = useState<Encomenda | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
 
   const [refreshSeg, setRefreshSeg] = useState<number>(() => getEncomendasRefreshSegundos());
 
@@ -195,6 +199,8 @@ export function Encomendas() {
         forma_pagamento_id: first.forma_pagamento_id,
         forma_pagamento_nome: first.forma_pagamento_nome,
         forma_pagamento_classificacao: first.forma_pagamento_classificacao,
+        bandeira_cartao_id: first.bandeira_cartao_id,
+        bandeira_cartao_nome: first.bandeira_cartao_nome,
         itens,
       };
     } catch {
@@ -250,6 +256,11 @@ export function Encomendas() {
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-3 py-2 text-sm text-purple-800">
             <span className="text-lg">💳</span>
             <span className="font-semibold">Levar máquina de cartão ao cliente</span>
+            {row.bandeira_cartao_nome && (
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-purple-200 text-purple-900 text-xs font-bold">
+                {row.bandeira_cartao_nome}
+              </span>
+            )}
           </div>
         )}
         {endereco && (
@@ -348,19 +359,23 @@ export function Encomendas() {
       header: '#',
       enableSorting: true,
       meta: { align: 'right' } as Record<string, string>,
+      size: 60,
     }),
     columnHelper.accessor('cliente_nome', {
       header: 'Cliente',
       enableSorting: true,
       cell: (info) => info.getValue() || '-',
+      size: 220,
     }),
     columnHelper.accessor('data_encomenda', {
       header: 'Data Encomenda',
       cell: (info) => formatDataEncomenda(info.getValue()),
+      size: 120,
     }),
     columnHelper.accessor('data_entrega', {
       header: 'Data Entrega',
       cell: (info) => formatDataEncomenda(info.getValue()),
+      size: 120,
     }),
     columnHelper.accessor('status', {
       header: 'Situação',
@@ -368,15 +383,18 @@ export function Encomendas() {
         const etapaInfo = ETAPAS_ENCOMENDA[Number(info.getValue())] ?? ETAPAS_ENCOMENDA[0];
         return <span className={`status-badge ${etapaInfo.badge}`}>{etapaInfo.label}</span>;
       },
+      size: 140,
     }),
     columnHelper.accessor('qtd_itens', {
       header: 'Qtd. Itens',
       meta: { align: 'right' } as Record<string, string>,
+      size: 70,
     }),
     columnHelper.accessor('valor_total', {
       header: 'Valor Total',
       cell: (info) => formatCurrency(Number(info.getValue())),
       meta: { align: 'right' } as Record<string, string>,
+      size: 100,
     }),
     columnHelper.accessor('forma_pagamento_nome', {
       header: 'Pagamento',
@@ -391,19 +409,20 @@ export function Encomendas() {
         return (
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${isCartao ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-700'}`}>
             {isCartao && '💳 '}{nome}
+            {isCartao && row.bandeira_cartao_nome && (
+              <span className="ml-1 text-purple-600">• {row.bandeira_cartao_nome}</span>
+            )}
           </span>
         );
       },
-    }),
-    columnHelper.accessor('observacao', {
-      header: 'Observação',
-      cell: (info) => info.getValue() || '-',
+      size: 180,
     }),
     columnHelper.display({
       id: 'acoes',
       header: 'Ações',
       enableColumnFilter: false,
       enableSorting: false,
+      size: 90,
       cell: ({ row }) => {
         const id = row.original.id ?? row.original.codigo;
         const status = Number(row.original.status ?? 0);
@@ -414,6 +433,22 @@ export function Encomendas() {
         const podeEtapa = etapasPermitidas(status).length > 0;
         const podeCupom = !!row.original.venda_id;
         const extras = [];
+        extras.push({
+          rotulo: 'Visualizar',
+          icone: Eye,
+          cor: '#6366f1',
+          onClick: async () => {
+            const idToFetch = row.original.id ?? row.original.codigo;
+            if (!idToFetch) return;
+            setViewLoading(true);
+            setViewEncomenda(row.original);
+            try {
+              const full = await fetchFullEncomenda(idToFetch);
+              if (full) setViewEncomenda(full);
+            } catch { /* mantém dados parciais */ }
+            finally { setViewLoading(false); }
+          },
+        });
         if (podeCupom) {
           extras.push({
             rotulo: 'Cupom',
@@ -574,6 +609,35 @@ export function Encomendas() {
             setFiltroStatus(['0', '1', '2', '3']);
           }}
         />
+
+        {/* Cards de totais por status (dia atual) */}
+        {(() => {
+          const hoje = new Date().toISOString().slice(0, 10);
+          const encomendasHoje = (encomendas ?? []).filter((e) => e.data_encomenda?.slice(0, 10) === hoje);
+          const contagem = [0, 1, 2, 3, 4, 5].map((s) => {
+            const lista = encomendasHoje.filter((e) => (e.status ?? 0) === s);
+            return {
+              status: s,
+              label: ETAPAS_ENCOMENDA[s].label,
+              badge: ETAPAS_ENCOMENDA[s].badge,
+              total: lista.length,
+              valorTotal: lista.reduce((acc, e) => acc + (Number(e.valor_total) || 0), 0),
+            };
+          });
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
+              {contagem.map((c) => (
+                <div key={c.status} className="rounded-lg border border-border-primary bg-bg-secondary p-3 text-center">
+                  <div className="text-2xl font-bold text-text-primary">
+                    {c.total}{c.total > 0 && <span className="ml-1">● {formatCurrency(c.valorTotal)}</span>}
+                  </div>
+                  <div className={`text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block ${c.badge}`}>{c.label}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         <DataTable
           columns={columns}
           data={encomendasFiltradas}
@@ -598,6 +662,7 @@ export function Encomendas() {
             produtosVenda={produtosVenda}
             clientes={clientes}
             formasPagamento={formasPagamento}
+            bandeirasCartao={bandeirasCartao}
           />
         )}
       </Modal>
@@ -659,6 +724,217 @@ export function Encomendas() {
       </Modal>
 
       <CupomVendaModal venda={cupomVenda} onClose={() => setCupomVenda(null)} clientes={clientes} />
+
+      <Modal isOpen={viewEncomenda !== null} onClose={() => setViewEncomenda(null)} title="Detalhes da Encomenda" maxWidth="max-w-2xl">
+        {viewEncomenda && (
+          <div className="p-4 space-y-4">
+            {viewLoading && (
+              <div className="flex items-center gap-2 text-sm text-text-secondary py-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent-primary" />
+                Carregando detalhes...
+              </div>
+            )}
+
+            {/* Cabeçalho */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <div className="text-xs text-text-muted">Código</div>
+                <div className="text-sm font-semibold">#{viewEncomenda.id ?? viewEncomenda.codigo}</div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Status</div>
+                <span className={`status-badge ${(ETAPAS_ENCOMENDA[Number(viewEncomenda.status)] ?? ETAPAS_ENCOMENDA[0]).badge}`}>
+                  {(ETAPAS_ENCOMENDA[Number(viewEncomenda.status)] ?? ETAPAS_ENCOMENDA[0]).label}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Data Encomenda</div>
+                <div className="text-sm">{formatDataEncomenda(viewEncomenda.data_encomenda)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Data Entrega</div>
+                <div className="text-sm">{formatDataEncomenda(viewEncomenda.data_entrega)}</div>
+              </div>
+            </div>
+
+            {/* Cliente */}
+            <div className="border-t border-border-subtle pt-3">
+              <div className="text-xs text-text-muted mb-1">Cliente</div>
+              <div className="text-sm font-medium">{viewEncomenda.cliente_nome || '-'}</div>
+            </div>
+
+            {/* Pagamento */}
+            <div className="border-t border-border-subtle pt-3">
+              <div className="text-xs text-text-muted mb-1">Forma de Pagamento</div>
+              <div className="text-sm">
+                {viewEncomenda.forma_pagamento_nome || '-'}
+                {viewEncomenda.bandeira_cartao_nome && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-semibold">
+                    {viewEncomenda.bandeira_cartao_nome}
+                  </span>
+                )}
+                {viewEncomenda.troco_para != null && viewEncomenda.troco_para > 0 && (
+                  <span className="text-text-muted ml-2">(Troco para: {formatCurrency(viewEncomenda.troco_para)})</span>
+                )}
+              </div>
+            </div>
+
+            {/* Observação */}
+            <div className="border-t border-border-subtle pt-3">
+              <div className="text-xs text-text-muted mb-1">Observação</div>
+              <div className="text-sm bg-bg-muted rounded-lg p-3">{viewEncomenda.observacao || '-'}</div>
+            </div>
+
+            {/* Endereço de Entrega */}
+            {viewEncomenda.endereco_entrega && (
+              <div className="border-t border-border-subtle pt-3">
+                <div className="text-xs text-text-muted mb-1">📍 Endereço de Entrega</div>
+                {viewEncomenda.endereco_entrega.retira_estabelecimento === 1 ? (
+                  <div className="text-sm font-semibold">🏪 Retirar no estabelecimento</div>
+                ) : (
+                  <div className="text-sm">
+                    {viewEncomenda.endereco_entrega.endereco}{viewEncomenda.endereco_entrega.nr ? `, ${viewEncomenda.endereco_entrega.nr}` : ''}
+                    {viewEncomenda.endereco_entrega.complemento ? ` - ${viewEncomenda.endereco_entrega.complemento}` : ''}
+                    {viewEncomenda.endereco_entrega.bairro ? ` - ${viewEncomenda.endereco_entrega.bairro}` : ''}
+                    {viewEncomenda.endereco_entrega.cidade ? ` - ${viewEncomenda.endereco_entrega.cidade}` : ''}
+                    {viewEncomenda.endereco_entrega.uf ? `/${viewEncomenda.endereco_entrega.uf}` : ''}
+                    {viewEncomenda.endereco_entrega.cep ? ` - CEP: ${viewEncomenda.endereco_entrega.cep}` : ''}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Itens */}
+            <div className="border-t border-border-subtle pt-3">
+              <div className="text-xs text-text-muted mb-2">Itens ({viewEncomenda.qtd_itens ?? viewEncomenda.itens?.length ?? 0})</div>
+              {viewEncomenda.itens && viewEncomenda.itens.length > 0 ? (
+                <div className="border border-border-subtle rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-bg-muted">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-xs font-medium text-text-secondary">Produto</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium text-text-secondary">Qtd</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium text-text-secondary">Valor Unit.</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium text-text-secondary">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewEncomenda.itens.map((item, idx) => (
+                        <tr key={idx} className="border-t border-border-subtle">
+                          <td className="px-3 py-2">
+                            <div className="font-medium">{item.produto_nome || item.produto_venda_nome || '-'}</div>
+                            {descricaoPersonalizacao(item) && (
+                              <div className="text-xs text-text-muted">{descricaoPersonalizacao(item)}</div>
+                            )}
+                          </td>
+                          <td className="text-right px-3 py-2">{item.quantidade}</td>
+                          <td className="text-right px-3 py-2">{formatCurrency(item.valor_unitario)}</td>
+                          <td className="text-right px-3 py-2 font-medium">{formatCurrency(item.valor_total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-sm text-text-muted">Nenhum item carregado</div>
+              )}
+            </div>
+
+            {/* Valor Total */}
+            <div className="border-t border-border-subtle pt-3 flex justify-end">
+              <div className="text-right">
+                <div className="text-xs text-text-muted">Valor Total</div>
+                <div className="text-lg font-bold text-accent-green">{formatCurrency(viewEncomenda.valor_total)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Gráfico de linha diário - Entregues e Canceladas por dia (período do filtro) */}
+      {(() => {
+        const encomendasPeriodo = (encomendas ?? []).filter(
+          (e) => ((e.status ?? 0) === 4 || (e.status ?? 0) === 5) && passaPeriodo(e.data_encomenda, periodo),
+        );
+        if (encomendasPeriodo.length === 0) return null;
+
+        const mapaDia = new Map<string, { entregue: number; cancelada: number }>();
+        for (const e of encomendasPeriodo) {
+          const dia = e.data_encomenda?.slice(0, 10) ?? '';
+          if (!dia) continue;
+          if (!mapaDia.has(dia)) mapaDia.set(dia, { entregue: 0, cancelada: 0 });
+          const ref = mapaDia.get(dia)!;
+          if ((e.status ?? 0) === 4) ref.entregue++;
+          else ref.cancelada++;
+        }
+        const dados = Array.from(mapaDia.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([dia, v]) => ({
+            dia: dia.slice(5, 10).split('-').reverse().join('/'),
+            Entregue: v.entregue,
+            Cancelada: v.cancelada,
+          }));
+
+        return (
+          <Card>
+            <div className="mb-2 text-sm font-semibold text-text-primary">Entregues vs Canceladas — Diário (período filtrado)</div>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={dados} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-primary, #e5e7eb)" />
+                <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="Entregue" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="Cancelada" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        );
+      })()}
+
+      {/* Gráfico de barras mensal - Totais do ano vigente */}
+      {(() => {
+        const anoAtual = new Date().getFullYear();
+        const encomendasAno = (encomendas ?? []).filter(
+          (e) => e.data_encomenda?.slice(0, 4) === String(anoAtual),
+        );
+        if (encomendasAno.length === 0) return null;
+
+        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const mapaMes = new Map<number, { entregue: number; cancelada: number }>();
+        for (let i = 0; i < 12; i++) mapaMes.set(i, { entregue: 0, cancelada: 0 });
+
+        for (const e of encomendasAno) {
+          const mes = new Date(`${e.data_encomenda?.slice(0, 10)}T12:00:00`).getMonth();
+          if (!mapaMes.has(mes)) continue;
+          const ref = mapaMes.get(mes)!;
+          if ((e.status ?? 0) === 4) ref.entregue++;
+          else if ((e.status ?? 0) === 5) ref.cancelada++;
+        }
+        const dados = meses.map((nome, i) => ({
+          mes: nome,
+          Entregue: mapaMes.get(i)!.entregue,
+          Cancelada: mapaMes.get(i)!.cancelada,
+        }));
+
+        return (
+          <Card>
+            <div className="mb-2 text-sm font-semibold text-text-primary">Entregues vs Canceladas — Mensal ({anoAtual})</div>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={dados} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-primary, #e5e7eb)" />
+                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="Entregue" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Cancelada" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        );
+      })()}
 
       <ConfirmDialog
         isOpen={confirmDelete !== null}
