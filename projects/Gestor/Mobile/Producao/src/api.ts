@@ -271,6 +271,57 @@ export interface UsoConsumo {
   motivo?: string;
 }
 
+export interface ProdutoClassificacao {
+  id?: number;
+  codigo?: number;
+  nome: string;
+  status?: number;
+}
+
+export interface Adicional {
+  id?: number;
+  codigo?: number;
+  nome: string;
+  descricao?: string;
+  preco: number;
+  ativo?: boolean;
+}
+
+export interface ProdutoVenda {
+  id?: number;
+  codigo?: number;
+  nome: string;
+  descricao?: string;
+  preco: number;
+  produto_fabricado_id?: number;
+  produto_fabricado_nome?: string;
+  produto_classificacao_id?: number;
+  produto_classificacao_nome?: string;
+  foto?: string;
+  ativo?: boolean;
+}
+
+export interface ProdutoVendaItem {
+  id?: number;
+  codigo?: number;
+  produto_venda_id?: number;
+  adicional_id?: number;
+  adicional_nome?: string;
+  adicional_preco?: number;
+  nome: string;
+  pode_remover?: boolean;
+  pode_adicionar?: boolean;
+  ordem?: number;
+}
+
+export interface ProdutoAdicional {
+  id?: number;
+  produto_fabricado_id: number;
+  adicional_id: number;
+  adicional_nome?: string;
+  adicional_preco?: number;
+}
+
 export interface DashboardData {  kpis: {
     total_vendas: number;
     qtd_vendida: number;
@@ -886,5 +937,143 @@ export async function salvarCustoAdicionalFabricacao(data: FabricacaoCustoAdicio
 
 export async function excluirCustoAdicionalFabricacao(id: number): Promise<void> {
   const res = await request(`/fabricacaoCustoAdicional?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export const VERSAO_APP: string = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
+
+export interface VersaoInfo {
+  nome: string;
+  versao: string;
+  arquivo: string;
+}
+
+function getLastSeenVersion(): string {
+  try { return localStorage.getItem('producao.versao_vista') || ''; } catch { return ''; }
+}
+function setLastSeenVersion(v: string) {
+  try { localStorage.setItem('producao.versao_vista', v); } catch { /* ok */ }
+}
+
+export async function verificarVersao(): Promise<VersaoInfo | null> {
+  try {
+    const servers = getServerList();
+    const lastSeen = getLastSeenVersion();
+    for (const srv of servers) {
+      try {
+        const url = `http://${srv.host}:${srv.port}/apk/versao?app=producao`;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) continue;
+        const raw = await res.text();
+        const data = JSON.parse(raw) as VersaoInfo;
+        if (!data || !data.versao) continue;
+        if (data.versao === VERSAO_APP) {
+          setLastSeenVersion(data.versao);
+          return null;
+        }
+        if (lastSeen && data.versao === lastSeen) return null;
+        setLastSeenVersion(data.versao);
+        return data;
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function recalcularInsumos(): Promise<void> {
+  const res = await request('/insumoRecalcular', {}, true);
+  await parseResponse(res);
+}
+
+export async function recalcularInsumo(id: number): Promise<void> {
+  const res = await request(`/insumoRecalcular?id=${id}`, {}, true);
+  await parseResponse(res);
+}
+
+export async function listarProdutoClassificacoes(): Promise<ProdutoClassificacao[]> {
+  const res = await request('/produtoClassificacao', {}, true);
+  return (await parseResponse(res)) as ProdutoClassificacao[];
+}
+
+export async function salvarProdutoClassificacao(data: ProdutoClassificacao): Promise<void> {
+  const res = await request('/produtoClassificacao', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirProdutoClassificacao(id: number): Promise<void> {
+  const res = await request(`/produtoClassificacao?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarAdicionais(): Promise<Adicional[]> {
+  const res = await request('/adicional', {}, true);
+  return (await parseResponse(res)) as Adicional[];
+}
+
+export async function salvarAdicional(data: Adicional): Promise<void> {
+  const res = await request('/adicional', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirAdicional(id: number): Promise<void> {
+  const res = await request(`/adicional?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarProdutoVendas(): Promise<ProdutoVenda[]> {
+  const res = await request('/produtoVenda', {}, true);
+  return (await parseResponse(res)) as ProdutoVenda[];
+}
+
+export async function salvarProdutoVenda(data: ProdutoVenda): Promise<{ id?: number } | null> {
+  const res = await request('/produtoVenda', { method: 'POST', body: JSON.stringify(data) }, true);
+  const parsed = (await parseResponse(res)) as Record<string, unknown> | null;
+  if (!parsed) return null;
+  const ids = Array.isArray(parsed.ids) ? parsed.ids : [];
+  return { id: ids.length > 0 ? Number(ids[0]) : undefined };
+}
+
+export async function enviarFotoProdutoVenda(id: number, foto: string): Promise<void> {
+  const res = await request('/produtoVendaFoto', { method: 'POST', body: JSON.stringify({ id, foto }) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirProdutoVenda(id: number): Promise<void> {
+  const res = await request(`/produtoVenda?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarProdutoVendaItens(produtoVendaId: number): Promise<ProdutoVendaItem[]> {
+  const res = await request(`/produtoVendaItem?produto_venda_id=${produtoVendaId}`, {}, true);
+  return (await parseResponse(res)) as ProdutoVendaItem[];
+}
+
+export async function salvarProdutoVendaItem(data: ProdutoVendaItem): Promise<void> {
+  const res = await request('/produtoVendaItem', { method: 'POST', body: JSON.stringify(data) }, true);
+  await parseResponse(res);
+}
+
+export async function excluirProdutoVendaItem(id: number): Promise<void> {
+  const res = await request(`/produtoVendaItem?id=${id}`, { method: 'DELETE' }, true);
+  await parseResponse(res);
+}
+
+export async function listarProdutoAdicionais(produtoFabricadoId: number): Promise<ProdutoAdicional[]> {
+  const res = await request(`/produtoAdicional?produto_fabricado_id=${produtoFabricadoId}`, {}, true);
+  return (await parseResponse(res)) as ProdutoAdicional[];
+}
+
+export async function salvarProdutoAdicionais(produtoFabricadoId: number, adicionalIds: number[]): Promise<void> {
+  const res = await request('/produtoAdicional', {
+    method: 'POST',
+    body: JSON.stringify({ produto_fabricado_id: produtoFabricadoId, adicional_ids: adicionalIds }),
+  }, true);
   await parseResponse(res);
 }

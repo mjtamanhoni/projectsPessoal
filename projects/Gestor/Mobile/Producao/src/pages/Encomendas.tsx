@@ -593,7 +593,7 @@ const carregar = useCallback(async () => {
                           <span style={{ marginLeft: 4, color: '#7e22ce', fontWeight: 700 }}>💳 Levar máquina</span>
                         )}
                       </div>
-                    ) : null}
+                    )}
                     <div className="compra-total">{fmtMoeda(e.valor_total)}</div>
                     {id != null && renderProntaEntrega(e)}
                     <RowMenu

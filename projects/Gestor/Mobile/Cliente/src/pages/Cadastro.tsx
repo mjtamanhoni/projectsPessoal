@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { criarClientePublico, extrairErro, setDocumentoLembrado, type EmpresaPublic } from '../api';
+import { criarClientePublico, extrairErro, setDocumentoLembrado, VERSAO_APP, type EmpresaPublic } from '../api';
 import { useSessao } from '../auth';
 import BackButton from '../components/BackButton';
 import { mascaraCpfCnpj, mascaraTelefone, mascaraCep, buscarCep } from '../format';
@@ -261,7 +261,7 @@ export default function Cadastro() {
       </div>
 
       <div className="version" style={{ top: 820 }}>
-        Cliente v1.3
+        Cliente v{VERSAO_APP}
       </div>
     </div>
   );

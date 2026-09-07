@@ -7,7 +7,7 @@ import { fetchSettings, saveSettings } from '@/lib/settings';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { AppSettings, Categoria, Empresa } from '@/types';
-import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search } from 'lucide-react';
+import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search, Download, QrCode, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
@@ -15,9 +15,20 @@ import type { ModuleItem } from '@/context/ModuleContext';
 import { useAuth } from '@/context/AuthContext';
 import { listarImpressorasUSB, solicitarImpressoraUSB, imprimirTesteUSB, webusbDisponivel, diagnosWebUSB, listarDispositivosUSB, type ImpressoraLocal } from '@/lib/printer-local';
 import { imprimirCupomComum } from '@/lib/cupom';
+import { getServerConfig } from '@/lib/serverConfig';
+import QRCode from 'qrcode';
+
+function QRCodeImage({ value, size = 180 }: { value: string; size?: number }) {
+  const [src, setSrc] = useState<string>('');
+  useEffect(() => {
+    QRCode.toDataURL(value, { width: size, margin: 2, errorCorrectionLevel: 'M' }).then(setSrc).catch(() => {});
+  }, [value, size]);
+  if (!src) return <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#999' }}>Gerando QR Code...</div>;
+  return <img src={src} alt="QR Code" style={{ width: size, height: size }} />;
+}
 
 
-type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes';
+type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes' | 'instalacao';
 
 export function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -43,6 +54,9 @@ export function Settings() {
   const [procurandoUSB, setProcurandoUSB] = useState(false);
   const [testandoImpressora, setTestandoImpressora] = useState(false);
   const [msgImpressora, setMsgImpressora] = useState<{ tipo: string; texto: string } | null>(null);
+  const [apks, setApks] = useState<{ nome: string; tamanho: number; modificado: string; versao: string }[]>([]);
+  const [uploadingAPK, setUploadingAPK] = useState(false);
+  const [excluindoAPK, setExcluindoAPK] = useState<string | null>(null);
   const { addToast } = useToast();
   const { isSuperadmin } = useAuth();
 
@@ -72,7 +86,7 @@ export function Settings() {
   }, [tab]);
 
   useEffect(() => {
-    if (!isSuperadmin && (tab === 'limpeza' || tab === 'migracoes')) {
+    if (!isSuperadmin && (tab === 'limpeza' || tab === 'migracoes' || tab === 'instalacao')) {
       setTab('servidor');
     }
   }, [isSuperadmin, tab]);
@@ -81,6 +95,9 @@ export function Settings() {
     if (tab === 'impressao') {
       listarImpressorasUSB().then(setImpressorasUSB).catch(() => setImpressorasUSB([]));
       listarDispositivosUSB().then(setDispositivosUSB).catch(() => setDispositivosUSB([]));
+    }
+    if (tab === 'instalacao') {
+      api.get('/apk').then((r) => setApks(r.data ?? [])).catch(() => setApks([]));
     }
   }, [tab]);
 
@@ -200,6 +217,7 @@ export function Settings() {
     ...(isSuperadmin ? [{ key: 'limpeza' as Tab, label: 'Limpeza', icon: <AlertTriangle size={16} /> }] : []),
     { key: 'sequencias', label: 'Sequências', icon: <Database size={16} /> },
     ...(isSuperadmin ? [{ key: 'migracoes' as Tab, label: 'Banco de Dados', icon: <HardDrive size={16} /> }] : []),
+    ...(isSuperadmin ? [{ key: 'instalacao' as Tab, label: 'Instalação do App', icon: <Download size={16} /> }] : []),
   ];
 
   return (
@@ -1081,6 +1099,264 @@ export function Settings() {
               )}
             </div>
           </Card>
+        )}
+
+        {tab === 'instalacao' && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* App Cliente */}
+              <Card>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <QrCode size={20} className="text-green-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-text-primary">App Cliente (Chegou)</h2>
+                </div>
+                <p className="text-sm text-text-secondary mb-4">
+                  Faça upload do APK do app do cliente e gere o QR Code para instalação.
+                </p>
+                <div className="mb-4">
+                  <label className="label-field">Enviar arquivo APK</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept=".apk"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingAPK(true);
+                        try {
+                          const formData = new FormData();
+                          formData.append('apk', file);
+                          await api.post('/apk', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                          addToast('success', `APK "${file.name}" enviado com sucesso`);
+                          const r = await api.get('/apk');
+                          setApks(r.data ?? []);
+                        } catch {
+                          addToast('error', 'Erro ao enviar APK');
+                        } finally {
+                          setUploadingAPK(false);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="input-field"
+                      disabled={uploadingAPK}
+                    />
+                    {uploadingAPK && <Loader2 size={18} className="animate-spin text-text-secondary" />}
+                  </div>
+                </div>
+                {apks.filter((a) => !a.nome.toLowerCase().includes('producao') && !a.nome.toLowerCase().includes('fabrica')).length === 0 ? (
+                  <div className="text-sm text-text-secondary py-4 text-center">Nenhum APK do cliente disponível</div>
+                ) : (
+                  <div className="space-y-4">
+                    {apks.filter((a) => !a.nome.toLowerCase().includes('producao') && !a.nome.toLowerCase().includes('fabrica')).map((apk) => {
+                      const cfg = getServerConfig();
+                      const baseUrl = cfg ? `http://${cfg.host}:${cfg.port}` : '';
+                      const downloadUrl = `${baseUrl}/apk/${encodeURIComponent(apk.nome)}`;
+                      const imprimirQRCode = () => {
+                        const printWindow = window.open('', '_blank', 'width=500,height=600');
+                        if (!printWindow) return;
+                        QRCode.toDataURL(downloadUrl, { width: 300, margin: 2, errorCorrectionLevel: 'M' }).then((dataUrl) => {
+                          printWindow.document.write(`<!DOCTYPE html>
+<html><head><title>QR Code - ${apk.nome}</title>
+<style>
+  body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 30px; margin: 0; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p { font-size: 13px; color: #555; margin: 2px 0; }
+  img { margin: 20px 0; }
+  .inst { font-size: 11px; color: #888; margin-top: 10px; text-align: center; max-width: 300px; }
+  @media print { body { padding: 15px; } }
+</style></head><body>
+  <h1>Escaneie para instalar o App</h1>
+  <p>Aponte a câmera do celular para o QR Code</p>
+  <img src="${dataUrl}" width="300" height="300" />
+  <div class="inst">
+    <p><strong>Como instalar:</strong></p>
+    <p>1. Abra a câmera do celular</p>
+    <p>2. Aponte para o QR Code</p>
+    <p>3. Toque no link que aparecer</p>
+    <p>4. Baixe e instale o APK</p>
+  </div>
+</body></html>`);
+                          printWindow.document.close();
+                          printWindow.onload = () => { printWindow.print(); };
+                        });
+                      };
+                      return (
+                        <div key={apk.nome} className="rounded-lg border border-border-primary bg-bg-secondary p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <div className="text-sm font-semibold text-text-primary">{apk.nome}</div>
+                              <div className="text-xs text-text-secondary">
+                                {apk.versao && <span className="font-medium text-accent-primary">v{apk.versao}</span>}
+                                {apk.versao && ' · '}
+                                {(apk.tamanho / 1024 / 1024).toFixed(1)} MB
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={imprimirQRCode} className="p-1.5 rounded-lg border border-border-primary hover:bg-background-hover transition-colors" title="Imprimir QR Code">
+                                <Printer size={14} className="text-text-secondary" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Excluir "${apk.nome}"?`)) return;
+                                  setExcluindoAPK(apk.nome);
+                                  try {
+                                    await api.delete(`/apk/${encodeURIComponent(apk.nome)}`);
+                                    addToast('success', 'APK excluído');
+                                    setApks((prev) => prev.filter((a) => a.nome !== apk.nome));
+                                  } catch {
+                                    addToast('error', 'Erro ao excluir APK');
+                                  } finally {
+                                    setExcluindoAPK(null);
+                                  }
+                                }}
+                                disabled={excluindoAPK === apk.nome}
+                                className="p-1.5 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
+                                title="Excluir"
+                              >
+                                {excluindoAPK === apk.nome ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} className="text-red-500" />}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-center gap-3 p-4 rounded-lg bg-white">
+                            <QRCodeImage value={downloadUrl} size={160} />
+                            <div className="text-xs text-text-secondary text-center break-all">{downloadUrl}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+
+              {/* App Produção */}
+              <Card>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <QrCode size={20} className="text-blue-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-text-primary">App Produção (Fábrica)</h2>
+                </div>
+                <p className="text-sm text-text-secondary mb-4">
+                  Faça upload do APK do app de produção e gere o QR Code para instalação.
+                </p>
+                <div className="mb-4">
+                  <label className="label-field">Enviar arquivo APK</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept=".apk"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingAPK(true);
+                        try {
+                          const formData = new FormData();
+                          formData.append('apk', file);
+                          await api.post('/apk', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                          addToast('success', `APK "${file.name}" enviado com sucesso`);
+                          const r = await api.get('/apk');
+                          setApks(r.data ?? []);
+                        } catch {
+                          addToast('error', 'Erro ao enviar APK');
+                        } finally {
+                          setUploadingAPK(false);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="input-field"
+                      disabled={uploadingAPK}
+                    />
+                    {uploadingAPK && <Loader2 size={18} className="animate-spin text-text-secondary" />}
+                  </div>
+                </div>
+                {apks.filter((a) => a.nome.toLowerCase().includes('producao') || a.nome.toLowerCase().includes('fabrica')).length === 0 ? (
+                  <div className="text-sm text-text-secondary py-4 text-center">Nenhum APK de produção disponível</div>
+                ) : (
+                  <div className="space-y-4">
+                    {apks.filter((a) => a.nome.toLowerCase().includes('producao') || a.nome.toLowerCase().includes('fabrica')).map((apk) => {
+                      const cfg = getServerConfig();
+                      const baseUrl = cfg ? `http://${cfg.host}:${cfg.port}` : '';
+                      const downloadUrl = `${baseUrl}/apk/${encodeURIComponent(apk.nome)}`;
+                      const imprimirQRCode = () => {
+                        const printWindow = window.open('', '_blank', 'width=500,height=600');
+                        if (!printWindow) return;
+                        QRCode.toDataURL(downloadUrl, { width: 300, margin: 2, errorCorrectionLevel: 'M' }).then((dataUrl) => {
+                          printWindow.document.write(`<!DOCTYPE html>
+<html><head><title>QR Code - ${apk.nome}</title>
+<style>
+  body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 30px; margin: 0; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p { font-size: 13px; color: #555; margin: 2px 0; }
+  img { margin: 20px 0; }
+  .inst { font-size: 11px; color: #888; margin-top: 10px; text-align: center; max-width: 300px; }
+  @media print { body { padding: 15px; } }
+</style></head><body>
+  <h1>Escaneie para instalar o App de Produção</h1>
+  <p>Aponte a câmera do celular para o QR Code</p>
+  <img src="${dataUrl}" width="300" height="300" />
+  <div class="inst">
+    <p><strong>Como instalar:</strong></p>
+    <p>1. Abra a câmera do celular</p>
+    <p>2. Aponte para o QR Code</p>
+    <p>3. Toque no link que aparecer</p>
+    <p>4. Baixe e instale o APK</p>
+  </div>
+</body></html>`);
+                          printWindow.document.close();
+                          printWindow.onload = () => { printWindow.print(); };
+                        });
+                      };
+                      return (
+                        <div key={apk.nome} className="rounded-lg border border-border-primary bg-bg-secondary p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <div className="text-sm font-semibold text-text-primary">{apk.nome}</div>
+                              <div className="text-xs text-text-secondary">
+                                {apk.versao && <span className="font-medium text-accent-primary">v{apk.versao}</span>}
+                                {apk.versao && ' · '}
+                                {(apk.tamanho / 1024 / 1024).toFixed(1)} MB
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={imprimirQRCode} className="p-1.5 rounded-lg border border-border-primary hover:bg-background-hover transition-colors" title="Imprimir QR Code">
+                                <Printer size={14} className="text-text-secondary" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Excluir "${apk.nome}"?`)) return;
+                                  setExcluindoAPK(apk.nome);
+                                  try {
+                                    await api.delete(`/apk/${encodeURIComponent(apk.nome)}`);
+                                    addToast('success', 'APK excluído');
+                                    setApks((prev) => prev.filter((a) => a.nome !== apk.nome));
+                                  } catch {
+                                    addToast('error', 'Erro ao excluir APK');
+                                  } finally {
+                                    setExcluindoAPK(null);
+                                  }
+                                }}
+                                disabled={excluindoAPK === apk.nome}
+                                className="p-1.5 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
+                                title="Excluir"
+                              >
+                                {excluindoAPK === apk.nome ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} className="text-red-500" />}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-center gap-3 p-4 rounded-lg bg-white">
+                            <QRCodeImage value={downloadUrl} size={160} />
+                            <div className="text-xs text-text-secondary text-center break-all">{downloadUrl}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
+          </>
         )}
 
         <div className="flex justify-end pt-2">

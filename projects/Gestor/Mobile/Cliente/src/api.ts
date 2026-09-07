@@ -587,3 +587,62 @@ export async function salvarEnderecoEntregaPublico(
   });
   return (await parseResponse(res)) as { mensagem?: string } | null;
 }
+
+export interface VersaoInfo {
+  nome: string;
+  versao: string;
+  arquivo: string;
+}
+
+export const VERSAO_APP: string = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
+
+function getLastSeenVersion(): string {
+  try { return localStorage.getItem('versao_vista') || ''; } catch { return ''; }
+}
+function setLastSeenVersion(v: string) {
+  try { localStorage.setItem('versao_vista', v); } catch { /* ok */ }
+}
+
+export async function verificarVersao(): Promise<VersaoInfo | null> {
+  try {
+    const servers = getServerList();
+    const lastSeen = getLastSeenVersion();
+    console.log('[verificarVersao] VERSAO_APP=', VERSAO_APP, 'lastSeen=', lastSeen, 'servers=', servers);
+    for (const srv of servers) {
+      try {
+        const url = `http://${srv.host}:${srv.port}/apk/versao`;
+        console.log('[verificarVersao] Fetching', url);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        console.log('[verificarVersao] Status', res.status);
+        if (!res.ok) continue;
+        const raw = await res.text();
+        console.log('[verificarVersao] Raw response:', raw);
+        const data = JSON.parse(raw) as VersaoInfo;
+        if (!data || !data.versao) continue;
+        console.log('[verificarVersao] Server versao:', data.versao, 'App versao:', VERSAO_APP);
+        // Server version matches installed app → no update needed
+        if (data.versao === VERSAO_APP) {
+          setLastSeenVersion(data.versao);
+          return null;
+        }
+        // Server version matches what we already saw and dismissed → don't show again
+        if (lastSeen && data.versao === lastSeen) {
+          console.log('[verificarVersao] Already seen this version, skipping');
+          return null;
+        }
+        // New version available
+        setLastSeenVersion(data.versao);
+        return data;
+      } catch (e) {
+        console.log('[verificarVersao] Error:', e);
+        continue;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

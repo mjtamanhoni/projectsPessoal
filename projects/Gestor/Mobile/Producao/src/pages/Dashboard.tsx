@@ -82,11 +82,34 @@ export default function Dashboard() {
   }
   const maxMensal = Math.max(...vendasMensal, ...custoMensal, 1);
 
+  const diarioFabricacao = (data?.diario_fabricacao ?? []).map((d) => ({
+    dia: new Date(d.dia).getDate(),
+    qtd: d.qtd_fabricada,
+  }));
+  const maxDiarioFab = Math.max(...diarioFabricacao.map((d) => d.qtd), 1);
+
   const diarioVendas = (data?.diario_vendas ?? []).map((d) => ({
     dia: new Date(d.dia).getDate(),
     valor: d.valor,
   }));
   const maxDiario = Math.max(...diarioVendas.map((d) => d.valor), 1);
+
+  const mensalCompras = data?.mensal_compras ?? [];
+  const comprasMensal: number[] = [];
+  for (let i = 1; i <= 12; i++) {
+    comprasMensal.push(mensalCompras.find((v) => v.mes === i)?.valor ?? 0);
+  }
+
+  const lucroBrutoMensal: number[] = [];
+  const lucroLiquidoMensal: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    const vendas = vendasMensal[i];
+    const custo = custoMensal[i];
+    const compras = comprasMensal[i];
+    lucroBrutoMensal.push(vendas - custo);
+    lucroLiquidoMensal.push(vendas - compras - custo);
+  }
+  const maxLucro = Math.max(...lucroBrutoMensal.map(Math.abs), ...lucroLiquidoMensal.map(Math.abs), 1);
 
   const hBarra = (v: number, max: number, area: number) => (v > 0 ? Math.max(3, (v / max) * area) : 0);
 
@@ -214,6 +237,50 @@ export default function Dashboard() {
                   }}
                 />
               ))}
+            </div>
+          </div>
+
+          <div className="chart-card" style={{ top: 750, width: 'calc(100% - 28px)', height: 200 }}>
+            <div className="chart-title">🏭&nbsp;&nbsp;Fabricação por Dia — {MESES[mes - 1]}</div>
+            <div className="chart-bg" style={{ height: 150 }}>
+              {diarioFabricacao.map((d, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: 8 + i * 10,
+                    bottom: 0,
+                    width: 8,
+                    height: hBarra(d.qtd, maxDiarioFab, 130),
+                    background: '#3b82f6',
+                    borderRadius: '2px 2px 0 0',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="chart-card" style={{ top: 966, width: 'calc(100% - 28px)', height: 220 }}>
+            <div className="chart-title">📊&nbsp;&nbsp;Lucro Mensal</div>
+            <div className="chart-bg" style={{ height: 170 }}>
+              {lucroBrutoMensal.map((v, i) => {
+                const hBruto = v > 0 ? Math.max(2, (v / maxLucro) * 75) : 0;
+                const hLiq = lucroLiquidoMensal[i] > 0 ? Math.max(2, (lucroLiquidoMensal[i] / maxLucro) * 75) : 0;
+                const hBrutoN = v < 0 ? Math.max(2, (Math.abs(v) / maxLucro) * 75) : 0;
+                const hLiqN = lucroLiquidoMensal[i] < 0 ? Math.max(2, (Math.abs(lucroLiquidoMensal[i]) / maxLucro) * 75) : 0;
+                return (
+                  <div key={i}>
+                    <div style={{ position: 'absolute', left: 16 + i * 26, top: 85 - hBruto, width: 11, height: hBruto, background: '#a855f7', borderRadius: '4px 4px 0 0' }} />
+                    <div style={{ position: 'absolute', left: 27 + i * 26, top: 85 - hLiq, width: 11, height: hLiq, background: '#6366f1', borderRadius: '4px 4px 0 0' }} />
+                    {hBrutoN > 0 && <div style={{ position: 'absolute', left: 16 + i * 26, top: 85, width: 11, height: hBrutoN, background: '#f87171', borderRadius: '0 0 4px 4px' }} />}
+                    {hLiqN > 0 && <div style={{ position: 'absolute', left: 27 + i * 26, top: 85, width: 11, height: hLiqN, background: '#fb923c', borderRadius: '0 0 4px 4px' }} />}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4, fontSize: 10 }}>
+              <span style={{ color: '#a855f7' }}>● Lucro Bruto</span>
+              <span style={{ color: '#6366f1' }}>● Lucro Líquido</span>
             </div>
           </div>
         </>

@@ -5,6 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
+const http_1 = __importDefault(require("http"));
+const https_1 = __importDefault(require("https"));
 const path_1 = __importDefault(require("path"));
 const axios_1 = __importDefault(require("axios"));
 const config_1 = require("./config");
@@ -70,6 +72,39 @@ app.use(logger_1.requestLogger);
 app.use(rateLimit_1.apiLimiter);
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+// Public APK version check (mobile app) — must be before /apk/:filename
+app.get('/apk/versao', async (req, res) => {
+    try {
+        const upstream = await axios_1.default.get(`${config_1.config.horseApi.baseUrl}/apk/versao`, {
+            params: req.query,
+            timeout: 5000,
+            validateStatus: (status) => status < 400,
+        });
+        res.json(upstream.data);
+    }
+    catch (error) {
+        const status = axios_1.default.isAxiosError(error) ? (error.response?.status ?? 502) : 502;
+        res.status(status).json({ error: 'Erro ao consultar versão' });
+    }
+});
+// Public APK download (QR Code on phone)
+app.get('/apk/:filename', async (req, res) => {
+    const filename = encodeURIComponent(req.params.filename);
+    try {
+        const upstream = await axios_1.default.get(`${config_1.config.horseApi.baseUrl}/apk/${filename}`, {
+            responseType: 'arraybuffer',
+            timeout: 60000,
+            validateStatus: (status) => status < 400,
+        });
+        res.set('Content-Type', 'application/vnd.android.package-archive');
+        res.set('Content-Disposition', `attachment; filename="${req.params.filename}"`);
+        res.send(upstream.data);
+    }
+    catch (error) {
+        const status = axios_1.default.isAxiosError(error) ? (error.response?.status ?? 502) : 502;
+        res.status(status).json({ error: 'APK não encontrado' });
+    }
 });
 app.get('/api/cep/:cep', async (req, res) => {
     const cep = req.params.cep.replace(/\D/g, '');
@@ -171,6 +206,33 @@ app.use('/api/produtos-venda-itens', produtos_venda_itens_1.default);
 app.use('/api/formas-pagamento', formas_pagamento_1.default);
 app.use('/api/condicoes-pagamento', condicoes_pagamento_1.default);
 app.use('/api/formas-pagamento-condicoes', formas_pagamento_condicoes_1.default);
+// APK proxy (stream multipart directly to Go backend)
+app.all('/api/apk*', async (req, res) => {
+    const upstreamPath = req.originalUrl.replace(/^\/api\/apk/, '/apk');
+    const upstreamUrl = new URL(upstreamPath, config_1.config.horseApi.baseUrl);
+    const proto = upstreamUrl.protocol === 'https:' ? https_1.default : http_1.default;
+    const headers = {};
+    for (const [key, val] of Object.entries(req.headers)) {
+        if (val !== undefined && key !== 'host' && key !== 'connection') {
+            headers[key] = Array.isArray(val) ? val[0] : val;
+        }
+    }
+    const proxyReq = proto.request({
+        hostname: upstreamUrl.hostname,
+        port: upstreamUrl.port,
+        path: upstreamPath,
+        method: req.method,
+        headers,
+    }, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+        proxyRes.pipe(res);
+    });
+    proxyReq.on('error', () => {
+        if (!res.headersSent)
+            res.status(502).json({ error: 'Erro ao comunicar com o servidor' });
+    });
+    req.pipe(proxyReq);
+});
 const clientDistPath = path_1.default.resolve(__dirname, '../../client/dist');
 app.use(express_1.default.static(clientDistPath));
 app.get('*', (req, res, next) => {

@@ -48,6 +48,7 @@ func main() {
 	producao := &handlers.ProducaoHandler{Pool: pool, BasicCRUD: basicCRUD}
 	loginHandler := &handlers.LoginHandler{Pool: pool}
 	testPage := &handlers.TestPageHandler{Pool: pool, Cfg: cfg}
+	apkHandler := handlers.NewAPKHandler(cfg.APKDir)
 	logStore := gestorLogger.New(filepath.Join(cfg.DataDir, "logs"))
 	go func() {
 		logStore.CleanOldLogs()
@@ -84,6 +85,8 @@ func main() {
 	r.Post("/encomendaPublico/enderecoEntrega", producao.EncomendaPublicoSalvarEnderecoEntrega)
 	r.Get("/formaPagamentoPublico", producao.FormaPagamentoPublicoListar)
 	r.Get("/bandeiraCartaoPublico", basicCRUD.BandeiraCartaoPublicoListar)
+	r.Get("/apk/versao", apkHandler.VersaoPublico)
+	r.Get("/apk/{filename}", apkHandler.Download)
 	r.Get("/test", testPage.TestPage)
 	r.Get("/health", testPage.HealthCheck)
 	r.Get("/cep/{cep}", func(w http.ResponseWriter, r *http.Request) {
@@ -597,6 +600,11 @@ carregar();
 		// Migracoes
 		r.Get("/migracoes", handlers.MigracoesListar(pool))
 		r.Post("/migracoes/aplicar", handlers.MigracoesAplicar(pool))
+
+		// APK (gerenciamento - upload/listar/excluir)
+		r.Get("/apk", apkHandler.Listar)
+		r.Post("/apk", apkHandler.Upload)
+		r.Delete("/apk/{filename}", apkHandler.Excluir)
 
 	})
 

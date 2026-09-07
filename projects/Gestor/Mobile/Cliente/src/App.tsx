@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { SessaoProvider, useSessao } from './auth';
 import Aguarde from './components/Aguarde';
 import SplashScreen from './components/SplashScreen';
+import VersionBanner from './components/VersionBanner';
 import Cadastro from './pages/Cadastro';
 import Entrada from './pages/Entrada';
 import MinhasEncomendas from './pages/MinhasEncomendas';
@@ -24,6 +25,7 @@ export default function App() {
       {splashVisivel && <SplashScreen onFinalizar={finalizarSplash} />}
       <HashRouter>
         <SessaoProvider>
+          <VersionBanner visivel={!splashVisivel} />
           <Routes>
             <Route path="/" element={<Entrada />} />
             <Route path="/cadastro" element={<Cadastro />} />

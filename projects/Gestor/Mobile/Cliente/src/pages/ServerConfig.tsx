@@ -53,7 +53,7 @@ export default function ServerConfig() {
     setTestando(false);
   };
 
-  const altura = 120 + servers.length * 70;
+  const altura = 120 + servers.length * 90;
 
   return (
     <div className="screen">
@@ -66,26 +66,26 @@ export default function ServerConfig() {
         Lista com fallback automático
       </div>
 
-      <div className="auth-card" style={{ top: 90, height: altura, overflow: 'hidden' }}>
+      <div className="auth-card" style={{ top: 90, height: altura, overflow: 'hidden', left: 20, right: 20 }}>
         {servers.map((s, i) => (
           <div key={i} style={{ position: 'relative' }}>
-            <div className="field-label" style={{ top: 18 + i * 70, width: 210 }}>
+            <div className="field-label" style={{ top: 18 + i * 90, width: 210 }}>
               Servidor {i + 1}{' '}
               {i === 0 && <span style={{ fontSize: 10, color: '#888' }}>(principal)</span>}
             </div>
             <input
               className="field-input"
-              style={{ top: 38 + i * 70, width: 250 }}
-              placeholder="ex: 192.168.0.10"
+              style={{ top: 38 + i * 90, left: 20, width: 'calc(100% - 40px)' }}
+              placeholder="ex: 192.168.0.10 ou meuservidor.com"
               value={s.host}
               onChange={(e) => atualizar(i, 'host', e.target.value)}
             />
             <input
               className="field-input"
-              style={{ top: 38 + i * 70, left: 260, width: 80 }}
+              style={{ top: 72 + i * 90, left: 20, width: 'calc(100% - 40px)' }}
               type="tel"
               inputMode="numeric"
-              placeholder="9000"
+              placeholder="Porta (padrão: 9000)"
               value={String(s.port)}
               onChange={(e) => atualizar(i, 'port', e.target.value)}
             />
@@ -94,8 +94,8 @@ export default function ServerConfig() {
               disabled={servers.length <= 1}
               style={{
                 position: 'absolute',
-                top: 42 + i * 70,
-                left: 350,
+                top: 42 + i * 90,
+                right: 4,
                 border: 'none',
                 background: 'transparent',
                 color: servers.length <= 1 ? '#bbb' : '#FF3B30',
@@ -112,7 +112,7 @@ export default function ServerConfig() {
           style={{
             position: 'absolute',
             left: 20,
-            top: 40 + servers.length * 70,
+            top: 40 + servers.length * 90,
             border: 'none',
             background: 'transparent',
             color: '#2563eb',
@@ -130,7 +130,7 @@ export default function ServerConfig() {
           style={{
             position: 'absolute',
             left: 20,
-            top: 240 + servers.length * 70,
+            top: 240 + servers.length * 90,
             width: 'calc(100% - 40px)',
             textAlign: 'center',
             fontSize: 11,
@@ -141,7 +141,7 @@ export default function ServerConfig() {
         </div>
       )}
 
-      <button className="green-button" style={{ top: 280 + servers.length * 70 }} onClick={testar} disabled={testando}>
+      <button className="green-button" style={{ top: 280 + servers.length * 90 }} onClick={testar} disabled={testando}>
         {testando ? 'Testando...' : 'Testar e Salvar'}
       </button>
     </div>

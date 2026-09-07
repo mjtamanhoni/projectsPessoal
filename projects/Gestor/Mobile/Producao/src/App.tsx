@@ -30,7 +30,11 @@ import Fornecedores from './pages/Fornecedores';
 import ProdutosFabricados from './pages/ProdutosFabricados';
 import Ingredientes from './pages/Ingredientes';
 import Fabricacoes from './pages/Fabricacoes';
+import ProdutoClassificacoes from './pages/ProdutoClassificacoes';
+import Adicionais from './pages/Adicionais';
+import ProdutoVendaPage from './pages/ProdutoVendaPage';
 import ServerConfig from './pages/ServerConfig';
+import VersionBanner from './components/VersionBanner';
 import Aguarde from './components/Aguarde';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -78,6 +82,7 @@ function Router() {
   if (!boot) return null;
 
   return (
+    <>
     <Routes>
       <Route
         path="/login"
@@ -312,8 +317,34 @@ function Router() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/produto-classificacao"
+        element={
+          <RequireAuth>
+            <ProdutoClassificacoes />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/adicionais"
+        element={
+          <RequireAuth>
+            <Adicionais />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/produtos-venda"
+        element={
+          <RequireAuth>
+            <ProdutoVendaPage />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<Navigate to={autenticado ? '/dashboard' : '/login'} replace />} />
     </Routes>
+    <VersionBanner visivel={autenticado} />
+    </>
   );
 }
 

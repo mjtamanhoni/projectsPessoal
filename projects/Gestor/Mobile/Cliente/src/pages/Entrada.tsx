@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   buscarClientePorDocumento,
   extrairErro,
+  VERSAO_APP,
   fotoUrl,
+  getBaseURL,
   getDocumentoLembrado,
   listarEmpresas,
   setDocumentoLembrado,
@@ -11,6 +14,7 @@ import {
 } from '../api';
 import { useSessao } from '../auth';
 import { mascaraCpfCnpj, mascaraTelefone } from '../format';
+import QRCode from 'qrcode';
 
 export default function Entrada() {
   const navigate = useNavigate();
@@ -22,6 +26,8 @@ export default function Entrada() {
   const [erro, setErro] = useState('');
   const [carregandoId, setCarregandoId] = useState<number | null>(null);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [qrVisible, setQrVisible] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState('');
 
   useEffect(() => {
     if (empresas.length > 0) return;
@@ -121,6 +127,22 @@ export default function Entrada() {
               if (e.key === 'Enter' && empresas.length === 1) selecionarEmpresa(empresas[0]);
             }}
           />
+          <img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23777' stroke-width='1.5'%3E%3Crect x='2' y='2' width='8' height='8' rx='1'/%3E%3Crect x='14' y='2' width='8' height='8' rx='1'/%3E%3Crect x='2' y='14' width='8' height='8' rx='1'/%3E%3Crect x='5' y='5' width='2' height='2'/%3E%3Crect x='17' y='5' width='2' height='2'/%3E%3Crect x='5' y='17' width='2' height='2'/%3E%3Crect x='14' y='14' width='2' height='2'/%3E%3Crect x='18' y='14' width='4' height='2'/%3E%3Crect x='14' y='18' width='2' height='4'/%3E%3Crect x='18' y='18' width='4' height='4'/%3E%3C/svg%3E"
+            alt="QR"
+            style={{ width: 22, height: 22, cursor: 'pointer', opacity: 0.6, flexShrink: 0 }}
+            onClick={async () => {
+              const baseURL = getBaseURL();
+              const url = `${baseURL}/apk/chegou-latest.apk`;
+              const dataUrl = await QRCode.toDataURL(url, {
+                width: 250,
+                margin: 2,
+                errorCorrectionLevel: 'M',
+              });
+              setQrDataUrl(dataUrl);
+              setQrVisible(true);
+            }}
+          />
           {documentoBloqueado && (
             <button className="entrada-trocar" onClick={limparDocumento}>
               trocar
@@ -128,7 +150,7 @@ export default function Entrada() {
           )}
         </div>
         <div className="entrada-rodape">
-          <span style={{ fontSize: 11, color: '#707070' }}>Cliente v1.2</span>
+          <span style={{ fontSize: 11, color: '#707070' }}>Cliente v{VERSAO_APP}</span>
           <span
             style={{ fontSize: 11, color: '#FF3B30', cursor: 'pointer' }}
             onClick={() => navigate('/server-config')}
@@ -137,6 +159,65 @@ export default function Entrada() {
           </span>
         </div>
       </div>
+
+      {qrVisible && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={() => setQrVisible(false)}
+        >
+          <div
+            style={{
+              background: '#FFF',
+              borderRadius: 16,
+              padding: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 12,
+              maxWidth: 300,
+              width: '100%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#333', textAlign: 'center' }}>
+              Escaneie para instalar o App
+            </div>
+            {qrDataUrl && (
+              <img src={qrDataUrl} alt="QR Code" style={{ width: 220, height: 220 }} />
+            )}
+            <div style={{ fontSize: 11, color: '#777', textAlign: 'center' }}>
+              Abra a câmera do celular e aponte para o QR Code
+            </div>
+            <button
+              onClick={() => setQrVisible(false)}
+              style={{
+                background: '#FF3B30',
+                color: '#FFF',
+                border: 'none',
+                borderRadius: 8,
+                padding: '8px 24px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                marginTop: 4,
+              }}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
