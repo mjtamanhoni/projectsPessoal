@@ -3,6 +3,7 @@ import { SessaoProvider, useSessao } from './auth';
 import Aguarde from './components/Aguarde';
 import SplashScreen from './components/SplashScreen';
 import VersionBanner from './components/VersionBanner';
+import Watermark from './components/Watermark';
 import Cadastro from './pages/Cadastro';
 import Entrada from './pages/Entrada';
 import MinhasEncomendas from './pages/MinhasEncomendas';
@@ -23,6 +24,7 @@ export default function App() {
   return (
     <>
       {splashVisivel && <SplashScreen onFinalizar={finalizarSplash} />}
+      <Watermark />
       <HashRouter>
         <SessaoProvider>
           <VersionBanner visivel={!splashVisivel} />

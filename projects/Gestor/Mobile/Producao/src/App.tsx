@@ -35,6 +35,7 @@ import Adicionais from './pages/Adicionais';
 import ProdutoVendaPage from './pages/ProdutoVendaPage';
 import ServerConfig from './pages/ServerConfig';
 import VersionBanner from './components/VersionBanner';
+import SplashScreen from './components/SplashScreen';
 import Aguarde from './components/Aguarde';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -349,9 +350,16 @@ function Router() {
 }
 
 export default function App() {
+  const [splashVisivel, setSplashVisivel] = useState(true);
+
+  const finalizarSplash = () => {
+    setSplashVisivel(false);
+  };
+
   return (
     <AuthProvider>
       <HashRouter>
+        {splashVisivel && <SplashScreen onFinalizar={finalizarSplash} />}
         <Router />
         <Aguarde />
       </HashRouter>

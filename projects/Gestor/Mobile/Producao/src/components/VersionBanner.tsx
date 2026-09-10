@@ -32,7 +32,7 @@ export default function VersionBanner({ visivel }: Props) {
   if (!visivel || !novaVersao) return null;
 
   const baseURL = getBaseURL();
-  const downloadUrl = `${baseURL}/apk/${encodeURIComponent(novaVersao.arquivo)}`;
+  const downloadUrl = `${baseURL}/apk/${encodeURIComponent(novaVersao.arquivo)}?app=producao`;
 
   return createPortal(
     <div

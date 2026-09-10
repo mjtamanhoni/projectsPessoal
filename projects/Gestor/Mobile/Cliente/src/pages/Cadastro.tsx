@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { criarClientePublico, extrairErro, setDocumentoLembrado, VERSAO_APP, type EmpresaPublic } from '../api';
+import { criarClientePublico, extrairErro, setDocumentoLembrado, VERSAO_APP, type Cliente, type EmpresaPublic } from '../api';
 import { useSessao } from '../auth';
 import BackButton from '../components/BackButton';
 import { mascaraCpfCnpj, mascaraTelefone, mascaraCep, buscarCep } from '../format';
@@ -8,6 +8,7 @@ import { mascaraCpfCnpj, mascaraTelefone, mascaraCep, buscarCep } from '../forma
 interface LocationState {
   documento?: string;
   empresa?: EmpresaPublic;
+  clienteExistente?: Cliente | null;
 }
 
 export default function Cadastro() {
@@ -17,23 +18,24 @@ export default function Cadastro() {
   const state = (location.state || {}) as LocationState;
 
   const empresa = empresaSessao || state.empresa || null;
+  const existente = state.clienteExistente || null;
 
   useEffect(() => {
     if (!empresa) navigate('/', { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empresa]);
 
-  const [documento, setDocumento] = useState(state.documento || '');
-  const [nome, setNome] = useState('');
-  const [celular, setCelular] = useState('');
-  const [cep, setCep] = useState('');
-  const [endereco, setEndereco] = useState('');
-  const [nr, setNr] = useState('');
-  const [complemento, setComplemento] = useState('');
-  const [bairro, setBairro] = useState('');
-  const [cidade, setCidade] = useState('');
-  const [uf, setUf] = useState('');
-  const [email, setEmail] = useState('');
+  const [documento, setDocumento] = useState(state.documento || existente?.cnpj_cpf || '');
+  const [nome, setNome] = useState(existente?.nome || '');
+  const [celular, setCelular] = useState(existente?.celular || '');
+  const [cep, setCep] = useState(existente?.cep || '');
+  const [endereco, setEndereco] = useState(existente?.endereco || '');
+  const [nr, setNr] = useState(existente?.nr || '');
+  const [complemento, setComplemento] = useState(existente?.complemento || '');
+  const [bairro, setBairro] = useState(existente?.bairro || '');
+  const [cidade, setCidade] = useState(existente?.cidade || '');
+  const [uf, setUf] = useState(existente?.uf || '');
+  const [email, setEmail] = useState(existente?.email || '');
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -115,10 +117,12 @@ export default function Cadastro() {
       <BackButton onClick={() => navigate('/')} />
 
       <div className="auth-title" style={{ top: 40, fontSize: 22 }}>
-        Complete seu cadastro
+        {existente ? 'Confirme seu cadastro' : 'Complete seu cadastro'}
       </div>
       <div className="auth-subtitle" style={{ top: 76 }}>
-        Ainda não temos seu cadastro
+        {existente
+          ? 'Encontramos seu cadastro em outra empresa. Confirme os dados.'
+          : 'Ainda não temos seu cadastro'}
       </div>
 
       <div className="auth-card" style={{ top: 110, height: '680px', overflowY: 'auto' }}>

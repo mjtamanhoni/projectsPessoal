@@ -605,6 +605,23 @@ var Migracoes = []Migracao{
 				ON public.encomenda_endereco_entrega USING btree (empresa_id, latitude, longitude);
 		`,
 	},
+	{
+		Nome: "023_usuario_padrao_sistema",
+		SQLUp: `
+			DO $$
+			DECLARE
+				eid INTEGER;
+			BEGIN
+				FOR eid IN SELECT DISTINCT empresa_id FROM public.cliente WHERE empresa_id IS NOT NULL
+				LOOP
+					IF NOT EXISTS (SELECT 1 FROM public.usuario WHERE empresa_id = eid) THEN
+						INSERT INTO public.usuario (empresa_id, nome, email, is_superadmin)
+						VALUES (eid, 'Sistema', 'sistema@empresa' || eid || '.local', false);
+					END IF;
+				END LOOP;
+			END $$;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {
@@ -614,7 +631,35 @@ func InitMigracoes(pool *pgxpool.Pool) error {
 			aplicada_em TIMESTAMP NOT NULL DEFAULT NOW()
 		)
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	aplicadas := make(map[string]bool)
+	rows, err := pool.Query(context.Background(), "SELECT nome FROM _migrations")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var nome string
+			if rows.Scan(&nome) == nil {
+				aplicadas[nome] = true
+			}
+		}
+	}
+
+	for _, m := range Migracoes {
+		if aplicadas[m.Nome] {
+			continue
+		}
+		fmt.Printf("  ⏳ Aplicando migration: %s\n", m.Nome)
+		if err := AplicarMigracao(pool, m.Nome); err != nil {
+			fmt.Printf("  ⚠️  Erro ao aplicar migration %s: %v\n", m.Nome, err)
+		} else {
+			fmt.Printf("  ✅ Migration %s aplicada com sucesso\n", m.Nome)
+		}
+	}
+
+	return nil
 }
 
 func MigracoesStatus(pool *pgxpool.Pool) ([]MigracaoStatus, error) {

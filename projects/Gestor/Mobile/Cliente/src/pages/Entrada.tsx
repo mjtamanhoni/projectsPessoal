@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   buscarClientePorDocumento,
+  buscarClientePorDocumentoGlobal,
   extrairErro,
+  listarEncomendasPublicas,
   VERSAO_APP,
   fotoUrl,
   getBaseURL,
@@ -28,6 +30,8 @@ export default function Entrada() {
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [qrVisible, setQrVisible] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [pendentes, setPendentes] = useState<Record<number, number>>({});
+  const cancelRef = useRef(false);
 
   useEffect(() => {
     if (empresas.length > 0) return;
@@ -37,6 +41,26 @@ export default function Entrada() {
       .finally(() => setCarregandoLista(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const doc = documento.replace(/\D/g, '');
+    if (doc.length < 11 || empresas.length === 0) return;
+    cancelRef.current = false;
+    const counts: Record<number, number> = {};
+    Promise.all(
+      empresas.map(async (e) => {
+        try {
+          const encs = await listarEncomendasPublicas(e.id, doc);
+          counts[e.id] = encs.filter((x) => x.status != null && x.status <= 3).length;
+        } catch {
+          counts[e.id] = 0;
+        }
+      }),
+    ).then(() => {
+      if (!cancelRef.current) setPendentes(counts);
+    });
+    return () => { cancelRef.current = true; };
+  }, [documento, empresas]);
 
   const limparDocumento = () => {
     setDocumento('');
@@ -56,7 +80,8 @@ export default function Entrada() {
       setDocumentoLembrado(doc);
       const clientes = await buscarClientePorDocumento(empresa.id, doc);
       if (clientes.length === 0) {
-        navigate('/cadastro', { state: { documento: doc, empresa } });
+        const existente = await buscarClientePorDocumentoGlobal(doc);
+        navigate('/cadastro', { state: { documento: doc, empresa, clienteExistente: existente } });
         return;
       }
       entrar(empresa, clientes[0]);
@@ -94,7 +119,30 @@ export default function Entrada() {
                 <span className="empresa-card-inicial">{(e.fantasia || e.razao_social || 'D')[0]}</span>
               )}
             </span>
-            <span className="empresa-card-nome">{e.fantasia || e.razao_social}</span>
+            <span className="empresa-card-nome">
+              {e.fantasia || e.razao_social}
+            </span>
+            {(pendentes[e.id] ?? 0) > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: 8,
+                left: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 20,
+                height: 20,
+                padding: '0 5px',
+                borderRadius: 10,
+                background: '#FF3B30',
+                color: '#fff',
+                fontSize: 11,
+                fontWeight: 700,
+                lineHeight: 1,
+              }}>
+                {pendentes[e.id]}
+              </span>
+            )}
             {e.email && <span className="empresa-card-linha">{e.email}</span>}
             {(e.celular || e.telefone) && (
               <span className="empresa-card-linha">{mascaraTelefone(e.celular || e.telefone || '')}</span>

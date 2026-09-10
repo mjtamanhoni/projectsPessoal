@@ -6,17 +6,21 @@ interface Props {
 }
 
 export default function SplashScreen({ onFinalizar }: Props) {
-  const [animacao, setAnimacao] = useState<'entrada' | 'visivel' | 'saida'>('entrada');
+  const [etapa, setEtapa] = useState(0);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setAnimacao('visivel'), 100);
-    const t2 = setTimeout(() => setAnimacao('saida'), 2800);
-    const t3 = setTimeout(() => onFinalizar(), 3500);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    const t1 = setTimeout(() => setEtapa(1), 50);
+    const t2 = setTimeout(() => setEtapa(2), 600);
+    const t3 = setTimeout(() => setEtapa(3), 1200);
+    const t4 = setTimeout(() => setEtapa(4), 2400);
+    const t5 = setTimeout(() => onFinalizar(), 3200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); };
   }, [onFinalizar]);
 
-  const visivel = animacao === 'visivel';
-  const saindo = animacao === 'saida';
+  const entrada = etapa >= 1;
+  const logoVisivel = etapa >= 2;
+  const textoVisivel = etapa >= 3;
+  const saindo = etapa >= 4;
 
   return (
     <div
@@ -28,136 +32,139 @@ export default function SplashScreen({ onFinalizar }: Props) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(180deg, #1a0a0a 0%, #2d1515 40%, #1a0a0a 100%)',
-        transition: 'opacity 0.6s ease-out',
+        background: '#000000',
         opacity: saindo ? 0 : 1,
+        transition: 'opacity 0.5s ease-out',
       }}
     >
+      {/* Glow difuso */}
+      <div
+        style={{
+          position: 'absolute',
+          width: 350,
+          height: 350,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,184,0,0.2) 0%, rgba(255,184,0,0.05) 40%, transparent 70%)',
+          transition: 'all 1.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          transform: entrada ? 'scale(1)' : 'scale(0.3)',
+          opacity: entrada ? 1 : 0,
+        }}
+      />
+
+      {/* Anel externo sutil */}
+      <div
+        style={{
+          position: 'absolute',
+          width: 240,
+          height: 240,
+          borderRadius: '50%',
+          border: '1px solid rgba(255, 184, 0, 0.15)',
+          transition: 'all 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s',
+          transform: entrada ? 'scale(1)' : 'scale(0.6)',
+          opacity: entrada ? 1 : 0,
+        }}
+      />
+
+      {/* Logo */}
       <div
         style={{
           position: 'relative',
-          width: 160,
-          height: 160,
-          marginBottom: 32,
+          zIndex: 1,
+          transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          transform: logoVisivel ? 'scale(1) translateY(0)' : 'scale(0.5) translateY(10px)',
+          opacity: logoVisivel ? 1 : 0,
         }}
       >
-        {/* Anel pulsante */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: -12,
-            borderRadius: '50%',
-            border: '2px solid rgba(255, 59, 48, 0.4)',
-            transition: 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-            transform: visivel ? 'scale(1.3)' : 'scale(0.8)',
-            opacity: visivel ? 0 : 0.6,
-            animation: visivel ? 'none' : undefined,
-          }}
-        />
-        {/* Anel interno */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: -4,
-            borderRadius: '50%',
-            border: '1.5px solid rgba(255, 59, 48, 0.25)',
-            transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s',
-            transform: visivel ? 'scale(1.15)' : 'scale(0.9)',
-            opacity: visivel ? 0 : 0.4,
-          }}
-        />
-        {/* Ícone */}
         <img
           src={SPLASH_ICON}
           alt="Chegou"
           style={{
-            width: 160,
-            height: 160,
+            width: 180,
+            height: 180,
             objectFit: 'contain',
-            borderRadius: 32,
-            transition: 'all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            transform: visivel ? 'scale(1) rotate(0deg)' : 'scale(0.3) rotate(-15deg)',
-            filter: visivel ? 'drop-shadow(0 8px 24px rgba(255, 59, 48, 0.5))' : 'none',
+            borderRadius: 36,
+            filter: logoVisivel ? 'drop-shadow(0 8px 24px rgba(255, 184, 0, 0.4))' : 'none',
           }}
         />
       </div>
 
-      {/* Nome do app */}
+      {/* Texto descritivo */}
       <div
         style={{
-          fontSize: 32,
-          fontWeight: 700,
-          color: '#ffffff',
-          letterSpacing: 2,
-          fontFamily: "'Playfair Display', serif",
-          transition: 'all 0.6s ease-out 0.3s',
-          transform: visivel ? 'translateY(0)' : 'translateY(20px)',
-          opacity: visivel ? 1 : 0,
-          textShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          marginTop: 28,
+          textAlign: 'center',
+          transition: 'all 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s',
+          transform: textoVisivel ? 'translateY(0)' : 'translateY(12px)',
+          opacity: textoVisivel ? 1 : 0,
         }}
       >
-        CHEGOU
-      </div>
-
-      {/* Subtítulo */}
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 400,
-          color: 'rgba(255,255,255,0.6)',
-          letterSpacing: 3,
-          textTransform: 'uppercase',
-          marginTop: 8,
-          transition: 'all 0.6s ease-out 0.5s',
-          transform: visivel ? 'translateY(0)' : 'translateY(15px)',
-          opacity: visivel ? 1 : 0,
-        }}
-      >
-        Encomendas Online
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'rgba(255,255,255,0.85)',
+            letterSpacing: 1.5,
+            lineHeight: 1.6,
+            maxWidth: 260,
+          }}
+        >
+          Acompanhe suas entregas
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 400,
+            color: 'rgba(255,255,255,0.45)',
+            letterSpacing: 0.5,
+            marginTop: 6,
+          }}
+        >
+          em tempo real
+        </div>
       </div>
 
       {/* Linha decorativa */}
       <div
         style={{
           width: 40,
-          height: 2,
-          background: 'linear-gradient(90deg, transparent, #FF3B30, transparent)',
-          marginTop: 16,
+          height: 1.5,
+          background: 'linear-gradient(90deg, transparent, #FFB800, transparent)',
+          marginTop: 24,
           borderRadius: 1,
-          transition: 'all 0.8s ease-out 0.6s',
-          transform: visivel ? 'scaleX(1)' : 'scaleX(0)',
-          opacity: visivel ? 1 : 0,
+          transition: 'all 0.8s ease-out 0.4s',
+          transform: textoVisivel ? 'scaleX(1)' : 'scaleX(0)',
+          opacity: textoVisivel ? 0.7 : 0,
         }}
       />
 
-      {/* Indicador de carregamento */}
+      {/* Loading dots */}
       <div
         style={{
-          marginTop: 40,
+          marginTop: 28,
           display: 'flex',
-          gap: 6,
-          transition: 'opacity 0.4s ease-out 0.7s',
-          opacity: visivel ? 1 : 0,
+          gap: 5,
+          transition: 'opacity 0.4s ease-out 0.5s',
+          opacity: textoVisivel ? 1 : 0,
         }}
       >
         {[0, 1, 2].map((i) => (
           <div
             key={i}
             style={{
-              width: 6,
-              height: 6,
+              width: 4,
+              height: 4,
               borderRadius: '50%',
-              background: '#FF3B30',
-              animation: visivel ? `pulse 1.2s ease-in-out ${i * 0.2}s infinite` : 'none',
+              background: '#FFB800',
+              animation: textoVisivel ? `dotPulse 1.4s ease-in-out ${i * 0.15}s infinite` : 'none',
             }}
           />
         ))}
       </div>
 
       <style>{`
-        @keyframes pulse {
-          0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
-          40% { transform: scale(1); opacity: 1; }
+        @keyframes dotPulse {
+          0%, 80%, 100% { transform: scale(0.5); opacity: 0.2; }
+          40% { transform: scale(1.1); opacity: 0.9; }
         }
       `}</style>
     </div>

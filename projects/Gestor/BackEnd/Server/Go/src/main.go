@@ -75,6 +75,7 @@ func main() {
 	r.Get("/empresaPublic", basicCRUD.EmpresaListarPublico)
 	r.Get("/clientePublico", basicCRUD.ClientePublicoBuscar)
 	r.Post("/clientePublico", basicCRUD.ClientePublicoCriar)
+	r.Get("/clientePublicoPorDocumento", basicCRUD.ClientePublicoBuscarPorDocumento)
 	r.Get("/produtoFabricadoPublico", producao.ProdutoFabricadoListarPublico)
 	r.Get("/produtoVendaPublico", producao.ProdutoVendaListarPublico)
 	r.Get("/encomendaPublico", producao.EncomendaPublicoListar)

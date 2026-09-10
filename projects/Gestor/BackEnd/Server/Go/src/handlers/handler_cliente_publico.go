@@ -40,10 +40,34 @@ func (h *BasicCRUD) usuarioPadraoDaEmpresa(r *http.Request, empresaID int) (int,
 	var id int
 	err := h.Pool.QueryRow(r.Context(),
 		`SELECT id FROM public.usuario WHERE empresa_id = $1 ORDER BY id LIMIT 1`, empresaID).Scan(&id)
-	if err != nil && err.Error() == "no rows in result set" {
-		return 0, nil
+	if err == nil {
+		return id, nil
 	}
+	if err.Error() != "no rows in result set" {
+		return 0, err
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(r.Context())
+
+	novoID, err := database.GerarID(r.Context(), tx, empresaID, "usuario")
+	if err != nil {
+		return 0, err
+	}
+
+	email := fmt.Sprintf("sistema@empresa%d.local", empresaID)
+	err = tx.QueryRow(r.Context(),
+		`INSERT INTO public.usuario (id, empresa_id, nome, email, is_superadmin)
+		VALUES ($1, $2, 'Sistema', $3, false)
+		RETURNING id`, novoID, empresaID, email).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
 		return 0, err
 	}
 	return id, nil
@@ -88,6 +112,35 @@ func (h *BasicCRUD) ClientePublicoBuscar(w http.ResponseWriter, r *http.Request)
 	}
 	defer rows.Close()
 	jsonSuccess(w, rowsToMap(rows))
+}
+
+// ClientePublicoBuscarPorDocumento busca o primeiro cliente encontrado pelo documento (CPF/CNPJ)
+// em qualquer empresa. Usado para pré-preencher cadastro quando o cliente já existe em outra empresa.
+// GET /clientePublicoPorDocumento?documento=<cpf/cnpj>
+func (h *BasicCRUD) ClientePublicoBuscarPorDocumento(w http.ResponseWriter, r *http.Request) {
+	documento := apenasDigitos(r.URL.Query().Get("documento"))
+	if documento == "" {
+		jsonError(w, "Parâmetro 'documento' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := h.Pool.Query(r.Context(), `
+		SELECT id, empresa_id, nome, telefone, celular, nr, complemento, bairro, cidade, uf, cep, endereco, email, cnpj_cpf, status
+		FROM public.cliente
+		WHERE regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9]', '', 'g') = $1
+		ORDER BY id
+		LIMIT 1`, documento)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	result := rowsToMap(rows)
+	if len(result) == 0 {
+		jsonSuccess(w, nil)
+		return
+	}
+	jsonSuccess(w, result[0])
 }
 
 // ClientePublicoCriar cria um cliente na empresa informada (cadastro público pelo app do cliente).

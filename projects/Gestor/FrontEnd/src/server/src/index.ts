@@ -92,6 +92,7 @@ app.get('/apk/:filename', async (req, res) => {
   const filename = encodeURIComponent(req.params.filename);
   try {
     const upstream = await axios.get(`${config.horseApi.baseUrl}/apk/${filename}`, {
+      params: req.query,
       responseType: 'arraybuffer',
       timeout: 60000,
       validateStatus: (status) => status < 400,

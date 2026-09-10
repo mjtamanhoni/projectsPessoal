@@ -29,6 +29,7 @@ type APKInfo struct {
 	Tamanho    int64  `json:"tamanho"`
 	Modificado string `json:"modificado"`
 	Versao     string `json:"versao"`
+	App        string `json:"app,omitempty"` // "cliente" ou "producao"
 }
 
 type APKVersionFile struct {
@@ -94,29 +95,42 @@ type VersionReturn struct {
 }
 
 // VersaoPublico retorna a versao mais recente do APK (publico, sem auth).
-// Suporta ?app=producao para filtrar por tipo de app.
+// Suporta ?app=cliente ou ?app=producao para filtrar por tipo de app.
 func (h *APKHandler) VersaoPublico(w http.ResponseWriter, r *http.Request) {
 	versions := h.loadVersions()
 	appFilter := strings.TrimSpace(r.URL.Query().Get("app"))
 
-	var maisRecente *APKInfo
+	var candidatos []APKInfo
 	for i := range versions.Arquivos {
 		v := &versions.Arquivos[i]
 		if v.Versao == "" {
 			continue
 		}
-		// Filtrar por tipo de app se solicitado
-		if appFilter != "" {
+
+		// Filtrar por campo "app" se disponível, senão usar nome do arquivo
+		appCampo := strings.ToLower(v.App)
+		if appCampo == "" {
 			nomeLower := strings.ToLower(v.Nome)
-			if appFilter == "producao" && !strings.Contains(nomeLower, "producao") && !strings.Contains(nomeLower, "fabrica") {
-				continue
-			}
-			if appFilter == "cliente" && (strings.Contains(nomeLower, "producao") || strings.Contains(nomeLower, "fabrica")) {
-				continue
+			if strings.Contains(nomeLower, "producao") || strings.Contains(nomeLower, "fabrica") {
+				appCampo = "producao"
+			} else {
+				appCampo = "cliente"
 			}
 		}
-		if maisRecente == nil || v.Versao > maisRecente.Versao {
-			maisRecente = v
+
+		if appFilter == "cliente" && appCampo == "producao" {
+			continue
+		}
+		if appFilter == "producao" && appCampo != "producao" {
+			continue
+		}
+		candidatos = append(candidatos, *v)
+	}
+
+	var maisRecente *APKInfo
+	for i := range candidatos {
+		if maisRecente == nil || candidatos[i].Versao > maisRecente.Versao {
+			maisRecente = &candidatos[i]
 		}
 	}
 
@@ -160,17 +174,18 @@ func (h *APKHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	versao := strings.TrimSpace(r.FormValue("versao"))
 	if versao == "" {
-		// Reuse existing version for this file if it exists
-		versions := h.loadVersions()
-		for _, v := range versions.Arquivos {
-			if v.Nome == nome && v.Versao != "" {
-				versao = v.Versao
-				break
-			}
-		}
-		if versao == "" {
-			now := time.Now()
-			versao = fmt.Sprintf("%04d.%02d.%02d.%02d.%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+		now := time.Now()
+		versao = fmt.Sprintf("%04d.%02d.%02d.%02d.%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+	}
+
+	app := strings.TrimSpace(r.FormValue("app"))
+	if app == "" {
+		// Detectar pelo nome do arquivo
+		nomeLower := strings.ToLower(nome)
+		if strings.Contains(nomeLower, "producao") || strings.Contains(nomeLower, "fabrica") {
+			app = "producao"
+		} else {
+			app = "cliente"
 		}
 	}
 
@@ -194,6 +209,7 @@ func (h *APKHandler) Upload(w http.ResponseWriter, r *http.Request) {
 			versions.Arquivos[i].Versao = versao
 			versions.Arquivos[i].Tamanho = header.Size
 			versions.Arquivos[i].Modificado = time.Now().UTC().Format(time.RFC3339)
+			versions.Arquivos[i].App = app
 			found = true
 			break
 		}
@@ -204,6 +220,7 @@ func (h *APKHandler) Upload(w http.ResponseWriter, r *http.Request) {
 			Tamanho:    header.Size,
 			Modificado: time.Now().UTC().Format(time.RFC3339),
 			Versao:     versao,
+			App:        app,
 		})
 	}
 	h.saveVersions(versions)
@@ -255,9 +272,40 @@ func (h *APKHandler) Excluir(w http.ResponseWriter, r *http.Request) {
 }
 
 // Download serve o arquivo APK para download.
+// Bloqueia download de APKs de produção sem ?app=producao e vice-versa.
 func (h *APKHandler) Download(w http.ResponseWriter, r *http.Request) {
 	nome := chi.URLParam(r, "filename")
 	nome = filepath.Base(nome)
+
+	appFilter := strings.TrimSpace(r.URL.Query().Get("app"))
+
+	// Verificar pelo campo "app" no versions.json
+	versions := h.loadVersions()
+	appCampo := ""
+	for _, v := range versions.Arquivos {
+		if v.Nome == nome {
+			appCampo = strings.ToLower(v.App)
+			break
+		}
+	}
+	// Fallback: detectar pelo nome do arquivo
+	if appCampo == "" {
+		nomeLower := strings.ToLower(nome)
+		if strings.Contains(nomeLower, "producao") || strings.Contains(nomeLower, "fabrica") {
+			appCampo = "producao"
+		} else {
+			appCampo = "cliente"
+		}
+	}
+
+	if appFilter == "cliente" && appCampo == "producao" {
+		JsonError(w, "APK de produção não disponível para o app cliente", http.StatusForbidden)
+		return
+	}
+	if appFilter == "producao" && appCampo != "producao" {
+		JsonError(w, "APK de cliente não disponível para o app de produção", http.StatusForbidden)
+		return
+	}
 
 	caminho := filepath.Join(h.APKDir, nome)
 	if _, err := os.Stat(caminho); os.IsNotExist(err) {

@@ -7,7 +7,7 @@ import { fetchSettings, saveSettings } from '@/lib/settings';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { AppSettings, Categoria, Empresa } from '@/types';
-import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search, Download, QrCode, Upload } from 'lucide-react';
+import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search, Download, QrCode, Upload, BookOpen } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
@@ -28,7 +28,7 @@ function QRCodeImage({ value, size = 180 }: { value: string; size?: number }) {
 }
 
 
-type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes' | 'instalacao';
+type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes' | 'instalacao' | 'guia';
 
 export function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -86,7 +86,7 @@ export function Settings() {
   }, [tab]);
 
   useEffect(() => {
-    if (!isSuperadmin && (tab === 'limpeza' || tab === 'migracoes' || tab === 'instalacao')) {
+    if (!isSuperadmin && (tab === 'limpeza' || tab === 'migracoes' || tab === 'instalacao' || tab === 'guia')) {
       setTab('servidor');
     }
   }, [isSuperadmin, tab]);
@@ -218,6 +218,7 @@ export function Settings() {
     { key: 'sequencias', label: 'Sequências', icon: <Database size={16} /> },
     ...(isSuperadmin ? [{ key: 'migracoes' as Tab, label: 'Banco de Dados', icon: <HardDrive size={16} /> }] : []),
     ...(isSuperadmin ? [{ key: 'instalacao' as Tab, label: 'Instalação do App', icon: <Download size={16} /> }] : []),
+    ...(isSuperadmin ? [{ key: 'guia' as Tab, label: 'Guia Superadmin', icon: <BookOpen size={16} /> }] : []),
   ];
 
   return (
@@ -1126,8 +1127,10 @@ export function Settings() {
                         if (!file) return;
                         setUploadingAPK(true);
                         try {
+                          const renamed = new File([file], 'app-chegou.apk', { type: file.type });
                           const formData = new FormData();
-                          formData.append('apk', file);
+                          formData.append('apk', renamed);
+                          formData.append('app', 'cliente');
                           await api.post('/apk', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
                           addToast('success', `APK "${file.name}" enviado com sucesso`);
                           const r = await api.get('/apk');
@@ -1252,8 +1255,10 @@ export function Settings() {
                         if (!file) return;
                         setUploadingAPK(true);
                         try {
+                          const renamed = new File([file], 'app-producao.apk', { type: file.type });
                           const formData = new FormData();
-                          formData.append('apk', file);
+                          formData.append('apk', renamed);
+                          formData.append('app', 'producao');
                           await api.post('/apk', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
                           addToast('success', `APK "${file.name}" enviado com sucesso`);
                           const r = await api.get('/apk');
@@ -1359,12 +1364,240 @@ export function Settings() {
           </>
         )}
 
+        {tab === 'guia' && (
+          <div className="space-y-6">
+            <Card>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <BookOpen size={20} className="text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-text-primary">Guia de Configuracao para Superadmin</h2>
+                  <p className="text-sm text-text-secondary">Passo a passo para configurar uma nova empresa no sistema</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Passo 1 */}
+            <Card>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-lg font-bold text-blue-600">1</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-primary mb-2">Cadastrar a Empresa</h3>
+                  <p className="text-sm text-text-secondary mb-3">
+                    Acesse <strong>Empresas</strong> no menu <strong>Geral &gt; Configuracoes do Sistema</strong> e cadastre a nova empresa com os dados:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-text-secondary space-y-1 mb-3">
+                    <li>Razao Social e Fantasia</li>
+                    <li>CNPJ ou CPF</li>
+                    <li>Endereco, Telefone, Email</li>
+                    <li>Regime Tributario</li>
+                  </ul>
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                    <p className="text-xs text-blue-700">
+                      <strong>Dica:</strong> O CNPJ/CPF informado aqui sera utilizado no login do usuario para selecionar a empresa.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Passo 2 */}
+            <Card>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                  <span className="text-lg font-bold text-purple-600">2</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-primary mb-2">Atribuir Modulos a Empresa</h3>
+                  <p className="text-sm text-text-secondary mb-3">
+                    Acesse <strong>Empresa x Modulo</strong> no menu <strong>Geral &gt; Configuracoes do Sistema</strong> e vincule os modulos que a empresa deve utilizar:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-text-primary">Geral</p>
+                      <p className="text-xs text-text-secondary">Cadastros basicos (Clientes, Fornecedores, Usuarios)</p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-text-primary">Gestor</p>
+                      <p className="text-xs text-text-secondary">Financeiro (Contas a Pagar/Receber, Categorias)</p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-text-primary">Producao</p>
+                      <p className="text-xs text-text-secondary">Insumos, Receitas, Fabricacao, Vendas, Encomendas</p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-text-primary">Horas Trabalhadas</p>
+                      <p className="text-xs text-text-secondary">Servicos, Horas, Abatimentos</p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                    <p className="text-xs text-amber-700">
+                      <strong>Importante:</strong> Sem modulos vinculados, o usuario nao verah nenhum menu apos o login.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Passo 3 */}
+            <Card>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <span className="text-lg font-bold text-green-600">3</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-primary mb-2">Cadastrar Usuarios</h3>
+                  <p className="text-sm text-text-secondary mb-3">
+                    Acesse <strong>Usuarios</strong> no menu <strong>Geral &gt; Cadastro</strong> e crie os usuarios da empresa:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-text-secondary space-y-1 mb-3">
+                    <li>Informe o <strong>email</strong> (sera usado como login) e a <strong>senha</strong></li>
+                    <li>Selecione a <strong>Empresa</strong> correta no campo Empresa</li>
+                    <li>Marque <strong>Superadmin</strong> apenas para usuarios administradores do sistema</li>
+                    <li>Cada usuario so acessa a empresa vinculada ao seu cadastro</li>
+                  </ul>
+                  <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+                    <p className="text-xs text-green-700">
+                      <strong>Dica:</strong> O campo "Empresa" no cadastro define qual empresa o usuario acessa. O Superadmin pode acessar qualquer empresa.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Passo 4 */}
+            <Card>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <span className="text-lg font-bold text-amber-600">4</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-primary mb-2">Configurar Permissoes (Opcional)</h3>
+                  <p className="text-sm text-text-secondary mb-3">
+                    Por padrao, todos os usuarios veem todos os formularios dos modulos atribuidos a empresa. Para restringir acesso a formularios especificos:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-text-secondary space-y-1 mb-3">
+                    <li>Acesse <strong>Usuario x Formulario</strong> no menu <strong>Geral &gt; Configuracoes</strong></li>
+                    <li>Selecione o usuario e vincule apenas os formularios que ele deve acessar</li>
+                    <li>Se nenhum formulario for vinculado, o usuario fica <strong>irrestrito</strong> (acessa todos)</li>
+                  </ul>
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                    <p className="text-xs text-amber-700">
+                      <strong>Nota:</strong> O formulario "Permissoes" fica disponivel apenas para Superadmins.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Passo 5 */}
+            <Card>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <span className="text-lg font-bold text-indigo-600">5</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-primary mb-2">Cadastrar Formas de Pagamento</h3>
+                  <p className="text-sm text-text-secondary mb-3">
+                    Acesse <strong>Formas de Pagamento</strong> no menu <strong>Geral &gt; Cadastro</strong> e cadastre as formas de pagamento utilizadas pela empresa:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-text-secondary space-y-1">
+                    <li>Dinheiro, Cartao de Credito, Cartao de Debito, PIX, etc.</li>
+                    <li>Cada forma deve ter uma <strong>Classificacao</strong> (DINHEIRO, CARTAO_CREDITO, PIX, etc.)</li>
+                    <li>Vincule as <strong>Condicoes de Pagamento</strong> (a vista, parcelado, etc.)</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+
+            {/* Passo 6 - Producao */}
+            <Card>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                  <span className="text-lg font-bold text-rose-600">6</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-primary mb-2">Cadastrar Cadastros de Producao (se aplicavel)</h3>
+                  <p className="text-sm text-text-secondary mb-3">
+                    Se a empresa utiliza o modulo <strong>Producao</strong>, cadastre os dados basicos:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-text-primary">Insumos</p>
+                      <p className="text-xs text-text-secondary">Materias-primas utilizadas na producao</p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-text-primary">Produtos Fabricados</p>
+                      <p className="text-xs text-text-secondary">Produtos finais que a empresa produz</p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-text-primary">Receitas Ingredientes</p>
+                      <p className="text-xs text-text-secondary">Composicao de cada produto (insumos + quantidades)</p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-text-primary">Clientes e Fornecedores</p>
+                      <p className="text-xs text-text-secondary">Cadastros basicos para vendas e compras</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Passo 7 */}
+            <Card>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+                  <span className="text-lg font-bold text-teal-600">7</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-primary mb-2">Configuracoes Adicionais</h3>
+                  <p className="text-sm text-text-secondary mb-3">
+                    Acesse <strong>Configuracoes</strong> no menu <strong>Geral &gt; Configuracoes</strong> para ajustar:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-text-secondary space-y-1">
+                    <li>Dados da empresa para cupom nao fiscal (nome, CNPJ, endereco)</li>
+                    <li>Configuracoes da impressora termica</li>
+                    <li>Categorias financeiras padrao</li>
+                    <li>Modulo e formulario inicial apos o login</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+
+            {/* Passo 8 */}
+            <Card>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                  <span className="text-lg font-bold text-gray-600">8</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-primary mb-2">Testar o Acesso</h3>
+                  <p className="text-sm text-text-secondary mb-3">
+                    Faca logout e teste o login com o usuario criado:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-text-secondary space-y-1">
+                    <li>Informe o <strong>email</strong> do usuario</li>
+                    <li>Informe a <strong>senha</strong> definida no cadastro</li>
+                    <li>Selecione a empresa pelo <strong>CNPJ/CPF</strong> no campo Empresa</li>
+                    <li>Verifique se os menus e formularios esperados estao visiveis</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {tab !== 'guia' && (
         <div className="flex justify-end pt-2">
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             Salvar
           </Button>
         </div>
+        )}
       </div>
 
       <ConfirmDialog

@@ -372,6 +372,12 @@ export async function buscarClientePorDocumento(empresa: number, documento: stri
   return (await parseResponse(res)) as Cliente[];
 }
 
+export async function buscarClientePorDocumentoGlobal(documento: string): Promise<Cliente | null> {
+  const res = await request(`/clientePublicoPorDocumento?documento=${encodeURIComponent(documento)}`);
+  const parsed = (await parseResponse(res)) as Cliente | null;
+  return parsed || null;
+}
+
 export async function criarClientePublico(
   empresa: number,
   data: Cliente
@@ -610,7 +616,7 @@ export async function verificarVersao(): Promise<VersaoInfo | null> {
     console.log('[verificarVersao] VERSAO_APP=', VERSAO_APP, 'lastSeen=', lastSeen, 'servers=', servers);
     for (const srv of servers) {
       try {
-        const url = `http://${srv.host}:${srv.port}/apk/versao`;
+        const url = `http://${srv.host}:${srv.port}/apk/versao?app=cliente`;
         console.log('[verificarVersao] Fetching', url);
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 5000);
