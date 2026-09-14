@@ -5,7 +5,7 @@
     "protocol": "http"
   },
   "rateLimit": {
-    "max": 10000
+    "max": 1000
   },
   "empresa": {
     "1": {
@@ -78,7 +78,7 @@
         },
         "moduloInicialId": 4,
         "formularioInicialId": 46,
-        "encomendasRefreshSegundos": 300
+        "encomendasRefreshSegundos": 5
       },
       "sessionTimeout": 30,
       "financeiro": {

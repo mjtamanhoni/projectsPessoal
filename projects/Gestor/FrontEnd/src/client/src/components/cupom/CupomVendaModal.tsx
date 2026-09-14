@@ -123,6 +123,7 @@ export function CupomVendaModal({ venda, onClose, clientes }: CupomVendaModalPro
         espacoEntreLinhas: settings.printer.espacoEntreLinhas,
         linhasBuffer: settings.printer.linhasBuffer,
         linhasPular: settings.printer.linhasPular,
+        pixPayload: payload || undefined,
       });
       addToast('success', 'Cupom enviado para impressao');
     } catch (err: unknown) {

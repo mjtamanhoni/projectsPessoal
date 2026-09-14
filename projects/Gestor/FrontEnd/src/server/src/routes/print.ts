@@ -1,9 +1,515 @@
-import { Router, Response } from 'express';
+import express, { Router, Response } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as net from 'net';
 
 const router = Router();
 
-interface PrintRequest {
+const TEMP_DIR = path.resolve(__dirname, '../../data/temp');
+
+function ensureTempDir(): void {
+  if (!fs.existsSync(TEMP_DIR)) {
+    fs.mkdirSync(TEMP_DIR, { recursive: true });
+  }
+}
+
+function buildEscPosBuffer(texto: string, opts: {
+  colunas: number;
+  cortarPapel: boolean;
+  espacoEntreLinhas: number;
+  linhasPular: number;
+  paginaCodigo: number;
+  pixPayload?: string;
+}): Buffer {
+  const parts: Buffer[] = [];
+  parts.push(Buffer.from([0x1b, 0x40]));
+
+  if (opts.paginaCodigo >= 0) {
+    const cp = [0x1b, 0x74, opts.paginaCodigo];
+    parts.push(Buffer.from(cp));
+  }
+
+  if (opts.espacoEntreLinhas > 0) {
+    parts.push(Buffer.from([0x1b, 0x32, opts.espacoEntreLinhas]));
+  }
+
+  const linhas = texto.split('\n');
+  const colunas = opts.colunas || 48;
+
+  for (const linha of linhas) {
+    if (linha.startsWith('</linha_dupla>')) {
+      parts.push(Buffer.from('='.repeat(colunas) + '\n', 'utf-8'));
+    } else if (linha.startsWith('</linha_simples>')) {
+      parts.push(Buffer.from('-'.repeat(colunas) + '\n', 'utf-8'));
+    } else if (linha.includes('</corte_parcial>') || linha.includes('</corte_total>')) {
+      parts.push(Buffer.from('\n'));
+    } else {
+      parts.push(Buffer.from(linha + '\n', 'utf-8'));
+    }
+  }
+
+  if (opts.espacoEntreLinhas > 0) {
+    parts.push(Buffer.from([0x1b, 0x32, 0x00]));
+  }
+
+  for (let i = 0; i < opts.linhasPular; i++) {
+    parts.push(Buffer.from('\n'));
+  }
+
+  if (opts.cortarPapel) {
+    parts.push(Buffer.from([0x1d, 0x56, 0x42, 0x00]));
+  }
+
+  return Buffer.concat(parts);
+}
+
+function runPS(cmd: string, timeoutMs = 15000): string {
+  try {
+    const raw = execSync(
+      `powershell -NoProfile -NonInteractive -Command "${cmd}"`,
+      { encoding: 'utf-8', timeout: timeoutMs, stdio: ['pipe', 'pipe', 'pipe'] },
+    );
+    return (raw || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function parseJsonSafe<T>(raw: string): T | null {
+  if (!raw || raw.length < 2) return null;
+  try { return JSON.parse(raw) as T; } catch { return null; }
+}
+
+function toArray<T>(val: T | T[]): T[] {
+  if (Array.isArray(val)) return val;
+  if (val && typeof val === 'object') return [val];
+  return [];
+}
+
+function findPrinterNameByPort(portName: string): string | null {
+  const raw = runPS('Get-Printer | Select-Object Name, PortName | ConvertTo-Json -Compress');
+  const printers = parseJsonSafe<Record<string, string> | Record<string, string>[]>(raw);
+  if (!printers) return null;
+  const list = toArray(printers);
+  for (const p of list) {
+    if ((p.PortName || '').trim().toUpperCase() === portName.toUpperCase()) {
+      return (p.Name || '').trim();
+    }
+  }
+  for (const p of list) {
+    const pn = (p.PortName || '').trim().toUpperCase();
+    const nu = portName.toUpperCase();
+    if (pn.includes(nu) || nu.includes(pn)) {
+      return (p.Name || '').trim();
+    }
+  }
+  return null;
+}
+
+function listAllPrinters(): string[] {
+  const raw = runPS('Get-Printer | Select-Object Name, PortName | ConvertTo-Json -Compress');
+  const printers = parseJsonSafe<Record<string, string> | Record<string, string>[]>(raw);
+  if (!printers) return [];
+  return toArray(printers).map((p) => `${(p.Name || '').trim()} [${(p.PortName || '').trim()}]`);
+}
+
+function sendToPrinter(data: Buffer | string, porta: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const upper = porta.toUpperCase().trim();
+
+    if (upper.startsWith('TCP:')) {
+      const parts = porta.replace(/^(tcp:)/i, '').split(':');
+      const host = parts[0];
+      const port = parseInt(parts[1] || '9100', 10);
+      const client = new net.Socket();
+      const timeout = setTimeout(() => {
+        client.destroy();
+        reject(new Error('Timeout ao conectar na impressora TCP'));
+      }, 10000);
+
+      client.connect(port, host, () => {
+        clearTimeout(timeout);
+        const buf = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data;
+        client.write(buf, () => {
+          client.destroy();
+          resolve();
+        });
+      });
+
+      client.on('error', (err) => {
+        clearTimeout(timeout);
+        client.destroy();
+        reject(new Error(`Erro TCP: ${err.message}`));
+      });
+      return;
+    }
+
+    ensureTempDir();
+    const arquivo = path.join(TEMP_DIR, `print_${Date.now()}.bin`);
+    const buf = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data;
+    fs.writeFileSync(arquivo, buf);
+
+    const printerName = findPrinterNameByPort(porta);
+    console.log('[Print] Porta:', porta, '| Impressora:', printerName || '(nenhuma)');
+
+    // --- Metodo 1: winspool.drv via .ps1 em disco (sem escaping) ---
+    if (printerName) {
+      const ps1File = path.join(TEMP_DIR, `print_raw_${Date.now()}.ps1`);
+      const ps1Content = [
+        'Add-Type -TypeDefinition @"',
+        'using System;',
+        'using System.Runtime.InteropServices;',
+        'public class RawPrinter {',
+        '  [DllImport("winspool.drv", CharSet=CharSet.Auto, SetLastError=true)]',
+        '  public static extern bool OpenPrinter(string pPrinterName, out IntPtr hPrinter, IntPtr pDefault);',
+        '  [DllImport("winspool.drv", SetLastError=true)]',
+        '  public static extern bool ClosePrinter(IntPtr hPrinter);',
+        '  [DllImport("winspool.drv", CharSet=CharSet.Auto, SetLastError=true)]',
+        '  public static extern bool StartDocPrinter(IntPtr hPrinter, int level, IntPtr di);',
+        '  [DllImport("winspool.drv", SetLastError=true)]',
+        '  public static extern bool EndDocPrinter(IntPtr hPrinter);',
+        '  [DllImport("winspool.drv", SetLastError=true)]',
+        '  public static extern bool StartPagePrinter(IntPtr hPrinter);',
+        '  [DllImport("winspool.drv", SetLastError=true)]',
+        '  public static extern bool EndPagePrinter(IntPtr hPrinter);',
+        '  [DllImport("winspool.drv", SetLastError=true)]',
+        '  public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBuf, int cbBuf, out int pcWritten);',
+        '  public static void Send(string printer, string file) {',
+        '    IntPtr h;',
+        '    if (!OpenPrinter(printer, out h, IntPtr.Zero)) {',
+        '      throw new Exception("OpenPrinter failed: " + Marshal.GetLastWin32Error());',
+        '    }',
+        '    try {',
+        '      byte[] bytes = System.IO.File.ReadAllBytes(file);',
+        '      StartDocPrinter(h, 1, IntPtr.Zero);',
+        '      StartPagePrinter(h);',
+        '      IntPtr p = Marshal.AllocCoTaskMem(bytes.Length);',
+        '      try {',
+        '        Marshal.Copy(bytes, 0, p, bytes.Length);',
+        '        int written;',
+        '        if (!WritePrinter(h, p, bytes.Length, out written)) {',
+        '          throw new Exception("WritePrinter failed: " + Marshal.GetLastWin32Error());',
+        '        }',
+        '        Console.WriteLine("OK:" + written + " bytes");',
+        '      } finally {',
+        '        Marshal.FreeCoTaskMem(p);',
+        '      }',
+        '      EndPagePrinter(h);',
+        '      EndDocPrinter(h);',
+        '    } finally {',
+        '      ClosePrinter(h);',
+        '    }',
+        '  }',
+        '}',
+        '"@',
+        '[RawPrinter]::Send($args[0], $args[1])',
+      ].join('\r\n');
+      fs.writeFileSync(ps1File, ps1Content, 'utf-8');
+
+      try {
+        const result = execSync(
+          'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ps1File + '" "' + printerName.replace(/"/g, '""') + '" "' + arquivo.replace(/\\/g, '\\\\') + '"',
+          { timeout: 15000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+        );
+        console.log('[Print] RawPrinter resultado:', result.trim());
+        try { fs.unlinkSync(ps1File); } catch {}
+        cleanup(arquivo);
+        resolve();
+        return;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log('[Print] RawPrinter falhou:', msg);
+        try { fs.unlinkSync(ps1File); } catch {}
+        // continuamos para o proximo metodo
+      }
+    }
+
+    // --- Metodo 2: print /D (pode funcionar em algumas impressoras) ---
+    if (printerName) {
+      try {
+        execSync('print /D:"' + printerName + '" "' + arquivo + '"', { timeout: 10000, stdio: 'pipe' });
+        console.log('[Print] print /D executou (verificar se imprimiu)');
+        cleanup(arquivo);
+        resolve();
+        return;
+      } catch (err) {
+        console.log('[Print] print /D falhou:', err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    // --- Metodo 3: PowerShell Out-Printer (envia como texto) ---
+    if (printerName) {
+      try {
+        const textContent = buf.toString('utf-8');
+        const escaped = textContent.replace(/"/g, '""');
+        execSync(
+          'powershell -NoProfile -NonInteractive -Command "' + escaped + ' | Out-Printer -Name \\"' + printerName.replace(/"/g, '""') + '\\""',
+          { timeout: 15000, stdio: 'pipe' }
+        );
+        console.log('[Print] Out-Printer executou');
+        cleanup(arquivo);
+        resolve();
+        return;
+      } catch (err) {
+        console.log('[Print] Out-Printer falhou:', err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    try { fs.unlinkSync(arquivo); } catch {}
+    const allP = listAllPrinters();
+    const printerList = allP.length > 0
+      ? '\n\nImpressoras no Windows:\n  ' + allP.join('\n  ')
+      : '\n\nNenhuma impressora encontrada no Get-Printer.';
+    const finalMsg = printerName
+      ? 'Impressora "' + printerName + '" na porta "' + porta + '". Nenhum metodo funcionou.'
+      : 'Nenhuma impressora encontrada para a porta "' + porta + '".';
+    reject(new Error(finalMsg + printerList));
+  });
+}
+
+function cleanup(arquivo: string): void {
+  try { fs.unlinkSync(arquivo); } catch {}
+}
+
+router.get('/ports', async (_req: AuthRequest, res: Response) => {
+  const ports: { nome: string; porta: string; tipo: string }[] = [];
+
+  if (process.platform !== 'win32') {
+    try {
+      const result = execSync('ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null || true', { encoding: 'utf-8', timeout: 5000 });
+      for (const line of result.split('\n')) {
+        if (line.trim()) ports.push({ nome: line.trim(), porta: line.trim(), tipo: 'USB' });
+      }
+    } catch {}
+    res.json(ports);
+    return;
+  }
+
+  const seen = new Set<string>();
+  const add = (nome: string, porta: string, tipo: string) => {
+    const k = porta.toUpperCase();
+    if (!seen.has(k) && porta) { seen.add(k); ports.push({ nome: nome || porta, porta, tipo }); }
+  };
+  const tipo = (p: string) => {
+    const u = p.toUpperCase();
+    if (u.startsWith('COM')) return 'Serial';
+    if (u.startsWith('USB')) return 'USB';
+    if (u.startsWith('LPT')) return 'Paralela';
+    if (u.startsWith('TCP')) return 'Rede';
+    return 'Outra';
+  };
+
+  const raw = runPS('Get-Printer | Select-Object Name, PortName | ConvertTo-Json -Compress');
+  const list = parseJsonSafe<Record<string, string> | Record<string, string>[]>(raw);
+  if (list) {
+    for (const p of toArray(list)) {
+      const pn = (p.PortName || '').trim();
+      const nm = (p.Name || '').trim();
+      if (pn) add(nm, pn, tipo(pn));
+    }
+  }
+
+  const raw2 = runPS('Get-CimInstance Win32_SerialPort | Select-Object DeviceID, Caption | ConvertTo-Json -Compress');
+  const serials = parseJsonSafe<Record<string, string> | Record<string, string>[]>(raw2);
+  if (serials) {
+    for (const s of toArray(serials)) {
+      const id = (s.DeviceID || '').trim();
+      const cap = (s.Caption || '').trim();
+      if (id) add(cap || id, id, 'Serial');
+    }
+  }
+
+  const raw3 = runPS('Get-CimInstance Win32_PnPEntity | Where-Object { $_.DeviceID -match "COM" } | Select-Object Name, DeviceID | ConvertTo-Json -Compress');
+  const devs = parseJsonSafe<Record<string, string> | Record<string, string>[]>(raw3);
+  if (devs) {
+    for (const d of toArray(devs)) {
+      const m = (d.DeviceID || '').match(/(COM\d+)/i);
+      if (m) add((d.Name || '').trim() || m[1], m[1], 'Serial');
+    }
+  }
+
+  try {
+    const reg = execSync('reg query "HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM" 2>nul', { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] });
+    for (const line of (reg || '').split('\n')) {
+      const m = line.match(/COM(\d+)/);
+      if (m) add(`COM${m[1]}`, `COM${m[1]}`, 'Serial');
+    }
+  } catch {}
+
+  try {
+    const mode = execSync('mode', { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] });
+    for (const m of (mode || '').matchAll(/COM\d+/g)) add(m[0], m[0], 'Serial');
+  } catch {}
+
+  res.json(ports);
+});
+
+router.get('/ports/debug', async (_req: AuthRequest, res: Response) => {
+  const debug: Record<string, unknown> = { plataforma: process.platform };
+  if (process.platform !== 'win32') { res.json(debug); return; }
+
+  debug.getPrinter = runPS('Get-Printer | Select-Object Name, PortName | ConvertTo-Json -Compress');
+  debug.serialPort = runPS('Get-CimInstance Win32_SerialPort | Select-Object DeviceID, Caption | ConvertTo-Json -Compress');
+  debug.pnpCom = runPS('Get-CimInstance Win32_PnPEntity | Where-Object { $_.DeviceID -match "COM" } | Select-Object Name, DeviceID | ConvertTo-Json -Compress');
+
+  try {
+    debug.registry = execSync('reg query "HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM" 2>nul', { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] });
+  } catch { debug.registry = '(vazio)'; }
+
+  res.json(debug);
+});
+
+router.get('/diag/:porta', async (req: AuthRequest, res: Response) => {
+  const porta = req.params.porta;
+  const printerName = findPrinterNameByPort(porta);
+  const resultado: Record<string, unknown> = { porta, printerName };
+
+  if (!printerName) {
+    resultado.erro = 'Nenhuma impressora encontrada para a porta ' + porta;
+    res.json(resultado);
+    return;
+  }
+
+  ensureTempDir();
+  const arquivo = path.join(TEMP_DIR, 'diag_test.bin');
+  fs.writeFileSync(arquivo, Buffer.from('TESTE DE IMPRESSAO\n'));
+
+  const ps1File = path.join(TEMP_DIR, 'diag_raw.ps1');
+  const ps1Content = [
+    'Add-Type -TypeDefinition @"',
+    'using System;',
+    'using System.Runtime.InteropServices;',
+    'public class RawDiag {',
+    '  [DllImport("winspool.drv", CharSet=CharSet.Auto, SetLastError=true)]',
+    '  public static extern bool OpenPrinter(string pPrinterName, out IntPtr hPrinter, IntPtr pDefault);',
+    '  [DllImport("winspool.drv", SetLastError=true)]',
+    '  public static extern bool ClosePrinter(IntPtr hPrinter);',
+    '  [DllImport("winspool.drv", SetLastError=true)]',
+    '  public static extern bool StartDocPrinter(IntPtr hPrinter, int level, IntPtr di);',
+    '  [DllImport("winspool.drv", SetLastError=true)]',
+    '  public static extern bool EndDocPrinter(IntPtr hPrinter);',
+    '  [DllImport("winspool.drv", SetLastError=true)]',
+    '  public static extern bool StartPagePrinter(IntPtr hPrinter);',
+    '  [DllImport("winspool.drv", SetLastError=true)]',
+    '  public static extern bool EndPagePrinter(IntPtr hPrinter);',
+    '  [DllImport("winspool.drv", SetLastError=true)]',
+    '  public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBuf, int cbBuf, out int pcWritten);',
+    '  public static string Send(string printer, string file) {',
+    '    try {',
+    '      IntPtr h;',
+    '      if (!OpenPrinter(printer, out h, IntPtr.Zero)) return "OpenPrinter FALHOU: " + Marshal.GetLastWin32Error();',
+    '      try {',
+    '        byte[] bytes = System.IO.File.ReadAllBytes(file);',
+    '        StartDocPrinter(h, 1, IntPtr.Zero);',
+    '        StartPagePrinter(h);',
+    '        IntPtr p = Marshal.AllocCoTaskMem(bytes.Length);',
+    '        try {',
+    '          Marshal.Copy(bytes, 0, p, bytes.Length);',
+    '          int written;',
+    '          bool ok = WritePrinter(h, p, bytes.Length, out written);',
+    '          if (!ok) return "WritePrinter FALHOU: " + Marshal.GetLastWin32Error();',
+    '          return "OK:" + written + " bytes escritos";',
+    '        } finally { Marshal.FreeCoTaskMem(p); }',
+    '      } finally { ClosePrinter(h); }',
+    '    } catch (Exception ex) { return "ERRO: " + ex.Message; }',
+    '  }',
+    '}',
+    '"@',
+    '$resultado = [RawDiag]::Send($args[0], $args[1])',
+    'Write-Output $resultado',
+  ].join('\r\n');
+  fs.writeFileSync(ps1File, ps1Content, 'utf-8');
+
+  try {
+    const result = execSync(
+      'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ps1File + '" "' + printerName.replace(/"/g, '""') + '" "' + arquivo.replace(/\\/g, '\\\\') + '"',
+      { timeout: 15000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    resultado.rawPrinter = result.trim();
+  } catch (err) {
+    resultado.rawPrinterErro = err instanceof Error ? err.message : String(err);
+  }
+
+  try { fs.unlinkSync(ps1File); } catch {}
+  try { fs.unlinkSync(arquivo); } catch {}
+
+  res.json(resultado);
+});
+
+interface PrintTestRequest {
+  porta: string;
+  modelo: number;
+  deviceParams: string;
+  colunas: number;
+}
+
+router.post('/test', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { porta, modelo, deviceParams, colunas } = req.body as PrintTestRequest;
+
+  const textoTeste = [
+    '*** TESTE DE IMPRESSAO TERMICA ***',
+    '',
+    'Impressora configurada com sucesso!',
+    '',
+    `Porta: ${porta || 'auto'}`,
+    `Colunas: ${colunas || 48}`,
+    '',
+    `Data/Hora: ${new Date().toLocaleString('pt-BR')}`,
+    '',
+    'Sistema Gestor',
+    '',
+    '-----------------------------------',
+    '(c) 2026 - 56.134.688 MARCOS JOSE TAMANHONI',
+    'CNPJ: 56.134.688/0001-57 | ME',
+    'Data de abertura: 29/07/2024',
+    'Celular/WhatsApp: (27) 9 8833-7323',
+    'E-mail: mjtamanhoni@gmail.com',
+    '', '',
+  ].join('\n');
+
+  const buffer = buildEscPosBuffer(textoTeste, {
+    colunas: colunas || 48,
+    cortarPapel: true,
+    espacoEntreLinhas: 0,
+    linhasPular: 0,
+    paginaCodigo: 10,
+  });
+
+  const now = Date.now();
+  const activeAgents = Array.from(agents.values()).filter(a => now - a.lastSeen < 15000);
+
+  if (activeAgents.length > 0) {
+    const id = 'job-' + (++jobCounter);
+    const agent = activeAgents[0];
+    const job: PrintJob = { id, data: buffer.toString('base64'), printer: agent.selectedPrinter, status: 'pending', createdAt: now };
+    jobQueue.push(job);
+    console.log('[Print] Teste enviado ao agent:', agent.agentId, '| Job:', id);
+    res.json({ success: true, message: 'Teste enviado ao Print Agent (' + (agent.selectedPrinter || 'auto') + ')', jobId: id, via: 'agent' });
+    return;
+  }
+
+  if (!porta) {
+    res.status(400).json({ error: 'Nenhum Print Agent conectado e porta nao configurada. Rode "node agent.js" no PC local.' });
+    return;
+  }
+
+  try {
+    await sendToPrinter(buffer, porta);
+    const printerName = findPrinterNameByPort(porta);
+    res.json({ success: true, message: 'Teste enviado com sucesso (local)', porta, impressora: printerName || 'nao encontrada', via: 'local' });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Erro ao testar impressora';
+    console.error('[Print] Teste erro:', msg);
+    res.status(500).json({
+      error: msg + '\n\nDica: Rode "node agent.js" no PC local para imprimir via USB.',
+      porta,
+    });
+  }
+});
+
+interface PrintCupomRequest {
   texto: string;
   modelo: number;
   porta: string;
@@ -13,118 +519,261 @@ interface PrintRequest {
   espacoEntreLinhas: number;
   linhasBuffer: number;
   linhasPular: number;
+  paginaCodigo?: number;
+  pixPayload?: string;
 }
 
 router.post('/cupom', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const { texto, modelo, porta, deviceParams, colunas, cortarPapel, espacoEntreLinhas, linhasBuffer, linhasPular } = req.body as PrintRequest;
+  const {
+    texto, porta, colunas,
+    cortarPapel, espacoEntreLinhas, linhasBuffer, linhasPular, paginaCodigo,
+    pixPayload,
+  } = req.body as PrintCupomRequest;
 
-  if (!texto) {
-    res.status(400).json({ error: 'Texto do cupom nao informado' });
-    return;
-  }
-
-  if (!porta) {
-    res.status(400).json({ error: 'Porta da impressora nao configurada. Configure em Configuracoes > Impressao.' });
-    return;
-  }
+  if (!texto) { res.status(400).json({ error: 'Texto do cupom nao informado' }); return; }
 
   try {
-    const { execSync } = require('child_process');
-    const fs = require('fs');
-    const path = require('path');
+    let textoFinal = texto;
 
-    const tempDir = path.resolve(__dirname, '../../data/temp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+    // Se tem PIX, adicionar o codigo "copia e cola" no texto do cupom
+    if (pixPayload) {
+      const pixLinhas = [
+        '================================',
+        '        PAGUE COM PIX',
+        '================================',
+        'Copie o codigo abaixo e cole',
+        'no seu aplicativo bancario:',
+        '',
+        pixPayload,
+        '',
+        '================================',
+      ];
+      textoFinal = texto + '\n' + pixLinhas.join('\n');
     }
 
-    const arquivoTxt = path.join(tempDir, `cupom_${Date.now()}.txt`);
-    const linhas = texto.split('\n');
+    const textBuffer = buildEscPosBuffer(textoFinal, {
+      colunas: colunas || 48,
+      cortarPapel: false,
+      espacoEntreLinhas: espacoEntreLinhas || 0,
+      linhasPular: linhasPular || 0,
+      paginaCodigo: paginaCodigo ?? 10,
+    });
 
-    const conteudo = linhas
-      .map((l: string) => {
-        if (l.startsWith('</linha_dupla>')) return '='.repeat(colunas || 48);
-        if (l.startsWith('</linha_simples>')) return '-'.repeat(colunas || 48);
-        if (l.includes('</corte_parcial>')) return '\n\n\n\n';
-        if (l.includes('</corte_total>')) return '\n\n\n\n';
-        return l;
-      })
-      .join('\n');
+    const now = Date.now();
+    const activeAgents = Array.from(agents.values()).filter(a => now - a.lastSeen < 15000);
 
-    fs.writeFileSync(arquivoTxt, conteudo, 'utf-8');
-
-    const isWindows = process.platform === 'win32';
-
-    if (isWindows) {
-      if (porta.toUpperCase().startsWith('COM') || porta.toUpperCase().startsWith('LPT')) {
-        try {
-          execSync(`copy "${arquivoTxt}" "${porta}"`, { timeout: 10000 });
-        } catch {
-          const net = require('net');
-          if (porta.toUpperCase().startsWith('TCP:')) {
-            const parts = porta.replace('TCP:', '').split(':');
-            const host = parts[0];
-            const port = parseInt(parts[1] || '9100', 10);
-            await new Promise<void>((resolve, reject) => {
-              const client = new net.Socket();
-              client.connect(port, host, () => {
-                client.write(conteudo);
-                client.destroy();
-                resolve();
-              });
-              client.on('error', reject);
-            });
-          } else {
-            throw new Error('Porta nao suportada para impressao direta');
-          }
-        }
-      } else if (porta.toUpperCase().startsWith('TCP:')) {
-        const net = require('net');
-        const parts = porta.replace('TCP:', '').split(':');
-        const host = parts[0];
-        const port = parseInt(parts[1] || '9100', 10);
-        await new Promise<void>((resolve, reject) => {
-          const client = new net.Socket();
-          client.connect(port, host, () => {
-            client.write(conteudo);
-            client.destroy();
-            resolve();
-          });
-          client.on('error', reject);
-        });
-      } else if (porta.startsWith('\\\\')) {
-        execSync(`copy "${arquivoTxt}" "${porta}"`, { timeout: 10000 });
-      } else {
-        execSync(`print /D:"${porta}" "${arquivoTxt}"`, { timeout: 10000 });
-      }
-    } else {
-      if (porta.startsWith('/dev/')) {
-        execSync(`cat "${arquivoTxt}" > "${porta}"`, { timeout: 10000 });
-      } else if (porta.toUpperCase().startsWith('TCP:')) {
-        const net = require('net');
-        const parts = porta.replace('TCP:', '').split(':');
-        const host = parts[0];
-        const port = parseInt(parts[1] || '9100', 10);
-        await new Promise<void>((resolve, reject) => {
-          const client = new net.Socket();
-          client.connect(port, host, () => {
-            client.write(conteudo);
-            client.destroy();
-            resolve();
-          });
-          client.on('error', reject);
-        });
-      }
+    if (activeAgents.length > 0) {
+      const cutBuffer = Buffer.from([0x1d, 0x56, 0x42, 0x00]);
+      const buffer = Buffer.concat([textBuffer, cutBuffer]);
+      const id = 'job-' + (++jobCounter);
+      const agent = activeAgents[0];
+      const job: PrintJob = {
+        id,
+        data: buffer.toString('base64'),
+        printer: agent.selectedPrinter,
+        pixPayload: pixPayload || undefined,
+        status: 'pending',
+        createdAt: now,
+      };
+      jobQueue.push(job);
+      console.log('[Print] Cupom enviado ao agent:', agent.agentId, '| Job:', id);
+      res.json({ success: true, message: 'Cupom enviado ao Print Agent', jobId: id, via: 'agent' });
+      return;
     }
 
-    try { fs.unlinkSync(arquivoTxt); } catch {}
+    if (!porta) { res.status(400).json({ error: 'Nenhum Print Agent conectado e porta nao configurada.' }); return; }
 
-    res.json({ success: true, message: 'Cupom enviado para impressao' });
+    const cutBuffer = Buffer.from([0x1d, 0x56, 0x42, 0x00]);
+    const localBuffer = Buffer.concat([textBuffer, cutBuffer]);
+    await sendToPrinter(localBuffer, porta);
+    res.json({ success: true, message: 'Cupom enviado para impressao (local)', via: 'local' });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Erro ao imprimir';
-    console.error('[Print] Erro:', msg);
+    console.error('[Print] Cupom erro:', msg);
     res.status(500).json({ error: msg });
   }
+});
+
+interface AgentInfo {
+  agentId: string;
+  printers: { name: string; port: string }[];
+  selectedPrinter: string | null;
+  lastSeen: number;
+}
+
+interface PrintJob {
+  id: string;
+  data: string;
+  printer: string | null;
+  pixPayload?: string;
+  status: 'pending' | 'sent' | 'done' | 'error';
+  result?: string;
+  error?: string;
+  createdAt: number;
+}
+
+const agents = new Map<string, AgentInfo>();
+const jobQueue: PrintJob[] = [];
+let jobCounter = 0;
+
+router.post('/agent/register', (req: express.Request, res: Response) => {
+  const { agentId, printers, selectedPrinter } = req.body;
+  if (!agentId) { res.status(400).json({ error: 'agentId obrigatorio' }); return; }
+  agents.set(agentId, { agentId, printers: printers || [], selectedPrinter: selectedPrinter || null, lastSeen: Date.now() });
+  console.log('[Print] Agent registrado:', agentId, '| Impressoras:', (printers || []).map((p: { name: string }) => p.name).join(', '));
+  res.json({ ok: true, agentCount: agents.size });
+});
+
+router.get('/agent/poll', (req: express.Request, res: Response) => {
+  const { agentId } = req.query;
+  if (!agentId) { res.status(400).json({ error: 'agentId obrigatorio' }); return; }
+
+  const agent = agents.get(agentId as string);
+  if (agent) agent.lastSeen = Date.now();
+
+  const pending = jobQueue.find(j => j.status === 'pending');
+  if (pending) {
+    pending.status = 'sent';
+    console.log('[Print] Enviando job #' + pending.id, '(', pending.data.length, 'bytes base64)');
+    res.json({ job: { id: pending.id, data: pending.data, printer: pending.printer || agent?.selectedPrinter, pixPayload: pending.pixPayload || null } });
+  } else {
+    res.json({ job: null });
+  }
+});
+
+router.post('/agent/result', (req: express.Request, res: Response) => {
+  const { jobId, ok, error, result } = req.body;
+  const job = jobQueue.find(j => j.id === jobId);
+  if (job) {
+    job.status = ok ? 'done' : 'error';
+    job.result = result;
+    job.error = error;
+    console.log('[Print] Job #' + jobId, ok ? 'CONCLUIDO' : 'FALHOU', error || result || '');
+  }
+  res.json({ ok: true });
+});
+
+router.get('/agent/download', (_req: express.Request, res: Response) => {
+  const candidatePaths = [
+    path.resolve(__dirname, '../../../../print-agent/agent.js'),
+    path.resolve(__dirname, '../../../print-agent/agent.js'),
+    path.resolve(__dirname, '../../print-agent/agent.js'),
+    path.resolve(process.cwd(), 'print-agent/agent.js'),
+    path.resolve(process.cwd(), 'FrontEnd/print-agent/agent.js'),
+  ];
+  const agentPath = candidatePaths.find(p => { try { return fs.existsSync(p); } catch { return false; } });
+  if (!agentPath) {
+    res.status(404).json({ error: 'agent.js nao encontrado', tentativas: candidatePaths });
+    return;
+  }
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Content-Disposition', 'attachment; filename="agent.js"');
+  fs.createReadStream(agentPath).pipe(res);
+});
+
+router.get('/agent/download/package', (_req: express.Request, res: Response) => {
+  const candidatePaths = [
+    path.resolve(__dirname, '../../../../print-agent/package.json'),
+    path.resolve(__dirname, '../../../print-agent/package.json'),
+    path.resolve(__dirname, '../../print-agent/package.json'),
+    path.resolve(process.cwd(), 'print-agent/package.json'),
+    path.resolve(process.cwd(), 'FrontEnd/print-agent/package.json'),
+  ];
+  const pkgPath = candidatePaths.find(p => { try { return fs.existsSync(p); } catch { return false; } });
+  if (!pkgPath) {
+    res.status(404).json({ error: 'package.json nao encontrado' });
+    return;
+  }
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename="package.json"');
+  fs.createReadStream(pkgPath).pipe(res);
+});
+
+router.get('/agent/install', (_req: express.Request, res: Response) => {
+  const bffUrl = _req.query.url as string || `${_req.protocol}://${_req.get('host')}`;
+  const bat = [
+    '@echo off',
+    'title Gestor Print Agent',
+    'echo.',
+    'echo ========================================',
+    'echo  Gestor - Instalando Print Agent',
+    'echo ========================================',
+    'echo.',
+    'echo  Suporta QUALQUER impressora termica USB:',
+    'echo  Epson, Star, Bixolon, Citizen, Xprinter, Elgin, etc.',
+    'echo.',
+    'echo Criando pasta C:\\print-agent...',
+    'mkdir "C:\\print-agent" 2>nul',
+    'echo.',
+    'echo Baixando agent.js do servidor...',
+    'powershell -NoProfile -Command "Invoke-WebRequest -Uri \'' + bffUrl + '/api/print/agent/download\' -OutFile \'C:\\print-agent\\agent.js\'"',
+    'if %errorlevel% neq 0 (',
+    '    echo [ERRO] Falha ao baixar agent.js',
+    '    echo Verifique se o servidor esta acessivel: ' + bffUrl,
+    '    pause',
+    '    exit /b 1',
+    ')',
+    'echo Baixando package.json...',
+    'powershell -NoProfile -Command "Invoke-WebRequest -Uri \'' + bffUrl + '/api/print/agent/download/package\' -OutFile \'C:\\print-agent\\package.json\'"',
+    'echo.',
+    'echo Instalando dependencias npm...',
+    'cd /d "C:\\print-agent"',
+    'call npm install --production',
+    'if %errorlevel% neq 0 (',
+    '    echo [AVISO] Falha ao instalar dependencias npm.',
+    '    echo O agent funcionara apenas com spooler.',
+    '    echo Para impressao USB direta, instale as dependencias manualmente:',
+    '    echo   cd C:\\print-agent',
+    '    echo   npm install --production',
+    ')',
+    'echo.',
+    'echo Verificando drivers USB...',
+    'powershell -NoProfile -Command "$d = Get-PnpDevice -Class USB -Status OK 2>$null; if ($d) { Write-Output ($d.Count.ToString() + \' device(s) USB detectado(s)\') } else { Write-Output \'Nenhum device USB detectado - execute setup-winusb.bat\' }"',
+    'echo.',
+    'echo agent.js baixado com sucesso!',
+    'echo.',
+    'echo ========================================',
+    'echo  Iniciando Print Agent...',
+    'echo  Nao feche esta janela!',
+    'echo  Para parar, pressione Ctrl+C',
+    'echo ========================================',
+    'echo.',
+    'node "C:\\print-agent\\agent.js" ' + bffUrl,
+    'pause',
+  ].join('\r\n');
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', 'attachment; filename="instalar-agent.bat"');
+  res.send(bat);
+});
+
+router.get('/agent/status', (_req: express.Request, res: Response) => {
+  const now = Date.now();
+  const active = Array.from(agents.values()).filter(a => now - a.lastSeen < 15000);
+  res.json({
+    agents: active.map(a => ({ id: a.agentId, printers: a.printers, selectedPrinter: a.selectedPrinter, lastSeen: a.lastSeen })),
+    pendingJobs: jobQueue.filter(j => j.status === 'pending').length,
+    recentJobs: jobQueue.slice(-10).map(j => ({ id: j.id, status: j.status, error: j.error, createdAt: j.createdAt })),
+  });
+});
+
+router.post('/queue', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { data, printer } = req.body as { data: string; printer?: string };
+  if (!data) { res.status(400).json({ error: 'data obrigatorio (base64 ESC/POS)' }); return; }
+
+  const active = Array.from(agents.values()).filter(a => Date.now() - a.lastSeen < 15000);
+  if (active.length === 0) {
+    res.status(503).json({ error: 'Nenhum Print Agent conectado. Rode "node agent.js" no PC local.' });
+    return;
+  }
+
+  const id = 'job-' + (++jobCounter);
+  const job: PrintJob = { id, data, printer: printer || null, status: 'pending', createdAt: Date.now() };
+  jobQueue.push(job);
+
+  if (jobQueue.length > 100) jobQueue.splice(0, jobQueue.length - 100);
+
+  console.log('[Print] Job enfileirado:', id);
+  res.json({ ok: true, jobId: id });
 });
 
 export default router;

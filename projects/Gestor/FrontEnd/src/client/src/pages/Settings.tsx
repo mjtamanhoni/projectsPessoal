@@ -13,8 +13,13 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
 import type { ModuleItem } from '@/context/ModuleContext';
 import { useAuth } from '@/context/AuthContext';
-import { listarImpressorasUSB, solicitarImpressoraUSB, imprimirTesteUSB, webusbDisponivel, diagnosWebUSB, listarDispositivosUSB, type ImpressoraLocal } from '@/lib/printer-local';
-import { imprimirCupomComum } from '@/lib/cupom';
+
+interface PortaDetectada {
+  nome: string;
+  porta: string;
+  tipo: string;
+  fonte: string;
+}
 import { getServerConfig } from '@/lib/serverConfig';
 import QRCode from 'qrcode';
 
@@ -48,12 +53,12 @@ export function Settings() {
   const [aplicando, setAplicando] = useState<string | null>(null);
   const [msgMigracao, setMsgMigracao] = useState<{ tipo: string; texto: string } | null>(null);
   const [filtroMigracao, setFiltroMigracao] = useState<'pendentes' | 'aplicadas' | 'todas'>('pendentes');
-  const [subTabImpressao, setSubTabImpressao] = useState<'termica' | 'comum'>('termica');
-  const [impressorasUSB, setImpressorasUSB] = useState<ImpressoraLocal[]>([]);
-  const [dispositivosUSB, setDispositivosUSB] = useState<ImpressoraLocal[]>([]);
-  const [procurandoUSB, setProcurandoUSB] = useState(false);
+  const [portasDetectadas, setPortasDetectadas] = useState<PortaDetectada[]>([]);
+  const [procurandoPortas, setProcurandoPortas] = useState(false);
   const [testandoImpressora, setTestandoImpressora] = useState(false);
   const [msgImpressora, setMsgImpressora] = useState<{ tipo: string; texto: string } | null>(null);
+  const [agentStatus, setAgentStatus] = useState<{ agents: { id: string; printers: { name: string; port: string }[]; selectedPrinter: string | null }[]; pendingJobs: number; recentJobs: { id: string; status: string; error?: string }[] } | null>(null);
+  const [showAgentInstall, setShowAgentInstall] = useState(false);
   const [apks, setApks] = useState<{ nome: string; tamanho: number; modificado: string; versao: string }[]>([]);
   const [uploadingAPK, setUploadingAPK] = useState(false);
   const [excluindoAPK, setExcluindoAPK] = useState<string | null>(null);
@@ -80,6 +85,18 @@ export function Settings() {
   }, []);
 
   useEffect(() => {
+    if (tab !== 'impressao') return;
+    let active = true;
+    const poll = () => {
+      if (!active) return;
+      api.get('/print/agent/status').then(r => { if (active) setAgentStatus(r.data); }).catch(() => {});
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => { active = false; clearInterval(interval); };
+  }, [tab]);
+
+  useEffect(() => {
     if (tab === 'migracoes') {
       api.get('/migracoes').then((r) => setMigracoes(r.data ?? [])).catch(() => {});
     }
@@ -93,38 +110,36 @@ export function Settings() {
 
   useEffect(() => {
     if (tab === 'impressao') {
-      listarImpressorasUSB().then(setImpressorasUSB).catch(() => setImpressorasUSB([]));
-      listarDispositivosUSB().then(setDispositivosUSB).catch(() => setDispositivosUSB([]));
+      detectarPortasServidor();
     }
     if (tab === 'instalacao') {
       api.get('/apk').then((r) => setApks(r.data ?? [])).catch(() => setApks([]));
     }
   }, [tab]);
 
-  const procurarImpressora = async () => {
-    setProcurandoUSB(true);
+  const detectarPortasServidor = async () => {
+    setProcurandoPortas(true);
     setMsgImpressora(null);
     try {
-      if (!webusbDisponivel()) {
-        setMsgImpressora({ tipo: 'erro', texto: `WebUSB indisponivel: acesso via HTTP externo nao permite acesso USB. Configure a porta manualmente (ex: USB:0456:0808).` });
-        return;
+      const res = await api.get('/print/ports');
+      const portas = (res.data ?? []) as PortaDetectada[];
+      setPortasDetectadas(portas);
+      if (portas.length === 0) {
+        setMsgImpressora({ tipo: 'info', texto: 'Nenhuma impressora detectada automaticamente. Configure a porta manualmente (ex: COM3, TCP:192.168.1.100:9100).' });
+      } else {
+        setMsgImpressora({ tipo: 'sucesso', texto: `${portas.length} porta(s) detectada(s)` });
       }
-      const impressora = await solicitarImpressoraUSB();
-      if (!impressora) {
-        setMsgImpressora({ tipo: 'erro', texto: 'Nenhuma impressora selecionada.' });
-        return;
-      }
-      setImpressorasUSB((prev) => (prev.some((i) => i.porta === impressora.porta) ? prev : [...prev, impressora]));
-      setMsgImpressora({ tipo: 'sucesso', texto: `Impressora detectada: ${impressora.nome}` });
+    } catch (err) {
+      setMsgImpressora({ tipo: 'erro', texto: 'Erro ao detectar portas. Configure manualmente.' });
     } finally {
-      setProcurandoUSB(false);
+      setProcurandoPortas(false);
     }
   };
 
-  const usarImpressora = (imp: ImpressoraLocal) => {
+  const usarPorta = (porta: string) => {
     if (!settings?.printer) return;
-    setSettings({ ...settings, printer: { ...settings.printer, porta: imp.porta } });
-    addToast('success', `Impressora configurada: ${imp.nome}`);
+    setSettings({ ...settings, printer: { ...settings.printer, porta } });
+    addToast('success', `Porta configurada: ${porta}`);
   };
 
   const testarImpressora = async () => {
@@ -137,35 +152,26 @@ export function Settings() {
         setMsgImpressora({ tipo: 'erro', texto: 'Configure a porta da impressora antes de testar.' });
         return;
       }
-      if (porta.toUpperCase().startsWith('USB:')) {
-        await imprimirTesteUSB(porta);
-        setMsgImpressora({ tipo: 'sucesso', texto: 'Teste enviado para a impressora USB.' });
-        return;
-      }
-      const texto = '*** TESTE DE IMPRESSÃO TÉRMICA ***\n\nSe o texto abaixo estiver correto,\na impressora está configurada.\n\nSistema Gestor\n';
-      await api.post('/print/cupom', {
-        texto,
-        modelo: settings.printer.modelo,
+      const res = await api.post('/print/test', {
         porta,
+        modelo: settings.printer.modelo,
         deviceParams: settings.printer.deviceParams,
         colunas: settings.printer.colunas,
-        cortarPapel: settings.printer.cortarPapel,
-        espacoEntreLinhas: settings.printer.espacoEntreLinhas,
-        linhasBuffer: settings.printer.linhasBuffer,
-        linhasPular: settings.printer.linhasPular,
       });
-      setMsgImpressora({ tipo: 'sucesso', texto: 'Teste enviado para impressão.' });
-    } catch (err) {
-      setMsgImpressora({ tipo: 'erro', texto: err instanceof Error ? err.message : 'Erro ao testar impressora' });
+      setMsgImpressora({ tipo: 'sucesso', texto: res.data?.message || 'Teste enviado com sucesso' });
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: { error?: string; dica?: string; porta?: string; impressora?: string; todasImpressoras?: string[] } } })?.response?.data;
+      const parts: string[] = [];
+      if (data?.error) parts.push(data.error);
+      if (data?.todasImpressoras && data.todasImpressoras.length > 0) {
+        parts.push('Impressoras no Windows:\n' + data.todasImpressoras.join('\n'));
+      }
+      if (data?.dica) parts.push(data.dica);
+      const msg = parts.length > 0 ? parts.join('\n\n') : (err instanceof Error ? err.message : 'Erro ao testar impressora');
+      setMsgImpressora({ tipo: 'erro', texto: msg });
     } finally {
       setTestandoImpressora(false);
     }
-  };
-
-  const testarImpressoraComum = () => {
-    imprimirCupomComum(
-      '*** TESTE DE IMPRESSORA COMUM ***\n\nSe você está vendo este texto,\na impressora comum está funcionando.\n\nSistema Gestor\n',
-    );
   };
 
   async function aplicarMigracao(nome: string) {
@@ -496,444 +502,156 @@ export function Settings() {
               <div className="p-2 bg-amber-100 rounded-lg">
                 <Printer size={20} className="text-amber-600" />
               </div>
-              <h2 className="text-lg font-semibold text-text-primary">Dados da Empresa para Cupom</h2>
+              <h2 className="text-lg font-semibold text-text-primary">Impressora Termica</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="space-y-1.5">
-                <label className="label-field">Nome da Empresa</label>
-                <input
-                  type="text"
-                  value={settings.empresaNome ?? ''}
-                  onChange={(e) => setSettings({ ...settings, empresaNome: e.target.value })}
-                  className="input-field"
-                  placeholder="Nome da empresa"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">CNPJ</label>
-                <input
-                  type="text"
-                  value={settings.empresaCnpj ?? ''}
-                  onChange={(e) => setSettings({ ...settings, empresaCnpj: e.target.value })}
-                  className="input-field"
-                  placeholder="00.000.000/0001-00"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Endereco</label>
-                <input
-                  type="text"
-                  value={settings.empresaEndereco ?? ''}
-                  onChange={(e) => setSettings({ ...settings, empresaEndereco: e.target.value })}
-                  className="input-field"
-                  placeholder="Rua, numero, bairro, cidade/UF"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Telefone</label>
-                <input
-                  type="text"
-                  value={settings.empresaTelefone ?? ''}
-                  onChange={(e) => setSettings({ ...settings, empresaTelefone: e.target.value })}
-                  className="input-field"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-border-subtle pt-4">
-              <div className="flex gap-1 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setSubTabImpressao('termica')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    subTabImpressao === 'termica'
-                      ? 'bg-accent-primary text-text-inverse'
-                      : 'bg-bg-muted text-text-secondary hover:bg-border-subtle'
-                  }`}
-                >
-                  Impressora Termica
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubTabImpressao('comum')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    subTabImpressao === 'comum'
-                      ? 'bg-accent-primary text-text-inverse'
-                      : 'bg-bg-muted text-text-secondary hover:bg-border-subtle'
-                  }`}
-                >
-                  Impressoras Comuns
-                </button>
+            <p className="text-sm text-text-secondary mb-4">
+              Detecte e configure a impressora termica para cupoms nao fiscais.
+            </p>
+            <div className="rounded-lg border border-border-primary p-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="secondary" disabled={procurandoPortas} onClick={detectarPortasServidor}>
+                  {procurandoPortas ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                  {procurandoPortas ? 'Detectando...' : 'Detectar Impressora'}
+                </Button>
+                <Button type="button" variant="secondary" disabled={testandoImpressora} onClick={testarImpressora}>
+                  {testandoImpressora ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+                  {testandoImpressora ? 'Testando...' : 'Testar Impressao'}
+                </Button>
+                {(!agentStatus || agentStatus.agents.length === 0) && (
+                  <Button type="button" variant="secondary" onClick={() => {
+                    window.open(`/api/print/agent/install?url=${encodeURIComponent(window.location.origin)}`, '_blank');
+                    setShowAgentInstall(true);
+                  }}>
+                    <Download size={16} />
+                    Instalar Agent
+                  </Button>
+                )}
               </div>
 
-              {subTabImpressao === 'termica' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-100 rounded-lg">
-                      <Printer size={20} className="text-amber-600" />
-                    </div>
-                    <h2 className="text-lg font-semibold text-text-primary">Impressora Termica (PosPrinter)</h2>
+              {showAgentInstall && (!agentStatus || agentStatus.agents.length === 0) && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 font-semibold text-amber-800 text-sm">
+                    <Download size={16} />
+                    Instalacao do Print Agent
                   </div>
-                  <p className="text-sm text-text-secondary">
-                    Configure a impressora termica para impressao de cupons nao fiscais.
-                    Modelos compativeis: Epson TM, Daruma, Bematech, Elgin, etc.
+                  <div className="rounded bg-red-50 border border-red-200 p-2 text-xs text-red-800">
+                    <strong>IMPORTANTE:</strong> O agent deve ser executado no <strong>PC LOCAL</strong> (onde a impressora USB esta conectada), <strong>NAO</strong> pelo Remote Desktop (RDP).
+                  </div>
+                  <div className="rounded bg-blue-50 border border-blue-200 p-2 text-xs text-blue-800">
+                    <strong>Suporta QUALQUER impressora termica USB:</strong> Epson, Star, Bixolon, Citizen, Xprinter, Elgin, MUNBYN, SPRT, etc.
+                  </div>
+                  <ol className="text-xs text-text-primary space-y-2 list-decimal list-inside">
+                    <li>
+                      No <strong>PC LOCAL</strong>, abra a pasta <strong>Downloads</strong>.
+                    </li>
+                    <li>
+                      Clique <strong>duas vezes</strong> em <strong>instalar-agent.bat</strong>. Aguarde finalizar.
+                    </li>
+                    <li>
+                      Abra o <strong>Explorador de Arquivos</strong> e va em <strong>C:\print-agent</strong>.
+                    </li>
+                    <li>
+                      Execute <strong>setup-winusb.bat</strong> como <strong>Administrador</strong> (botao direito &gt; Executar como administrador).
+                    </li>
+                    <li>
+                      O Zadig sera aberto. Siga as instrucoes:
+                      <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                        <li>Clique em <strong>Options</strong> &gt; <strong>List All Devices</strong></li>
+                        <li>Na lista suspena, selecione sua impressora (ou <strong>USB Printing Support</strong>)</li>
+                        <li>Verifique que o driver mostrado e <strong>WinUSB</strong></li>
+                        <li>Clique em <strong>Replace Driver</strong> (ou <strong>Install Driver</strong>)</li>
+                        <li>Aguarde concluir e feche o Zadig</li>
+                      </ol>
+                    </li>
+                    <li>
+                      Volte aqui e clique em <strong>Testar Impressao</strong>.
+                    </li>
+                  </ol>
+                  <p className="text-[11px] text-text-tertiary">
+                    O agent deve ficar aberto enquanto quiser imprimir. Para fechar, pressione Ctrl+C na janela do agent.
                   </p>
-                  <div className="rounded-lg border border-border-primary p-4 space-y-3">
-                    <h3 className="text-sm font-semibold text-text-primary">Localizar impressora termica neste computador</h3>
-                    <p className="text-xs text-text-tertiary">
-                      Detecta impressoras termicas USB conectadas a este computador e define a porta automaticamente.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button type="button" variant="secondary" disabled={procurandoUSB} onClick={procurarImpressora}>
-                        {procurandoUSB ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                        {procurandoUSB ? 'Procurando...' : 'Localizar Impressora'}
-                      </Button>
-                      <Button type="button" variant="secondary" disabled={testandoImpressora} onClick={testarImpressora}>
-                        {testandoImpressora ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-                        {testandoImpressora ? 'Testando...' : 'Testar Impressão'}
-                      </Button>
-                    </div>
-                    {!webusbDisponivel() && (
-                      <div className="rounded-md bg-amber-50 border border-amber-200 p-3 space-y-1">
-                        <p className="text-xs font-semibold text-amber-800">WebUSB nao disponivel</p>
-                        <p className="text-xs text-amber-700">
-                          O WebUSB so funciona em <strong>HTTPS</strong> ou <strong>localhost</strong>.
-                          Acesso via HTTP externo ({window.location.hostname}) nao permite acesso USB.
-                        </p>
-                        <p className="text-xs text-amber-700">
-                          Configure a porta manualmente no campo abaixo (ex: USB:0456:0808).
-                        </p>
-                      </div>
-                    )}
-                    {impressorasUSB.length > 0 && (
-                      <div className="border border-border-primary rounded-lg divide-y divide-border-primary">
-                        {impressorasUSB.map((imp) => (
-                          <div key={imp.porta} className="flex items-center justify-between px-3 py-2 gap-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-text-primary truncate">{imp.nome}</p>
-                              <p className="text-xs text-text-tertiary">{imp.porta}</p>
-                            </div>
-                            <Button type="button" variant="secondary" className="px-2 py-1 text-xs" onClick={() => usarImpressora(imp)}>
-                              Usar
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {msgImpressora && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: msgImpressora.tipo === 'sucesso' ? '#f0fdf4' : '#fef2f2', color: msgImpressora.tipo === 'sucesso' ? '#166534' : '#991b1b' }}>
-                        {msgImpressora.tipo === 'sucesso' ? <Check size={16} /> : <AlertTriangle size={16} />}
-                        {msgImpressora.texto}
-                      </div>
-                    )}
-                  </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="space-y-1.5">
-                <label className="label-field">Modelo</label>
-                <select
-                  value={settings.printer?.modelo ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, modelo: Number(e.target.value) } })}
-                  className="input-field"
-                >
-                  <option value={0}>Nenhum</option>
-                  <option value={1}>Epson TM</option>
-                  <option value={2}>Daruma</option>
-                  <option value={3}>Bematech</option>
-                  <option value={4}>Elgin</option>
-                  <option value={5}>Sweda</option>
-                  <option value={6}>Diebold</option>
-                  <option value={7}>ICAPlayer</option>
-                  <option value={8}>Generic</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Porta</label>
-                <input
-                  type="text"
-                  value={settings.printer?.porta ?? ''}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, porta: e.target.value } })}
-                  className="input-field"
-                  placeholder="Ex: COM1, USB001, TCP:192.168.0.10:9100"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Params (Serial)</label>
-                <input
-                  type="text"
-                  value={settings.printer?.deviceParams ?? ''}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, deviceParams: e.target.value } })}
-                  className="input-field"
-                  placeholder="Ex: 9600,N,8,1"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Colunas</label>
-                <input
-                  type="number"
-                  min={20}
-                  max={80}
-                  value={settings.printer?.colunas ?? 48}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, colunas: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Espaco entre linhas</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={settings.printer?.espacoEntreLinhas ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, espacoEntreLinhas: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Linhas em Buffer</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={255}
-                  value={settings.printer?.linhasBuffer ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, linhasBuffer: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Linhas entre cupons</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={settings.printer?.linhasPular ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, linhasPular: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Pagina de Codigo</label>
-                <select
-                  value={settings.printer?.paginaCodigo ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, paginaCodigo: Number(e.target.value) } })}
-                  className="input-field"
-                >
-                  <option value={0}>PC850</option>
-                  <option value={1}>PC852</option>
-                  <option value={2}>PC860</option>
-                  <option value={3}>PC861</option>
-                  <option value={4}>PC862</option>
-                  <option value={5}>PC863</option>
-                  <option value={6}>PC865</option>
-                  <option value={7}>PC866</option>
-                  <option value={8}>PC869</option>
-                  <option value={9}>ISO8859-1</option>
-                  <option value={10}>UTF8</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-4 mb-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={settings.printer?.cortarPapel ?? true}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, cortarPapel: e.target.checked } })}
-                  className="rounded border-border-subtle"
-                />
-                Cortar Papel
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={settings.printer?.controlePorta ?? false}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, controlePorta: e.target.checked } })}
-                  className="rounded border-border-subtle"
-                />
-                Controle de Porta
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={settings.printer?.barrasHRI ?? true}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, barrasHRI: e.target.checked } })}
-                  className="rounded border-border-subtle"
-                />
-                Mostrar codigo (Barras HRI)
-              </label>
-            </div>
-            <h3 className="text-sm font-medium text-text-primary mt-4 mb-2">Codigo de Barras</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <label className="label-field">Largura</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={settings.printer?.barrasLargura ?? 2}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, barrasLargura: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Altura</label>
-                <input
-                  type="number"
-                  min={10}
-                  max={500}
-                  value={settings.printer?.barrasAltura ?? 100}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, barrasAltura: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-            </div>
-            <h3 className="text-sm font-medium text-text-primary mt-4 mb-2">QRCode</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <label className="label-field">Tipo</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={3}
-                  value={settings.printer?.qrcodeTipo ?? 2}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, qrcodeTipo: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Largura do Modulo</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={settings.printer?.qrcodeLarguraModulo ?? 6}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, qrcodeLarguraModulo: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Error Level</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={3}
-                  value={settings.printer?.qrcodeErrorLevel ?? 2}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, qrcodeErrorLevel: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-            </div>
-            <h3 className="text-sm font-medium text-text-primary mt-4 mb-2">Logo (gravado na impressora)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-1.5">
-                <label className="label-field">KeyCode 1</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={255}
-                  value={settings.printer?.logoKC1 ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, logoKC1: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">KeyCode 2</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={255}
-                  value={settings.printer?.logoKC2 ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, logoKC2: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Fator X</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={settings.printer?.logoFatorX ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, logoFatorX: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="label-field">Fator Y</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={settings.printer?.logoFatorY ?? 0}
-                  onChange={(e) => setSettings({ ...settings, printer: { ...settings.printer!, logoFatorY: Number(e.target.value) } })}
-                  className="input-field w-24"
-                />
-              </div>
-            </div>
-            </div>
+                </div>
               )}
-
-              {subTabImpressao === 'comum' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-100 rounded-lg">
-                      <Printer size={20} className="text-amber-600" />
-                    </div>
-                    <h2 className="text-lg font-semibold text-text-primary">Impressoras Comuns</h2>
-                  </div>
-                  <p className="text-sm text-text-secondary">
-                    Impressoras comuns (A4, carta) usam a janela de impressao do navegador, onde voce escolhe a
-                    impressora instalada neste computador. Nenhuma configuracao adicional e necessaria.
-                  </p>
-                  <p className="text-sm text-text-secondary">
-                    No cupom, use a opcao "Impressora Comum" para imprimir em uma impressora comum.
-                  </p>
-                  <div className="rounded-lg border border-border-primary p-4 space-y-3">
-                    <h3 className="text-sm font-semibold text-text-primary">Detectar dispositivos USB deste computador</h3>
-                    <p className="text-xs text-text-tertiary">
-                      O navegador nao lista as impressoras instaladas, mas mostra os dispositivos USB autorizados.
-                      Use o teste abaixo para escolher a impressora na janela de impressao do sistema.
-                    </p>
-                    {!webusbDisponivel() && (
-                      <p className="text-xs text-amber-600">
-                        WebUSB indisponivel (acesso via HTTP externo). O teste via janela de impressao continua disponivel.
-                      </p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button type="button" variant="secondary" onClick={testarImpressoraComum}>
-                        <Play size={16} /> Testar Impressora Comum
+              {settings?.printer?.porta && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+                  <Check size={16} className="text-green-600" />
+                  <span className="text-sm text-green-800">
+                    Impressora configurada: <strong>{settings.printer.porta}</strong>
+                  </span>
+                </div>
+              )}
+              {portasDetectadas.length > 0 && (
+                <div className="border border-border-primary rounded-lg divide-y divide-border-primary">
+                  {portasDetectadas.map((p) => (
+                    <div key={p.porta} className="flex items-center justify-between px-3 py-2 gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-text-primary truncate">{p.nome}</p>
+                        <p className="text-xs text-text-tertiary">{p.porta} ({p.tipo})</p>
+                      </div>
+                      <Button type="button" variant="secondary" className="px-2 py-1 text-xs" onClick={() => usarPorta(p.porta)}>
+                        Usar
                       </Button>
                     </div>
-                    {dispositivosUSB.length > 0 && (
-                      <div className="border border-border-primary rounded-lg divide-y divide-border-primary">
-                        {dispositivosUSB.map((disp) => (
-                          <div key={disp.porta} className="flex items-center justify-between px-3 py-2 gap-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-text-primary truncate">{disp.nome}</p>
-                              <p className="text-xs text-text-tertiary">{disp.porta}</p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              className="px-2 py-1 text-xs"
-                              onClick={() =>
-                                imprimirCupomComum(
-                                  `*** TESTE DE IMPRESSÃO COMUM ***\n\nDispositivo detectado:\n${disp.nome}\n\nSelecione a impressora na janela de impressao.\n\nSistema Gestor\n`,
-                                )
-                              }
-                            >
-                              Testar
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {dispositivosUSB.length === 0 && webusbDisponivel() && (
-                      <p className="text-xs text-text-tertiary">
-                        Nenhum dispositivo USB autorizado ainda. Se sua impressora comum estiver conectada via USB, clique em
-                        "Localizar Impressora" na aba Impressora Termica e autorize o acesso.
-                      </p>
-                    )}
+                  ))}
+                </div>
+              )}
+              {msgImpressora && (
+                <div className="p-3 rounded-lg text-xs whitespace-pre-wrap" style={{ background: msgImpressora.tipo === 'sucesso' ? '#f0fdf4' : msgImpressora.tipo === 'info' ? '#eff6ff' : '#fef2f2', color: msgImpressora.tipo === 'sucesso' ? '#166534' : msgImpressora.tipo === 'info' ? '#1e40af' : '#991b1b' }}>
+                  <div className="flex items-center gap-2 font-semibold mb-1">
+                    {msgImpressora.tipo === 'sucesso' ? <Check size={16} /> : msgImpressora.tipo === 'info' ? <Search size={16} /> : <AlertTriangle size={16} />}
+                    {msgImpressora.tipo === 'sucesso' ? 'Sucesso' : msgImpressora.tipo === 'info' ? 'Info' : 'Erro'}
                   </div>
+                  {msgImpressora.texto}
+                </div>
+              )}
+              <div className="border-t border-border-subtle pt-3">
+                <p className="text-xs text-text-tertiary mb-2">Ou informe a porta manualmente:</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    id="porta-manual"
+                    className="input-field flex-1"
+                    placeholder="Ex: USB001, COM3, TCP:192.168.1.100:9100"
+                  />
+                  <Button type="button" variant="secondary" onClick={() => {
+                    const input = document.getElementById('porta-manual') as HTMLInputElement;
+                    if (input?.value.trim()) usarPorta(input.value.trim());
+                  }}>
+                    Usar
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-border-primary p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-2.5 h-2.5 rounded-full ${agentStatus && agentStatus.agents.length > 0 ? 'bg-green-500' : 'bg-red-400'}`} />
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Print Agent {agentStatus && agentStatus.agents.length > 0 ? '(Conectado)' : '(Desconectado)'}
+                </h3>
+              </div>
+              {agentStatus && agentStatus.agents.length > 0 ? (
+                <div className="space-y-2">
+                  {agentStatus.agents.map((a) => (
+                    <div key={a.id} className="text-xs text-green-700 bg-green-50 rounded p-2">
+                      <p><strong>Agent:</strong> {a.id}</p>
+                      <p><strong>Impressora:</strong> {a.selectedPrinter || 'auto'}</p>
+                      <p><strong>Portas locais:</strong> {a.printers.map(p => `${p.name} [${p.port}]`).join(', ')}</p>
+                    </div>
+                  ))}
+                  {agentStatus.pendingJobs > 0 && (
+                    <p className="text-xs text-amber-600">{agentStatus.pendingJobs} job(s) na fila...</p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-text-secondary space-y-2">
+                  <p>O Print Agent roda no <strong>PC local</strong> (onde a impressora USB esta conectada) e recebe os dados de impressao do servidor.</p>
+                  <div className="bg-gray-50 rounded p-2 font-mono text-[11px]">
+                    <p>1. Abra o terminal no PC local</p>
+                    <p>2. Navegue ate a pasta <strong>FrontEnd/print-agent</strong></p>
+                    <p>3. Execute: <strong>node agent.js {window.location.origin}</strong></p>
+                  </div>
+                  <p className="text-text-tertiary">O agent inicia automaticamente e conecta ao servidor.</p>
                 </div>
               )}
             </div>
