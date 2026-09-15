@@ -147,18 +147,14 @@ export function Settings() {
     setTestandoImpressora(true);
     setMsgImpressora(null);
     try {
-      const porta = settings.printer.porta;
-      if (!porta) {
-        setMsgImpressora({ tipo: 'erro', texto: 'Configure a porta da impressora antes de testar.' });
-        return;
-      }
       const res = await api.post('/print/test', {
-        porta,
+        porta: settings.printer.porta || '',
         modelo: settings.printer.modelo,
         deviceParams: settings.printer.deviceParams,
         colunas: settings.printer.colunas,
       });
-      setMsgImpressora({ tipo: 'sucesso', texto: res.data?.message || 'Teste enviado com sucesso' });
+      const via = res.data?.via === 'agent' ? ' (via Print Agent)' : ' (impressao local)';
+      setMsgImpressora({ tipo: 'sucesso', texto: (res.data?.message || 'Teste enviado com sucesso') + via });
     } catch (err: unknown) {
       const data = (err as { response?: { data?: { error?: string; dica?: string; porta?: string; impressora?: string; todasImpressoras?: string[] } } })?.response?.data;
       const parts: string[] = [];
@@ -518,9 +514,24 @@ export function Settings() {
                   {testandoImpressora ? 'Testando...' : 'Testar Impressao'}
                 </Button>
                 {(!agentStatus || agentStatus.agents.length === 0) && (
-                  <Button type="button" variant="secondary" onClick={() => {
-                    window.open(`/api/print/agent/install?url=${encodeURIComponent(window.location.origin)}`, '_blank');
-                    setShowAgentInstall(true);
+                  <Button type="button" variant="secondary" onClick={async () => {
+                    try {
+                      const url = `/api/print/agent/install?url=${encodeURIComponent(window.location.origin)}`;
+                      const res = await fetch(url);
+                      const blob = await res.blob();
+                      const blobUrl = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = blobUrl;
+                      a.download = 'instalar-agent.bat';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(blobUrl);
+                      setShowAgentInstall(true);
+                    } catch {
+                      window.open(`/api/print/agent/install?url=${encodeURIComponent(window.location.origin)}`, '_blank');
+                      setShowAgentInstall(true);
+                    }
                   }}>
                     <Download size={16} />
                     Instalar Agent
@@ -535,40 +546,15 @@ export function Settings() {
                     Instalacao do Print Agent
                   </div>
                   <div className="rounded bg-red-50 border border-red-200 p-2 text-xs text-red-800">
-                    <strong>IMPORTANTE:</strong> O agent deve ser executado no <strong>PC LOCAL</strong> (onde a impressora USB esta conectada), <strong>NAO</strong> pelo Remote Desktop (RDP).
+                    <strong>IMPORTANTE:</strong> Execute no <strong>PC LOCAL</strong> (onde a impressora USB esta conectada), <strong>NAO</strong> pelo Remote Desktop (RDP).
                   </div>
-                  <div className="rounded bg-blue-50 border border-blue-200 p-2 text-xs text-blue-800">
-                    <strong>Suporta QUALQUER impressora termica USB:</strong> Epson, Star, Bixolon, Citizen, Xprinter, Elgin, MUNBYN, SPRT, etc.
+                  <div className="rounded bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+                    <p className="font-semibold mb-1">Arquivo baixado! Abra sua pasta de Downloads.</p>
+                    <p>Clique <strong>duas vezes</strong> em <strong>instalar-agent.bat</strong> para instalar e iniciar o agent.</p>
+                    <p className="text-xs mt-2 text-green-700">O agent sera instalado automaticamente e comecara a imprimir.</p>
                   </div>
-                  <ol className="text-xs text-text-primary space-y-2 list-decimal list-inside">
-                    <li>
-                      No <strong>PC LOCAL</strong>, abra a pasta <strong>Downloads</strong>.
-                    </li>
-                    <li>
-                      Clique <strong>duas vezes</strong> em <strong>instalar-agent.bat</strong>. Aguarde finalizar.
-                    </li>
-                    <li>
-                      Abra o <strong>Explorador de Arquivos</strong> e va em <strong>C:\print-agent</strong>.
-                    </li>
-                    <li>
-                      Execute <strong>setup-winusb.bat</strong> como <strong>Administrador</strong> (botao direito &gt; Executar como administrador).
-                    </li>
-                    <li>
-                      O Zadig sera aberto. Siga as instrucoes:
-                      <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
-                        <li>Clique em <strong>Options</strong> &gt; <strong>List All Devices</strong></li>
-                        <li>Na lista suspena, selecione sua impressora (ou <strong>USB Printing Support</strong>)</li>
-                        <li>Verifique que o driver mostrado e <strong>WinUSB</strong></li>
-                        <li>Clique em <strong>Replace Driver</strong> (ou <strong>Install Driver</strong>)</li>
-                        <li>Aguarde concluir e feche o Zadig</li>
-                      </ol>
-                    </li>
-                    <li>
-                      Volte aqui e clique em <strong>Testar Impressao</strong>.
-                    </li>
-                  </ol>
                   <p className="text-[11px] text-text-tertiary">
-                    O agent deve ficar aberto enquanto quiser imprimir. Para fechar, pressione Ctrl+C na janela do agent.
+                    O agent deve ficar aberto enquanto quiser imprimir. Para fechar, pressione Ctrl+C.
                   </p>
                 </div>
               )}
@@ -631,27 +617,47 @@ export function Settings() {
                 </h3>
               </div>
               {agentStatus && agentStatus.agents.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {agentStatus.agents.map((a) => (
-                    <div key={a.id} className="text-xs text-green-700 bg-green-50 rounded p-2">
-                      <p><strong>Agent:</strong> {a.id}</p>
-                      <p><strong>Impressora:</strong> {a.selectedPrinter || 'auto'}</p>
-                      <p><strong>Portas locais:</strong> {a.printers.map(p => `${p.name} [${p.port}]`).join(', ')}</p>
+                    <div key={a.id} className="text-xs bg-green-50 rounded p-3 space-y-2">
+                      <p className="text-green-700"><strong>Agent:</strong> {a.id}</p>
+                      <div className="flex items-center gap-2">
+                        <label className="text-green-700 font-semibold">Impressora:</label>
+                        <select
+                          className="flex-1 text-xs border border-green-300 rounded px-2 py-1 bg-white text-text-primary"
+                          value={a.selectedPrinter || ''}
+                          onChange={async (e) => {
+                            const printer = e.target.value;
+                            try {
+                              await api.post('/print/agent/set-printer', { agentId: a.id, printerName: printer });
+                              setAgentStatus(prev => prev ? {
+                                ...prev,
+                                agents: prev.agents.map(ag => ag.id === a.id ? { ...ag, selectedPrinter: printer } : ag),
+                              } : null);
+                              addToast('success', `Impressora alterada para: ${printer}`);
+                            } catch {
+                              addToast('error', 'Erro ao alterar impressora');
+                            }
+                          }}
+                        >
+                          {a.printers.map(p => (
+                            <option key={p.name} value={p.name}>{p.name} [{p.port}]</option>
+                          ))}
+                        </select>
+                      </div>
+                      {agentStatus.pendingJobs > 0 && (
+                        <p className="text-amber-600">{agentStatus.pendingJobs} job(s) na fila...</p>
+                      )}
                     </div>
                   ))}
-                  {agentStatus.pendingJobs > 0 && (
-                    <p className="text-xs text-amber-600">{agentStatus.pendingJobs} job(s) na fila...</p>
-                  )}
                 </div>
               ) : (
                 <div className="text-xs text-text-secondary space-y-2">
                   <p>O Print Agent roda no <strong>PC local</strong> (onde a impressora USB esta conectada) e recebe os dados de impressao do servidor.</p>
-                  <div className="bg-gray-50 rounded p-2 font-mono text-[11px]">
-                    <p>1. Abra o terminal no PC local</p>
-                    <p>2. Navegue ate a pasta <strong>FrontEnd/print-agent</strong></p>
-                    <p>3. Execute: <strong>node agent.js {window.location.origin}</strong></p>
+                  <div className="bg-gray-50 rounded p-2 text-[11px]">
+                    <p className="font-semibold text-text-primary mb-1">Para instalar:</p>
+                    <p>Clique em <strong>Instalar Agent</strong> acima, depois abra o arquivo <strong>instalar-agent.bat</strong> na pasta Downloads.</p>
                   </div>
-                  <p className="text-text-tertiary">O agent inicia automaticamente e conecta ao servidor.</p>
                 </div>
               )}
             </div>

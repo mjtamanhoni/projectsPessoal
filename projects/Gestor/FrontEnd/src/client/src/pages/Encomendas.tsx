@@ -23,7 +23,6 @@ import { formatCurrency, formatDecimals, parseItemCustomizacao } from '@/lib/uti
 import { getEncomendasRefreshSegundos } from '@/lib/settings';
 import api from '@/lib/api';
 import type { JSX } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 const columnHelper = createColumnHelper<Encomenda>();
 
@@ -850,91 +849,6 @@ export function Encomendas() {
           </div>
         )}
       </Modal>
-
-      {/* Gráfico de linha diário - Entregues e Canceladas por dia (período do filtro) */}
-      {(() => {
-        const encomendasPeriodo = (encomendas ?? []).filter(
-          (e) => ((e.status ?? 0) === 4 || (e.status ?? 0) === 5) && passaPeriodo(e.data_encomenda, periodo),
-        );
-        if (encomendasPeriodo.length === 0) return null;
-
-        const mapaDia = new Map<string, { entregue: number; cancelada: number }>();
-        for (const e of encomendasPeriodo) {
-          const dia = e.data_encomenda?.slice(0, 10) ?? '';
-          if (!dia) continue;
-          if (!mapaDia.has(dia)) mapaDia.set(dia, { entregue: 0, cancelada: 0 });
-          const ref = mapaDia.get(dia)!;
-          if ((e.status ?? 0) === 4) ref.entregue++;
-          else ref.cancelada++;
-        }
-        const dados = Array.from(mapaDia.entries())
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([dia, v]) => ({
-            dia: dia.slice(5, 10).split('-').reverse().join('/'),
-            Entregue: v.entregue,
-            Cancelada: v.cancelada,
-          }));
-
-        return (
-          <Card>
-            <div className="mb-2 text-sm font-semibold text-text-primary">Entregues vs Canceladas — Diário (período filtrado)</div>
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={dados} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-primary, #e5e7eb)" />
-                <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="Entregue" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="Cancelada" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        );
-      })()}
-
-      {/* Gráfico de barras mensal - Totais do ano vigente */}
-      {(() => {
-        const anoAtual = new Date().getFullYear();
-        const encomendasAno = (encomendas ?? []).filter(
-          (e) => e.data_encomenda?.slice(0, 4) === String(anoAtual),
-        );
-        if (encomendasAno.length === 0) return null;
-
-        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        const mapaMes = new Map<number, { entregue: number; cancelada: number }>();
-        for (let i = 0; i < 12; i++) mapaMes.set(i, { entregue: 0, cancelada: 0 });
-
-        for (const e of encomendasAno) {
-          const mes = new Date(`${e.data_encomenda?.slice(0, 10)}T12:00:00`).getMonth();
-          if (!mapaMes.has(mes)) continue;
-          const ref = mapaMes.get(mes)!;
-          if ((e.status ?? 0) === 4) ref.entregue++;
-          else if ((e.status ?? 0) === 5) ref.cancelada++;
-        }
-        const dados = meses.map((nome, i) => ({
-          mes: nome,
-          Entregue: mapaMes.get(i)!.entregue,
-          Cancelada: mapaMes.get(i)!.cancelada,
-        }));
-
-        return (
-          <Card>
-            <div className="mb-2 text-sm font-semibold text-text-primary">Entregues vs Canceladas — Mensal ({anoAtual})</div>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={dados} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-primary, #e5e7eb)" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="Entregue" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Cancelada" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        );
-      })()}
 
       <ConfirmDialog
         isOpen={confirmDelete !== null}

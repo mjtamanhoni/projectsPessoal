@@ -599,6 +599,7 @@ interface AgentInfo {
   printers: { name: string; port: string }[];
   selectedPrinter: string | null;
   lastSeen: number;
+  pendingPrinterChange?: string | null;
 }
 
 interface PrintJob {
@@ -630,6 +631,21 @@ router.get('/agent/poll', (req: express.Request, res: Response) => {
 
   const agent = agents.get(agentId as string);
   if (agent) agent.lastSeen = Date.now();
+
+  // Enviar mudanca de impressora se pendente
+  if (agent && agent.pendingPrinterChange) {
+    const printerChange = agent.pendingPrinterChange;
+    agent.pendingPrinterChange = null;
+    agent.selectedPrinter = printerChange;
+    const pending = jobQueue.find(j => j.status === 'pending');
+    if (pending) {
+      pending.status = 'sent';
+      res.json({ setPrinter: printerChange, job: { id: pending.id, data: pending.data, printer: printerChange, pixPayload: pending.pixPayload || null } });
+    } else {
+      res.json({ setPrinter: printerChange, job: null });
+    }
+    return;
+  }
 
   const pending = jobQueue.find(j => j.status === 'pending');
   if (pending) {
@@ -746,6 +762,89 @@ router.get('/agent/install', (_req: express.Request, res: Response) => {
   res.send(bat);
 });
 
+router.get('/agent/install/powershell', (_req: express.Request, res: Response) => {
+  const bffUrl = _req.query.url as string || `${_req.protocol}://${_req.get('host')}`;
+  const ps = [
+    '# Gestor Print Agent - Instalacao automatica',
+    '# Copie e cole este comando no PowerShell (como Administrador)',
+    '',
+    '$ErrorActionPreference = "Stop"',
+    '$agentDir = "C:\\print-agent"',
+    '$bffUrl = "' + bffUrl + '"',
+    '',
+    'Write-Host "========================================" -ForegroundColor Cyan',
+    'Write-Host " Gestor - Instalando Print Agent" -ForegroundColor Cyan',
+    'Write-Host "========================================" -ForegroundColor Cyan',
+    'Write-Host ""',
+    '',
+    '# Criar diretorio',
+    'if (!(Test-Path $agentDir)) {',
+    '    New-Item -ItemType Directory -Path $agentDir -Force | Out-Null',
+    '    Write-Host "[OK] Diretorio criado: $agentDir" -ForegroundColor Green',
+    '} else {',
+    '    Write-Host "[OK] Diretorio ja existe: $agentDir" -ForegroundColor Green',
+    '}',
+    '',
+    '# Baixar agent.js',
+    'Write-Host "Baixando agent.js..." -ForegroundColor Yellow',
+    'try {',
+    '    Invoke-WebRequest -Uri "$bffUrl/api/print/agent/download" -OutFile "$agentDir\\agent.js" -UseBasicParsing',
+    '    Write-Host "[OK] agent.js baixado" -ForegroundColor Green',
+    '} catch {',
+    '    Write-Host "[ERRO] Falha ao baixar agent.js: $_" -ForegroundColor Red',
+    '    Write-Host "Verifique se o servidor esta acessivel: $bffUrl" -ForegroundColor Yellow',
+    '    exit 1',
+    '}',
+    '',
+    '# Baixar package.json',
+    'Write-Host "Baixando package.json..." -ForegroundColor Yellow',
+    'try {',
+    '    Invoke-WebRequest -Uri "$bffUrl/api/print/agent/download/package" -OutFile "$agentDir\\package.json" -UseBasicParsing',
+    '    Write-Host "[OK] package.json baixado" -ForegroundColor Green',
+    '} catch {',
+    '    Write-Host "[AVISO] Falha ao baixar package.json" -ForegroundColor Yellow',
+    '}',
+    '',
+    '# Instalar dependencias npm',
+    'Write-Host "Instalando dependencias npm..." -ForegroundColor Yellow',
+    'Push-Location $agentDir',
+    'try {',
+    '    npm install --production 2>&1 | Out-Null',
+    '    Write-Host "[OK] Dependencias npm instaladas" -ForegroundColor Green',
+    '} catch {',
+    '    Write-Host "[AVISO] Falha ao instalar dependencias npm" -ForegroundColor Yellow',
+    '    Write-Host "O agent funcionara apenas com spooler" -ForegroundColor Yellow',
+    '}',
+    'Pop-Location',
+    '',
+    '# Verificar drivers USB',
+    'Write-Host ""',
+    'Write-Host "Verificando drivers USB..." -ForegroundColor Yellow',
+    '$usbDevices = Get-PnpDevice -Class USB -Status OK -ErrorAction SilentlyContinue',
+    'if ($usbDevices) {',
+    '    Write-Host ("[OK] " + $usbDevices.Count + " device(s) USB detectado(s)") -ForegroundColor Green',
+    '} else {',
+    '    Write-Host "[AVISO] Nenhum device USB detectado" -ForegroundColor Yellow',
+    '    Write-Host "Para USB direto, execute setup-winusb.bat como Administrador" -ForegroundColor Yellow',
+    '}',
+    '',
+    '# Iniciar agent',
+    'Write-Host ""',
+    'Write-Host "========================================" -ForegroundColor Cyan',
+    'Write-Host " Iniciando Print Agent..." -ForegroundColor Cyan',
+    'Write-Host " Nao feche esta janela!" -ForegroundColor Red',
+    'Write-Host " Para parar, pressione Ctrl+C" -ForegroundColor Yellow',
+    'Write-Host "========================================" -ForegroundColor Cyan',
+    'Write-Host ""',
+    '',
+    'Set-Location $agentDir',
+    'node "agent.js" $bffUrl',
+  ].join('\r\n');
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="instalar-agent.ps1"');
+  res.send(ps);
+});
+
 router.get('/agent/status', (_req: express.Request, res: Response) => {
   const now = Date.now();
   const active = Array.from(agents.values()).filter(a => now - a.lastSeen < 15000);
@@ -754,6 +853,22 @@ router.get('/agent/status', (_req: express.Request, res: Response) => {
     pendingJobs: jobQueue.filter(j => j.status === 'pending').length,
     recentJobs: jobQueue.slice(-10).map(j => ({ id: j.id, status: j.status, error: j.error, createdAt: j.createdAt })),
   });
+});
+
+router.post('/agent/set-printer', authMiddleware, (req: AuthRequest, res: Response) => {
+  const { agentId, printerName } = req.body;
+  if (!agentId || !printerName) {
+    res.status(400).json({ error: 'agentId e printerName obrigatorios' });
+    return;
+  }
+  const agent = agents.get(agentId);
+  if (!agent) {
+    res.status(404).json({ error: 'Agent nao encontrado' });
+    return;
+  }
+  agent.pendingPrinterChange = printerName;
+  console.log('[Print] Impressora do agent', agentId, 'sera alterada para:', printerName);
+  res.json({ ok: true, selectedPrinter: printerName });
 });
 
 router.post('/queue', authMiddleware, async (req: AuthRequest, res: Response) => {

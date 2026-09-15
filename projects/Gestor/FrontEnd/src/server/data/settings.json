@@ -87,7 +87,7 @@
       },
       "printer": {
         "modelo": 1,
-        "porta": "EPSON TM-T20X",
+        "porta": "TS001",
         "deviceParams": "",
         "colunas": 48,
         "espacoEntreLinhas": 0,

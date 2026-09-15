@@ -52,18 +52,63 @@ const THERMAL_BRANDS = [
   'GAINSCHA', 'WOOSIM', 'SEWOO', 'SPRT', 'MUNBYN', 'PERI',
   'NCR', 'HONEYWELL', 'ZEBRA', 'TSC', 'DATAMAX', 'SATO',
   'JOLIMARK', 'RONGTA', 'GODEX', 'ARGOX', 'POSTEK',
+  'SONY', 'SAMSUNG', 'LG', 'BROTHER', 'CANON', 'HEWLETT',
+  'RICOH', 'KONICA', 'MINOLTA', 'KYOCERA', 'LEXMARK',
+  'DALI', 'MEYER', 'WOOSIM', 'SEWOO', 'TRANSCOM', 'SIGN',
 ];
 
 const THERMAL_KEYWORDS = [
   'receipt', 'thermal', 'pos', 'printer', 'ticket', 'coupon',
-  'impressora', 'termica', 'cupom',
+  'impressora', 'termica', 'cupom', 'tm-t', 'tm-t20', 'tm-t88',
+  'tpv', 'fiscal', 'nfce', 'sat',
 ];
+
+// Impressoras virtuais - NAO devem ser usadas para impressao
+const VIRTUAL_PRINTERS = [
+  'ONENOTE', 'PDF', 'XPS', 'MICROSOFT PRINT', 'FOXIT', 'CUTE',
+  'ADOBE', 'PRINT TO', 'SEND TO', 'FAX', 'PRINT TO PDF',
+  'MICROSOFT XPS', 'DOCUPRINT', 'VIRTUAL', 'TORRENT',
+  'CLIPBOARD', 'WINDOW', 'NOTE', 'SNIP', 'SCREENSHOT',
+];
+
+// Portas virtuais - nao sao impressoras fisicas
+const VIRTUAL_PORTS = ['TS', 'NUL', 'PDF', 'XPS', 'FILE:'];
+
+const CONFIG_FILE = path.join(AGENT_DIR, 'printer-config.json');
+
+function isVirtualPrinter(name, port) {
+  const upperName = (name || '').toUpperCase();
+  const upperPort = (port || '').toUpperCase();
+  if (VIRTUAL_PRINTERS.some(v => upperName.includes(v))) return true;
+  if (VIRTUAL_PORTS.some(v => upperPort.startsWith(v))) return true;
+  return false;
+}
 
 function isThermalPrinter(name) {
   const upper = (name || '').toUpperCase();
   if (THERMAL_BRANDS.some(b => upper.includes(b))) return true;
   if (THERMAL_KEYWORDS.some(k => upper.includes(k))) return true;
   return false;
+}
+
+function isPhysicalPort(port) {
+  const upper = (port || '').toUpperCase();
+  return upper.startsWith('USB') || upper.startsWith('COM') || upper.startsWith('LPT') || upper.startsWith('TCP');
+}
+
+function loadPrinterConfig() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+    }
+  } catch {}
+  return null;
+}
+
+function savePrinterConfig(printerName) {
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ selectedPrinter: printerName }, null, 2), 'utf-8');
+  } catch {}
 }
 
 // =============================================
@@ -232,6 +277,8 @@ device.open(function(err) {
 
     try {
       const result = execSync(`node "${scriptFile}"`, {
+        cwd: AGENT_DIR,
+        env: { ...process.env, NODE_PATH: path.join(AGENT_DIR, 'node_modules') },
         encoding: 'utf-8',
         timeout: 15000,
         stdio: ['pipe', 'pipe', 'pipe']
@@ -276,9 +323,29 @@ function printViaSpooler(printerName, base64Data, portName) {
   logMsg('Impressora: ' + printerName);
   logMsg('Porta: ' + (portName || 'desconhecida'));
   logMsg('Tamanho: ' + fs.statSync(binFile).size + ' bytes');
+  logMsg('Arquivo: ' + binFile);
 
-  // Metodo A: WritePrinter via PowerShell/C#
-  logMsg('--- Metodo A: WritePrinter ---');
+  // Metodo A: print /D (cmd.exe)
+  logMsg('--- Metodo A: print /D ---');
+  try {
+    const cmdResult = execSync(
+      'cmd /c print /D:"' + printerName + '" "' + binFile + '"',
+      { timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8' }
+    );
+    logMsg('print /D stdout: ' + (cmdResult || '').trim());
+    if (!fs.existsSync(binFile)) {
+      logMsg('Arquivo consumido pelo spooler - impressao enviada');
+      fs.writeFileSync(logFile, log.join('\n'), 'utf-8');
+      return { ok: true, result: 'print /D OK (arquivo enviado ao spooler)', logFile };
+    }
+    logMsg('Arquivo ainda existe - print /D pode nao ter funcionado, tentando proximo metodo');
+  } catch (err) {
+    logMsg('print /D FALHOU: ' + (err instanceof Error ? err.message : String(err)));
+    errors.push('print/D: ' + (err instanceof Error ? err.message : String(err)));
+  }
+
+  // Metodo B: WritePrinter via PowerShell/C#
+  logMsg('--- Metodo B: WritePrinter ---');
   const ps1File = path.join(TEMP_DIR, `spooler_job_${Date.now()}.ps1`);
   const binEsc = binFile.replace(/\\/g, '\\\\').replace(/'/g, "''");
   const nameEsc = printerName.replace(/'/g, "''");
@@ -354,28 +421,24 @@ Write-Output $r
   }
   try { fs.unlinkSync(ps1File); } catch {}
 
-  // Metodo B: print /D
-  logMsg('--- Metodo B: print /D ---');
-  try {
-    execSync('cmd /c print /D:"' + printerName + '" "' + binFile + '"', { timeout: 10000, stdio: 'pipe' });
-    logMsg('print /D retornou OK');
-    cleanup(binFile);
-    fs.writeFileSync(logFile, log.join('\n'), 'utf-8');
-    return { ok: true, result: 'print /D OK (verificar impressao)', logFile };
-  } catch (err) {
-    logMsg('print /D FALHOU');
-    errors.push('print/D');
-  }
-
-  // Metodo C: copy /b (para portas USB diretas)
-  logMsg('--- Metodo C: copy /b ---');
-  if (portName && !portName.toUpperCase().startsWith('TS')) {
+  // Metodo C: PowerShell Out-Printer (envia como texto bruto)
+  logMsg('--- Metodo C: Out-Printer ---');
+  if (printerName) {
     try {
-      execSync('copy /b "' + binFile + '" "' + portName + '"', { timeout: 10000, stdio: 'pipe' });
-      logMsg('copy /b retornou OK');
+      const buf = fs.readFileSync(binFile);
+      const textContent = buf.toString('utf-8');
+      const escaped = textContent.replace(/"/g, '""');
+      execSync(
+        'powershell -NoProfile -NonInteractive -Command "' + escaped + ' | Out-Printer -Name \\"' + printerName.replace(/"/g, '""') + '\\""',
+        { timeout: 15000, stdio: 'pipe' }
+      );
+      logMsg('Out-Printer executou');
+      cleanup(binFile);
+      fs.writeFileSync(logFile, log.join('\n'), 'utf-8');
+      return { ok: true, result: 'Out-Printer OK', logFile };
     } catch (err) {
-      logMsg('copy /b FALHOU');
-      errors.push('copy');
+      logMsg('Out-Printer FALHOU: ' + (err instanceof Error ? err.message : String(err)));
+      errors.push('Out-Printer');
     }
   }
 
@@ -391,6 +454,11 @@ Write-Output $r
 // Funcao principal de impressao
 // =============================================
 async function printJob(printerName, base64Data, portName) {
+  // Rejeitar impressoras virtuais
+  if (isVirtualPrinter(printerName, portName)) {
+    return { ok: false, error: 'Impressora "' + printerName + '" e virtual (porta ' + (portName || '?') + '). Selecione uma impressora termica no Settings.' };
+  }
+
   // Tentar USB direto primeiro (funciona com qualquer impressora ESC/POS)
   if (usbReady) {
     log('Tentando impressao via USB direto (node-escpos)...');
@@ -415,6 +483,11 @@ async function register() {
     const localPrinters = listLocalPrinters();
     printers = localPrinters;
 
+    // Classificar impressoras
+    const validPrinters = localPrinters.filter(p => !isVirtualPrinter(p.Name, p.PortName));
+    const thermalPrinters = validPrinters.filter(p => isThermalPrinter(p.Name));
+    const physicalPrinters = validPrinters.filter(p => isPhysicalPort(p.PortName));
+
     // Verificar impressoras redirecionadas (RDP)
     const hasRedirected = localPrinters.some(p => (p.PortName || '').toUpperCase().startsWith('TS'));
     if (hasRedirected) {
@@ -425,11 +498,34 @@ async function register() {
       log('');
     }
 
-    // Selecionar impressora termica automaticamente
-    const thermalPrinter = localPrinters.find(p => isThermalPrinter(p.Name));
-    const selectedPrinter = thermalPrinter
-      ? thermalPrinter.Name
-      : (localPrinters[0] ? localPrinters[0].Name : null);
+    // Selecionar impressora - prioridade:
+    // 1. Config salva pelo usuario
+    // 2. Impressora termica por marca (Epson, Star, Bixolon, etc.)
+    // 3. Impressora com porta fisica (USB, COM, LPT)
+    // 4. Primeira impressora nao-virtual
+    const config = loadPrinterConfig();
+    let selectedPrinter = null;
+
+    if (config && config.selectedPrinter) {
+      const exists = localPrinters.find(p => p.Name === config.selectedPrinter);
+      if (exists) {
+        selectedPrinter = config.selectedPrinter;
+        log('Usando impressora do config: ' + selectedPrinter);
+      } else {
+        log('Impressora do config nao encontrada: ' + config.selectedPrinter + ' (usando auto-deteccao)');
+      }
+    }
+
+    if (!selectedPrinter && thermalPrinters.length > 0) {
+      selectedPrinter = thermalPrinters[0].Name;
+      log('Impressora termica detectada automaticamente: ' + selectedPrinter);
+    } else if (!selectedPrinter && physicalPrinters.length > 0) {
+      selectedPrinter = physicalPrinters[0].Name;
+      log('Impressora fisica detectada: ' + selectedPrinter);
+    } else if (!selectedPrinter && validPrinters.length > 0) {
+      selectedPrinter = validPrinters[0].Name;
+      log('Usando primeira impressora disponivel: ' + selectedPrinter);
+    }
 
     const result = await httpPost('/api/print/agent/register', {
       agentId: AGENT_ID,
@@ -438,11 +534,14 @@ async function register() {
     });
     connected = true;
     log('Conectado ao BFF: ' + BFF_URL);
-    log('Impressoras locais: ' + localPrinters.map(p => {
+    log('Impressoras encontradas: ' + localPrinters.length + ' (' + validPrinters.length + ' fisicas, ' + thermalPrinters.length + ' termicas)');
+    localPrinters.forEach(p => {
+      const virt = isVirtualPrinter(p.Name, p.PortName) ? ' [VIRTUAL]' : '';
       const termica = isThermalPrinter(p.Name) ? ' [TERMICA]' : '';
-      return p.Name + ' [' + p.PortName + ']' + termica;
-    }).join(', '));
-    log('Impressora selecionada: ' + (selectedPrinter || 'nenhuma'));
+      const fisica = isPhysicalPort(p.PortName) ? ' [FISICA]' : '';
+      log('  - ' + p.Name + ' [' + p.PortName + ']' + termica + fisica + virt);
+    });
+    log('Impressora selecionada: ' + (selectedPrinter || 'NENHUMA - configure manualmente no Settings'));
     return result;
   } catch (err) {
     connected = false;
@@ -452,13 +551,57 @@ async function register() {
 }
 
 // =============================================
+// Controle de reconexao
+// =============================================
+let pollFailCount = 0;
+const MAX_POLL_FAILS_BEFORE_REREGISTER = 3;
+const REREGISTER_INTERVAL_MS = 30000;
+let lastReregisterAttempt = 0;
+
+async function tryReregister() {
+  const now = Date.now();
+  if (now - lastReregisterAttempt < REREGISTER_INTERVAL_MS) return;
+  lastReregisterAttempt = now;
+  log('Tentando re-registrar no BFF...');
+  const result = await register();
+  if (result && result.ok) {
+    log('Re-registrado com sucesso!');
+    pollFailCount = 0;
+  }
+}
+
+// =============================================
 // Polling de jobs
 // =============================================
 async function poll() {
-  if (!connected) { await register(); return; }
+  if (!connected) {
+    await tryReregister();
+    return;
+  }
 
   try {
     const result = await httpGet('/api/print/agent/poll?agentId=' + AGENT_ID);
+    pollFailCount = 0;
+
+    if (result && typeof result === 'object' && result.error) {
+      log('BFF retornou erro no poll: ' + result.error);
+      connected = false;
+      await tryReregister();
+      return;
+    }
+
+    // BFF pode mandar mudanca de impressora
+    if (result && result.setPrinter) {
+      const newPrinter = result.setPrinter;
+      const exists = printers.find(p => p.Name === newPrinter);
+      if (exists) {
+        savePrinterConfig(newPrinter);
+        log('Impressora alterada para: ' + newPrinter);
+      } else {
+        log('Impressora "' + newPrinter + '" nao encontrada localmente');
+      }
+    }
+
     if (result && result.job) {
       const job = result.job;
       log('Recebido job #' + job.id + ' (' + job.data.length + ' bytes base64)');
@@ -497,7 +640,12 @@ async function poll() {
   } catch (err) {
     if (err.message !== 'timeout') {
       log('Erro no poll: ' + err.message);
-      connected = false;
+      pollFailCount++;
+      if (pollFailCount >= MAX_POLL_FAILS_BEFORE_REREGISTER) {
+        log('Poll falhou ' + pollFailCount + ' vezes - reconectando...');
+        connected = false;
+        await tryReregister();
+      }
     }
   }
 }
@@ -544,6 +692,24 @@ async function main() {
   await register();
 
   setInterval(poll, POLL_INTERVAL);
+
+  // Re-registrar periodicamente para sobreviver a restarts do BFF
+  setInterval(async () => {
+    if (!connected) return;
+    try {
+      const config = loadPrinterConfig();
+      const currentPrinter = config?.selectedPrinter || printers.find(p => isThermalPrinter(p.Name))?.Name || printers[0]?.Name || null;
+      await httpPost('/api/print/agent/register', {
+        agentId: AGENT_ID,
+        printers: printers.map(p => ({ name: p.Name, port: p.PortName })),
+        selectedPrinter: currentPrinter,
+      });
+    } catch {
+      log('Heartbeat falhou - BFF pode ter reiniciado');
+      connected = false;
+    }
+  }, REREGISTER_INTERVAL_MS);
+
   log('Aguardando jobs de impressao...');
 }
 
