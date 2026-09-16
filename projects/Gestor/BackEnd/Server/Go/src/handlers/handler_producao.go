@@ -1344,7 +1344,7 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 			e.forma_pagamento_id, e.forma_pagamento_nome, e.troco_para,
-			e.bandeira_cartao_id, e.bandeira_cartao_nome,
+			e.bandeira_cartao_id, e.bandeira_cartao_nome, e.impresso,
 			c.nome as cliente_nome,
 			CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
 			fp.classificacao as forma_pagamento_classificacao,
@@ -1401,7 +1401,7 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 		query = `SELECT e.id, e.empresa_id, e.cliente_id, e.data_encomenda, e.data_entrega,
 			e.valor_total, e.observacao, e.usuario_id, e.status, e.created_at, e.venda_id,
 			e.forma_pagamento_id, e.forma_pagamento_nome, e.troco_para,
-			e.bandeira_cartao_id, e.bandeira_cartao_nome,
+			e.bandeira_cartao_id, e.bandeira_cartao_nome, e.impresso,
 			c.nome as cliente_nome,
 			CASE WHEN e.status >= 3 THEN true ELSE false END as baixado,
 			fp.classificacao as forma_pagamento_classificacao,
@@ -1484,6 +1484,7 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 	trocoPara := getFloat(header, "troco_para")
 	bandeiraCartaoID := getInt(header, "bandeira_cartao_id")
 	bandeiraCartaoNome := getStr(header, "bandeira_cartao_nome")
+	impresso := getInt(header, "impresso")
 
 	rawItens, temItens := header["itens"]
 
@@ -1539,10 +1540,10 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 		_, err = tx.Exec(r.Context(), `
 			INSERT INTO encomenda (id, empresa_id, cliente_id,
 				data_encomenda, data_entrega, valor_total, observacao, usuario_id, status,
-				forma_pagamento_id, forma_pagamento_nome, troco_para, bandeira_cartao_id, bandeira_cartao_nome)
-			VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0,$8,$9,$10,$11,$12)`,
+				forma_pagamento_id, forma_pagamento_nome, troco_para, bandeira_cartao_id, bandeira_cartao_nome, impresso)
+			VALUES ($1,$2,$3,$4::date,$5::date,0,$6,$7,0,$8,$9,$10,$11,$12,$13)`,
 			id, empresaID, clienteID, dataEncomenda, dataOuNil(dataEntrega), observacao, usuarioID,
-			fpID, fpNome, troco, bcID, bcNome)
+			fpID, fpNome, troco, bcID, bcNome, impresso)
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -1670,7 +1671,18 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 				return
 			}
 		} else {
-			if dataEntrega != "" {
+			_, temImpresso := header["impresso"]
+			if temImpresso && dataEntrega != "" {
+				_, err = tx.Exec(r.Context(), `
+					UPDATE encomenda SET status=$1, venda_id=$2, data_entrega=$3::date, impresso=$6
+					WHERE id=$4 AND empresa_id=$5`,
+					novoStatus, vendaID, dataEntrega, id, empresaID, impresso)
+			} else if temImpresso {
+				_, err = tx.Exec(r.Context(), `
+					UPDATE encomenda SET status=$1, venda_id=$2, impresso=$5
+					WHERE id=$3 AND empresa_id=$4`,
+					novoStatus, vendaID, id, empresaID, impresso)
+			} else if dataEntrega != "" {
 				_, err = tx.Exec(r.Context(), `
 					UPDATE encomenda SET status=$1, venda_id=$2, data_entrega=$3::date
 					WHERE id=$4 AND empresa_id=$5`,

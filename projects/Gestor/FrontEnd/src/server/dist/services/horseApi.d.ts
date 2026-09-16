@@ -136,10 +136,11 @@ declare class HorseApiService {
     }): Promise<unknown>;
     alterarStatusEncomenda(data: {
         id: number;
-        status: number;
+        status?: number;
         data_venda?: string;
         recebido?: boolean;
         categoria_receber_id?: number;
+        impresso?: number;
     }): Promise<unknown>;
     listarFabricacoesCustoAdicional(params?: Record<string, unknown>): Promise<FabricacaoCustoAdicional[]>;
     salvarFabricacoesCustoAdicional(items: FabricacaoCustoAdicional[]): Promise<unknown>;

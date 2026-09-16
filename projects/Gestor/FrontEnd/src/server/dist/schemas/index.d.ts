@@ -310,10 +310,11 @@ export declare const encomendaBodySchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const encomendaStatusSchema: z.ZodObject<{
     id: z.ZodNumber;
-    status: z.ZodNumber;
+    status: z.ZodOptional<z.ZodNumber>;
     data_venda: z.ZodOptional<z.ZodString>;
     recebido: z.ZodOptional<z.ZodBoolean>;
     categoria_receber_id: z.ZodOptional<z.ZodNumber>;
+    impresso: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const encomendaBaixaSchema: z.ZodObject<{
     id: z.ZodNumber;

@@ -1498,7 +1498,8 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
   async listarEncomendas(params?: Record<string, unknown>): Promise<Encomenda[]> {
     try {
       const res = await this.api.get('/encomenda', { params, headers: this.getAuthHeaders() });
-      return res.data as Encomenda[];
+      const rows = res.data as Encomenda[];
+      return rows.map((r) => ({ ...r, impresso: r.impresso ?? 0 }));
     } catch (error) {
       return this.handleError(error);
     }
@@ -1513,6 +1514,7 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
         data_encomenda: header.data_encomenda,
         data_entrega: header.data_entrega ?? '',
         observacao: header.observacao ?? '',
+        impresso: 0,
         itens: (header.itens ?? []).map((i) => ({
           produto_fabricado_id: i.produto_fabricado_id,
           produto_venda_id: i.produto_venda_id,
@@ -1560,7 +1562,7 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     }
   }
 
-  async alterarStatusEncomenda(data: { id: number; status: number; data_venda?: string; recebido?: boolean; categoria_receber_id?: number }): Promise<unknown> {
+  async alterarStatusEncomenda(data: { id: number; status?: number; data_venda?: string; recebido?: boolean; categoria_receber_id?: number; impresso?: number }): Promise<unknown> {
     try {
       const res = await this.api.post('/encomenda', data, { headers: this.getAuthHeaders() });
       return res.data;

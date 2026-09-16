@@ -364,10 +364,11 @@ export const encomendaBodySchema = z.object({
 
 export const encomendaStatusSchema = z.object({
   id: z.number().int().positive('Encomenda e obrigatoria'),
-  status: z.number().int().min(0).max(5, 'Status invalido'),
+  status: z.number().int().min(0).max(5, 'Status invalido').optional(),
   data_venda: z.string().optional(),
   recebido: z.boolean().optional(),
   categoria_receber_id: z.number().int().positive().optional(),
+  impresso: z.number().int().min(0).max(1).optional(),
 });
 
 export const encomendaBaixaSchema = z.object({

@@ -325,10 +325,11 @@ exports.encomendaBodySchema = zod_1.z.object({
 });
 exports.encomendaStatusSchema = zod_1.z.object({
     id: zod_1.z.number().int().positive('Encomenda e obrigatoria'),
-    status: zod_1.z.number().int().min(0).max(5, 'Status invalido'),
+    status: zod_1.z.number().int().min(0).max(5, 'Status invalido').optional(),
     data_venda: zod_1.z.string().optional(),
     recebido: zod_1.z.boolean().optional(),
     categoria_receber_id: zod_1.z.number().int().positive().optional(),
+    impresso: zod_1.z.number().int().min(0).max(1).optional(),
 });
 exports.encomendaBaixaSchema = zod_1.z.object({
     id: zod_1.z.number().int().positive('Encomenda e obrigatoria'),

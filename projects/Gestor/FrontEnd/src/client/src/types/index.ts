@@ -518,6 +518,7 @@ export interface Encomenda {
   bandeira_cartao_id?: number;
   bandeira_cartao_nome?: string;
   endereco_entrega?: EnderecoEntrega;
+  impresso?: number;
 }
 
 export interface EnderecoEntrega {

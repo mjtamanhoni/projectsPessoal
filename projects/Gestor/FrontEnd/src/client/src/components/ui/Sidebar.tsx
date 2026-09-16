@@ -47,7 +47,7 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
     },
     {
       label: 'Movimento',
-      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Encomendas', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
+      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Encomendas', 'Acompanhar Encomendas', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
     },
     {
       label: 'Relatorios',
@@ -61,7 +61,7 @@ const moduleSubGroups: Record<string, Array<{ label: string; forms: string[] }>>
     },
     {
       label: 'Movimento',
-      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Encomendas', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
+      forms: ['Compras Insumo', 'Fabricacoes', 'Vendas Produto', 'Encomendas', 'Acompanhar Encomendas', 'Estoque Insumo', 'Estoque Produto Fabricado', 'Perdas Insumo', 'Perdas Produto', 'Uso Consumo'],
     },
     {
       label: 'Relatorios',
@@ -245,7 +245,7 @@ export function Sidebar() {
   const { user, empresaNome, logout, temAcesso, permissoes, irrestrito, empresa } = useAuth();
   const { selectedModule, selectModule, menuData, menuLoading, menuError, refetchMenu } = useModule();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => empresa?.delivery === 1);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>();
   const appMode = useAppMode();
 

@@ -20,6 +20,8 @@ interface AuthContextType {
   temAcesso: (rota: string) => boolean;
   temPermissao: (rota: string, acao: string) => boolean;
   loading: boolean;
+  pausarTimerInatividade: () => void;
+  retomarTimerInatividade: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -305,8 +307,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     doLogout('Logout manual');
   }, [doLogout]);
 
+  const pausarTimerInatividade = useCallback(() => {
+    clearSessionTimer();
+  }, [clearSessionTimer]);
+
+  const retomarTimerInatividade = useCallback(() => {
+    startSessionTimer();
+  }, [startSessionTimer]);
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, login, logout, temAcesso, temPermissao, loading }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, login, logout, temAcesso, temPermissao, loading, pausarTimerInatividade, retomarTimerInatividade }}>
       {children}
     </AuthContext.Provider>
   );

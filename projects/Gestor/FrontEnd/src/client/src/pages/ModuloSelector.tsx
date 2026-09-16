@@ -23,7 +23,7 @@ export function ModuloSelector() {
   const { menuData, menuLoading, menuError, refetchMenu, selectModule } = useModule();
   const navigate = useNavigate();
   const appMode = useAppMode();
-  const { irrestrito, permissoes } = useAuth();
+  const { irrestrito, permissoes, empresa } = useAuth();
 
   useEffect(() => {
     if (irrestrito) return;
@@ -60,6 +60,20 @@ export function ModuloSelector() {
     if (appMode) return;
     if (sessionStorage.getItem('moduloInicialRedirectDone')) return;
 
+    const isDelivery = empresa?.delivery === 1;
+    if (isDelivery) {
+      const rota = '/acompanhar-encomendas';
+      const mod = menuData.find((m) =>
+        m.formularios.some((f) => formRouteMap[f.nome] === rota),
+      );
+      if (mod) {
+        sessionStorage.setItem('moduloInicialRedirectDone', '1');
+        selectModule(mod);
+        navigate(rota, { replace: true });
+      }
+      return;
+    }
+
     fetchSettings().then((settings) => {
       const moduloId = settings?.display?.moduloInicialId;
       const formularioId = settings?.display?.formularioInicialId;
@@ -78,7 +92,7 @@ export function ModuloSelector() {
       selectModule(mod);
       navigate(route, { replace: true });
     }).catch(() => {});
-  }, [menuLoading, menuData, irrestrito, appMode, selectModule, navigate]);
+  }, [menuLoading, menuData, irrestrito, appMode, selectModule, navigate, empresa]);
 
   const handleSelect = (mod: typeof menuData[0]) => {
     selectModule(mod);

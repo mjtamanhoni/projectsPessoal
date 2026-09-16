@@ -1471,7 +1471,8 @@ class HorseApiService {
     async listarEncomendas(params) {
         try {
             const res = await this.api.get('/encomenda', { params, headers: this.getAuthHeaders() });
-            return res.data;
+            const rows = res.data;
+            return rows.map((r) => ({ ...r, impresso: r.impresso ?? 0 }));
         }
         catch (error) {
             return this.handleError(error);
@@ -1486,6 +1487,7 @@ class HorseApiService {
                 data_encomenda: header.data_encomenda,
                 data_entrega: header.data_entrega ?? '',
                 observacao: header.observacao ?? '',
+                impresso: 0,
                 itens: (header.itens ?? []).map((i) => ({
                     produto_fabricado_id: i.produto_fabricado_id,
                     produto_venda_id: i.produto_venda_id,
