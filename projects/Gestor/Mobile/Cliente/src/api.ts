@@ -133,6 +133,7 @@ export interface Encomenda {
   bandeira_cartao_id?: number;
   bandeira_cartao_nome?: string;
   endereco_entrega?: EnderecoEntrega;
+  pagamentos?: EncomendaPagamento[];
 }
 
 export interface EnderecoEntrega {
@@ -153,6 +154,20 @@ export interface FormaPagamentoPublica {
   id: number;
   descricao: string;
   classificacao: string;
+}
+
+export interface EncomendaPagamento {
+  id?: number;
+  empresa_id?: number;
+  encomenda_id?: number;
+  forma_pagamento_id?: number;
+  forma_pagamento_nome?: string;
+  forma_pagamento_classificacao?: string;
+  bandeira_cartao_id?: number;
+  bandeira_cartao_nome?: string;
+  valor: number;
+  troco_para?: number;
+  created_at?: string;
 }
 
 export interface CupomPagamento {
@@ -588,6 +603,55 @@ export async function salvarEnderecoEntregaPublico(
   }
 ): Promise<{ mensagem?: string } | null> {
   const res = await request('/encomendaPublico/enderecoEntrega', {
+    method: 'POST',
+    body: JSON.stringify({ empresa, ...data }),
+  });
+  return (await parseResponse(res)) as { mensagem?: string } | null;
+}
+
+export async function listarPagamentosEncomendaPublica(
+  empresa: number,
+  encomendaId: number,
+  clienteId?: number,
+  documento?: string
+): Promise<EncomendaPagamento[]> {
+  const params = new URLSearchParams({ empresa: String(empresa), encomenda_id: String(encomendaId) });
+  if (clienteId) params.set('cliente_id', String(clienteId));
+  if (documento) params.set('documento', documento);
+  const res = await request(`/encomendaPublico/pagamentos?${params.toString()}`);
+  const rows = (await parseResponse(res)) as Record<string, unknown>[];
+  return (rows ?? []).map((r) => ({
+    id: Number(r.id ?? 0),
+    empresa_id: Number(r.empresa_id ?? 0),
+    encomenda_id: Number(r.encomenda_id ?? 0),
+    forma_pagamento_id: r.forma_pagamento_id != null ? Number(r.forma_pagamento_id) : undefined,
+    forma_pagamento_nome: r.forma_pagamento_nome ? String(r.forma_pagamento_nome) : undefined,
+    forma_pagamento_classificacao: r.forma_pagamento_classificacao ? String(r.forma_pagamento_classificacao) : undefined,
+    bandeira_cartao_id: r.bandeira_cartao_id != null ? Number(r.bandeira_cartao_id) : undefined,
+    bandeira_cartao_nome: r.bandeira_cartao_nome ? String(r.bandeira_cartao_nome) : undefined,
+    valor: Number(r.valor ?? 0),
+    troco_para: r.troco_para != null ? Number(r.troco_para) : undefined,
+    created_at: r.created_at ? String(r.created_at) : undefined,
+  }));
+}
+
+export async function salvarPagamentosEncomendaPublica(
+  empresa: number,
+  data: {
+    id: number;
+    cliente_id?: number;
+    documento?: string;
+    pagamentos: {
+      forma_pagamento_id?: number;
+      forma_pagamento_nome?: string;
+      bandeira_cartao_id?: number;
+      bandeira_cartao_nome?: string;
+      valor: number;
+      troco_para?: number;
+    }[];
+  }
+): Promise<{ mensagem?: string } | null> {
+  const res = await request('/encomendaPublico/pagamentos', {
     method: 'POST',
     body: JSON.stringify({ empresa, ...data }),
   });

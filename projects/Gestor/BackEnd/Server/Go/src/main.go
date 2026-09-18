@@ -84,6 +84,8 @@ func main() {
 	r.Post("/encomendaPublico/itens", producao.EncomendaPublicoItensAtualizar)
 	r.Post("/encomendaPublico/formaPagamento", producao.EncomendaPublicoAtualizarFormaPagamento)
 	r.Post("/encomendaPublico/enderecoEntrega", producao.EncomendaPublicoSalvarEnderecoEntrega)
+	r.Get("/encomendaPublico/pagamentos", producao.EncomendaPublicoListarPagamentos)
+	r.Post("/encomendaPublico/pagamentos", producao.EncomendaPublicoSalvarPagamentos)
 	r.Get("/formaPagamentoPublico", producao.FormaPagamentoPublicoListar)
 	r.Get("/bandeiraCartaoPublico", basicCRUD.BandeiraCartaoPublicoListar)
 	r.Get("/apk/versao", apkHandler.VersaoPublico)
@@ -588,6 +590,11 @@ carregar();
 		r.Get("/formaPagamento", basicCRUD.FormaPagamentoListar)
 		r.Post("/formaPagamento", basicCRUD.FormaPagamentoAtualizar)
 		r.Delete("/formaPagamento", basicCRUD.FormaPagamentoExcluir)
+
+		// Encomenda Pagamento Multiplo
+		r.Get("/encomendaPagamento", producao.EncomendaPagamentoListar)
+		r.Post("/encomendaPagamento", producao.EncomendaPagamentoSalvar)
+		r.Delete("/encomendaPagamento", producao.EncomendaPagamentoExcluir)
 
 		// Condicao Pagamento
 		r.Get("/condicaoPagamento", basicCRUD.CondicaoPagamentoListar)

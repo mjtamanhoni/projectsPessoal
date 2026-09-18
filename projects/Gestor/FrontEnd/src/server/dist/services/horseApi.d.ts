@@ -142,6 +142,8 @@ declare class HorseApiService {
         categoria_receber_id?: number;
         impresso?: number;
     }): Promise<unknown>;
+    listarEncomendaPagamentos(encomendaId: number): Promise<unknown[]>;
+    salvarEncomendaPagamentos(encomendaId: number, pagamentos: unknown[]): Promise<unknown[]>;
     listarFabricacoesCustoAdicional(params?: Record<string, unknown>): Promise<FabricacaoCustoAdicional[]>;
     salvarFabricacoesCustoAdicional(items: FabricacaoCustoAdicional[]): Promise<unknown>;
     excluirFabricacaoCustoAdicional(id: number): Promise<unknown>;

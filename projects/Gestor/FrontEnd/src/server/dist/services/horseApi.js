@@ -1511,6 +1511,23 @@ class HorseApiService {
                 payload.bandeira_cartao_nome = header.bandeira_cartao_nome;
             }
             const res = await this.api.post('/encomenda', payload, { headers: this.getAuthHeaders() });
+            // Salvar pagamentos multiplos se houver
+            const responseData = res.data;
+            const encomendaId = responseData?.id ? Number(responseData.id) : (header.id ?? header.codigo);
+            if (encomendaId && encomendaId > 0 && header.pagamentos && header.pagamentos.length > 0) {
+                try {
+                    const pagPayload = [{ encomenda_id: encomendaId, _replace: true }, ...header.pagamentos.map((p) => ({
+                            forma_pagamento_id: p.forma_pagamento_id,
+                            forma_pagamento_nome: p.forma_pagamento_nome,
+                            bandeira_cartao_id: p.bandeira_cartao_id,
+                            bandeira_cartao_nome: p.bandeira_cartao_nome,
+                            valor: p.valor,
+                            troco_para: p.troco_para,
+                        }))];
+                    await this.api.post('/encomendaPagamento', pagPayload, { headers: this.getAuthHeaders() });
+                }
+                catch { /* ignore pagamentos save error */ }
+            }
             return res.data;
         }
         catch (error) {
@@ -1538,6 +1555,25 @@ class HorseApiService {
     async alterarStatusEncomenda(data) {
         try {
             const res = await this.api.post('/encomenda', data, { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async listarEncomendaPagamentos(encomendaId) {
+        try {
+            const res = await this.api.get('/encomendaPagamento', { params: { encomenda_id: encomendaId }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async salvarEncomendaPagamentos(encomendaId, pagamentos) {
+        try {
+            const payload = [{ encomenda_id: encomendaId, _replace: true }, ...pagamentos];
+            const res = await this.api.post('/encomendaPagamento', payload, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {

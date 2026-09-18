@@ -12,27 +12,33 @@ function padCentral(texto: string, largura: number): string {
   return ' '.repeat(esq) + texto + ' '.repeat(dir);
 }
 
-function padEsquerda(texto: string, largura: number): string {
-  if (texto.length >= largura) return texto.slice(0, largura);
-  return texto + ' '.repeat(largura - texto.length);
-}
-
-function padDireita(texto: string, largura: number): string {
+function padDir(texto: string, largura: number): string {
   if (texto.length >= largura) return texto.slice(0, largura);
   return ' '.repeat(largura - texto.length) + texto;
 }
 
-const SEP = '='.repeat(48);
-const SEP_L = '-'.repeat(48);
+function quebrarLinha(texto: string, largura: number): string[] {
+  if (texto.length <= largura) return [texto];
+  const resultado: string[] = [];
+  let restante = texto;
+  while (restante.length > largura) {
+    let corte = restante.lastIndexOf(' ', largura);
+    if (corte <= 0) corte = largura;
+    resultado.push(restante.slice(0, corte));
+    restante = restante.slice(corte).trimStart();
+  }
+  if (restante) resultado.push(restante);
+  return resultado;
+}
+
+function sep(char: string, colunas: number): string {
+  return char.repeat(colunas);
+}
 
 export interface CupomEncomendaData {
-  empresaNome: string;
-  empresaCnpj: string;
-  empresaEndereco: string;
-  empresaTelefone: string;
-  empresaEmail: string;
   encomenda: Encomenda;
   cliente: Cliente | null;
+  colunas?: number;
 }
 
 function descricaoPersonalizacao(item: EncomendaItem): string {
@@ -50,11 +56,28 @@ function descricaoPersonalizacao(item: EncomendaItem): string {
         .join(', ')}`,
     );
   }
-  return partes.join(' • ');
+  return partes.join(' ');
+}
+
+function montarLinhaItem(
+  qtd: number,
+  nome: string,
+  valorFmt: string,
+  colunas: number,
+): string {
+  const espacoValor = 12;
+  const parteQtd = `${String(qtd).padStart(3, ' ')}x `;
+  const larguraNome = colunas - parteQtd.length - espacoValor;
+  const parteValor = padDir(valorFmt, espacoValor);
+  if (nome.length <= larguraNome) {
+    return `${parteQtd}${nome.padEnd(larguraNome)}${parteValor}`;
+  }
+  return `${parteQtd}${nome.slice(0, larguraNome)}${parteValor}`;
 }
 
 export function gerarTextoCupomEncomenda(data: CupomEncomendaData): string {
-  const { empresaNome, empresaCnpj, empresaEndereco, empresaTelefone, empresaEmail, encomenda, cliente } = data;
+  const { encomenda, cliente } = data;
+  const C = data.colunas || 48;
   const itens = encomenda.itens ?? [];
   const qtdTotal = itens.reduce((acc, i) => acc + Number(i.quantidade), 0);
   const total = Number(encomenda.valor_total);
@@ -63,59 +86,67 @@ export function gerarTextoCupomEncomenda(data: CupomEncomendaData): string {
   const dataHora = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
   const numPedido = String(encomenda.codigo ?? encomenda.id ?? '').padStart(5, '0');
 
+  const s = sep('=', C);
+  const sl = sep('-', C);
   const linhas: string[] = [];
 
-  linhas.push(SEP);
-  linhas.push(padCentral(empresaNome, 48));
-  if (empresaCnpj) linhas.push(padCentral(`CNPJ: ${empresaCnpj}`, 48));
-  if (empresaEndereco) linhas.push(padCentral(empresaEndereco, 48));
-  if (empresaTelefone) linhas.push(padCentral(`TEL: ${empresaTelefone}`, 48));
-  if (empresaEmail) linhas.push(padCentral(empresaEmail, 48));
-  linhas.push(SEP);
-  linhas.push(padCentral('DOCUMENTO AUXILIAR DE ENCOMENDA', 48));
-  linhas.push(padCentral('(SEM VALOR FISCAL)', 48));
-  linhas.push(SEP);
-  linhas.push(`DATA/HORA: ${dataHora}`);
-  linhas.push(`PEDIDO N: ${numPedido}`);
-  if (encomenda.data_entrega) {
-    const dataEntrega = new Date(`${encomenda.data_entrega.slice(0, 10)}T12:00:00`);
-    linhas.push(`ENTREGA: ${dataEntrega.toLocaleDateString('pt-BR')}`);
+  const headerPedido = `DATA/HORA: ${dataHora}` + padDir(`PEDIDO N.: ${numPedido}`, C - `DATA/HORA: ${dataHora}`.length);
+  linhas.push(headerPedido);
+
+  const nomeCliente = cliente?.nome || encomenda.cliente_nome || 'CONSUMIDOR FINAL';
+  linhas.push(`NOME: ${nomeCliente}`);
+
+  if (cliente?.endereco) {
+    const partes: string[] = [cliente.endereco];
+    if (cliente.nr) partes.push(`, ${cliente.nr}`);
+    if (cliente.complemento) partes.push(` - ${cliente.complemento}`);
+    if (cliente.bairro) partes.push(` - ${cliente.bairro}`);
+    if (cliente.cidade) partes.push(` - ${cliente.cidade}`);
+    if (cliente.uf) partes.push(`/${cliente.uf}`);
+    const endCompleto = partes.join('');
+    const linhasEnd = quebrarLinha(`ENDERECO: ${endCompleto}`, C);
+    linhas.push(...linhasEnd);
+
+    const partesContato: string[] = [];
+    if (cliente.cep) partesContato.push(`CEP: ${cliente.cep}`);
+    if (cliente.celular) partesContato.push(`CELULAR: ${cliente.celular}`);
+    else if (cliente.telefone) partesContato.push(`TEL: ${cliente.telefone}`);
+    if (partesContato.length > 0) {
+      linhas.push(partesContato.join(' - '));
+    }
+  } else {
+    if (cliente?.celular) linhas.push(`CELULAR: ${cliente.celular}`);
+    else if (cliente?.telefone) linhas.push(`TEL: ${cliente.telefone}`);
   }
-  linhas.push(SEP_L);
-  linhas.push(padCentral('CLIENTE', 48));
-  linhas.push(SEP_L);
-  linhas.push(`NOME: ${cliente?.nome || encomenda.cliente_nome || 'CONSUMIDOR FINAL'}`);
-  if (cliente?.telefone) linhas.push(`TELEFONE: ${cliente.telefone}`);
+
+  if (cliente?.email) linhas.push(`E-MAIL: ${cliente.email}`);
+
   if (encomenda.observacao) linhas.push(`OBS: ${encomenda.observacao}`);
-  linhas.push(SEP);
-  linhas.push(padCentral('ITENS DO PEDIDO', 48));
-  linhas.push(SEP_L);
-  linhas.push('QTD  DESCRICAO                  VL.TOT (R$)');
-  linhas.push(SEP_L);
+
+  linhas.push(s);
+  linhas.push(padCentral('ITENS DO PEDIDO', C));
+  linhas.push(`QTD  ${'PRODUTO'.padEnd(C - 5 - 12)}${'VL.TOT'.padStart(12)}`);
+  linhas.push(sl);
 
   for (const item of itens) {
     const nome = item.produto_nome || item.produto_venda_nome || 'ITEM';
     const qtd = Number(item.quantidade);
     const vt = Number(item.valor_total);
+    const valorFmt = formatValor(vt);
 
-    linhas.push(`${String(qtd).padStart(3, ' ')}x ${padEsquerda(nome, 24)} ${formatValor(vt).padStart(9, ' ')}`);
+    linhas.push(montarLinhaItem(qtd, nome, valorFmt, C));
 
     const desc = descricaoPersonalizacao(item);
     if (desc) {
-      linhas.push(`    ${padEsquerda(desc, 43)}`);
+      const linhasDesc = quebrarLinha(`(${desc})`, C);
+      for (const ld of linhasDesc) {
+        linhas.push(ld);
+      }
     }
   }
 
-  linhas.push(SEP_L);
-  linhas.push(`${padEsquerda('QTDE TOTAL DE ITENS:', 37)} ${String(qtdTotal).padStart(8, ' ')}`);
-  linhas.push(SEP_L);
-  linhas.push(`${padEsquerda('TOTAL DO PEDIDO:', 37)} ${formatValor(total).padStart(8, ' ')}`);
-  linhas.push(SEP);
-
-  linhas.push(`FORMA DE PAGAMENTO: ${encomenda.forma_pagamento_nome || '-'}`);
-  linhas.push(SEP);
-  linhas.push(padCentral('Obrigado pela preferencia!', 48));
-  linhas.push(SEP);
+  linhas.push(sl);
+  linhas.push(`Qtd: ${qtdTotal}` + padDir(formatValor(total), C - `Qtd: ${qtdTotal}`.length));
 
   return linhas.join('\n');
 }
@@ -124,8 +155,8 @@ export function imprimirCupomEncomendaSerial(texto: string): string {
   const linhas = texto.split('\n');
   return linhas
     .map((l) => {
-      if (l.startsWith('=')) return '</linha_dupla>';
-      if (l.startsWith('-')) return '</linha_simples>';
+      if (/^=+$/.test(l)) return '</linha_dupla>';
+      if (/^-+$/.test(l)) return '</linha_simples>';
       return l;
     })
     .join('\n')

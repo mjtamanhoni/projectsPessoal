@@ -1012,3 +1012,157 @@ func (h *ProducaoHandler) EncomendaPublicoSalvarEnderecoEntrega(w http.ResponseW
 
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Endereço de entrega salvo com sucesso"})
 }
+
+// EncomendaPublicoListarPagamentos lista pagamentos de uma encomenda (público).
+// GET /encomendaPublico/pagamentos?empresa=<id>&encomenda_id=<id>&cliente_id=<id>&documento=<doc>
+func (h *ProducaoHandler) EncomendaPublicoListarPagamentos(w http.ResponseWriter, r *http.Request) {
+	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
+	encomendaID := parseInt(r.URL.Query().Get("encomenda_id"), 0)
+
+	if empresaID == 0 || encomendaID == 0 {
+		jsonError(w, "empresa e encomenda_id são obrigatórios", http.StatusBadRequest)
+		return
+	}
+
+	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
+		parseInt(r.URL.Query().Get("cliente_id"), 0),
+		apenasDigitos(r.URL.Query().Get("documento")),
+		apenasDigitos(r.URL.Query().Get("telefone")))
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rows, err := h.Pool.Query(r.Context(), `
+		SELECT ep.id, ep.empresa_id, ep.encomenda_id, ep.forma_pagamento_id, ep.forma_pagamento_nome,
+			ep.bandeira_cartao_id, ep.bandeira_cartao_nome, ep.valor, ep.troco_para, ep.created_at
+		FROM encomenda_pagamento ep
+		INNER JOIN encomenda e ON e.empresa_id = ep.empresa_id AND e.id = ep.encomenda_id
+		WHERE ep.empresa_id = $1 AND ep.encomenda_id = $2 AND e.cliente_id = $3
+		ORDER BY ep.id ASC
+	`, empresaID, encomendaID, clienteID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	jsonSuccess(w, rowsToMap(rows))
+}
+
+// EncomendaPublicoSalvarPagamentos salva pagamentos múltiplos de uma encomenda (público).
+// POST /encomendaPublico/pagamentos  body: { empresa, id, cliente_id?, documento?, telefone?,
+//   pagamentos: [{ forma_pagamento_id, forma_pagamento_nome, bandeira_cartao_id, bandeira_cartao_nome, valor, troco_para }] }
+func (h *ProducaoHandler) EncomendaPublicoSalvarPagamentos(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+	header := items[0]
+	empresaID := getInt(header, "empresa")
+	if empresaID == 0 {
+		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
+		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	encomendaID := getInt(header, "id")
+	if encomendaID == 0 {
+		jsonError(w, "ID da encomenda é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	// Verificar se a encomenda pertence ao cliente
+	var count int
+	err = h.Pool.QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM encomenda WHERE id=$1 AND empresa_id=$2 AND cliente_id=$3`,
+		encomendaID, empresaID, clienteID).Scan(&count)
+	if err != nil || count == 0 {
+		jsonError(w, "Encomenda não encontrada", http.StatusNotFound)
+		return
+	}
+
+	pagamentosRaw, ok := header["pagamentos"].([]interface{})
+	if !ok {
+		jsonError(w, "Campo 'pagamentos' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	// Excluir pagamentos antigos
+	_, err = tx.Exec(r.Context(), `DELETE FROM encomenda_pagamento WHERE empresa_id=$1 AND encomenda_id=$2`, empresaID, encomendaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Inserir novos pagamentos
+	for _, pRaw := range pagamentosRaw {
+		p, ok := pRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		formaPagamentoID := getInt(p, "forma_pagamento_id")
+		formaPagamentoNome := getStr(p, "forma_pagamento_nome")
+		bandeiraCartaoID := getInt(p, "bandeira_cartao_id")
+		bandeiraCartaoNome := getStr(p, "bandeira_cartao_nome")
+		valor := getFloat(p, "valor")
+		trocoPara := getFloat(p, "troco_para")
+
+		if formaPagamentoID > 0 && formaPagamentoNome == "" {
+			_ = tx.QueryRow(r.Context(), `SELECT descricao FROM forma_pagamento WHERE id=$1 AND empresa_id=$2`, formaPagamentoID, empresaID).Scan(&formaPagamentoNome)
+		}
+		if bandeiraCartaoID > 0 && bandeiraCartaoNome == "" {
+			_ = tx.QueryRow(r.Context(), `SELECT nome FROM bandeira_cartao WHERE id=$1 AND empresa_id=$2`, bandeiraCartaoID, empresaID).Scan(&bandeiraCartaoNome)
+		}
+
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO encomenda_pagamento (empresa_id, encomenda_id, forma_pagamento_id, forma_pagamento_nome,
+				bandeira_cartao_id, bandeira_cartao_nome, valor, troco_para)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		`, empresaID, encomendaID, formaPagamentoIDOrNil(formaPagamentoID), nullStr(formaPagamentoNome),
+			formaPagamentoIDOrNil(bandeiraCartaoID), nullStr(bandeiraCartaoNome), valor, trocoPara)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Atualizar os campos antigos de pagamento na encomenda (retrocompatibilidade)
+	if len(pagamentosRaw) > 0 {
+		p := pagamentosRaw[0].(map[string]interface{})
+		_, _ = tx.Exec(r.Context(), `
+			UPDATE encomenda SET forma_pagamento_id=$1, forma_pagamento_nome=$2, troco_para=$3,
+				bandeira_cartao_id=$4, bandeira_cartao_nome=$5
+			WHERE id=$6 AND empresa_id=$7
+		`, formaPagamentoIDOrNil(getInt(p, "forma_pagamento_id")),
+			nullStr(getStr(p, "forma_pagamento_nome")),
+			getFloat(p, "troco_para"),
+			formaPagamentoIDOrNil(getInt(p, "bandeira_cartao_id")),
+			nullStr(getStr(p, "bandeira_cartao_nome")),
+			encomendaID, empresaID)
+	}
+
+	if err = tx.Commit(r.Context()); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Pagamentos salvos com sucesso"})
+}

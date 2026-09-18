@@ -26,6 +26,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   renderSubComponent?: (row: T) => JSX.Element;
   onExpand?: (row: T) => void;
+  getRowClassName?: (row: T) => string;
 }
 
 const inputStyles = 'w-full px-2 py-1 text-xs border border-border-primary rounded bg-background-primary text-text-primary placeholder:text-text-muted outline-none focus:border-accent-primary transition-colors';
@@ -40,6 +41,7 @@ export function DataTable<T>({
   emptyMessage = 'Nenhum registro encontrado',
   renderSubComponent,
   onExpand,
+  getRowClassName,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -158,7 +160,7 @@ export function DataTable<T>({
             ) : (
               pageRows.map((row) => (
                 <Fragment key={row.id}>
-                  <tr className="border-b border-border-subtle hover:bg-bg-muted/50 transition-colors">
+                  <tr className={`border-b border-border-subtle hover:bg-bg-muted/50 transition-colors ${getRowClassName?.(row.original) ?? ''}`}>
                     {row.getVisibleCells().map((cell) => {
                       const isExpand = (cell.column.columnDef.meta as Record<string, unknown> | undefined)?.expand;
                       return (

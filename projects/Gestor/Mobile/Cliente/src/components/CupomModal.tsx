@@ -26,8 +26,13 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
   const baixada = !!encomenda.baixado;
   const chave = empresa.chave_pix || '';
   const numeroCupom = encomenda.id ?? encomenda.codigo ?? 0;
-  const ehPIX = (encomenda.forma_pagamento_nome || '').toUpperCase().includes('PIX') || !encomenda.forma_pagamento_nome;
-  const ehDinheiro = (encomenda.forma_pagamento_nome || '').toUpperCase().includes('DINHEIRO');
+  const temPagamentos = encomenda.pagamentos && encomenda.pagamentos.length > 0;
+  const ehPIX = temPagamentos
+    ? encomenda.pagamentos!.some((p) => (p.forma_pagamento_nome || '').toUpperCase().includes('PIX'))
+    : (encomenda.forma_pagamento_nome || '').toUpperCase().includes('PIX') || !encomenda.forma_pagamento_nome;
+  const ehDinheiro = temPagamentos
+    ? encomenda.pagamentos!.some((p) => (p.forma_pagamento_nome || '').toUpperCase().includes('DINHEIRO'))
+    : (encomenda.forma_pagamento_nome || '').toUpperCase().includes('DINHEIRO');
 
   useEffect(() => {
     if (!chave) return;
@@ -108,7 +113,9 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
     },
     cliente,
     numeroCupom,
-    formaPagamento: encomenda.forma_pagamento_nome || (baixada ? 'A VISTA (PIX)' : 'PIX'),
+    formaPagamento: temPagamentos
+      ? encomenda.pagamentos!.map((p) => `${p.forma_pagamento_nome || '-'} (${(p.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})`).join(', ')
+      : (encomenda.forma_pagamento_nome || (baixada ? 'A VISTA (PIX)' : 'PIX')),
     parcelas: [],
     desconto: 0,
   };
@@ -169,7 +176,25 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
             {gerarTextoCupom(cupomData)}
           </div>
 
-          {encomenda.forma_pagamento_nome && (
+          {temPagamentos ? (
+            <div style={{ margin: '0 4px 12px', padding: '8px 12px', borderRadius: 8, background: 'rgba(50, 50, 50, 0.5)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF', marginBottom: 6 }}>Pagamento:</div>
+              {encomenda.pagamentos!.map((pg, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                  <span style={{ fontSize: 14 }}>
+                    {pg.forma_pagamento_classificacao === 'DINHEIRO' ? '💵' : pg.forma_pagamento_classificacao === 'PIX' ? '📱' : '💳'}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF' }}>{pg.forma_pagamento_nome || '-'}</div>
+                    {pg.bandeira_cartao_nome && <div style={{ fontSize: 9, color: '#a78bfa' }}>{pg.bandeira_cartao_nome}</div>}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed' }}>
+                    {(pg.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : encomenda.forma_pagamento_nome ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 4px 12px', padding: '8px 12px', borderRadius: 8, background: 'rgba(50, 50, 50, 0.5)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <span style={{ fontSize: 14 }}>
                 {ehDinheiro ? '💵' : ehPIX ? '📱' : '💳'}
@@ -193,7 +218,7 @@ export default function CupomModal({ empresa, cliente, encomenda, onClose }: Pro
                 )}
               </div>
             </div>
-          )}
+          ) : null}
 
           {chave && ehPIX && (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '0 4px 12px' }}>

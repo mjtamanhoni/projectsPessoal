@@ -250,15 +250,12 @@ try {
   process.exit(1);
 }
 
-const printer = new escpos.Printer(device, { encoding: 'CP850' });
-
 device.open(function(err) {
   if (err) {
     console.log('USB_ERROR: ' + err.message);
     process.exit(1);
   }
-  // Enviar buffer completo (texto + QR bitmap + corte) - tudo ja pronto do BFF
-  printer.raw(binData, function(err) {
+  device.write(binData, function(err) {
     if (err) {
       console.log('WRITE_ERROR: ' + err.message);
       device.close();

@@ -1,17 +1,17 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  atualizarFormaPagamentoEncomendaPublica,
   criarEncomendaPublica,
   extrairErro,
   listarProdutosFabricadosPublico,
   listarProdutosVendaPublico,
   salvarEnderecoEntregaPublico,
+  salvarPagamentosEncomendaPublica,
   type AdicionalItemPedido,
   type Encomenda,
   type EncomendaItem,
+  type EncomendaPagamento,
   type EnderecoEntrega,
-  type FormaPagamentoPublica,
   type ProdutoFabricado,
   type ProdutoVendaPublico,
 } from '../api';
@@ -208,7 +208,6 @@ export default function Pedido() {
       };
       setEncomendaParaEndereco(completa);
       setMostrarEnderecoEntrega(true);
-      setItens([]);
     } catch (e) {
       setErro(extrairErro(e));
     } finally {
@@ -216,45 +215,46 @@ export default function Pedido() {
     }
   };
 
-  const confirmarFormaPagamento = async (forma: FormaPagamentoPublica, trocoPara?: number, bandeiraCartao?: { id: number; nome: string }) => {
+  const confirmarFormaPagamento = async (pagamentos: EncomendaPagamento[]) => {
     if (!encomendaParaPagamento || !empresa) return;
     const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
     try {
-      await atualizarFormaPagamentoEncomendaPublica(empresa.id, {
+      await salvarPagamentosEncomendaPublica(empresa.id, {
         id: encomendaParaPagamento.id ?? 0,
         cliente_id: cliente?.id,
         documento,
-        forma_pagamento_id: forma.id,
-        forma_pagamento_nome: forma.descricao,
-        troco_para: trocoPara,
-        bandeira_cartao_id: bandeiraCartao?.id,
-        bandeira_cartao_nome: bandeiraCartao?.nome,
+        pagamentos: pagamentos.map((p) => ({
+          forma_pagamento_id: p.forma_pagamento_id,
+          forma_pagamento_nome: p.forma_pagamento_nome,
+          bandeira_cartao_id: p.bandeira_cartao_id,
+          bandeira_cartao_nome: p.bandeira_cartao_nome,
+          valor: p.valor,
+          troco_para: p.troco_para,
+        })),
       });
     } catch {
-      /* forma de pagamento salva localmente mesmo se o server falhar */
+      /* pagamentos salvos localmente mesmo se o server falhar */
     }
     const atualizada: Encomenda = {
       ...encomendaParaPagamento,
-      forma_pagamento_id: forma.id,
-      forma_pagamento_nome: forma.descricao,
-      forma_pagamento_classificacao: forma.classificacao,
-      troco_para: trocoPara,
-      bandeira_cartao_id: bandeiraCartao?.id,
-      bandeira_cartao_nome: bandeiraCartao?.nome,
+      pagamentos,
+      forma_pagamento_id: pagamentos[0]?.forma_pagamento_id,
+      forma_pagamento_nome: pagamentos[0]?.forma_pagamento_nome,
+      forma_pagamento_classificacao: pagamentos[0]?.forma_pagamento_classificacao,
+      bandeira_cartao_id: pagamentos[0]?.bandeira_cartao_id,
+      bandeira_cartao_nome: pagamentos[0]?.bandeira_cartao_nome,
     };
     setEncomendaCriada(atualizada);
     setMostrarFormaPagamento(false);
     setEncomendaParaPagamento(null);
+    setItens([]);
   };
 
   const fecharFormaPagamento = () => {
     setMostrarFormaPagamento(false);
-    const atualizada: Encomenda = {
-      ...encomendaParaPagamento!,
-      forma_pagamento_nome: 'Não informada',
-    };
-    setEncomendaCriada(atualizada);
+    setMostrarEnderecoEntrega(false);
     setEncomendaParaPagamento(null);
+    setEncomendaParaEndereco(null);
   };
 
   const confirmarEnderecoEntrega = async (endereco: EnderecoEntrega) => {
@@ -292,9 +292,9 @@ export default function Pedido() {
 
   const fecharEnderecoEntrega = () => {
     setMostrarEnderecoEntrega(false);
-    setEncomendaParaPagamento(encomendaParaEndereco);
+    setMostrarFormaPagamento(false);
     setEncomendaParaEndereco(null);
-    setMostrarFormaPagamento(true);
+    setEncomendaParaPagamento(null);
   };
 
   const itemCustomizando = customizandoIdx !== null ? itens[customizandoIdx] : undefined;

@@ -67,20 +67,39 @@ func RequestLogger(logStore *logger.LogStore) func(http.Handler) http.Handler {
 				msg = http.StatusText(status)
 			}
 
-			go logStore.Log(logger.LogEntry{
-				Hora:          start.Format("15:04:05"),
-				Metodo:        r.Method,
-				Rota:          r.URL.Path,
-				Status:        status,
-				Mensagem:      msg,
-				EmpresaID:     claimsFromRequest(r),
-				UsuarioID:     userIDFromRequest(r),
-				DuracaoMs:     duration.Milliseconds(),
-				IP:            r.RemoteAddr,
-				JsonRecebido:  jsonRecebido,
-				JsonRetornado: jsonRetornado,
-				Scripts:       database.GetScripts(ctx),
-			})
+			scripts := database.GetScripts(ctx)
+
+			sohLoga := status >= 400
+			if !sohLoga {
+				for _, s := range scripts {
+					for tipo := range s {
+						if tipo == "insert" || tipo == "update" || tipo == "delete" {
+							sohLoga = true
+							break
+						}
+					}
+					if sohLoga {
+						break
+					}
+				}
+			}
+
+			if sohLoga {
+				go logStore.Log(logger.LogEntry{
+					Hora:          start.Format("15:04:05"),
+					Metodo:        r.Method,
+					Rota:          r.URL.Path,
+					Status:        status,
+					Mensagem:      msg,
+					EmpresaID:     claimsFromRequest(r),
+					UsuarioID:     userIDFromRequest(r),
+					DuracaoMs:     duration.Milliseconds(),
+					IP:            r.RemoteAddr,
+					JsonRecebido:  jsonRecebido,
+					JsonRetornado: jsonRetornado,
+					Scripts:       scripts,
+				})
+			}
 		})
 	}
 }

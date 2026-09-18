@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
-import { Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
-import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, FormaPagamento, BandeiraCartao } from '@/types';
+import { Plus, SlidersHorizontal, Trash2, CreditCard } from 'lucide-react';
+import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente, FormaPagamento, BandeiraCartao, EncomendaPagamento } from '@/types';
 import { formatCurrency, formatDecimals } from '@/lib/utils';
 import { ProdutosSelecaoModal, type ProdutoSelecionado } from '@/components/forms/ProdutosSelecaoModal';
 import { ItemCustomizacaoModal, type ItemCustomizavel } from '@/components/forms/ItemCustomizacaoModal';
+import { PagamentoMultiploModal } from '@/components/forms/PagamentoMultiploModal';
 
 interface EncomendaFormProps {
   onSubmit: (data: Encomenda) => void;
@@ -24,14 +25,15 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
   const [dataEncomenda, setDataEncomenda] = useState(initial?.data_encomenda ?? new Date().toISOString().slice(0, 10));
   const [dataEntrega, setDataEntrega] = useState(initial?.data_entrega ?? '');
   const [observacao, setObservacao] = useState(initial?.observacao ?? '');
-  const [formaPagamentoId, setFormaPagamentoId] = useState<number | null>(initial?.forma_pagamento_id ?? null);
-  const [bandeiraCartaoId, setBandeiraCartaoId] = useState<number | null>(initial?.bandeira_cartao_id ?? null);
+  const [pagamentos, setPagamentos] = useState<EncomendaPagamento[]>(initial?.pagamentos ?? []);
+  const [modalPagamentoAberto, setModalPagamentoAberto] = useState(false);
 
   const [itens, setItens] = useState<EncomendaItem[]>(initial?.itens ?? []);
   const [seletorAberto, setSeletorAberto] = useState(false);
   const [customizandoIdx, setCustomizandoIdx] = useState<number | null>(null);
 
   const total = itens.reduce((acc, item) => acc + item.valor_total, 0);
+  const totalPago = pagamentos.reduce((acc, p) => acc + (p.valor || 0), 0);
 
   const confirmarSelecao = (novos: ProdutoSelecionado[]) => {
     setItens(novos as EncomendaItem[]);
@@ -51,9 +53,10 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (itens.length === 0) return;
-    const formaPagamento = formasPagamento.find((fp) => (fp.id ?? fp.codigo) === formaPagamentoId);
-    const isCartao = formaPagamento?.classificacao === 'CARTAO_CREDITO' || formaPagamento?.classificacao === 'CARTAO_DEBITO';
-    const bandeiraSelecionada = isCartao ? bandeirasCartao.find((b) => (b.id ?? b.codigo) === bandeiraCartaoId) : null;
+
+    // Use o primeiro pagamento como forma_pagamento principal (compatibilidade)
+    const primeiroPagamento = pagamentos[0];
+
     onSubmit({
       id: initial?.id ?? initial?.codigo,
       cliente_id: clienteId,
@@ -61,9 +64,11 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
       data_entrega: dataEntrega,
       observacao,
       valor_total: total,
-      forma_pagamento_id: formaPagamentoId ?? undefined,
-      bandeira_cartao_id: bandeiraSelecionada?.id ?? bandeiraSelecionada?.codigo ?? undefined,
-      bandeira_cartao_nome: bandeiraSelecionada?.nome ?? undefined,
+      forma_pagamento_id: primeiroPagamento?.forma_pagamento_id ?? undefined,
+      bandeira_cartao_id: primeiroPagamento?.bandeira_cartao_id ?? undefined,
+      bandeira_cartao_nome: primeiroPagamento?.bandeira_cartao_nome ?? undefined,
+      troco_para: primeiroPagamento?.troco_para ?? undefined,
+      pagamentos,
       itens,
     });
   };
@@ -81,30 +86,32 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
           />
         </div>
         <div className="space-y-1.5">
-          <label className="label-field">Forma de Pagamento</label>
-          <RegistroSelect<number>
-            value={formaPagamentoId}
-            onChange={setFormaPagamentoId}
-            options={formasPagamento.map((fp) => ({ value: (fp.id ?? fp.codigo)!, label: fp.descricao }))}
-            title="Selecionar Forma de Pagamento"
-          />
+          <label className="label-field">Pagamento</label>
+          <button
+            type="button"
+            onClick={() => setModalPagamentoAberto(true)}
+            className="w-full flex items-center justify-between input-field text-left"
+          >
+            <span className="flex items-center gap-2">
+              <CreditCard size={16} className="text-accent-primary" />
+              {pagamentos.length > 0 ? (
+                <span className="text-sm">
+                  {pagamentos.length === 1
+                    ? pagamentos[0].forma_pagamento_nome || 'Pagamento definido'
+                    : `${pagamentos.length} pagamentos - ${formatCurrency(totalPago)}`}
+                </span>
+              ) : (
+                <span className="text-sm text-text-tertiary">Clique para definir pagamento</span>
+              )}
+            </span>
+            <span className="text-xs text-text-muted">{totalPago > 0 ? formatCurrency(totalPago) : ''}</span>
+          </button>
+          {totalPago > 0 && totalPago < total && (
+            <p className="text-xs text-accent-red">
+              Falta {formatCurrency(total - totalPago)}
+            </p>
+          )}
         </div>
-        {(() => {
-          const fp = formasPagamento.find((f) => (f.id ?? f.codigo) === formaPagamentoId);
-          const isCartao = fp?.classificacao === 'CARTAO_CREDITO' || fp?.classificacao === 'CARTAO_DEBITO';
-          if (!isCartao || bandeirasCartao.length === 0) return null;
-          return (
-            <div className="space-y-1.5">
-              <label className="label-field">Bandeira do Cartao</label>
-              <RegistroSelect<number>
-                value={bandeiraCartaoId}
-                onChange={setBandeiraCartaoId}
-                options={bandeirasCartao.map((b) => ({ value: (b.id ?? b.codigo)!, label: b.nome }))}
-                title="Selecionar Bandeira do Cartao"
-              />
-            </div>
-          );
-        })()}
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <Input label="Data da Encomenda *" type="date" value={dataEncomenda} onChange={(e) => setDataEncomenda(e.target.value)} />
@@ -212,6 +219,16 @@ export function EncomendaForm({ onSubmit, onCancel, initial, produtos, produtosV
         produtosVenda={produtosVenda}
         onConfirmar={confirmarCustomizacao}
         onFechar={() => setCustomizandoIdx(null)}
+      />
+
+      <PagamentoMultiploModal
+        isOpen={modalPagamentoAberto}
+        onFechar={() => setModalPagamentoAberto(false)}
+        onConfirmar={(pgts) => { setPagamentos(pgts); setModalPagamentoAberto(false); }}
+        valorTotal={total}
+        formasPagamento={formasPagamento}
+        bandeirasCartao={bandeirasCartao}
+        pagamentosIniciais={pagamentos}
       />
     </form>
   );

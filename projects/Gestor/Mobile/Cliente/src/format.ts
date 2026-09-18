@@ -10,6 +10,7 @@ export function mascaraMoeda(valor: string, casas: number): string {
 }
 
 export function decimalParaNumero(valor: string): number | undefined {
+  if (!valor) return undefined;
   const s = valor.trim();
   if (s === '') return undefined;
   return Number(s.replace(/\./g, '').replace(',', '.'));

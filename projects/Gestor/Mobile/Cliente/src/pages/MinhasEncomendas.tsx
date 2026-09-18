@@ -374,7 +374,22 @@ export default function MinhasEncomendas() {
                       {' • '}
                       {nItens} {nItens === 1 ? 'item' : 'itens'}
                     </div>
-                    {e.forma_pagamento_nome && (
+                    {e.pagamentos && e.pagamentos.length > 0 ? (
+                      <div style={{ fontSize: 11, color: '#B0B0B0', padding: '2px 0' }}>
+                        Pagamento:
+                        {e.pagamentos.map((pg, idx) => (
+                          <span key={idx} style={{ display: 'inline', marginLeft: idx > 0 ? 6 : 0 }}>
+                            {idx > 0 && <span style={{ color: '#555' }}> • </span>}
+                            {pg.forma_pagamento_nome || '-'}
+                            {pg.bandeira_cartao_nome && <span style={{ marginLeft: 4, color: '#a78bfa', fontWeight: 600 }}>{pg.bandeira_cartao_nome}</span>}
+                            {' '}({(pg.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                          </span>
+                        ))}
+                        {e.pagamentos.some((pg) => pg.forma_pagamento_classificacao === 'CARTAO_CREDITO' || pg.forma_pagamento_classificacao === 'CARTAO_DEBITO') && (
+                          <span style={{ display: 'block', marginLeft: 0, color: '#7e22ce', fontWeight: 700 }}>💳 Levar máquina de cartão</span>
+                        )}
+                      </div>
+                    ) : e.forma_pagamento_nome ? (
                       <div style={{ fontSize: 11, color: '#B0B0B0', padding: '2px 0' }}>
                         Pagamento: {e.forma_pagamento_nome}
                         {(e.forma_pagamento_classificacao === 'CARTAO_CREDITO' || e.forma_pagamento_classificacao === 'CARTAO_DEBITO') && (
@@ -384,7 +399,7 @@ export default function MinhasEncomendas() {
                           <span style={{ marginLeft: 6, color: '#a78bfa', fontWeight: 600 }}>• {e.bandeira_cartao_nome}</span>
                         )}
                       </div>
-                    )}
+                    ) : null}
                     {e.endereco_entrega && (
                       <div style={{ fontSize: 11, color: '#B0B0B0', padding: '2px 0' }}>
                         {e.endereco_entrega.retira_estabelecimento === 1 ? (

@@ -183,6 +183,13 @@ export function Encomendas() {
         valor_total: Number(row.item_valor_total ?? row.valor_total),
         ...parseItemCustomizacao(row),
       }));
+
+      let pagamentos: import('@/types').EncomendaPagamento[] = [];
+      try {
+        const pagRes = await api.get('/encomendas/pagamentos', { params: { encomenda_id: encomendaId } });
+        pagamentos = (pagRes.data as import('@/types').EncomendaPagamento[]) ?? [];
+      } catch { /* ignore */ }
+
       return {
         id: first.id,
         codigo: first.id,
@@ -201,6 +208,7 @@ export function Encomendas() {
         bandeira_cartao_id: first.bandeira_cartao_id,
         bandeira_cartao_nome: first.bandeira_cartao_nome,
         itens,
+        pagamentos,
       };
     } catch {
       return null;
@@ -764,18 +772,40 @@ export function Encomendas() {
 
             {/* Pagamento */}
             <div className="border-t border-border-subtle pt-3">
-              <div className="text-xs text-text-muted mb-1">Forma de Pagamento</div>
-              <div className="text-sm">
-                {viewEncomenda.forma_pagamento_nome || '-'}
-                {viewEncomenda.bandeira_cartao_nome && (
-                  <span className="ml-2 px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-semibold">
-                    {viewEncomenda.bandeira_cartao_nome}
-                  </span>
-                )}
-                {viewEncomenda.troco_para != null && viewEncomenda.troco_para > 0 && (
-                  <span className="text-text-muted ml-2">(Troco para: {formatCurrency(viewEncomenda.troco_para)})</span>
-                )}
-              </div>
+              <div className="text-xs text-text-muted mb-1">Pagamento</div>
+              {viewEncomenda.pagamentos && viewEncomenda.pagamentos.length > 0 ? (
+                <div className="space-y-1">
+                  {viewEncomenda.pagamentos.map((pg, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm">
+                      <span className="font-medium">{pg.forma_pagamento_nome || '-'}</span>
+                      {pg.bandeira_cartao_nome && (
+                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-semibold">
+                          {pg.bandeira_cartao_nome}
+                        </span>
+                      )}
+                      <span className="text-accent-primary font-semibold">{formatCurrency(pg.valor)}</span>
+                      {pg.troco_para != null && pg.troco_para > 0 && (
+                        <span className="text-text-muted text-xs">(Troco para: {formatCurrency(pg.troco_para)})</span>
+                      )}
+                    </div>
+                  ))}
+                  <div className="text-xs text-text-muted pt-1 border-t border-border-subtle">
+                    Total pago: {formatCurrency(viewEncomenda.pagamentos.reduce((acc, p) => acc + (p.valor || 0), 0))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm">
+                  {viewEncomenda.forma_pagamento_nome || '-'}
+                  {viewEncomenda.bandeira_cartao_nome && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-semibold">
+                      {viewEncomenda.bandeira_cartao_nome}
+                    </span>
+                  )}
+                  {viewEncomenda.troco_para != null && viewEncomenda.troco_para > 0 && (
+                    <span className="text-text-muted ml-2">(Troco para: {formatCurrency(viewEncomenda.troco_para)})</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Observação */}

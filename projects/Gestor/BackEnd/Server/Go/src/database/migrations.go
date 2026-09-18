@@ -622,6 +622,37 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "024_encomenda_pagamento_multiplo",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.encomenda_pagamento (
+				empresa_id INTEGER NOT NULL,
+				encomenda_id INTEGER NOT NULL,
+				id SERIAL NOT NULL,
+				forma_pagamento_id INTEGER,
+				forma_pagamento_nome VARCHAR(100),
+				bandeira_cartao_id INTEGER,
+				bandeira_cartao_nome VARCHAR(100),
+				valor NUMERIC NOT NULL DEFAULT 0,
+				troco_para NUMERIC,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				PRIMARY KEY (empresa_id, encomenda_id, id)
+			);
+
+			DO $$
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1 FROM information_schema.table_constraints
+					WHERE table_name = 'encomenda_pagamento' AND constraint_name = 'fk_encomenda_pagamento_encomenda'
+				) THEN
+					ALTER TABLE public.encomenda_pagamento
+						ADD CONSTRAINT fk_encomenda_pagamento_encomenda
+						FOREIGN KEY (empresa_id, encomenda_id)
+						REFERENCES public.encomenda(empresa_id, id) ON DELETE CASCADE;
+				END IF;
+			END $$;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

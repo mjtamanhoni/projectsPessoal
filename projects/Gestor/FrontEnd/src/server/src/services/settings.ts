@@ -33,7 +33,7 @@ export const DEFAULT_EMPRESA: EmpresaSettings = {
     linhasPular: 0,
     cortarPapel: true,
     controlePorta: false,
-    paginaCodigo: 0,
+    paginaCodigo: 2,
     barrasLargura: 2,
     barrasAltura: 100,
     barrasHRI: true,

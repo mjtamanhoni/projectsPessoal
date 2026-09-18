@@ -75,4 +75,34 @@ router.delete('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.get('/pagamentos', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const encomendaId = Number(req.query.encomenda_id);
+    if (!encomendaId) {
+      res.status(400).json({ error: 'encomenda_id e obrigatorio' });
+      return;
+    }
+    const result = await horseApi.listarEncomendaPagamentos(encomendaId);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.post('/pagamentos', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { encomenda_id, pagamentos } = req.body as { encomenda_id: number; pagamentos: unknown[] };
+    if (!encomenda_id) {
+      res.status(400).json({ error: 'encomenda_id e obrigatorio' });
+      return;
+    }
+    const result = await horseApi.salvarEncomendaPagamentos(encomenda_id, pagamentos ?? []);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
 export default router;

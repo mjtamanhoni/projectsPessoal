@@ -519,6 +519,22 @@ export interface Encomenda {
   bandeira_cartao_nome?: string;
   endereco_entrega?: EnderecoEntrega;
   impresso?: number;
+  pagamentos?: EncomendaPagamento[];
+  created_at?: string;
+}
+
+export interface EncomendaPagamento {
+  id?: number;
+  empresa_id?: number;
+  encomenda_id?: number;
+  forma_pagamento_id?: number;
+  forma_pagamento_nome?: string;
+  forma_pagamento_classificacao?: string;
+  bandeira_cartao_id?: number;
+  bandeira_cartao_nome?: string;
+  valor: number;
+  troco_para?: number;
+  created_at?: string;
 }
 
 export interface EnderecoEntrega {

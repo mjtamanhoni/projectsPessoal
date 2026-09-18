@@ -69,5 +69,35 @@ router.delete('/', auth_1.authMiddleware, async (req, res) => {
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
+router.get('/pagamentos', auth_1.authMiddleware, async (req, res) => {
+    try {
+        const encomendaId = Number(req.query.encomenda_id);
+        if (!encomendaId) {
+            res.status(400).json({ error: 'encomenda_id e obrigatorio' });
+            return;
+        }
+        const result = await horseApi_1.horseApi.listarEncomendaPagamentos(encomendaId);
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
+router.post('/pagamentos', auth_1.authMiddleware, async (req, res) => {
+    try {
+        const { encomenda_id, pagamentos } = req.body;
+        if (!encomenda_id) {
+            res.status(400).json({ error: 'encomenda_id e obrigatorio' });
+            return;
+        }
+        const result = await horseApi_1.horseApi.salvarEncomendaPagamentos(encomenda_id, pagamentos ?? []);
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=encomendas.js.map

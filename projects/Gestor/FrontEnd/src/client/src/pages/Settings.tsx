@@ -607,6 +607,42 @@ export function Settings() {
                   </Button>
                 </div>
               </div>
+              <div className="border-t border-border-subtle pt-3">
+                <label className="block text-xs font-medium text-text-secondary mb-1">Pagina de Codigo (acentos)</label>
+                <select
+                  className="input-field w-full"
+                  value={settings?.printer?.paginaCodigo ?? 2}
+                  onChange={(e) => {
+                    if (!settings?.printer) return;
+                    setSettings({ ...settings, printer: { ...settings.printer, paginaCodigo: Number(e.target.value) } });
+                  }}
+                >
+                  <option value={0}>PC437 - EUA (sem acentos)</option>
+                  <option value={1}>PC850 - Europa Ocidental</option>
+                  <option value={2}>PC860 - Portugues</option>
+                  <option value={3}>PC861 - Islandes</option>
+                  <option value={4}>PC863 - Canada Frances</option>
+                  <option value={5}>PC865 - Nordico</option>
+                  <option value={10}>PC858 - Latin 1 + Euro</option>
+                  <option value={15}>PC1252 - Windows Latin 1</option>
+                </select>
+                <p className="text-[11px] text-text-tertiary mt-1">Se os acentos nao imprimirem corretamente, altere esta opcao.</p>
+              </div>
+              <div className="border-t border-border-subtle pt-3">
+                <label className="block text-xs font-medium text-text-secondary mb-1">Colunas da Impressora</label>
+                <input
+                  type="number"
+                  className="input-field w-full"
+                  value={settings?.printer?.colunas ?? 48}
+                  min={20}
+                  max={80}
+                  onChange={(e) => {
+                    if (!settings?.printer) return;
+                    setSettings({ ...settings, printer: { ...settings.printer, colunas: Number(e.target.value) || 48 } });
+                  }}
+                />
+                <p className="text-[11px] text-text-tertiary mt-1">Quantidade de colunas da impressora (Epson: 48, maioria: 48). Ajusta o layout do cupom automaticamente.</p>
+              </div>
             </div>
 
             <div className="mt-4 rounded-lg border border-border-primary p-4">
