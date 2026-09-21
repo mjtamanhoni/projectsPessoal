@@ -16,6 +16,7 @@ import api from '@/lib/api';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw, Clock, DollarSign, TrendingDown, User } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -128,6 +129,18 @@ export function Abatimentos() {
     }),
   ];
 
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Usuário', accessor: (row: Record<string, unknown>) => String(row.usuarioNome ?? '') },
+    { header: 'Cliente', accessor: (row: Record<string, unknown>) => String(row.clienteNome ?? '') },
+    { header: 'Serviço', accessor: (row: Record<string, unknown>) => String(row.servicoNome ?? '') },
+    { header: 'Data', accessor: (row: Record<string, unknown>) => formatDate(row.dataAbatimento as string) },
+    { header: 'Valor', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.valor ?? 0)) },
+    { header: 'Valor/Hora', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.valorHora ?? 0)) },
+    { header: 'Horas', accessor: (row: Record<string, unknown>) => formatHorasAbatidas(Number(row.quantidadeHoras ?? 0)) },
+    { header: 'Observações', accessor: (row: Record<string, unknown>) => String(row.observacoes ?? '-') },
+  ], []);
+
   const handleEdit = (abatimento: HoraAbatida) => {
     const id = abatimento.id ?? abatimento.codigo;
     if (!id) return;
@@ -178,6 +191,7 @@ export function Abatimentos() {
   return (
     <Layout>
       <PageHeader title="Abatimentos de Horas" subtitle="Registre abatimentos sobre o saldo de horas">
+        <PrintButton title="Abatimentos de Horas" data={abatimentosFiltrados} columns={printColumns} />
         <RegistroSelect<number>
           value={filtroUsuarioId ?? null}
           onChange={(v) => setFiltroUsuarioId(v)}

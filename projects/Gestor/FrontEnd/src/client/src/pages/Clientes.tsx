@@ -13,6 +13,7 @@ import type { Cliente } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import type { RowActionDef } from '@/components/ui/RowActions';
@@ -66,6 +67,14 @@ export function Clientes() {
       addToast('error', msg);
     }
   };
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'CPF/CNPJ', accessor: (row: Record<string, unknown>) => String(row.cpf_cnpj ?? (row as Record<string, unknown>).cnpj_cpf ?? '-') },
+    { header: 'Celular', accessor: (row: Record<string, unknown>) => String(row.celular ?? '-') },
+    { header: 'Email', accessor: (row: Record<string, unknown>) => String(row.email ?? '-') },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -192,6 +201,7 @@ export function Clientes() {
   return (
     <Layout>
       <PageHeader title="Clientes" subtitle="Gerencie seus clientes">
+        <PrintButton title="Clientes" data={clientesFiltrados} columns={printColumns} />
         <ShowForPermission rota="/clientes" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Novo Cliente

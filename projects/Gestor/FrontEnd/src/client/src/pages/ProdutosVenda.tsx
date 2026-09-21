@@ -18,6 +18,7 @@ import type { ProdutoVenda, ProdutoVendaItem } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { formatCurrency } from '@/lib/utils';
@@ -77,6 +78,33 @@ export function ProdutosVenda() {
       setLoadingItens((prev) => { const next = new Set(prev); next.delete(produtoVendaId); return next; });
     }
   }, [loadingItens]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Origem', accessor: (row: Record<string, unknown>) => String(row.produto_fabricado_nome ?? '-') },
+    { header: 'Classificação', accessor: (row: Record<string, unknown>) => String(row.produto_classificacao_nome ?? '-') },
+    { header: 'Preço', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.preco ?? 0)) },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.ativo ? 'Sim' : 'Não' },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = itens[id];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Itens do Produto de Venda',
+      columns: [
+        { header: 'Cód', accessor: (r: Record<string, unknown>) => String(r.id ?? r.codigo ?? '') },
+        { header: 'Item', accessor: (r: Record<string, unknown>) => String(r.nome ?? '') },
+        { header: 'Remover', accessor: (r: Record<string, unknown>) => r.pode_remover ? 'Sim' : 'Não' },
+        { header: 'Adicionar', accessor: (r: Record<string, unknown>) => r.pode_adicionar ? 'Sim' : 'Não' },
+        { header: 'Adicional de Preço', accessor: (r: Record<string, unknown>) => r.adicional_nome ? `${r.adicional_nome} — ${formatCurrency(Number(r.adicional_preco ?? 0))}` : 'Grátis' },
+        { header: 'Ordem', accessor: (r: Record<string, unknown>) => String(r.ordem ?? 0) },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [itens]);
 
   const columns = [
     columnHelper.display({
@@ -302,6 +330,7 @@ export function ProdutosVenda() {
   return (
     <Layout>
       <PageHeader title="Produtos de Venda" subtitle="Produtos comercializáveis com itens removíveis/adicionáveis">
+        <PrintButton title="Produtos de Venda" data={produtosFiltrados} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/produtos-venda" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Produto

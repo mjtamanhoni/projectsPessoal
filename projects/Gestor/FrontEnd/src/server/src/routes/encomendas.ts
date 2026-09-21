@@ -16,6 +16,16 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.get('/count', authMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    const result = await horseApi.countEncomendas();
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
 router.post('/', authMiddleware, validate(encomendaBodySchema), async (req: AuthRequest, res: Response) => {
   try {
     const body = req.body;

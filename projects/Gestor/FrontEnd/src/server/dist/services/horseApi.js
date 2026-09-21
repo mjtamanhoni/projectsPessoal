@@ -1478,6 +1478,15 @@ class HorseApiService {
             return this.handleError(error);
         }
     }
+    async countEncomendas() {
+        try {
+            const res = await this.api.get('/encomenda/count', { headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
     async salvarEncomendas(items, empresaId) {
         try {
             const header = (Array.isArray(items) ? items : [items])[0] ?? {};
@@ -1886,6 +1895,15 @@ class HorseApiService {
     async excluirEmpresa(id) {
         try {
             const res = await this.api.delete('/empresa', { params: { id }, headers: this.getAuthHeaders() });
+            return res.data;
+        }
+        catch (error) {
+            return this.handleError(error);
+        }
+    }
+    async toggleEmpresaIsOpen(id, isOpen) {
+        try {
+            const res = await this.api.post('/empresa/is-open', { id, is_open: isOpen }, { headers: this.getAuthHeaders() });
             return res.data;
         }
         catch (error) {

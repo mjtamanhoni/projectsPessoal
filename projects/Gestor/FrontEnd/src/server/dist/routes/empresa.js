@@ -79,5 +79,20 @@ router.post('/atualizar-sequencias', auth_1.authMiddleware, async (_req, res) =>
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
+router.post('/is-open', auth_1.authMiddleware, async (req, res) => {
+    try {
+        const { id, is_open } = req.body;
+        if (!id) {
+            res.status(400).json({ error: 'ID da empresa e obrigatorio' });
+            return;
+        }
+        const result = await horseApi_1.horseApi.toggleEmpresaIsOpen(Number(id), Number(is_open ?? 0));
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=empresa.js.map

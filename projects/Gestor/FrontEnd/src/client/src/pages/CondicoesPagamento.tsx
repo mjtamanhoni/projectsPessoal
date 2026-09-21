@@ -16,6 +16,7 @@ import type { CondicaoPagamento } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -40,6 +41,16 @@ export function CondicoesPagamento() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Descrição', accessor: (row: Record<string, unknown>) => String(row.descricao ?? '') },
+    { header: 'A Vista', accessor: (row: Record<string, unknown>) => row.a_vista === 1 ? 'Sim' : 'Não' },
+    { header: 'Parcelas', accessor: (row: Record<string, unknown>) => String(row.qtd_parcelas ?? '-') },
+    { header: '1o Venc.', accessor: (row: Record<string, unknown>) => String(row.dias_primeiro_vencimento ?? '-') },
+    { header: 'Intervalo', accessor: (row: Record<string, unknown>) => String(row.dias_intervalo ?? '-') },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.status === 1 ? 'Sim' : 'Não' },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -166,6 +177,7 @@ export function CondicoesPagamento() {
   return (
     <Layout>
       <PageHeader title="Condicoes de Pagamento" subtitle="Cadastro de condicoes de pagamento">
+        <PrintButton title="Condições de Pagamento" data={filtrados} columns={printColumns} />
         <ShowForPermission rota="/condicoes-pagamento" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Condicao

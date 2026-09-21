@@ -17,6 +17,7 @@ import type { ProdutoFabricado, ReceitaIngrediente, Insumo, Fabricacao, Adiciona
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { formatCurrency } from '@/lib/utils';
@@ -180,6 +181,34 @@ export function ProdutosFabricados() {
       setLoadingIngredientes((prev) => { const next = new Set(prev); next.delete(produtoId); return next; });
     }
   }, [loadingIngredientes, enrichIngredientes]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Unidade', accessor: (row: Record<string, unknown>) => String(row.unidade_medida ?? '-') },
+    { header: 'Custo Unit.', accessor: (row: Record<string, unknown>) => row.custo_unitario != null ? Number(row.custo_unitario).toFixed(6) : '-' },
+    { header: 'Margem (%)', accessor: (row: Record<string, unknown>) => row.margem_lucro != null ? `${Number(row.margem_lucro).toFixed(2)}%` : '-' },
+    { header: 'Venda Sugerido', accessor: (row: Record<string, unknown>) => row.valor_venda_sugerido != null ? formatCurrency(Number(row.valor_venda_sugerido)) : '-' },
+    { header: 'Preço', accessor: (row: Record<string, unknown>) => row.preco != null ? formatCurrency(Number(row.preco)) : '-' },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = ingredientes[id];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Ingredientes da Receita',
+      columns: [
+        { header: 'Cód', accessor: (r: Record<string, unknown>) => String(r.id ?? r.codigo ?? '') },
+        { header: 'Insumo', accessor: (r: Record<string, unknown>) => String(r.insumo_nome ?? '') },
+        { header: 'Un', accessor: (r: Record<string, unknown>) => String(r.insumo_unidade_medida ?? '-') },
+        { header: 'Quantidade', accessor: (r: Record<string, unknown>) => Number(r.quantidade ?? 0).toFixed(6) },
+        { header: 'Custo Med.', accessor: (r: Record<string, unknown>) => Number(r.insumo_custo_medio ?? 0).toFixed(6) },
+        { header: 'Valor Gasto', accessor: (r: Record<string, unknown>) => formatCurrency(Number(r.quantidade ?? 0) * Number(r.insumo_custo_medio ?? 0)) },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [ingredientes]);
 
   const columns = [
     columnHelper.display({
@@ -484,6 +513,7 @@ export function ProdutosFabricados() {
   return (
     <Layout>
       <PageHeader title="Produtos Fabricados" subtitle="Gerencie produtos fabricados">
+        <PrintButton title="Produtos Fabricados" data={produtosFiltrados} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/produtos-fabricados" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Produto

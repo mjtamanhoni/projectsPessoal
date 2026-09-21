@@ -86,6 +86,8 @@ func main() {
 	r.Post("/encomendaPublico/enderecoEntrega", producao.EncomendaPublicoSalvarEnderecoEntrega)
 	r.Get("/encomendaPublico/pagamentos", producao.EncomendaPublicoListarPagamentos)
 	r.Post("/encomendaPublico/pagamentos", producao.EncomendaPublicoSalvarPagamentos)
+	r.Post("/encomendaPublico/avaliar", producao.EncomendaPublicoAvaliar)
+	r.Get("/encomendaPublico/avaliacao", producao.EncomendaPublicoObterAvaliacao)
 	r.Get("/formaPagamentoPublico", producao.FormaPagamentoPublicoListar)
 	r.Get("/bandeiraCartaoPublico", basicCRUD.BandeiraCartaoPublicoListar)
 	r.Get("/apk/versao", apkHandler.VersaoPublico)
@@ -508,6 +510,7 @@ carregar();
 
 		// Encomenda
 		r.Get("/encomenda", producao.EncomendaListar)
+		r.Get("/encomenda/count", producao.EncomendaCount)
 		r.Post("/encomenda", producao.EncomendaAtualizar)
 		r.Delete("/encomenda", producao.EncomendaExcluir)
 		r.Post("/encomenda/gerarVenda", producao.EncomendaGerarVenda)
@@ -552,6 +555,7 @@ carregar();
 		r.Post("/empresa", basicCRUD.EmpresaAtualizar)
 		r.Put("/empresa", basicCRUD.EmpresaAtualizar)
 		r.Delete("/empresa", basicCRUD.EmpresaExcluir)
+		r.Post("/empresa/is-open", basicCRUD.EmpresaToggleIsOpen)
 		r.Post("/empresa/logomarca", basicCRUD.EmpresaLogomarcaSalvar)
 		r.Post("/empresa/limpar-dados", basicCRUD.EmpresaLimparDados)
 		r.Post("/empresa/atualizar-sequencias", basicCRUD.EmpresaAtualizarSequencias)

@@ -17,6 +17,7 @@ import api from '@/lib/api';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw, Clock, DollarSign, CalendarDays, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Users, User, Wrench, FileDown, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -416,6 +417,15 @@ export function HorasTrabalhadas() {
     return days;
   }, [calendarDate, horasPorDia, feriadosMap]);
 
+  const printColumns = useMemo(() => [
+    { header: 'Data', accessor: (row: Record<string, unknown>) => formatDate(row.dataServico as string) },
+    { header: 'Horário', accessor: (row: Record<string, unknown>) => `${formatTime(row.horaInicio as string)} - ${formatTime(row.horaTermino as string)}` },
+    { header: 'Horas', accessor: (row: Record<string, unknown>) => formatHoras(Number(row.quantidadeHoras ?? calcHoras(row.horaInicio as string, row.horaTermino as string))) },
+    { header: 'Valor/Hora', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.valorHora ?? 0)) },
+    { header: 'Total', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.totalHoras ?? (Number(row.quantidadeHoras ?? calcHoras(row.horaInicio as string, row.horaTermino as string)) * Number(row.valorHora ?? 0)))) },
+    { header: 'Observações', accessor: (row: Record<string, unknown>) => String(row.observacoes ?? '-') },
+  ], []);
+
   const columns = [
     columnHelper.accessor('dataServico', {
       header: 'Data',
@@ -710,6 +720,7 @@ export function HorasTrabalhadas() {
   return (
     <Layout>
       <PageHeader title="Horas Trabalhadas" subtitle="Gerencie horas trabalhadas">
+        <PrintButton title="Horas Trabalhadas" data={horasFiltradas} columns={printColumns} />
         <ShowForPermission rota="/horas-trabalhadas" acao={ACAO.EXPORTAR}>
           <Button variant="secondary" onClick={() => refetch()}>
             <RefreshCw size={18} /> Atualizar

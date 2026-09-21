@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import api from '@/lib/api';
 import type { UsuarioFormulario, Usuario, Formulario } from '@/types';
 import { Plus, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -38,6 +39,12 @@ export function UsuarioFormularios() {
 
   const getUsuarioNome = (id: number) => usuarios.find((u) => u.id === id)?.nome || '-';
   const getFormularioNome = (id: number) => formularios.find((f) => f.id === id)?.nome || '-';
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Usuário', accessor: (row: Record<string, unknown>) => String(row.usuarioNome || getUsuarioNome(row.usuarioId as number)) },
+    { header: 'Formulário', accessor: (row: Record<string, unknown>) => String(row.formularioNome || getFormularioNome(row.formularioId as number)) },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -121,6 +128,7 @@ export function UsuarioFormularios() {
   return (
     <Layout>
       <PageHeader title="Usuario x Formulario" subtitle="Vincule usuarios a formularios para controlar acesso">
+        <PrintButton title="Usuário x Formulário" data={itens} columns={printColumns} />
         <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
           <Plus size={18} /> Novo Vinculo
         </Button>

@@ -17,6 +17,7 @@ import type { Fabricacao, ProdutoFabricado, FabricacaoCustoAdicional, CustoAdici
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -72,6 +73,31 @@ export function Fabricacoes() {
       setLoadingCustos((prev) => { const next = new Set(prev); next.delete(fabricacaoId); return next; });
     }
   }, [loadingCustos]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Produto', accessor: (row: Record<string, unknown>) => String(row.produto_nome ?? '-') },
+    { header: 'Quantidade', accessor: (row: Record<string, unknown>) => row.quantidade_produzida != null ? Number(row.quantidade_produzida).toFixed(2) : '-' },
+    { header: 'Custo Insumos', accessor: (row: Record<string, unknown>) => row.custo_insumos != null ? formatCurrency(Number(row.custo_insumos)) : '-' },
+    { header: 'Custo Total', accessor: (row: Record<string, unknown>) => row.custo_total != null ? formatCurrency(Number(row.custo_total)) : '-' },
+    { header: 'Custo Unit.', accessor: (row: Record<string, unknown>) => row.custo_unitario != null ? formatCurrency(Number(row.custo_unitario)) : '-' },
+    { header: 'Data', accessor: (row: Record<string, unknown>) => formatDate(row.data_fabricacao as string) },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = custosAdicionais[id];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Custos Adicionais',
+      columns: [
+        { header: 'Cód', accessor: (r: Record<string, unknown>) => String(r.id ?? r.codigo ?? '') },
+        { header: 'Tipo de Custo', accessor: (r: Record<string, unknown>) => String(tipoCustoMap[r.custo_adicional_tipo_id as number]?.nome ?? r.custo_adicional_nome ?? '-') },
+        { header: 'Valor', accessor: (r: Record<string, unknown>) => formatCurrency(Number(r.valor ?? 0)) },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [custosAdicionais, tipoCustoMap]);
 
   const columns = [
     columnHelper.display({
@@ -318,6 +344,7 @@ export function Fabricacoes() {
   return (
     <Layout>
       <PageHeader title="Fabricações" subtitle="Gerencie as fabricações">
+        <PrintButton title="Fabricações" data={fabricacoesFiltradas} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/fabricacoes" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Nova Fabricacao

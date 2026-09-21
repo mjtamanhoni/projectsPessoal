@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +13,7 @@ import type { ContaPagar, Fornecedor, Categoria } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, CheckCircle, RotateCcw, Filter, RefreshCw, AlertTriangle } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 
@@ -224,6 +225,14 @@ export function ContasPagar() {
     setReviewInfo(null);
   };
 
+  const printColumns = useMemo(() => [
+    { header: 'Descrição', accessor: (row: Record<string, unknown>) => String(row.descricao ?? '') },
+    { header: 'Fornecedor', accessor: (row: Record<string, unknown>) => String(row.fornecedorNome ?? '-') },
+    { header: 'Valor', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.valor ?? 0)) },
+    { header: 'Vencimento', accessor: (row: Record<string, unknown>) => formatDate(row.dataVencimento as string) },
+    { header: 'Status', accessor: (row: Record<string, unknown>) => row.pago ? 'Pago' : isOverdue(row.dataVencimento as string) ? 'Atrasado' : 'Pendente' },
+  ], []);
+
   const columns = [
     columnHelper.accessor('descricao', {
       header: 'Descrição',
@@ -302,6 +311,7 @@ export function ContasPagar() {
   return (
     <Layout>
       <PageHeader title="Contas a Pagar" subtitle="Gerencie suas contas a pagar">
+        <PrintButton title="Contas a Pagar" data={contas} columns={printColumns} />
         <ShowForPermission rota="/contas-pagar" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}><Plus size={18} /> Nova Conta</Button>
         </ShowForPermission>

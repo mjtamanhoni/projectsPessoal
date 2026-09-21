@@ -16,6 +16,7 @@ import type { FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao } from '
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, RefreshCw, Link } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import api from '@/lib/api';
@@ -97,6 +98,27 @@ export function FormasPagamento() {
       addToast('error', msg);
     }
   };
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Descrição', accessor: (row: Record<string, unknown>) => String(row.descricao ?? '') },
+    { header: 'Classificação', accessor: (row: Record<string, unknown>) => String(row.classificacao ?? '') },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.status === 1 ? 'Sim' : 'Não' },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = condicoesDaForma;
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Condições de Pagamento Associadas',
+      columns: [
+        { header: 'Condição', accessor: (r: Record<string, unknown>) => String(r.condicao_pagamento_descricao ?? '') },
+        { header: 'Tipo', accessor: (r: Record<string, unknown>) => r.a_vista === 1 ? 'A Vista' : `${r.qtd_parcelas}x` },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [condicoesDaForma]);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -246,6 +268,7 @@ export function FormasPagamento() {
   return (
     <Layout>
       <PageHeader title="Formas de Pagamento" subtitle="Cadastro de formas de pagamento">
+        <PrintButton title="Formas de Pagamento" data={filtradas} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/formas-pagamento" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Forma

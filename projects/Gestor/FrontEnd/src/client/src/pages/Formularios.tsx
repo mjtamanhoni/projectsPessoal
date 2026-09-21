@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +13,7 @@ import type { Formulario } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -26,6 +27,11 @@ export function Formularios() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -105,6 +111,7 @@ export function Formularios() {
   return (
     <Layout>
       <PageHeader title="Formularios" subtitle="Gerencie seus formularios">
+        <PrintButton title="Formulários" data={formularios} columns={printColumns} />
         <ShowForPermission rota="/formularios" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Formulario

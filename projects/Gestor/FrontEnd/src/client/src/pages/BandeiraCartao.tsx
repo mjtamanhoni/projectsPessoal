@@ -16,6 +16,8 @@ import type { BandeiraCartao } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -40,6 +42,12 @@ export function BandeiraCartaoPage() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Status', accessor: (row: Record<string, unknown>) => row.status === 1 ? 'Ativo' : 'Inativo' },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -142,6 +150,7 @@ export function BandeiraCartaoPage() {
   return (
     <Layout>
       <PageHeader title="Bandeiras de Cartao" subtitle="Cadastro de bandeiras de cartao">
+        <PrintButton title="Bandeiras de Cartão" data={bandeirasFiltradas} columns={printColumns} />
         <ShowForPermission rota="/bandeiras-cartao" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Bandeira

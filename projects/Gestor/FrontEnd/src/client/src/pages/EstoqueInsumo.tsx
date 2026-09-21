@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -13,10 +13,12 @@ import type { EstoqueInsumo, Insumo } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
-import { formatDate } from '@/lib/utils';
 import { getDecimalPlaces } from '@/lib/settings';
+import { formatCurrency } from '@/lib/utils';
 
 const columnHelper = createColumnHelper<EstoqueInsumo>();
 
@@ -29,6 +31,13 @@ export function EstoqueInsumo() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Insumo', accessor: (row: Record<string, unknown>) => String(row.insumo_nome ?? '-') },
+    { header: 'Quantidade', accessor: (row: Record<string, unknown>) => row.quantidade != null ? Number(row.quantidade).toFixed(getDecimalPlaces()).replace('.', ',') : '-' },
+    { header: 'Data Atualização', accessor: (row: Record<string, unknown>) => formatDate(row.data_atualizacao as string) },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -124,6 +133,7 @@ export function EstoqueInsumo() {
   return (
     <Layout>
       <PageHeader title="Estoque de Insumos" subtitle="Gerencie o estoque de insumos">
+        <PrintButton title="Estoque de Insumos" data={estoques} columns={printColumns} />
         <ShowForPermission rota="/estoque-insumo" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Movimento

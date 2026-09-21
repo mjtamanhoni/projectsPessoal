@@ -16,6 +16,7 @@ import type { ProdutoClassificacao } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -40,6 +41,12 @@ export function ProdutoClassificacoes() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.status === 1 ? 'Sim' : 'Não' },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -134,6 +141,7 @@ export function ProdutoClassificacoes() {
   return (
     <Layout>
       <PageHeader title="Classificação de Produtos" subtitle="Cadastro de classificações de produtos">
+        <PrintButton title="Classificação de Produtos" data={classificacoesFiltradas} columns={printColumns} />
         <ShowForPermission rota="/produto-classificacao" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Classificação

@@ -1505,6 +1505,15 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     }
   }
 
+  async countEncomendas(): Promise<{ count: number; max_id: number }> {
+    try {
+      const res = await this.api.get('/encomenda/count', { headers: this.getAuthHeaders() });
+      return res.data as { count: number; max_id: number };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async salvarEncomendas(items: Encomenda[], empresaId?: number): Promise<unknown> {
     try {
       const header = (Array.isArray(items) ? items : [items])[0] ?? {} as Encomenda;
@@ -1910,6 +1919,15 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
   async excluirEmpresa(id: number): Promise<unknown> {
     try {
       const res = await this.api.delete('/empresa', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async toggleEmpresaIsOpen(id: number, isOpen: number): Promise<unknown> {
+    try {
+      const res = await this.api.post('/empresa/is-open', { id, is_open: isOpen }, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);

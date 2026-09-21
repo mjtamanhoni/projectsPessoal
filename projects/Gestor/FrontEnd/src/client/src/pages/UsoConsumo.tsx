@@ -16,6 +16,7 @@ import type { UsoConsumo } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -37,6 +38,14 @@ export function UsoConsumoPage() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Produto', accessor: (row: Record<string, unknown>) => String(row.produto_nome ?? '') },
+    { header: 'Quantidade', accessor: (row: Record<string, unknown>) => String(row.quantidade ?? '') },
+    { header: 'Data', accessor: (row: Record<string, unknown>) => String(row.data_uso ?? '') },
+    { header: 'Motivo', accessor: (row: Record<string, unknown>) => String(row.motivo ?? '') },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -130,6 +139,7 @@ export function UsoConsumoPage() {
   return (
     <Layout>
       <PageHeader title="Uso e Consumo" subtitle="Registro de uso e consumo de insumos">
+        <PrintButton title="Uso e Consumo" data={consumosFiltrados} columns={printColumns} />
         <ShowForPermission rota="/uso-consumo" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Novo Uso

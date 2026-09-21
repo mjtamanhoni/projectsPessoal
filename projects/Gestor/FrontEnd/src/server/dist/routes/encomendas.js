@@ -16,6 +16,16 @@ router.get('/', auth_1.authMiddleware, async (req, res) => {
         res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
     }
 });
+router.get('/count', auth_1.authMiddleware, async (_req, res) => {
+    try {
+        const result = await horseApi_1.horseApi.countEncomendas();
+        res.json(result);
+    }
+    catch (error) {
+        const status = error instanceof Error && 'status' in error ? error.status : 500;
+        res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    }
+});
 router.post('/', auth_1.authMiddleware, (0, validate_1.validate)(schemas_1.encomendaBodySchema), async (req, res) => {
     try {
         const body = req.body;

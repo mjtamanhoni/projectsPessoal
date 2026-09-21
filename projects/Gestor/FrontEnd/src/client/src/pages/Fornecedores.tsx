@@ -16,6 +16,7 @@ import type { Fornecedor } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -42,6 +43,14 @@ export function Fornecedores() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Telefone', accessor: (row: Record<string, unknown>) => String(row.telefone ?? '-') },
+    { header: 'Celular', accessor: (row: Record<string, unknown>) => String(row.celular ?? '-') },
+    { header: 'Email', accessor: (row: Record<string, unknown>) => String(row.email ?? '-') },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -146,6 +155,7 @@ export function Fornecedores() {
   return (
     <Layout>
       <PageHeader title="Fornecedores" subtitle="Gerencie seus fornecedores">
+        <PrintButton title="Fornecedores" data={fornecedoresFiltrados} columns={printColumns} />
         <ShowForPermission rota="/fornecedores" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Novo Fornecedor

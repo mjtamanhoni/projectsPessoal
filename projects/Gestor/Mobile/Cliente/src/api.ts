@@ -14,6 +14,8 @@ export interface EmpresaPublic {
   chave_pix?: string;
   logomarca?: string;
   delivery?: number;
+  total_encomendas?: number;
+  is_open?: number;
 }
 
 export interface Cliente {
@@ -134,6 +136,16 @@ export interface Encomenda {
   bandeira_cartao_nome?: string;
   endereco_entrega?: EnderecoEntrega;
   pagamentos?: EncomendaPagamento[];
+  avaliacao_nota?: number | null;
+  avaliacao_id?: number | null;
+  avaliacao_justificativa?: string | null;
+}
+
+export interface AvaliacaoEncomenda {
+  avaliada: boolean;
+  nota?: number;
+  justificativa?: string;
+  created_at?: string;
 }
 
 export interface EnderecoEntrega {
@@ -499,6 +511,9 @@ export async function listarEncomendasPublicas(
           longitude: row.eee_longitude != null ? Number(row.eee_longitude) : undefined,
           place_id: row.eee_place_id ? String(row.eee_place_id) : undefined,
         } : undefined,
+        avaliacao_nota: row.avaliacao_nota != null ? Number(row.avaliacao_nota) : null,
+        avaliacao_id: row.avaliacao_id != null ? Number(row.avaliacao_id) : null,
+        avaliacao_justificativa: row.avaliacao_justificativa ? String(row.avaliacao_justificativa) : null,
       };
       porId.set(id, e);
     }
@@ -715,4 +730,53 @@ export async function verificarVersao(): Promise<VersaoInfo | null> {
   } catch {
     return null;
   }
+}
+
+export async function avaliarEncomenda(
+  empresaId: number,
+  encomendaId: number,
+  clienteId: number,
+  nota: number,
+  justificativa?: string,
+): Promise<{ mensagem: string; nota: number } | null> {
+  const servers = getServerList();
+  for (const srv of servers) {
+    try {
+      const url = `http://${srv.host}:${srv.port}/encomendaPublico/avaliar`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empresa: empresaId,
+          encomenda_id: encomendaId,
+          cliente_id: clienteId,
+          nota,
+          justificativa: justificativa || '',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.mensagem) return data as { mensagem: string; nota: number };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+export async function obterAvaliacao(
+  empresaId: number,
+  encomendaId: number,
+): Promise<AvaliacaoEncomenda | null> {
+  const servers = getServerList();
+  for (const srv of servers) {
+    try {
+      const url = `http://${srv.host}:${srv.port}/encomendaPublico/avaliacao?empresa=${empresaId}&encomenda_id=${encomendaId}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (res.ok && data?.avaliada !== undefined) return data as AvaliacaoEncomenda;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }

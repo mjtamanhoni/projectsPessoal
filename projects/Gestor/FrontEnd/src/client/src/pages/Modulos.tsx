@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +13,7 @@ import type { Modulo, ModuloFormulario, Formulario } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import api from '@/lib/api';
@@ -52,6 +53,26 @@ export function Modulos() {
       setLoadingVinculos((prev) => { const next = new Set(prev); next.delete(moduloId); return next; });
     }
   }, [loadingVinculos]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Descrição', accessor: (row: Record<string, unknown>) => String(row.descricao ?? '-') },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const mid = (row.id ?? row.codigo) as number;
+    const list = vinculos[mid];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Formulários',
+      columns: [
+        { header: 'Cód.', accessor: (r: Record<string, unknown>) => String(r.formulario_id ?? r.id ?? '') },
+        { header: 'Formulário', accessor: (r: Record<string, unknown>) => String(r.formulario_nome ?? r.nome ?? '') },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [vinculos]);
 
   const columns = [
     columnHelper.display({
@@ -227,6 +248,7 @@ export function Modulos() {
   return (
     <Layout>
       <PageHeader title="Modulos" subtitle="Gerencie os modulos do sistema">
+        <PrintButton title="Módulos" data={modulos} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/modulos" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Modulo

@@ -23,10 +23,11 @@ export function ModuloSelector() {
   const { menuData, menuLoading, menuError, refetchMenu, selectModule } = useModule();
   const navigate = useNavigate();
   const appMode = useAppMode();
-  const { irrestrito, permissoes, empresa } = useAuth();
+  const { irrestrito, permissoes, empresa, isSuperadmin } = useAuth();
 
   useEffect(() => {
     if (irrestrito) return;
+    if (isSuperadmin) return;
     if (!permissoes || permissoes.length === 0) return;
 
     const targetForm = permissoes.find((p) => p.formulario_start === 1) || permissoes[0];
@@ -36,11 +37,12 @@ export function ModuloSelector() {
     const mod = menuData.find((m) => m.formularios.some((f) => f.nome === targetForm.nome));
     if (mod) selectModule(mod);
     navigate(route, { replace: true });
-  }, [irrestrito, permissoes, navigate, menuData, selectModule]);
+  }, [irrestrito, isSuperadmin, permissoes, navigate, menuData, selectModule]);
 
   useEffect(() => {
     if (menuLoading || !menuData.length) return;
     if (!appMode) return;
+    if (isSuperadmin) return;
 
     const modName = MODE_MODULE_MAP[appMode];
     const mod = menuData.find((m) => normalizeKey(m.nome) === normalizeKey(modName));
@@ -52,7 +54,7 @@ export function ModuloSelector() {
       const route = formRouteMap[target.nome];
       if (route) navigate(route, { replace: true });
     }
-  }, [menuLoading, menuData, appMode, selectModule, navigate]);
+  }, [menuLoading, menuData, appMode, isSuperadmin, selectModule, navigate]);
 
   useEffect(() => {
     if (menuLoading || !menuData.length) return;
@@ -62,6 +64,9 @@ export function ModuloSelector() {
 
     const isDelivery = empresa?.delivery === 1;
     if (isDelivery) {
+      if (isSuperadmin) {
+        return;
+      }
       const rota = '/acompanhar-encomendas';
       const mod = menuData.find((m) =>
         m.formularios.some((f) => formRouteMap[f.nome] === rota),
@@ -75,6 +80,7 @@ export function ModuloSelector() {
     }
 
     fetchSettings().then((settings) => {
+      if (isSuperadmin) return;
       const moduloId = settings?.display?.moduloInicialId;
       const formularioId = settings?.display?.formularioInicialId;
       if (!moduloId || !formularioId) return;
@@ -92,7 +98,7 @@ export function ModuloSelector() {
       selectModule(mod);
       navigate(route, { replace: true });
     }).catch(() => {});
-  }, [menuLoading, menuData, irrestrito, appMode, selectModule, navigate, empresa]);
+  }, [menuLoading, menuData, irrestrito, appMode, selectModule, navigate, empresa, isSuperadmin]);
 
   const handleSelect = (mod: typeof menuData[0]) => {
     selectModule(mod);

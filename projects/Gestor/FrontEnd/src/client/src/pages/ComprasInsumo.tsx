@@ -16,6 +16,7 @@ import type { CompraInsumo, CompraInsumoItem, Fornecedor, Insumo, Marca } from '
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw, ChevronRight } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { formatCurrency, formatDate, formatDecimals } from '@/lib/utils';
@@ -107,6 +108,32 @@ export function ComprasInsumo() {
       </table>
     );
   }, [loadedItens, insumos]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Fornecedor', accessor: (row: Record<string, unknown>) => String(row.fornecedor_nome ?? '-') },
+    { header: 'Data', accessor: (row: Record<string, unknown>) => formatDate(row.data_compra as string) },
+    { header: 'Qtd. Itens', accessor: (row: Record<string, unknown>) => String(row.qtd_itens ?? '') },
+    { header: 'Valor Total', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.valor_total ?? 0)) },
+    { header: 'Observação', accessor: (row: Record<string, unknown>) => String(row.observacao ?? '-') },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = loadedItens[id];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Itens da Compra',
+      columns: [
+        { header: 'Insumo', accessor: (r: Record<string, unknown>) => String(r.insumo_nome ?? '') },
+        { header: 'Marca', accessor: (r: Record<string, unknown>) => String(r.marca_nome ?? '-') },
+        { header: 'Qtd.', accessor: (r: Record<string, unknown>) => String(Number(r.quantidade ?? 0).toFixed(2).replace('.', ',')) },
+        { header: 'Valor Unit.', accessor: (r: Record<string, unknown>) => formatDecimals(Number(r.valor_unitario ?? 0), 4) },
+        { header: 'Valor Total', accessor: (r: Record<string, unknown>) => formatCurrency(Number(r.valor_total ?? 0)) },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [loadedItens]);
 
   const columns = [
     columnHelper.display({
@@ -234,6 +261,7 @@ export function ComprasInsumo() {
   return (
     <Layout>
       <PageHeader title="Compras de Insumos" subtitle="Gerencie compras de insumos">
+        <PrintButton title="Compras de Insumos" data={comprasFiltradas} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/compras-insumo" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Compra

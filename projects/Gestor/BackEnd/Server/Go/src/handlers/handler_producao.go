@@ -1365,7 +1365,8 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 			eee.cidade as eee_cidade, eee.uf as eee_uf,
 			eee.retira_estabelecimento as eee_retira_estabelecimento,
 			eee.latitude as eee_latitude, eee.longitude as eee_longitude,
-			eee.place_id as eee_place_id
+			eee.place_id as eee_place_id,
+			ea.nota as avaliacao_nota, ea.id as avaliacao_id, ea.justificativa as avaliacao_justificativa
 			FROM encomenda e
 			JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
 			LEFT JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
@@ -1373,6 +1374,7 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 			LEFT JOIN produto_venda pv ON pv.id = ei.produto_venda_id AND pv.empresa_id = ei.empresa_id
 			LEFT JOIN forma_pagamento fp ON fp.id = e.forma_pagamento_id AND fp.empresa_id = e.empresa_id
 			LEFT JOIN encomenda_endereco_entrega eee ON eee.encomenda_id = e.id AND eee.empresa_id = e.empresa_id
+			LEFT JOIN encomenda_avaliacao ea ON ea.encomenda_id = e.id AND ea.empresa_id = e.empresa_id
 			WHERE 1=1`
 		if id > 0 {
 			query += fmt.Sprintf(" AND e.id = $%d", argN)
@@ -1411,11 +1413,13 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 			eee.cidade as eee_cidade, eee.uf as eee_uf,
 			eee.retira_estabelecimento as eee_retira_estabelecimento,
 			eee.latitude as eee_latitude, eee.longitude as eee_longitude,
-			eee.place_id as eee_place_id
+			eee.place_id as eee_place_id,
+			ea.nota as avaliacao_nota, ea.id as avaliacao_id, ea.justificativa as avaliacao_justificativa
 			FROM encomenda e
 			LEFT JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
 			LEFT JOIN forma_pagamento fp ON fp.id = e.forma_pagamento_id AND fp.empresa_id = e.empresa_id
 			LEFT JOIN encomenda_endereco_entrega eee ON eee.encomenda_id = e.id AND eee.empresa_id = e.empresa_id
+			LEFT JOIN encomenda_avaliacao ea ON ea.encomenda_id = e.id AND ea.empresa_id = e.empresa_id
 			LEFT JOIN LATERAL (
 				SELECT COUNT(*) as qtd_itens, SUM(ei.valor_total) as total_valor
 				FROM encomenda_item ei
@@ -1448,6 +1452,21 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 		return
 	}
 	jsonSuccess(w, rowsToMap(rows))
+}
+
+func (h *ProducaoHandler) EncomendaCount(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaID(r)
+	var count int
+	var maxID int
+	err := h.Pool.QueryRow(r.Context(),
+		`SELECT COUNT(*), COALESCE(MAX(id), 0)
+		 FROM encomenda
+		 WHERE (empresa_id = $1 OR $1 = 0)`, empresaID).Scan(&count, &maxID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"count": count, "max_id": maxID})
 }
 
 func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Request) {
@@ -2069,11 +2088,24 @@ func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx
 			}
 		}
 
+		if catID > 0 {
+			var catExists bool
+			tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM categoria_receber WHERE id = $1 AND empresa_id = $2)`, catID, empresaID).Scan(&catExists)
+			if !catExists {
+				catID = 0
+			}
+		}
+
 		var dataRecebimento interface{}
 		var valorBaixa float64
 		if recebido {
 			dataRecebimento = dataOuNil(vencimento)
 			valorBaixa = totalValor
+		}
+
+		var catIDPtr interface{} = catID
+		if catID == 0 {
+			catIDPtr = nil
 		}
 
 		var crID int
@@ -2088,7 +2120,7 @@ func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx
 			VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,$9,$10,$11::date,$12)
 			RETURNING id
 		`, crID, empresaID, usuarioID, clienteID,
-			descricao, totalValor, vencimento, recebido, catID, vendaID,
+			descricao, totalValor, vencimento, recebido, catIDPtr, vendaID,
 			dataRecebimento, valorBaixa).Scan(&crID)
 		if err != nil {
 			return 0, err

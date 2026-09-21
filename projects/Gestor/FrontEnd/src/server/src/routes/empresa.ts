@@ -79,4 +79,19 @@ router.post('/atualizar-sequencias', authMiddleware, async (_req: AuthRequest, r
   }
 });
 
+router.post('/is-open', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, is_open } = req.body;
+    if (!id) {
+      res.status(400).json({ error: 'ID da empresa e obrigatorio' });
+      return;
+    }
+    const result = await horseApi.toggleEmpresaIsOpen(Number(id), Number(is_open ?? 0));
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
 export default router;

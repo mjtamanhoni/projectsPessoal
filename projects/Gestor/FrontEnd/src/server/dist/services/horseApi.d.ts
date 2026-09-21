@@ -126,6 +126,10 @@ declare class HorseApiService {
     }): Promise<unknown>;
     excluirVendaProduto(id: number): Promise<unknown>;
     listarEncomendas(params?: Record<string, unknown>): Promise<Encomenda[]>;
+    countEncomendas(): Promise<{
+        count: number;
+        max_id: number;
+    }>;
     salvarEncomendas(items: Encomenda[], empresaId?: number): Promise<unknown>;
     excluirEncomenda(id: number): Promise<unknown>;
     gerarVendaDeEncomenda(data: {
@@ -178,6 +182,7 @@ declare class HorseApiService {
     }): Promise<unknown>;
     testEmpresaModulo(empresa_id: number, modulo_id: number): Promise<unknown>;
     excluirEmpresa(id: number): Promise<unknown>;
+    toggleEmpresaIsOpen(id: number, isOpen: number): Promise<unknown>;
     limparDadosEmpresa(empresaId: number): Promise<unknown>;
     listarPerdasInsumo(params?: Record<string, unknown>): Promise<PerdaInsumo[]>;
     salvarPerdasInsumo(items: PerdaInsumo[]): Promise<unknown>;

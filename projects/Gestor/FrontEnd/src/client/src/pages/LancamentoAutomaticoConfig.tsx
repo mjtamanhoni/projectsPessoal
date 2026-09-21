@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +13,7 @@ import type { LancamentoAutomaticoConfig, Categoria } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import api from '@/lib/api';
@@ -45,6 +46,15 @@ export function LancamentoAutomaticoConfigPage() {
       setCategoriasReceber(Array.isArray(receber.data) ? receber.data : []);
     }).catch(() => {});
   }, []);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Origem', accessor: (row: Record<string, unknown>) => String(origemLabels[row.tipo_origem as string] ?? row.tipo_origem ?? '') },
+    { header: 'Tipo', accessor: (row: Record<string, unknown>) => row.tipo_lancamento === 'pagar' ? 'Contas a Pagar' : 'Contas a Receber' },
+    { header: 'Categoria ID', accessor: (row: Record<string, unknown>) => String(row.categoria_id ?? '') },
+    { header: 'Dias Venc.', accessor: (row: Record<string, unknown>) => String(row.dias_vencimento ?? '') },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.ativo ? 'Sim' : 'Não' },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -142,6 +152,7 @@ export function LancamentoAutomaticoConfigPage() {
   return (
     <Layout>
       <PageHeader title="Lancamentos Automaticos" subtitle="Configure as categorias para lancamentos automaticos no financeiro">
+        <PrintButton title="Lançamentos Automáticos" data={configs} columns={printColumns} />
         <ShowForPermission rota="/lancamento-automatico-config" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Nova Configuracao

@@ -23,6 +23,7 @@ import type { UsuarioInput } from '@/schemas';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, KeyRound, RefreshCw, Trash2 } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import api from '@/lib/api';
@@ -81,6 +82,26 @@ export function Usuarios() {
   }, []);
 
   useEffect(() => { refreshFormularios(); }, [refreshFormularios]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Email', accessor: (row: Record<string, unknown>) => String(row.email ?? '-') },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = ufMap[id];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Formulários Vinculados',
+      columns: [
+        { header: 'Cód', accessor: (r: Record<string, unknown>) => String(r.id ?? r.codigo ?? '') },
+        { header: 'Formulário', accessor: (r: Record<string, unknown>) => String(r.formularioNome ?? '') },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [ufMap]);
 
   const columns = [
     columnHelper.display({
@@ -322,6 +343,7 @@ export function Usuarios() {
   return (
     <Layout>
       <PageHeader title="Usuarios" subtitle="Gerencie os usuarios do sistema">
+        <PrintButton title="Usuários" data={usuariosFiltrados} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/usuarios" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Usuario

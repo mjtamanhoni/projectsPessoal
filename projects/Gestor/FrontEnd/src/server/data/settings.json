@@ -5,7 +5,7 @@
     "protocol": "http"
   },
   "rateLimit": {
-    "max": 1000
+    "max": 10000
   },
   "empresa": {
     "1": {
@@ -78,7 +78,7 @@
         },
         "moduloInicialId": 4,
         "formularioInicialId": 46,
-        "encomendasRefreshSegundos": 5
+        "encomendasRefreshSegundos": 10
       },
       "sessionTimeout": 30,
       "financeiro": {
@@ -111,6 +111,51 @@
       "empresaEndereco": "Rua João Tozzi, 14 - Carlos Germano Naumann - Colatina-Es",
       "rateLimit": {
         "max": 1000
+      }
+    },
+    "3": {
+      "rateLimit": {
+        "max": 1000
+      },
+      "display": {
+        "grid": {
+          "defaultPageSize": 10,
+          "pageSizeOptions": [
+            5,
+            10,
+            15,
+            20,
+            30,
+            50
+          ]
+        },
+        "number": {
+          "decimalPlaces": 4
+        },
+        "encomendasRefreshSegundos": 10
+      },
+      "sessionTimeout": 30,
+      "printer": {
+        "modelo": 0,
+        "porta": "TS002",
+        "deviceParams": "",
+        "colunas": 48,
+        "espacoEntreLinhas": 0,
+        "linhasBuffer": 0,
+        "linhasPular": 0,
+        "cortarPapel": true,
+        "controlePorta": false,
+        "paginaCodigo": 2,
+        "barrasLargura": 2,
+        "barrasAltura": 100,
+        "barrasHRI": true,
+        "qrcodeTipo": 2,
+        "qrcodeLarguraModulo": 6,
+        "qrcodeErrorLevel": 2,
+        "logoKC1": 0,
+        "logoKC2": 0,
+        "logoFatorX": 0,
+        "logoFatorY": 0
       }
     }
   }

@@ -46,7 +46,7 @@ router.get('/permissoes', authMiddleware, async (req: AuthRequest, res: Response
       return;
     }
 
-    res.json({ irrestrito: false, formularios: data, isSuperadmin });
+    res.json({ irrestrito: isSuperadmin, formularios: data, isSuperadmin });
   } catch (error: unknown) {
     console.error('[permissoes] Erro ao buscar permissoes:', error);
     res.json({ irrestrito: true, formularios: [], isSuperadmin: req.isSuperadmin ?? false });

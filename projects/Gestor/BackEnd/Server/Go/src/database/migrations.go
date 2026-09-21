@@ -653,6 +653,48 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "025_encomenda_avaliacao",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.encomenda_avaliacao (
+				empresa_id      INTEGER NOT NULL,
+				id              INTEGER NOT NULL,
+				encomenda_id    INTEGER NOT NULL,
+				cliente_id      INTEGER NOT NULL,
+				nota            SMALLINT NOT NULL CHECK (nota BETWEEN 1 AND 5),
+				justificativa   TEXT,
+				created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+				PRIMARY KEY (empresa_id, id),
+				UNIQUE (empresa_id, encomenda_id)
+			);
+
+			DO $$
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1 FROM information_schema.table_constraints
+					WHERE table_name = 'encomenda_avaliacao' AND constraint_name = 'fk_encomenda_avaliacao_encomenda'
+				) THEN
+					ALTER TABLE public.encomenda_avaliacao
+						ADD CONSTRAINT fk_encomenda_avaliacao_encomenda
+						FOREIGN KEY (empresa_id, encomenda_id)
+						REFERENCES public.encomenda(empresa_id, id) ON DELETE CASCADE;
+				END IF;
+			END $$;
+
+			DO $$
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1 FROM information_schema.table_constraints
+					WHERE table_name = 'encomenda_avaliacao' AND constraint_name = 'fk_encomenda_avaliacao_cliente'
+				) THEN
+					ALTER TABLE public.encomenda_avaliacao
+						ADD CONSTRAINT fk_encomenda_avaliacao_cliente
+						FOREIGN KEY (empresa_id, cliente_id)
+						REFERENCES public.cliente(empresa_id, id) ON DELETE CASCADE;
+				END IF;
+			END $$;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

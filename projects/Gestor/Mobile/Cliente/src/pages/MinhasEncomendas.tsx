@@ -16,6 +16,7 @@ import {
 import { useSessao } from '../auth';
 import BackButton from '../components/BackButton';
 import CupomModal from '../components/CupomModal';
+import AvaliacaoModal from '../components/AvaliacaoModal';
 import PersonalizarModal from '../components/PersonalizarModal';
 import PlusButton from '../components/PlusButton';
 import RowMenu from '../components/RowMenu';
@@ -71,6 +72,7 @@ export default function MinhasEncomendas() {
   const [erro, setErro] = useState('');
   const [expandida, setExpandida] = useState<number | null>(null);
   const [cupomDe, setCupomDe] = useState<Encomenda | null>(null);
+  const [avaliacaoDe, setAvaliacaoDe] = useState<Encomenda | null>(null);
   const [filtroStatus, setFiltroStatus] = useState<number[]>([0, 1, 2, 3]);
   const [cancelarDe, setCancelarDe] = useState<Encomenda | null>(null);
   const [cancelando, setCancelando] = useState(false);
@@ -256,6 +258,11 @@ export default function MinhasEncomendas() {
         {e.observacao && (
           <div style={{ padding: '4px 8px 0', fontSize: 10, color: '#B0B0B0' }}>Obs.: {e.observacao}</div>
         )}
+        {e.avaliacao_nota && e.avaliacao_nota <= 3 && e.avaliacao_justificativa && (
+          <div style={{ padding: '4px 8px 0', fontSize: 10, color: '#facc15' }}>
+            Avaliação: {'★'.repeat(e.avaliacao_nota)} — {e.avaliacao_justificativa}
+          </div>
+        )}
         <div className="compra-sub-total">Total: {formatarMoeda(Number(e.valor_total) || 0)}</div>
       </div>
     );
@@ -373,6 +380,11 @@ export default function MinhasEncomendas() {
                       <span style={estiloBadge(status)}>{etapa.label}</span>
                       {' • '}
                       {nItens} {nItens === 1 ? 'item' : 'itens'}
+                      {e.avaliacao_nota ? (
+                        <span style={{ marginLeft: 6, color: '#facc15', fontSize: 12 }}>
+                          {'★'.repeat(e.avaliacao_nota)}{'☆'.repeat(5 - e.avaliacao_nota)}
+                        </span>
+                      ) : null}
                     </div>
                     {e.pagamentos && e.pagamentos.length > 0 ? (
                       <div style={{ fontSize: 11, color: '#B0B0B0', padding: '2px 0' }}>
@@ -435,6 +447,9 @@ export default function MinhasEncomendas() {
                           : []),
                         ...(status >= 3
                           ? [{ rotulo: 'Ver Cupom', cor: '#10b981', onPress: () => setCupomDe(e) }]
+                          : []),
+                        ...(status === 4 && !e.avaliacao_nota
+                          ? [{ rotulo: 'Avaliar Atendimento', cor: '#facc15', onPress: () => setAvaliacaoDe(e) }]
                           : []),
                         ...(podeCancelar(e)
                           ? [{ rotulo: 'Cancelar Encomenda', cor: '#FF3B30', onPress: () => setCancelarDe(e) }]
@@ -505,6 +520,16 @@ export default function MinhasEncomendas() {
           cliente={cliente}
           encomenda={cupomDe}
           onClose={() => setCupomDe(null)}
+        />
+      )}
+
+      {avaliacaoDe && (
+        <AvaliacaoModal
+          empresaId={empresa.id}
+          clienteId={cliente.id!}
+          encomenda={avaliacaoDe}
+          onClose={() => setAvaliacaoDe(null)}
+          onAvaliado={() => carregar()}
         />
       )}
 

@@ -17,6 +17,7 @@ import type { VendaProduto, VendaProdutoItem, ProdutoFabricado, ProdutoVenda, Cl
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, RefreshCw, FileText, DollarSign, AlertTriangle } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDate, formatDecimals, parseItemCustomizacao, formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
@@ -273,6 +274,32 @@ export function VendasProduto() {
     setReviewInfo(null);
   };
 
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Cliente', accessor: (row: Record<string, unknown>) => String(row.cliente_nome ?? '-') },
+    { header: 'Data', accessor: (row: Record<string, unknown>) => formatDate(row.data_venda as string) },
+    { header: 'Recebida', accessor: (row: Record<string, unknown>) => row.recebido ? 'Sim' : 'Não' },
+    { header: 'Qtd. Itens', accessor: (row: Record<string, unknown>) => String(row.qtd_itens ?? '') },
+    { header: 'Valor Total', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.valor_total ?? 0)) },
+    { header: 'Observação', accessor: (row: Record<string, unknown>) => String(row.observacao ?? '-') },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = loadedItens[id];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Itens da Venda',
+      columns: [
+        { header: 'Produto', accessor: (r: Record<string, unknown>) => String(r.produto_nome ?? r.produto_venda_nome ?? '') },
+        { header: 'Qtd.', accessor: (r: Record<string, unknown>) => String(Number(r.quantidade ?? 0).toFixed(2).replace('.', ',')) },
+        { header: 'Valor Unit.', accessor: (r: Record<string, unknown>) => formatDecimals(Number(r.valor_unitario ?? 0), 4) },
+        { header: 'Valor Total', accessor: (r: Record<string, unknown>) => formatCurrency(Number(r.valor_total ?? 0)) },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [loadedItens]);
+
   const columns = [
     columnHelper.display({
       id: 'expand',
@@ -416,6 +443,7 @@ export function VendasProduto() {
   return (
     <Layout>
       <PageHeader title="Vendas de Produtos" subtitle="Gerencie vendas de produtos">
+        <PrintButton title="Vendas de Produtos" data={vendasFiltradas} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/vendas-produto" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Venda

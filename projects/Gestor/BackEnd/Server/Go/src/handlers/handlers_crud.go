@@ -551,13 +551,22 @@ func (h *BasicCRUD) ServicoExcluir(w http.ResponseWriter, r *http.Request) {
 func (h *BasicCRUD) EmpresaListarPublico(w http.ResponseWriter, r *http.Request) {
 	query := `SELECT e.id, e.razao_social, e.fantasia,
 		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
-		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.delivery
-		FROM public.empresa e WHERE 1=1`
+		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.delivery,
+		COALESCE(e.is_open, 0) AS is_open,
+		COALESCE(cnt.total, 0) AS total_encomendas
+		FROM public.empresa e
+		LEFT JOIN (
+			SELECT empresa_id, COUNT(*) AS total
+			FROM public.encomenda
+			WHERE status <= 3
+			GROUP BY empresa_id
+		) cnt ON cnt.empresa_id = e.id
+		WHERE 1=1`
 	var args []interface{}
 	if r.URL.Query().Get("delivery") == "1" {
 		query += " AND e.delivery = 1"
 	}
-	query += " ORDER BY e.id"
+	query += " ORDER BY total_encomendas DESC, e.fantasia, e.razao_social"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -640,13 +649,29 @@ for _, item := range items {
 				delivery = int(n)
 			}
 		}
+		temIsOpen := false
+		isOpen := 0
+		if v, ok := item["is_open"]; ok && v != nil {
+			temIsOpen = true
+			switch val := v.(type) {
+			case bool:
+				if val {
+					isOpen = 1
+				}
+			case float64:
+				isOpen = int(val)
+			case json.Number:
+				n, _ := val.Int64()
+				isOpen = int(n)
+			}
+		}
 
 		if id == 0 {
 			err = tx.QueryRow(r.Context(),
 				`INSERT INTO public.empresa (razao_social, fantasia, cnpj_cpf, inscricao_estadual_identidade,
-					regime_tributario, endereco, telefone, celular, email, chave_pix, logomarca, delivery)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
-				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, logomarca, delivery,
+					regime_tributario, endereco, telefone, celular, email, chave_pix, logomarca, delivery, is_open)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, logomarca, delivery, isOpen,
 			).Scan(&id)
 		} else {
 			setClauses := []string{"razao_social=$1", "fantasia=$2", "cnpj_cpf=$3",
@@ -660,6 +685,10 @@ for _, item := range items {
 			if temDelivery {
 				setClauses = append(setClauses, fmt.Sprintf("delivery=$%d", len(vals)+1))
 				vals = append(vals, delivery)
+			}
+			if temIsOpen {
+				setClauses = append(setClauses, fmt.Sprintf("is_open=$%d", len(vals)+1))
+				vals = append(vals, isOpen)
 			}
 			vals = append(vals, id)
 			_, err = tx.Exec(r.Context(),
@@ -680,6 +709,45 @@ for _, item := range items {
 		resp["id"] = idSalvo
 	}
 	jsonSuccess(w, resp)
+}
+
+func (h *BasicCRUD) EmpresaToggleIsOpen(w http.ResponseWriter, r *http.Request) {
+	body, err := h.parseBody(r)
+	if err != nil || len(body) == 0 {
+		jsonError(w, "Body obrigatorio", http.StatusBadRequest)
+		return
+	}
+	item := body[0]
+	id := getID(item)
+	if id == 0 {
+		jsonError(w, "ID da empresa obrigatorio", http.StatusBadRequest)
+		return
+	}
+	isOpen := 0
+	if v, ok := item["is_open"]; ok && v != nil {
+		switch val := v.(type) {
+		case bool:
+			if val {
+				isOpen = 1
+			}
+		case float64:
+			isOpen = int(val)
+		case json.Number:
+			n, _ := val.Int64()
+			isOpen = int(n)
+		}
+	}
+	tag, err := h.Pool.Exec(r.Context(),
+		`UPDATE public.empresa SET is_open = $1 WHERE id = $2`, isOpen, id)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		jsonError(w, "Empresa nao encontrada", http.StatusNotFound)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Status atualizado", "is_open": isOpen})
 }
 
 func (h *BasicCRUD) EmpresaExcluir(w http.ResponseWriter, r *http.Request) {
@@ -1120,6 +1188,7 @@ func (h *BasicCRUD) ModuloListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	nome := r.URL.Query().Get("nome")
+	all := r.URL.Query().Get("all") == "true"
 
 	query := `SELECT m.* FROM public.modulo m WHERE 1=1`
 	var args []interface{}
@@ -1130,9 +1199,11 @@ func (h *BasicCRUD) ModuloListar(w http.ResponseWriter, r *http.Request) {
 	if nome != "" {
 		query += fmt.Sprintf(" AND upper(m.nome) LIKE upper($%d)", argN); argN++; args = append(args, "%"+nome+"%")
 	}
-	query += fmt.Sprintf(` AND (m.id IN (SELECT em.modulo_id FROM public.empresa_modulo em
-		WHERE em.empresa_id = $%d) OR $%d = 0)`, argN, argN)
-	args = append(args, empresaID)
+	if !all {
+		query += fmt.Sprintf(` AND (m.id IN (SELECT em.modulo_id FROM public.empresa_modulo em
+			WHERE em.empresa_id = $%d) OR $%d = 0)`, argN, argN)
+		args = append(args, empresaID)
+	}
 	query += " ORDER BY m.id"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {

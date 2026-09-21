@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,9 +10,13 @@ import { useToast } from '@/context/ToastContext';
 import { Spinner } from '@/components/ui/Spinner';
 import api from '@/lib/api';
 import type { EmpresaModulo, Empresa, Modulo } from '@/types';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, BookOpen, FileText } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
+import { gerarGuiaSuperadminPDF } from '@/lib/guia-superadmin';
+import { viewPDF } from '@/lib/pdf';
+import { useAuth } from '@/context/AuthContext';
 
 const columnHelper = createColumnHelper<EmpresaModulo>();
 
@@ -35,7 +39,7 @@ export function EmpresaModulos() {
       const [res, empRes, modRes] = await Promise.all([
         api.get('/empresa-modulos'),
         api.get('/empresas'),
-        api.get('/modulos'),
+        api.get('/modulos', { params: { all: 'true' } }),
       ]);
       setData(res.data as EmpresaModulo[]);
       setEmpresas(empRes.data as Empresa[]);
@@ -96,6 +100,12 @@ export function EmpresaModulos() {
     }
   };
 
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Módulo', accessor: (row: Record<string, unknown>) => String(row.modulo_nome || getModuloNome(row.modulo_id as number)) },
+    { header: 'Empresa', accessor: (row: Record<string, unknown>) => String(getEmpresaNome(row.empresa_id as number)) },
+  ], []);
+
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
       id: 'codigo',
@@ -131,6 +141,7 @@ export function EmpresaModulos() {
   return (
     <Layout>
       <PageHeader title="Empresa x Módulo" subtitle="Vincule módulos as empresas">
+        <PrintButton title="Empresa x Módulo" data={data} columns={printColumns} />
         <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
           <Plus size={18} /> Novo Vinculo
         </Button>
@@ -143,6 +154,30 @@ export function EmpresaModulos() {
           </button>
         </div>
         <DataTable columns={columns} data={data} loading={loading} error={error} emptyMessage="Nenhum vínculos cadastrado" />
+      </Card>
+
+      <Card>
+        <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <BookOpen size={20} className="text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-blue-800">Precisa de ajuda?</h3>
+            <p className="text-xs text-blue-600">
+              Consulte o Guia de Configuracao para Superadmin para verificar os passos para configurar uma nova empresa.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const doc = gerarGuiaSuperadminPDF();
+              viewPDF(doc);
+            }}
+          >
+            <FileText size={14} className="mr-1" />
+            Ver Guia
+          </Button>
+        </div>
       </Card>
 
       <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} title="Gerenciar Vínculos">

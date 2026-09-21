@@ -16,6 +16,7 @@ import type { Marca } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -40,6 +41,12 @@ export function Marcas() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.ativo ? 'Sim' : 'Não' },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -134,6 +141,7 @@ export function Marcas() {
   return (
     <Layout>
       <PageHeader title="Marcas" subtitle="Cadastro de marcas">
+        <PrintButton title="Marcas" data={marcasFiltradas} columns={printColumns} />
         <ShowForPermission rota="/marcas" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Marca

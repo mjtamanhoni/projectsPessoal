@@ -530,7 +530,8 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 		eee.cidade as eee_cidade, eee.uf as eee_uf,
 		eee.retira_estabelecimento as eee_retira_estabelecimento,
 		eee.latitude as eee_latitude, eee.longitude as eee_longitude,
-		eee.place_id as eee_place_id
+		eee.place_id as eee_place_id,
+		ea.nota as avaliacao_nota, ea.id as avaliacao_id, ea.justificativa as avaliacao_justificativa
 	FROM encomenda e
 	JOIN encomenda_item ei ON ei.encomenda_id = e.id AND ei.empresa_id = e.empresa_id
 	JOIN public.cliente c ON c.id = e.cliente_id AND c.empresa_id = e.empresa_id
@@ -538,6 +539,7 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 	LEFT JOIN produto_venda pv ON pv.id = ei.produto_venda_id AND pv.empresa_id = ei.empresa_id
 	LEFT JOIN forma_pagamento fp ON fp.id = e.forma_pagamento_id AND fp.empresa_id = e.empresa_id
 	LEFT JOIN encomenda_endereco_entrega eee ON eee.encomenda_id = e.id AND eee.empresa_id = e.empresa_id
+	LEFT JOIN encomenda_avaliacao ea ON ea.encomenda_id = e.id AND ea.empresa_id = e.empresa_id
 		WHERE e.empresa_id = $1`
 	args := []interface{}{empresaID}
 	argN := 2
@@ -1165,4 +1167,126 @@ func (h *ProducaoHandler) EncomendaPublicoSalvarPagamentos(w http.ResponseWriter
 	}
 
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Pagamentos salvos com sucesso"})
+}
+
+func (h *ProducaoHandler) EncomendaPublicoAvaliar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		return
+	}
+	header := items[0]
+	empresaID := getInt(header, "empresa")
+	if empresaID == 0 {
+		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
+		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	encomendaID := getInt(header, "encomenda_id")
+	if encomendaID == 0 {
+		jsonError(w, "Campo 'encomenda_id' é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	nota := getInt(header, "nota")
+	if nota < 1 || nota > 5 {
+		jsonError(w, "Nota deve ser entre 1 e 5", http.StatusBadRequest)
+		return
+	}
+
+	justificativa := getStr(header, "justificativa")
+	if nota <= 3 && len(justificativa) < 20 {
+		jsonError(w, "Para notas 1, 2 ou 3 é obrigatório informar justificativa com pelo menos 20 caracteres", http.StatusBadRequest)
+		return
+	}
+
+	// Verificar se a encomenda pertence ao cliente e está entregue (status=4)
+	var status int
+	err = h.Pool.QueryRow(r.Context(),
+		`SELECT status FROM encomenda WHERE id=$1 AND empresa_id=$2 AND cliente_id=$3`,
+		encomendaID, empresaID, clienteID).Scan(&status)
+	if err != nil {
+		jsonError(w, "Encomenda não encontrada", http.StatusNotFound)
+		return
+	}
+	if status != 4 {
+		jsonError(w, "Só é possível avaliar encomendas entregues", http.StatusBadRequest)
+		return
+	}
+
+	// Verificar se já existe avaliação
+	var existe int
+	_ = h.Pool.QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM encomenda_avaliacao WHERE empresa_id=$1 AND encomenda_id=$2`,
+		empresaID, encomendaID).Scan(&existe)
+	if existe > 0 {
+		jsonError(w, "Esta encomenda já foi avaliada", http.StatusConflict)
+		return
+	}
+
+	// Gerar próximo ID
+	var proximoID int
+	_ = h.Pool.QueryRow(r.Context(),
+		`SELECT COALESCE(MAX(id), 0) + 1 FROM encomenda_avaliacao WHERE empresa_id=$1`,
+		empresaID).Scan(&proximoID)
+
+	// Inserir avaliação
+	justificativaPtr := (*string)(nil)
+	if justificativa != "" {
+		justificativaPtr = &justificativa
+	}
+	_, err = h.Pool.Exec(r.Context(), `
+		INSERT INTO encomenda_avaliacao (empresa_id, id, encomenda_id, cliente_id, nota, justificativa)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, empresaID, proximoID, encomendaID, clienteID, nota, justificativaPtr)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonSuccess(w, map[string]interface{}{
+		"mensagem": "Avaliação registrada com sucesso",
+		"nota":     nota,
+	})
+}
+
+func (h *ProducaoHandler) EncomendaPublicoObterAvaliacao(w http.ResponseWriter, r *http.Request) {
+	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
+	encomendaID := parseInt(r.URL.Query().Get("encomenda_id"), 0)
+
+	if empresaID == 0 || encomendaID == 0 {
+		jsonError(w, "Parâmetros 'empresa' e 'encomenda_id' são obrigatórios", http.StatusBadRequest)
+		return
+	}
+
+	var nota int
+	var justificativa *string
+	var created_at string
+	err := h.Pool.QueryRow(r.Context(),
+		`SELECT nota, justificativa, created_at::text
+		 FROM encomenda_avaliacao
+		 WHERE empresa_id=$1 AND encomenda_id=$2`,
+		empresaID, encomendaID).Scan(&nota, &justificativa, &created_at)
+	if err != nil {
+		jsonSuccess(w, map[string]interface{}{"avaliada": false})
+		return
+	}
+
+	jsonSuccess(w, map[string]interface{}{
+		"avaliada":     true,
+		"nota":         nota,
+		"justificativa": justificativa,
+		"created_at":   created_at,
+	})
 }

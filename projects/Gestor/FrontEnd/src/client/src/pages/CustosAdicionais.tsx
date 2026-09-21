@@ -16,6 +16,7 @@ import type { CustoAdicionalTipo } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -39,6 +40,12 @@ export function CustosAdicionais() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { addToast } = useToast();
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.ativo ? 'Sim' : 'Não' },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -122,6 +129,7 @@ export function CustosAdicionais() {
   return (
     <Layout>
       <PageHeader title="Custos Adicionais" subtitle="Gerencie tipos de custos adicionais">
+        <PrintButton title="Custos Adicionais" data={tiposFiltrados} columns={printColumns} />
         <ShowForPermission rota="/custos-adicionais" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Tipo

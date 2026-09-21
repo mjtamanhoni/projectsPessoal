@@ -17,6 +17,7 @@ import type { Insumo, Fornecedor, Marca } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw, RotateCcw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import api from '@/lib/api';
@@ -58,6 +59,15 @@ export function Insumos() {
   const [recalcOpen, setRecalcOpen] = useState(false);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcInsumoId, setRecalcInsumoId] = useState<number | ''>('');
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Unidade', accessor: (row: Record<string, unknown>) => String(row.unidade_medida ?? '') },
+    { header: 'Custo Médio', accessor: (row: Record<string, unknown>) => row.custo_medio != null ? Number(row.custo_medio).toFixed(6) : '-' },
+    { header: 'Fornecedor', accessor: (row: Record<string, unknown>) => String(fornMap.get(row.id_fornecedor as number) ?? '-') },
+    { header: 'Marca', accessor: (row: Record<string, unknown>) => String(marcaMap.get(row.id_marca as number) ?? '-') },
+  ], [fornMap, marcaMap]);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -193,6 +203,7 @@ export function Insumos() {
   return (
     <Layout>
       <PageHeader title="Insumos" subtitle="Gerencie seus insumos">
+        <PrintButton title="Insumos" data={insumosFiltrados} columns={printColumns} />
         <ShowForPermission rota="/insumos" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Novo Insumo

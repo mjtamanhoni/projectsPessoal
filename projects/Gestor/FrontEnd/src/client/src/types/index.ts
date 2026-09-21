@@ -521,6 +521,9 @@ export interface Encomenda {
   impresso?: number;
   pagamentos?: EncomendaPagamento[];
   created_at?: string;
+  avaliacao_nota?: number | null;
+  avaliacao_id?: number | null;
+  avaliacao_justificativa?: string | null;
 }
 
 export interface EncomendaPagamento {
@@ -618,6 +621,7 @@ export interface Empresa {
   chave_pix?: string;
   logomarca?: string | null;
   delivery?: number;
+  is_open?: number;
   status?: number;
 }
 

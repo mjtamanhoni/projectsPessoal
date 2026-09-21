@@ -9,14 +9,15 @@ import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
-import type { Encomenda, EncomendaItem, Cliente, FormaPagamento, BandeiraCartao, EncomendaPagamento } from '@/types';
-import { CheckCircle, XCircle, Printer, RefreshCw, MapPin, Menu, FileText, BarChart3, Users } from 'lucide-react';
+import type { Encomenda, EncomendaItem, Cliente, FormaPagamento, BandeiraCartao, EncomendaPagamento, VendaProduto } from '@/types';
+import { CheckCircle, XCircle, Printer, RefreshCw, MapPin, Menu, FileText, BarChart3, Users, Store, Eye, Star } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDecimals, parseItemCustomizacao } from '@/lib/utils';
 import { getEncomendasRefreshSegundos, getCachedSettings } from '@/lib/settings';
 import { gerarTextoCupomEncomenda, imprimirCupomEncomendaSerial, type CupomEncomendaData } from '@/lib/cupom-encomenda';
 import { gerarRelatorioSintetico, gerarRelatorioAnaliticoProdutos, gerarRelatorioAnaliticoCliente, viewPDF } from '@/lib/relatorio-encomendas';
 import { PagamentoMultiploModal } from '@/components/forms/PagamentoMultiploModal';
+import { CupomVendaModal } from '@/components/cupom/CupomVendaModal';
 import api from '@/lib/api';
 import type { JSX } from 'react';
 import type jsPDF from 'jspdf';
@@ -43,6 +44,13 @@ function formatData(d?: string): string {
   return date.toLocaleDateString('pt-BR');
 }
 
+function formatDataHora(d?: string): string {
+  if (!d) return '-';
+  const date = new Date(d.includes('T') ? d : `${d}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return d;
+  return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
 function formatDescricaoCustomizacao(item: EncomendaItem): string {
   const partes: string[] = [];
   const rems = Array.isArray(item.removidos) ? item.removidos : [];
@@ -63,13 +71,14 @@ function formatDescricaoCustomizacao(item: EncomendaItem): string {
 
 export function AcompanharEncomendas() {
   const { data: encomendas, loading, error, refetch } = useApi<Encomenda>('/encomendas');
-  const { pausarTimerInatividade, retomarTimerInatividade } = useAuth();
+  const { pausarTimerInatividade, retomarTimerInatividade, empresa } = useAuth();
   const { addToast } = useToast();
 
   const [dataFiltro, setDataFiltro] = useState<string>(hoje());
   const [refreshSeg, setRefreshSeg] = useState<number>(() => getEncomendasRefreshSegundos());
   const [loadedItens, setLoadedItens] = useState<Record<number, EncomendaItem[]>>({});
   const [loadedEnderecos, setLoadedEnderecos] = useState<Record<number, { endereco?: string; nr?: string; complemento?: string; bairro?: string; cidade?: string; uf?: string; retira_estabelecimento?: number; latitude?: number; longitude?: number; place_id?: string }>>({});
+  const [loadedPagamentos, setLoadedPagamentos] = useState<Record<number, EncomendaPagamento[]>>({});
   const [viewEncomenda, setViewEncomenda] = useState<Encomenda | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -83,12 +92,70 @@ export function AcompanharEncomendas() {
   const menuBtnRef = useRef<HTMLButtonElement>(null);
 
   const impressosRef = useRef<Set<number>>(new Set());
+  const lastCountRef = useRef<{ count: number; max_id: number }>({ count: -1, max_id: -1 });
 
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
   const [bandeirasCartao, setBandeirasCartao] = useState<BandeiraCartao[]>([]);
   const [pagamentoModalAberto, setPagamentoModalAberto] = useState(false);
   const [pagamentoEncomenda, setPagamentoEncomenda] = useState<Encomenda | null>(null);
   const [pagamentosCarregados, setPagamentosCarregados] = useState<EncomendaPagamento[]>([]);
+  const [isOpen, setIsOpen] = useState<boolean>(() => (empresa?.is_open ?? 0) === 1);
+  const [toggleLoading, setToggleLoading] = useState(false);
+  const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
+
+  useEffect(() => {
+    if (empresa) setIsOpen((empresa.is_open ?? 0) === 1);
+  }, [empresa]);
+
+  const handleToggleIsOpen = async () => {
+    if (!empresa?.id) return;
+    setToggleLoading(true);
+    try {
+      const novo = isOpen ? 0 : 1;
+      await api.post('/empresas/is-open', { id: empresa.id, is_open: novo });
+      setIsOpen(novo === 1);
+      addToast('success', novo === 1 ? 'Loja aberta para encomendas' : 'Loja fechada para encomendas');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao alterar status da loja';
+      addToast('error', msg);
+    } finally {
+      setToggleLoading(false);
+    }
+  };
+
+  const abrirCupomDaVenda = useCallback(async (vendaId: number | null | undefined) => {
+    if (!vendaId) return;
+    try {
+      const response = await api.get('/vendas-produto', { params: { id: vendaId } });
+      const rows = response.data as any[];
+      if (!rows || rows.length === 0) return;
+      const first = rows[0];
+      const itens = rows.map((row: any) => ({
+        item_id: row.item_id,
+        produto_fabricado_id: row.produto_fabricado_id,
+        produto_nome: row.produto_nome,
+        produto_venda_id: row.produto_venda_id,
+        produto_venda_nome: row.produto_venda_nome,
+        quantidade: Number(row.quantidade),
+        valor_unitario: Number(row.valor_unitario),
+        valor_total: Number(row.item_valor_total ?? row.valor_total),
+        ...parseItemCustomizacao(row),
+      }));
+      setCupomVenda({
+        id: first.id,
+        codigo: first.id,
+        cliente_id: first.cliente_id,
+        cliente_nome: first.cliente_nome,
+        data_venda: first.data_venda,
+        valor_total: Number(first.valor_total),
+        observacao: first.observacao,
+        recebido: first.recebido,
+        itens,
+      });
+    } catch {
+      addToast('error', 'Erro ao carregar cupom da venda');
+    }
+  }, [addToast]);
 
   useEffect(() => {
     pausarTimerInatividade();
@@ -103,7 +170,16 @@ export function AcompanharEncomendas() {
 
   useEffect(() => {
     if (!refreshSeg || refreshSeg <= 0) return;
-    const id = setInterval(() => { void refetch(); }, refreshSeg * 1000);
+    const id = setInterval(() => {
+      api.get('/encomendas/count').then((r) => {
+        const { count, max_id } = r.data as { count: number; max_id: number };
+        const prev = lastCountRef.current;
+        if (prev.count !== count || prev.max_id !== max_id) {
+          lastCountRef.current = { count, max_id };
+          void refetch();
+        }
+      }).catch(() => {});
+    }, refreshSeg * 1000);
     return () => clearInterval(id);
   }, [refreshSeg, refetch]);
 
@@ -169,6 +245,12 @@ export function AcompanharEncomendas() {
             },
           }));
         }
+      }
+      try {
+        const pagRes = await api.get('/encomendas/pagamentos', { params: { encomenda_id: encomendaId } });
+        setLoadedPagamentos((prev) => ({ ...prev, [encomendaId]: (pagRes.data as EncomendaPagamento[]) ?? [] }));
+      } catch {
+        setLoadedPagamentos((prev) => ({ ...prev, [encomendaId]: [] }));
       }
     } catch {
       setLoadedItens((prev) => ({ ...prev, [encomendaId]: [] }));
@@ -469,10 +551,10 @@ export function AcompanharEncomendas() {
         size: 40,
       }),
       columnHelper.accessor('cliente_nome', { header: 'Cliente', size: 200 }),
-      columnHelper.accessor('data_encomenda', {
-        header: 'Data',
-        size: 100,
-        cell: (info) => formatData(info.getValue()),
+      columnHelper.accessor('created_at', {
+        header: 'Data/Hora',
+        size: 130,
+        cell: (info) => formatDataHora(info.getValue()),
       }),
       columnHelper.accessor('qtd_itens', { header: 'Qtd.', size: 60 }),
       columnHelper.accessor('valor_total', {
@@ -480,31 +562,29 @@ export function AcompanharEncomendas() {
         size: 110,
         cell: (info) => formatCurrency(Number(info.getValue())),
       }),
-      columnHelper.accessor('forma_pagamento_nome', {
-        header: 'Pagamento',
-        size: 140,
+      columnHelper.accessor('avaliacao_nota', {
+        header: 'Avaliação',
+        size: 120,
         cell: (info) => {
-          const valor = info.getValue();
-          const classificacao = info.row.original.forma_pagamento_classificacao;
-          if (!valor) return '-';
-          if (classificacao === 'C' || classificacao === 'D') {
-            return (
-              <span className="inline-flex items-center gap-1">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-primary">
-                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                  <line x1="1" y1="10" x2="23" y2="10" />
-                </svg>
-                {valor}
-              </span>
-            );
-          }
-          return valor;
+          const nota = info.getValue() as number | null;
+          if (!nota) return <span className="text-text-muted text-xs">-</span>;
+          return (
+            <div className="flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star
+                  key={i}
+                  size={14}
+                  className={i <= nota ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
+                />
+              ))}
+            </div>
+          );
         },
       }),
       columnHelper.display({
         id: 'acoes',
         header: '',
-        size: 120,
+        size: 180,
         cell: (info) => {
           const row = info.row.original;
           const status = row.status ?? 0;
@@ -537,6 +617,41 @@ export function AcompanharEncomendas() {
               >
                 <Printer size={16} />
               </button>
+              {row.venda_id && (
+                <button
+                  className="p-1.5 rounded-md hover:bg-amber-100 text-amber-600 transition-colors"
+                  title="Cupom"
+                  onClick={() => abrirCupomDaVenda(row.venda_id)}
+                >
+                  <FileText size={16} />
+                </button>
+              )}
+              <button
+                className="p-1.5 rounded-md hover:bg-indigo-100 text-indigo-600 transition-colors"
+                title="Visualizar"
+                onClick={() => {
+                  setViewEncomenda(row);
+                  if (row.id) {
+                    setViewLoading(true);
+                    fetchItens(row.id);
+                    void api.get('/encomendas', { params: { id: row.id } }).then((r) => {
+                      const rows = r.data as any[];
+                      if (rows.length > 0) {
+                        const first = rows[0];
+                        setViewEncomenda((prev) => prev ? {
+                          ...prev,
+                          cliente_nome: first.cliente_nome ?? prev.cliente_nome,
+                          observacao: first.observacao ?? prev.observacao,
+                          forma_pagamento_nome: first.forma_pagamento_nome ?? prev.forma_pagamento_nome,
+                          valor_total: Number(first.valor_total ?? prev.valor_total),
+                        } : prev);
+                      }
+                    }).catch(() => {}).finally(() => setViewLoading(false));
+                  }
+                }}
+              >
+                <Eye size={16} />
+              </button>
             </div>
           );
         },
@@ -549,6 +664,7 @@ export function AcompanharEncomendas() {
     const id = row.id!;
     const itens = loadedItens[id];
     const endereco = loadedEnderecos[id];
+    const pagamentos = loadedPagamentos[id];
 
     return (
       <div>
@@ -588,7 +704,44 @@ export function AcompanharEncomendas() {
             )}
           </div>
         )}
+        {pagamentos && pagamentos.length > 0 && (
+          <div className="mb-2 rounded-lg border border-blue-200 bg-blue-50/50 px-3 py-2 text-sm text-blue-900">
+            <div className="font-semibold text-xs uppercase tracking-wide text-blue-700 mb-1">💳 Formas de Pagamento</div>
+            <div className="space-y-1">
+              {pagamentos.map((pg, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="font-medium">{pg.forma_pagamento_nome || '-'}</span>
+                  {pg.bandeira_cartao_nome && (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-200 text-blue-900 text-xs font-semibold">
+                      {pg.bandeira_cartao_nome}
+                    </span>
+                  )}
+                  <span className="text-blue-700 font-semibold">{formatCurrency(pg.valor)}</span>
+                  {pg.troco_para != null && pg.troco_para > 0 && (
+                    <span className="text-blue-600 text-xs">(Troco para: {formatCurrency(pg.troco_para)})</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
+        {row.avaliacao_nota != null && (
+          <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm text-amber-900">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Star size={14} className="text-amber-500 fill-amber-500" />
+              <span className="font-semibold text-xs uppercase tracking-wide text-amber-700">Avaliação do Cliente</span>
+              <div className="flex items-center gap-0.5 ml-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} size={12} className={i <= (row.avaliacao_nota ?? 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'} />
+                ))}
+              </div>
+            </div>
+            {row.avaliacao_justificativa && (
+              <span className="text-xs text-amber-800">{row.avaliacao_justificativa}</span>
+            )}
+          </div>
+        )}
         {!itens ? (
           <span className="text-text-tertiary text-sm">Carregando...</span>
         ) : itens.length === 0 ? (
@@ -632,7 +785,7 @@ export function AcompanharEncomendas() {
         )}
       </div>
     );
-  }, [loadedItens, loadedEnderecos]);
+  }, [loadedItens, loadedEnderecos, loadedPagamentos]);
 
   return (
     <Layout>
@@ -651,6 +804,14 @@ export function AcompanharEncomendas() {
           </div>
           <Button variant="secondary" onClick={() => void refetch()}>
             <RefreshCw size={14} className="mr-1" /> Atualizar
+          </Button>
+          <Button
+            variant={isOpen ? 'danger' : 'primary'}
+            onClick={() => void handleToggleIsOpen()}
+            disabled={toggleLoading}
+          >
+            <Store size={14} className="mr-1" />
+            {toggleLoading ? 'Alterando...' : isOpen ? 'Fechar Loja' : 'Abrir Loja'}
           </Button>
 
           {/* ── Menu Relatórios ── */}
@@ -829,6 +990,8 @@ export function AcompanharEncomendas() {
         bandeirasCartao={bandeirasCartao}
         pagamentosIniciais={pagamentosCarregados}
       />
+
+      <CupomVendaModal venda={cupomVenda} onClose={() => setCupomVenda(null)} clientes={clientes} />
 
       <ConfirmDialog
         isOpen={showReportConfirm}

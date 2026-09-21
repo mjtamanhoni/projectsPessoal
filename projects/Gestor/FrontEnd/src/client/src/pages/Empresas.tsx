@@ -15,6 +15,7 @@ import type { Empresa, EmpresaModulo, Modulo } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import api from '@/lib/api';
@@ -34,7 +35,7 @@ export function Empresas() {
   const [modulos, setModulos] = useState<Modulo[]>([]);
 
   useEffect(() => {
-    api.get<Modulo[]>('/modulos').then((r) => setModulos(r.data)).catch(() => {});
+    api.get<Modulo[]>('/modulos', { params: { all: 'true' } }).then((r) => setModulos(r.data)).catch(() => {});
   }, []);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -63,6 +64,29 @@ export function Empresas() {
       setLoadingVinculos((prev) => { const next = new Set(prev); next.delete(empresaId); return next; });
     }
   }, [loadingVinculos]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Razão Social', accessor: (row: Record<string, unknown>) => String(row.razao_social ?? '') },
+    { header: 'Fantasia', accessor: (row: Record<string, unknown>) => String(row.fantasia ?? '') },
+    { header: 'CNPJ/CPF', accessor: (row: Record<string, unknown>) => String(row.cnpj_cpf ?? '') },
+    { header: 'Telefone', accessor: (row: Record<string, unknown>) => String(row.telefone ?? '') },
+    { header: 'Email', accessor: (row: Record<string, unknown>) => String(row.email ?? '') },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const eid = (row.id ?? row.codigo) as number;
+    const list = vinculos[eid];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Módulos',
+      columns: [
+        { header: 'Cód.', accessor: (r: Record<string, unknown>) => String(r.modulo_id ?? r.id ?? '') },
+        { header: 'Módulo', accessor: (r: Record<string, unknown>) => String(r.modulo_nome ?? '') },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [vinculos]);
 
   const columns = [
     columnHelper.display({
@@ -274,6 +298,7 @@ export function Empresas() {
   return (
     <Layout>
       <PageHeader title="Empresas" subtitle="Gerencie as empresas">
+        <PrintButton title="Empresas" data={empresasFiltradas} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/empresas" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Empresa

@@ -16,6 +16,7 @@ import type { Categoria } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -56,6 +57,13 @@ export function Categorias() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Descrição', accessor: (row: Record<string, unknown>) => String(row.descricao ?? '-') },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.ativo ? 'Sim' : 'Não' },
+  ], []);
 
   const columns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
@@ -176,6 +184,7 @@ export function Categorias() {
   return (
     <Layout>
       <PageHeader title="Categorias" subtitle="Gerencie suas categorias">
+        <PrintButton title="Categorias" data={categoriasFiltradas} columns={printColumns} />
         <ShowForPermission rota="/categorias" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Categoria

@@ -7,12 +7,14 @@ import { fetchSettings, saveSettings } from '@/lib/settings';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { AppSettings, Categoria, Empresa } from '@/types';
-import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search, Download, QrCode, Upload, BookOpen } from 'lucide-react';
+import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search, Download, QrCode, Upload, BookOpen, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
 import type { ModuleItem } from '@/context/ModuleContext';
 import { useAuth } from '@/context/AuthContext';
+import { gerarGuiaSuperadminPDF } from '@/lib/guia-superadmin';
+import { viewPDF } from '@/lib/pdf';
 
 interface PortaDetectada {
   nome: string;
@@ -1127,14 +1129,26 @@ export function Settings() {
         {tab === 'guia' && (
           <div className="space-y-6">
             <Card>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <BookOpen size={20} className="text-blue-600" />
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <BookOpen size={20} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-text-primary">Guia de Configuracao para Superadmin</h2>
+                    <p className="text-sm text-text-secondary">Passo a passo para configurar uma nova empresa no sistema</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-text-primary">Guia de Configuracao para Superadmin</h2>
-                  <p className="text-sm text-text-secondary">Passo a passo para configurar uma nova empresa no sistema</p>
-                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const doc = gerarGuiaSuperadminPDF();
+                    viewPDF(doc);
+                  }}
+                >
+                  <FileText size={16} className="mr-1" />
+                  Imprimir Guia
+                </Button>
               </div>
             </Card>
 

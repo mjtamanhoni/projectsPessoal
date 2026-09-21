@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +13,7 @@ import type { ContaReceber, Cliente, Categoria } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, CheckCircle, RotateCcw, Filter, RefreshCw, AlertTriangle } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 
@@ -225,6 +226,14 @@ export function ContasReceber() {
     setReviewInfo(null);
   };
 
+  const printColumns = useMemo(() => [
+    { header: 'Vencimento', accessor: (row: Record<string, unknown>) => formatDate(row.dataVencimento as string) },
+    { header: 'Cliente', accessor: (row: Record<string, unknown>) => String(row.clienteNome ?? '-') },
+    { header: 'Valor', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.valor ?? 0)) },
+    { header: 'Descrição', accessor: (row: Record<string, unknown>) => String(row.descricao ?? '') },
+    { header: 'Status', accessor: (row: Record<string, unknown>) => row.recebido ? 'Recebido' : isOverdue(row.dataVencimento as string) ? 'Atrasado' : 'Pendente' },
+  ], []);
+
   const columns = [
     columnHelper.accessor('dataVencimento', {
       header: 'Vencimento',
@@ -313,6 +322,7 @@ export function ContasReceber() {
   return (
     <Layout>
       <PageHeader title="Contas a Receber" subtitle="Gerencie suas contas a receber">
+        <PrintButton title="Contas a Receber" data={contas} columns={printColumns} />
         <ShowForPermission rota="/contas-receber" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}><Plus size={18} /> Nova Conta</Button>
         </ShowForPermission>

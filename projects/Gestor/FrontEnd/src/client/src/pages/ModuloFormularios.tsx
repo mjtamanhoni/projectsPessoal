@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import api from '@/lib/api';
 import type { ModuloFormulario, Modulo, Formulario } from '@/types';
 import { Plus, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 
@@ -34,7 +35,7 @@ export function ModuloFormularios() {
     try {
       const [res, modRes, formRes] = await Promise.all([
         api.get('/modulo-formularios'),
-        api.get('/modulos'),
+        api.get('/modulos', { params: { all: 'true' } }),
         api.get('/formularios'),
       ]);
       setData(res.data as ModuloFormulario[]);
@@ -92,6 +93,12 @@ export function ModuloFormularios() {
     }
   };
 
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Módulo', accessor: (row: Record<string, unknown>) => String(getModuloNome(row.modulo_id as number)) },
+    { header: 'Formulário', accessor: (row: Record<string, unknown>) => String(row.formulario_nome || String(row.formulario_id)) },
+  ], []);
+
   const groupedColumns = [
     columnHelper.accessor((row) => row.id ?? row.codigo, {
       id: 'codigo',
@@ -127,6 +134,7 @@ export function ModuloFormularios() {
   return (
     <Layout>
       <PageHeader title="Modulo x Formulario" subtitle="Vincule formularios aos modulos">
+        <PrintButton title="Módulo x Formulário" data={data} columns={printColumns} />
         <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
           <Plus size={18} /> Novo Vinculo
         </Button>

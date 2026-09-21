@@ -17,6 +17,7 @@ import type { Adicional, AdicionalProdutoClassificacao, ProdutoClassificacao } f
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { formatCurrency } from '@/lib/utils';
@@ -131,6 +132,28 @@ export function Adicionais() {
       </div>
     );
   };
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Nome', accessor: (row: Record<string, unknown>) => String(row.nome ?? '') },
+    { header: 'Descrição', accessor: (row: Record<string, unknown>) => String(row.descricao ?? '') },
+    { header: 'Preço', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.preco ?? 0)) },
+    { header: 'Ativo', accessor: (row: Record<string, unknown>) => row.ativo ? 'Sim' : 'Não' },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = links[id];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Classificações do Adicional',
+      columns: [
+        { header: 'Cód', accessor: (r: Record<string, unknown>) => String(r.produto_classificacao_id ?? '') },
+        { header: 'Classificação', accessor: (r: Record<string, unknown>) => String(r.produto_classificacao_nome ?? '') },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [links]);
 
   const columns = [
     columnHelper.display({
@@ -271,6 +294,7 @@ export function Adicionais() {
   return (
     <Layout>
       <PageHeader title="Adicionais" subtitle="Gerencie adicionais para personalização de produtos">
+        <PrintButton title="Adicionais" data={adicionaisFiltrados} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/adicionais" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Adicional

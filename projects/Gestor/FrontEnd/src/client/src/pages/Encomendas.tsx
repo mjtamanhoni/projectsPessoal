@@ -17,6 +17,7 @@ import type { Encomenda, EncomendaItem, ProdutoFabricado, ProdutoVenda, Cliente,
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, Edit2, Trash2, RefreshCw, ListChecks, FileText, Eye } from 'lucide-react';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDecimals, parseItemCustomizacao } from '@/lib/utils';
@@ -90,6 +91,7 @@ export function Encomendas() {
   const [formKey, setFormKey] = useState(0);
   const [loadedItens, setLoadedItens] = useState<Record<number, EncomendaItem[]>>({});
   const [loadedEnderecos, setLoadedEnderecos] = useState<Record<number, { endereco?: string; nr?: string; complemento?: string; bairro?: string; cidade?: string; uf?: string; retira_estabelecimento?: number; latitude?: number; longitude?: number; place_id?: string }>>({});
+  const [loadedPagamentos, setLoadedPagamentos] = useState<Record<number, import('@/types').EncomendaPagamento[]>>({});
 
   const [etapa, setEtapa] = useState<{ id: number; cliente?: string; status: number } | null>(null);
   const [etapaAlvo, setEtapaAlvo] = useState<number | null>(null);
@@ -160,6 +162,12 @@ export function Encomendas() {
             },
           }));
         }
+      }
+      try {
+        const pagRes = await api.get('/encomendas/pagamentos', { params: { encomenda_id: encomendaId } });
+        setLoadedPagamentos((prev) => ({ ...prev, [encomendaId]: (pagRes.data as import('@/types').EncomendaPagamento[]) ?? [] }));
+      } catch {
+        setLoadedPagamentos((prev) => ({ ...prev, [encomendaId]: [] }));
       }
     } catch {
       setLoadedItens((prev) => ({ ...prev, [encomendaId]: [] }));
@@ -253,23 +261,9 @@ export function Encomendas() {
     const id = row.id!;
     const itens = loadedItens[id];
     const endereco = loadedEnderecos[id];
-    const fpId = row.forma_pagamento_id;
-    const fp = fpId ? formasPagamento.find((f) => (f.id ?? f.codigo) === fpId) : null;
-    const classificacao = (row.forma_pagamento_classificacao ?? fp?.classificacao ?? '').toUpperCase();
-    const isCartao = classificacao === 'CARTAO_CREDITO' || classificacao === 'CARTAO_DEBITO';
+    const pagamentos = loadedPagamentos[id];
     return (
       <div>
-        {isCartao && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-3 py-2 text-sm text-purple-800">
-            <span className="text-lg">💳</span>
-            <span className="font-semibold">Levar máquina de cartão ao cliente</span>
-            {row.bandeira_cartao_nome && (
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-purple-200 text-purple-900 text-xs font-bold">
-                {row.bandeira_cartao_nome}
-              </span>
-            )}
-          </div>
-        )}
         {endereco && (
           <div className="mb-2 rounded-lg border border-purple-200 bg-purple-50/50 px-3 py-2 text-sm text-purple-900">
             <div className="flex items-center justify-between mb-1">
@@ -305,6 +299,27 @@ export function Encomendas() {
                 {endereco.uf ? `/${endereco.uf}` : ''}
               </span>
             )}
+          </div>
+        )}
+        {pagamentos && pagamentos.length > 0 && (
+          <div className="mb-2 rounded-lg border border-blue-200 bg-blue-50/50 px-3 py-2 text-sm text-blue-900">
+            <div className="font-semibold text-xs uppercase tracking-wide text-blue-700 mb-1">💳 Formas de Pagamento</div>
+            <div className="space-y-1">
+              {pagamentos.map((pg, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="font-medium">{pg.forma_pagamento_nome || '-'}</span>
+                  {pg.bandeira_cartao_nome && (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-200 text-blue-900 text-xs font-semibold">
+                      {pg.bandeira_cartao_nome}
+                    </span>
+                  )}
+                  <span className="text-blue-700 font-semibold">{formatCurrency(pg.valor)}</span>
+                  {pg.troco_para != null && pg.troco_para > 0 && (
+                    <span className="text-blue-600 text-xs">(Troco para: {formatCurrency(pg.troco_para)})</span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {!itens ? (
@@ -351,7 +366,33 @@ export function Encomendas() {
         )}
       </div>
     );
-  }, [loadedItens, loadedEnderecos, produtos, formasPagamento]);
+  }, [loadedItens, loadedEnderecos, loadedPagamentos, produtos]);
+
+  const printColumns = useMemo(() => [
+    { header: 'Código', accessor: (row: Record<string, unknown>) => String(row.id ?? row.codigo ?? '') },
+    { header: 'Cliente', accessor: (row: Record<string, unknown>) => String(row.cliente_nome ?? '-') },
+    { header: 'Data Encomenda', accessor: (row: Record<string, unknown>) => formatDataEncomenda(row.data_encomenda as string) },
+    { header: 'Data Entrega', accessor: (row: Record<string, unknown>) => formatDataEncomenda(row.data_entrega as string) },
+    { header: 'Situação', accessor: (row: Record<string, unknown>) => (ETAPAS_ENCOMENDA[Number(row.status)] ?? ETAPAS_ENCOMENDA[0]).label },
+    { header: 'Qtd. Itens', accessor: (row: Record<string, unknown>) => String(row.qtd_itens ?? '') },
+    { header: 'Valor Total', accessor: (row: Record<string, unknown>) => formatCurrency(Number(row.valor_total ?? 0)) },
+  ], []);
+
+  const expandData = useCallback((row: Record<string, unknown>) => {
+    const id = (row.id ?? row.codigo) as number;
+    const list = loadedItens[id];
+    if (!list || list.length === 0) return null;
+    return {
+      label: 'Itens da Encomenda',
+      columns: [
+        { header: 'Produto', accessor: (r: Record<string, unknown>) => String(r.produto_nome ?? r.produto_venda_nome ?? '') },
+        { header: 'Qtd.', accessor: (r: Record<string, unknown>) => String(Number(r.quantidade ?? 0).toFixed(2).replace('.', ',')) },
+        { header: 'Valor Unit.', accessor: (r: Record<string, unknown>) => formatDecimals(Number(r.valor_unitario ?? 0), 4) },
+        { header: 'Valor Total', accessor: (r: Record<string, unknown>) => formatCurrency(Number(r.valor_total ?? 0)) },
+      ],
+      data: list as unknown as Record<string, unknown>[],
+    };
+  }, [loadedItens]);
 
   const columns = [
     columnHelper.display({
@@ -402,27 +443,6 @@ export function Encomendas() {
       cell: (info) => formatCurrency(Number(info.getValue())),
       meta: { align: 'right' } as Record<string, string>,
       size: 100,
-    }),
-    columnHelper.accessor('forma_pagamento_nome', {
-      header: 'Pagamento',
-      cell: (info) => {
-        const nome = info.getValue();
-        if (!nome) return '-';
-        const row = info.row.original;
-        const fpId = row.forma_pagamento_id;
-        const fp = fpId ? formasPagamento.find((f) => (f.id ?? f.codigo) === fpId) : null;
-        const classificacao = (row.forma_pagamento_classificacao ?? fp?.classificacao ?? '').toUpperCase();
-        const isCartao = classificacao === 'CARTAO_CREDITO' || classificacao === 'CARTAO_DEBITO';
-        return (
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${isCartao ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-700'}`}>
-            {isCartao && '💳 '}{nome}
-            {isCartao && row.bandeira_cartao_nome && (
-              <span className="ml-1 text-purple-600">• {row.bandeira_cartao_nome}</span>
-            )}
-          </span>
-        );
-      },
-      size: 180,
     }),
     columnHelper.display({
       id: 'acoes',
@@ -515,6 +535,7 @@ export function Encomendas() {
       setEditing(null);
       setLoadedItens({});
       setLoadedEnderecos({});
+      setLoadedPagamentos({});
       addToast('success', editing ? 'Encomenda atualizada com sucesso' : 'Encomenda cadastrada com sucesso');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar encomenda';
@@ -536,6 +557,7 @@ export function Encomendas() {
       setEtapaAlvo(null);
       setLoadedItens({});
       setLoadedEnderecos({});
+      setLoadedPagamentos({});
       await refetch();
       addToast('success', `Encomenda movida para "${ETAPAS_ENCOMENDA[etapaAlvo].label}"`);
       if (etapaAlvo === 2) {
@@ -573,6 +595,7 @@ export function Encomendas() {
   return (
     <Layout>
       <PageHeader title="Encomendas" subtitle="Gerencie encomendas de produtos">
+        <PrintButton title="Encomendas" data={encomendasFiltradas} columns={printColumns} expandData={expandData} />
         <ShowForPermission rota="/encomendas" acao={ACAO.INCLUIR}>
           <Button onClick={openNew}>
             <Plus size={18} /> Nova Encomenda
