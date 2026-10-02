@@ -31,6 +31,25 @@ projects/Gestor/Mobile/Producao/node_modules/@capacitor/android/capacitor/build/
 projects/Gestor/Mobile/Producao/node_modules/@capacitor/
 projects/Gestor/Mobile/Producao/node_modules/@ionic/
 projects/Gestor/Mobile/Producao/node_modules/
-projects/Gestor/BackEnd/Server/Go/Fotos/
+projects/Gestor/BackEnd/Server/Fotos/
 projects/Gestor/Mobile/Cliente/node_modules/
 *.exe~
+
+# ============================================
+# Higiene 2026-10-02: padroes globais
+# ============================================
+node_modules/
+dist/
+.env
+
+# Lixo/junk local (nao versionar)
+projects/Gestor/BackEnd/Server/Go/Fotos/
+super_token.txt
+pdfjs/
+pdfjs.zip
+extract_pdf.js
+Roteiro_Melhorias_Gestor.b64
+Roteiro_Melhorias_Gestor.pdf
+projects/Gestor/docs/
+projects/Gestor - Copia/
+projects/Gestor_Backup_*/
