@@ -1,0 +1,26 @@
+# Arquivos de configuração com dados sensíveis
+.env
+
+# Build output
+dist/
+
+# Logs
+*.log
+bff.log
+bff.err.log
+
+# Node modules
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dados temporários
+data/

@@ -44,6 +44,10 @@ dist/
 
 # Lixo/junk local (nao versionar)
 projects/Gestor/BackEnd/Server/Go/Fotos/
+projects/Gestor/BackEnd/Server/Go/apk/versions.json
+projects/Gestor/body.json
+projects/Gestor/login.json
+projects/Gestor/test_*.json
 super_token.txt
 pdfjs/
 pdfjs.zip
@@ -53,3 +57,16 @@ Roteiro_Melhorias_Gestor.pdf
 projects/Gestor/docs/
 projects/Gestor - Copia/
 projects/Gestor_Backup_*/
+
+# Excecoes ao *.json da raiz: manifests de build obrigatorios
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.*.json
+
+# Excecoes: scripts e assets de build do Android/mobile (regras globais bloqueiam)
+!projects/Gestor/**/*.bat
+!projects/Gestor/**/.gitignore
+!projects/Gestor/**/android/**/res/**/*.png
+!projects/Gestor/FrontEnd/src/server/database/*.sql
+!projects/Gestor/BackEnd/Server/src/*.sql

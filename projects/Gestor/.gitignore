@@ -1,0 +1,66 @@
+# ============================================
+# Git Ignore Global - Projeto Gestor
+# ============================================
+
+# Arquivos de configuração com dados sensíveis
+.env
+.env.local
+.env.*.local
+
+# ============================================
+# BackEnd (Go)
+# ============================================
+BackEnd/Server/Go/src/*.exe
+BackEnd/Server/Go/src/gestor-server.exe
+BackEnd/Server/Go/src/gestor.exe
+BackEnd/Server/Go/src/main.exe
+BackEnd/Server/Go/src/main-novo.exe
+BackEnd/Server/Go/src/server.exe
+BackEnd/Server/Go/src/server.log
+BackEnd/Server/Go/src/server.err.log
+BackEnd/Server/Go/src/data/logs/
+
+# ============================================
+# FrontEnd
+# ============================================
+FrontEnd/src/client/dist/
+FrontEnd/src/server/dist/
+FrontEnd/src/client/node_modules/
+FrontEnd/src/server/node_modules/
+FrontEnd/src/server/bff.log
+FrontEnd/src/server/bff.err.log
+FrontEnd/src.rar
+
+# ============================================
+# Mobile - Cliente
+# ============================================
+Mobile/Cliente/dist/
+Mobile/Cliente/node_modules/
+Mobile/Cliente/src/dist/
+Mobile/Cliente/android/app/build/
+Mobile/Cliente/android/build/
+Mobile/Cliente/android/.gradle/
+Mobile/Cliente/vite.log
+
+# ============================================
+# Mobile - Produção
+# ============================================
+Mobile/Producao/dist/
+Mobile/Producao/node_modules/
+Mobile/Producao/src/dist/
+Mobile/Producao/android/app/build/
+Mobile/Producao/android/build/
+Mobile/Producao/android/.gradle/
+Mobile/Producao/.idea/
+Mobile/Producao/preview.log
+
+# ============================================
+# Backups e temporários
+# ============================================
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

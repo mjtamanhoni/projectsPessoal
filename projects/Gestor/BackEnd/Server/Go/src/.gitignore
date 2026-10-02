@@ -1,0 +1,27 @@
+# Arquivos de configuração com dados sensíveis
+.env
+
+# Binários compilados
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Build diretoires
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+server.log
+server.err.log
+
+# Data
+data/logs/

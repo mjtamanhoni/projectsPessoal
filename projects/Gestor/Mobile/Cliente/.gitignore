@@ -1,0 +1,30 @@
+# Arquivos de configuração com dados sensíveis
+.env
+
+# Build output
+dist/
+
+# Logs
+*.log
+vite.log
+
+# Node modules
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android build
+android/app/build/
+android/build/
+android/.gradle/
+
+# Capacitor
+android/capacitor-build/
