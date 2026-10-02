@@ -72,6 +72,7 @@ func main() {
 	// Public routes
 	r.Get("/usuario/login", loginHandler.Login)
 	r.Post("/usuario/login", loginHandler.Login)
+	r.Post("/usuario/redefinirSenha", basicCRUD.UsuarioRedefinirSenhaPublico)
 	r.Get("/empresaPublic", basicCRUD.EmpresaListarPublico)
 	r.Get("/clientePublico", basicCRUD.ClientePublicoBuscar)
 	r.Post("/clientePublico", basicCRUD.ClientePublicoCriar)
@@ -360,6 +361,9 @@ carregar();
 		r.Delete("/usuario", basicCRUD.UsuarioExcluir)
 		r.Put("/usuario/alterarSenha", basicCRUD.UsuarioAlterarSenha)
 		r.Put("/usuario/alterarPin", basicCRUD.UsuarioAlterarPin)
+		r.Put("/usuario/adminRedefinirSenha", basicCRUD.UsuarioAdminRedefinirSenha)
+		r.Put("/usuario/adminRedefinirPin", basicCRUD.UsuarioAdminRedefinirPin)
+		r.Post("/usuario/trocarEmpresa", loginHandler.TrocarEmpresa)
 
 		// Fornecedor
 		r.Get("/fornecedor", basicCRUD.FornecedorListar)

@@ -127,6 +127,7 @@ export const usuarioSchema = z.object({
   confirmarSenha: z.string().min(4, 'Confirmacao deve ter pelo menos 4 caracteres').max(100).optional().or(z.literal('')),
   pin: z.string().length(4, 'PIN deve ter exatamente 4 digitos').optional().or(z.literal('')),
   confirmarPin: z.string().length(4, 'Confirmacao deve ter exatamente 4 digitos').optional().or(z.literal('')),
+  empresa_id: z.number().int().positive().optional(),
 }).refine((data) => {
   const isNew = !data.id && !data.codigo;
   if (!isNew) return true;
@@ -160,6 +161,7 @@ export const usuarioSchema = z.object({
 
 export const usuarioSenhaSchema = z.object({
   id: z.number().int().positive(),
+  senhaAtual: z.string().min(1, 'Senha atual e obrigatoria').max(100),
   novaSenha: z.string().min(4, 'Senha deve ter pelo menos 4 caracteres').max(100),
   confirmarSenha: z.string().min(4, 'Confirmacao deve ter pelo menos 4 caracteres').max(100),
 }).refine((data) => data.novaSenha === data.confirmarSenha, {
@@ -174,6 +176,16 @@ export const usuarioPinSchema = z.object({
 }).refine((data) => data.novoPin === data.confirmarPin, {
   message: 'Os PINs nao conferem',
   path: ['confirmarPin'],
+});
+
+// Superadmin redefine a senha de terceiros sem informar a senha anterior
+export const usuarioAdminSenhaSchema = z.object({
+  id: z.number().int().positive(),
+  novaSenha: z.string().min(4, 'Senha deve ter pelo menos 4 caracteres').max(100),
+  confirmarSenha: z.string().min(4, 'Confirmacao deve ter pelo menos 4 caracteres').max(100),
+}).refine((data) => data.novaSenha === data.confirmarSenha, {
+  message: 'As senhas nao conferem',
+  path: ['confirmarSenha'],
 });
 
 export const moduloSchema = z.object({
@@ -251,6 +263,7 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type UsuarioInput = z.infer<typeof usuarioSchema>;
 export type UsuarioSenhaInput = z.infer<typeof usuarioSenhaSchema>;
 export type UsuarioPinInput = z.infer<typeof usuarioPinSchema>;
+export type UsuarioAdminSenhaInput = z.infer<typeof usuarioAdminSenhaSchema>;
 export type EmpresaInput = z.infer<typeof empresaSchema>;
 export type ModuloInput = z.infer<typeof moduloSchema>;
 export type ModuloFormularioInput = z.infer<typeof moduloFormularioSchema>;

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"gestor-server/middleware"
 )
 
 type APKHandler struct {
@@ -148,6 +150,10 @@ func (h *APKHandler) VersaoPublico(w http.ResponseWriter, r *http.Request) {
 
 // Upload recebe um arquivo APK via multipart e salva no diretorio.
 func (h *APKHandler) Upload(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		JsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -236,6 +242,10 @@ func (h *APKHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 // Excluir remove um APK do diretorio.
 func (h *APKHandler) Excluir(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		JsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 

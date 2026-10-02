@@ -291,7 +291,24 @@ var Migracoes = []Migracao{
 		`,
 	},
 	{
-		Nome: "012_empresa_delivery",
+		Nome: "012_empresa_logomarcas_multiplas",
+		SQLUp: `
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='empresa' AND column_name='logomarca_paginas') THEN
+					ALTER TABLE public.empresa ADD COLUMN logomarca_paginas VARCHAR(255);
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='empresa' AND column_name='logomarca_relatorios') THEN
+					ALTER TABLE public.empresa ADD COLUMN logomarca_relatorios VARCHAR(255);
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='empresa' AND column_name='logomarca_fiscal') THEN
+					ALTER TABLE public.empresa ADD COLUMN logomarca_fiscal VARCHAR(255);
+				END IF;
+			END $$;
+		`,
+	},
+	{
+		Nome: "013_empresa_delivery",
 		SQLUp: `
 			DO $$
 			BEGIN

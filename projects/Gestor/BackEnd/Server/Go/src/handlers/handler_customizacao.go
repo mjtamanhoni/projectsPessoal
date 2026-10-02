@@ -11,8 +11,8 @@ import (
 	"gestor-server/middleware"
 )
 
-// adicionalItem contém os dados de um adicional aplicado a um item de encomenda
-// ou venda (snapshot de nome e preço na gravação).
+// adicionalItem contÃ©m os dados de um adicional aplicado a um item de encomenda
+// ou venda (snapshot de nome e preÃ§o na gravaÃ§Ã£o).
 type adicionalItem struct {
 	AdicionalID        int
 	ProdutoVendaItemID int
@@ -22,8 +22,8 @@ type adicionalItem struct {
 	ValorTotal         float64
 }
 
-// removidoItem contém o nome de um ingrediente/item removido e, quando proveniente
-// de um produto de venda, a referência ao item da receita comercial.
+// removidoItem contÃ©m o nome de um ingrediente/item removido e, quando proveniente
+// de um produto de venda, a referÃªncia ao item da receita comercial.
 type removidoItem struct {
 	Nome               string
 	ProdutoVendaItemID int
@@ -159,7 +159,7 @@ func salvarCustomizacaoItem(ctx context.Context, tx pgx.Tx, empresaID, itemID in
 	return adicionalValor, nil
 }
 
-// apagarCustomizacaoDeItens apaga os registros de customização (removidos/adicionais)
+// apagarCustomizacaoDeItens apaga os registros de customizaÃ§Ã£o (removidos/adicionais)
 // de todos os itens de uma encomenda ou venda.
 func apagarCustomizacaoDeItens(ctx context.Context, tx pgx.Tx, empresaID, paiID int,
 	tabelaItens string, colPai string, colItem string, tabelaRemovidos, tabelaAdicionais string) error {
@@ -186,10 +186,10 @@ func (h *ProducaoHandler) AdicionalAtualizar(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *ProducaoHandler) AdicionalExcluir(w http.ResponseWriter, r *http.Request) {
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -219,15 +219,15 @@ func (h *ProducaoHandler) AdicionalExcluir(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Adicional excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Adicional excluÃ­do com sucesso"})
 }
 
-// --- Produto Adicional (vínculo produto -> adicionais disponíveis) ---
+// --- Produto Adicional (vÃ­nculo produto -> adicionais disponÃ­veis) ---
 func (h *ProducaoHandler) ProdutoAdicionalListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
 	produtoFabricadoID := parseInt(r.URL.Query().Get("produto_fabricado_id"), 0)
@@ -256,16 +256,16 @@ func (h *ProducaoHandler) ProdutoAdicionalListar(w http.ResponseWriter, r *http.
 	jsonSuccess(w, rowsToMap(rows))
 }
 
-// ProdutoAdicionalAtualizar substitui todos os vínculos de adicionais do(s) produto(s).
+// ProdutoAdicionalAtualizar substitui todos os vÃ­nculos de adicionais do(s) produto(s).
 // Body: { produto_fabricado_id, adicionais: [adicional_id, ...] }
 // ou array de { produto_fabricado_id, adicional_id }.
 func (h *ProducaoHandler) ProdutoAdicionalAtualizar(w http.ResponseWriter, r *http.Request) {
 	items, err := h.BasicCRUD.parseBody(r)
 	if err != nil || len(items) == 0 {
-		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		jsonError(w, "Dados nÃ£o informados", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
@@ -278,7 +278,7 @@ func (h *ProducaoHandler) ProdutoAdicionalAtualizar(w http.ResponseWriter, r *ht
 	if v, ok := items[0]["adicionais"]; ok {
 		produtoFabricadoID := getInt(items[0], "produto_fabricado_id")
 		if produtoFabricadoID == 0 {
-			jsonError(w, "produto_fabricado_id é obrigatório", http.StatusBadRequest)
+			jsonError(w, "produto_fabricado_id Ã© obrigatÃ³rio", http.StatusBadRequest)
 			return
 		}
 		if arr, ok := v.([]interface{}); ok {
@@ -310,7 +310,7 @@ func (h *ProducaoHandler) ProdutoAdicionalAtualizar(w http.ResponseWriter, r *ht
 	}
 
 	if len(pares) == 0 {
-		jsonError(w, "Nenhum vínculo informado", http.StatusBadRequest)
+		jsonError(w, "Nenhum vÃ­nculo informado", http.StatusBadRequest)
 		return
 	}
 
@@ -342,11 +342,11 @@ func (h *ProducaoHandler) ProdutoAdicionalAtualizar(w http.ResponseWriter, r *ht
 }
 
 func (h *ProducaoHandler) ProdutoAdicionalExcluir(w http.ResponseWriter, r *http.Request) {
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	produtoFabricadoID := parseInt(r.URL.Query().Get("produto_fabricado_id"), 0)
 	adicionalID := parseInt(r.URL.Query().Get("adicional_id"), 0)
 	if produtoFabricadoID == 0 || adicionalID == 0 {
-		jsonError(w, "produto_fabricado_id e adicional_id são obrigatórios", http.StatusBadRequest)
+		jsonError(w, "produto_fabricado_id e adicional_id sÃ£o obrigatÃ³rios", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `
@@ -357,13 +357,13 @@ func (h *ProducaoHandler) ProdutoAdicionalExcluir(w http.ResponseWriter, r *http
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Vínculo excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "VÃ­nculo excluÃ­do com sucesso"})
 }
 
-// --- Adicional x Classificacao (vínculo adicional -> classificações contempladas) ---
+// --- Adicional x Classificacao (vÃ­nculo adicional -> classificaÃ§Ãµes contempladas) ---
 func (h *ProducaoHandler) AdicionalClassificacaoListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
 	adicionalID := parseInt(r.URL.Query().Get("adicional_id"), 0)
@@ -401,16 +401,16 @@ func (h *ProducaoHandler) AdicionalClassificacaoListar(w http.ResponseWriter, r 
 	jsonSuccess(w, rowsToMap(rows))
 }
 
-// AdicionalClassificacaoAtualizar substitui todos os vínculos de classificações do(s) adicional(is).
+// AdicionalClassificacaoAtualizar substitui todos os vÃ­nculos de classificaÃ§Ãµes do(s) adicional(is).
 // Body: { adicional_id, classificacoes: [produto_classificacao_id, ...] }
 // ou array de { adicional_id, produto_classificacao_id }.
 func (h *ProducaoHandler) AdicionalClassificacaoAtualizar(w http.ResponseWriter, r *http.Request) {
 	items, err := h.BasicCRUD.parseBody(r)
 	if err != nil || len(items) == 0 {
-		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		jsonError(w, "Dados nÃ£o informados", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
@@ -425,7 +425,7 @@ func (h *ProducaoHandler) AdicionalClassificacaoAtualizar(w http.ResponseWriter,
 		replaceAll = true
 		adicionalID := getInt(items[0], "adicional_id")
 		if adicionalID == 0 {
-			jsonError(w, "adicional_id é obrigatório", http.StatusBadRequest)
+			jsonError(w, "adicional_id Ã© obrigatÃ³rio", http.StatusBadRequest)
 			return
 		}
 		if arr, ok := v.([]interface{}); ok {
@@ -457,7 +457,7 @@ func (h *ProducaoHandler) AdicionalClassificacaoAtualizar(w http.ResponseWriter,
 	}
 
 	if len(pares) == 0 {
-		jsonError(w, "Nenhum vínculo informado", http.StatusBadRequest)
+		jsonError(w, "Nenhum vÃ­nculo informado", http.StatusBadRequest)
 		return
 	}
 
@@ -488,15 +488,15 @@ func (h *ProducaoHandler) AdicionalClassificacaoAtualizar(w http.ResponseWriter,
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Classificações do adicional atualizadas com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "ClassificaÃ§Ãµes do adicional atualizadas com sucesso"})
 }
 
 func (h *ProducaoHandler) AdicionalClassificacaoExcluir(w http.ResponseWriter, r *http.Request) {
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	adicionalID := parseInt(r.URL.Query().Get("adicional_id"), 0)
 	classificacaoID := parseInt(r.URL.Query().Get("produto_classificacao_id"), 0)
 	if adicionalID == 0 || classificacaoID == 0 {
-		jsonError(w, "adicional_id e produto_classificacao_id são obrigatórios", http.StatusBadRequest)
+		jsonError(w, "adicional_id e produto_classificacao_id sÃ£o obrigatÃ³rios", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `
@@ -507,8 +507,8 @@ func (h *ProducaoHandler) AdicionalClassificacaoExcluir(w http.ResponseWriter, r
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Vínculo excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "VÃ­nculo excluÃ­do com sucesso"})
 }

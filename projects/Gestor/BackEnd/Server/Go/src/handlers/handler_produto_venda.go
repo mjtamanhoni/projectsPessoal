@@ -46,10 +46,10 @@ func (h *ProducaoHandler) ProdutoVendaAtualizar(w http.ResponseWriter, r *http.R
 }
 
 func (h *ProducaoHandler) ProdutoVendaExcluir(w http.ResponseWriter, r *http.Request) {
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -76,12 +76,12 @@ func (h *ProducaoHandler) ProdutoVendaExcluir(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Produto de venda excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Produto de venda excluÃ­do com sucesso"})
 }
 
 // --- Item do Produto de Venda ---

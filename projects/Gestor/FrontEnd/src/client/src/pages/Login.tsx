@@ -4,9 +4,10 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { LogIn, Settings, Server, Loader2, Save } from 'lucide-react';
+import { LogIn, Settings, Server, Loader2, Save, KeyRound } from 'lucide-react';
 import { fetchSettings, saveSettings } from '@/lib/settings';
 import { formatCpfCnpj } from '@/lib/utils';
+import api from '@/lib/api';
 import type { AppSettings } from '@/types';
 
 export function Login() {
@@ -23,6 +24,15 @@ export function Login() {
   const [connLoading, setConnLoading] = useState(false);
   const [connSaving, setConnSaving] = useState(false);
   const [connError, setConnError] = useState('');
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetLogin, setResetLogin] = useState('');
+  const [resetEmpresa, setResetEmpresa] = useState('');
+  const [resetSenhaAtual, setResetSenhaAtual] = useState('');
+  const [resetNovaSenha, setResetNovaSenha] = useState('');
+  const [resetConfirmar, setResetConfirmar] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
 
   useEffect(() => {
     const expired = searchParams.get('expired');
@@ -71,6 +81,58 @@ export function Login() {
       setConnError('Erro ao salvar configurações');
     } finally {
       setConnSaving(false);
+    }
+  };
+
+  const openReset = () => {
+    setResetLogin(login);
+    setResetEmpresa(cnpjCpf);
+    setResetSenhaAtual('');
+    setResetNovaSenha('');
+    setResetConfirmar('');
+    setResetError('');
+    setResetSuccess('');
+    setResetOpen(true);
+  };
+
+  const handleResetSenha = async () => {
+    setResetError('');
+    setResetSuccess('');
+    if (!resetLogin.trim() || !resetEmpresa.trim() || !resetSenhaAtual.trim() || !resetNovaSenha.trim()) {
+      setResetError('Todos os campos são obrigatórios');
+      return;
+    }
+    if (resetNovaSenha !== resetConfirmar) {
+      setResetError('As senhas não coincidem');
+      return;
+    }
+    if (resetNovaSenha.length < 4) {
+      setResetError('A nova senha deve ter pelo menos 4 caracteres');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await api.post('/auth/redefinir-senha', {
+        login: resetLogin.trim(),
+        empresa: resetEmpresa.trim(),
+        senhaAtual: resetSenhaAtual,
+        novaSenha: resetNovaSenha,
+      });
+      setResetSuccess('Senha redefinida com sucesso! Agora faça login.');
+      setResetSenhaAtual('');
+      setResetNovaSenha('');
+      setResetConfirmar('');
+    } catch (err: unknown) {
+      const message = (() => {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const axiosErr = err as { response?: { data?: { erro?: string } }; message?: string };
+          return axiosErr.response?.data?.erro ?? axiosErr.message ?? 'Erro ao redefinir senha';
+        }
+        return err instanceof Error ? err.message : 'Erro ao redefinir senha';
+      })();
+      setResetError(message);
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -165,6 +227,17 @@ export function Login() {
             </Button>
           </form>
 
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={openReset}
+              className="text-sm text-accent-primary hover:text-accent-primary/80 transition-colors flex items-center justify-center gap-1.5 mx-auto"
+            >
+              <KeyRound size={14} />
+              Esqueci minha senha
+            </button>
+          </div>
+
           <div className="mt-6 pt-4 border-t border-border-subtle text-center space-y-2">
             <button
               type="button"
@@ -257,6 +330,69 @@ export function Login() {
               </div>
             </div>
           ) : null}
+        </Modal>
+
+        <Modal isOpen={resetOpen} onClose={() => { setResetOpen(false); setResetError(''); setResetSuccess(''); }} title="Redefinir Senha" maxWidth="max-w-md">
+          {resetSuccess ? (
+            <div className="space-y-4">
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                {resetSuccess}
+              </div>
+              <Button onClick={() => { setResetOpen(false); setResetSuccess(''); }} className="w-full">
+                Fechar
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {resetError && (
+                <div className="p-3 bg-accent-red/10 border border-accent-red/20 rounded-lg text-sm text-accent-red">
+                  {resetError}
+                </div>
+              )}
+              <Input
+                label="CNPJ/CPF da Empresa"
+                value={resetEmpresa}
+                onChange={(e) => setResetEmpresa(formatCpfCnpj(e.target.value))}
+                placeholder="Digite o CNPJ/CPF da empresa"
+              />
+              <Input
+                label="Login"
+                value={resetLogin}
+                onChange={(e) => setResetLogin(e.target.value)}
+                placeholder="Digite seu usuário ou email"
+              />
+              <Input
+                label="Senha Atual"
+                type="password"
+                value={resetSenhaAtual}
+                onChange={(e) => setResetSenhaAtual(e.target.value)}
+                placeholder="Digite sua senha atual"
+              />
+              <Input
+                label="Nova Senha"
+                type="password"
+                value={resetNovaSenha}
+                onChange={(e) => setResetNovaSenha(e.target.value)}
+                placeholder="Digite a nova senha"
+              />
+              <Input
+                label="Confirmar Nova Senha"
+                type="password"
+                value={resetConfirmar}
+                onChange={(e) => setResetConfirmar(e.target.value)}
+                placeholder="Confirme a nova senha"
+              />
+              <div className="flex gap-2 pt-2">
+                <Button variant="secondary" onClick={() => { setResetOpen(false); setResetError(''); setResetSuccess(''); }} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button onClick={handleResetSenha} disabled={resetLoading} className="flex-1">
+                  {resetLoading ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                  Redefinir
+                </Button>
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     </div>

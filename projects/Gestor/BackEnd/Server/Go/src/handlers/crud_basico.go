@@ -31,7 +31,7 @@ func (b *BasicCRUD) parseBody(r *http.Request) ([]map[string]interface{}, error)
 
 	var raw interface{}
 	if err := decoder.Decode(&raw); err != nil {
-		return nil, fmt.Errorf("JSON inválido")
+		return nil, fmt.Errorf("JSON invÃ¡lido")
 	}
 
 	switch v := raw.(type) {
@@ -44,7 +44,7 @@ func (b *BasicCRUD) parseBody(r *http.Request) ([]map[string]interface{}, error)
 	case map[string]interface{}:
 		items = append(items, v)
 	default:
-		return nil, fmt.Errorf("JSON inválido. Envie um array ou objeto.")
+		return nil, fmt.Errorf("JSON invÃ¡lido. Envie um array ou objeto.")
 	}
 
 	return items, nil
@@ -115,7 +115,7 @@ func (b *BasicCRUD) Salvar(w http.ResponseWriter, r *http.Request, table string,
 		return
 	}
 
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	tx, err := b.Pool.Begin(r.Context())
@@ -211,9 +211,9 @@ func (b *BasicCRUD) Salvar(w http.ResponseWriter, r *http.Request, table string,
 }
 func (b *BasicCRUD) Excluir(w http.ResponseWriter, r *http.Request, table string) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := b.Pool.Exec(r.Context(),
@@ -224,10 +224,10 @@ func (b *BasicCRUD) Excluir(w http.ResponseWriter, r *http.Request, table string
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluÃ­do com sucesso"})
 }
 
 func (b *BasicCRUD) genericUpsert(w http.ResponseWriter, r *http.Request,
@@ -239,25 +239,13 @@ func (b *BasicCRUD) genericUpsert(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
-	if len(items) > 0 {
-		if v, ok := getFieldValue(items[0], "empresa_id"); ok {
-			switch n := v.(type) {
-			case float64:
-				if n != 0 {
-					empresaID = int(n)
-				}
-			case json.Number:
-				if i, err := n.Int64(); err == nil && i != 0 {
-					empresaID = int(i)
-				}
-			case int:
-				if n != 0 {
-					empresaID = n
-				}
-			}
+	for _, item := range items {
+		if _, ok := getFieldValue(item, "empresa_id"); ok {
+			jsonError(w, "NÃ£o Ã© permitido alterar empresa_id", http.StatusForbidden)
+			return
 		}
 	}
 
@@ -357,14 +345,10 @@ func (b *BasicCRUD) genericUpsert(w http.ResponseWriter, r *http.Request,
 
 func (b *BasicCRUD) genericDelete(w http.ResponseWriter, r *http.Request, table string) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := parseInt(r.URL.Query().Get("empresa_id"), 0)
-	if empresaID == 0 {
-		empresaID = middleware.GetEmpresaID(r)
-	}
-
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
 		log.Printf("[genericDelete] ID nao informado (table=%s)", table)
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -378,10 +362,10 @@ func (b *BasicCRUD) genericDelete(w http.ResponseWriter, r *http.Request, table 
 	}
 	if tag.RowsAffected() == 0 {
 		log.Printf("[genericDelete] Registro nao encontrado (table=%s, id=%d, empresa=%d)", table, id, empresaID)
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluÃ­do com sucesso"})
 }
 
 // Global table upsert (no empresa_id)
@@ -465,7 +449,7 @@ func (b *BasicCRUD) globalUpsert(w http.ResponseWriter, r *http.Request, table s
 func (b *BasicCRUD) globalExcluir(w http.ResponseWriter, r *http.Request, table string) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := b.Pool.Exec(r.Context(),
@@ -476,10 +460,10 @@ func (b *BasicCRUD) globalExcluir(w http.ResponseWriter, r *http.Request, table 
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluÃ­do com sucesso"})
 }
 
 func rowsToMap(rows pgx.Rows) []map[string]interface{} {

@@ -6,6 +6,10 @@ const router = Router();
 
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.isSuperadmin) {
+      res.status(403).json({ error: 'Acesso restrito a superadmin' });
+      return;
+    }
     const result = await horseApi.listarMigracoes();
     res.json(result);
   } catch (error: unknown) {
@@ -16,6 +20,10 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
 router.post('/aplicar', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.isSuperadmin) {
+      res.status(403).json({ error: 'Acesso restrito a superadmin' });
+      return;
+    }
     const { nome } = req.body;
     if (!nome) {
       res.status(400).json({ error: 'nome e obrigatorio' });

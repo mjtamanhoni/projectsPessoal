@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -29,6 +30,7 @@ func RequestLogger(logStore *logger.LogStore) func(http.Handler) http.Handler {
 			start := time.Now()
 
 			jsonRecebido := ""
+			paramsStr := ""
 			if r.Body != nil {
 				bodyBytes, _ := io.ReadAll(r.Body)
 				r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
@@ -41,6 +43,23 @@ func RequestLogger(logStore *logger.LogStore) func(http.Handler) http.Handler {
 						jsonRecebido = string(bodyBytes)
 					}
 				}
+			}
+
+			// Captura query params
+			queryParams := r.URL.Query()
+			if len(queryParams) > 0 {
+				var parts []string
+				for k, v := range queryParams {
+					parts = append(parts, fmt.Sprintf("%s=%s", k, strings.Join(v, ",")))
+				}
+				paramsStr = strings.Join(parts, "&")
+			}
+			// Se tem body JSON, adiciona aos params
+			if jsonRecebido != "" {
+				if paramsStr != "" {
+					paramsStr += " | "
+				}
+				paramsStr += "BODY: " + jsonRecebido
 			}
 
 			ctx := database.InitScriptsContext(r.Context())
@@ -97,6 +116,7 @@ func RequestLogger(logStore *logger.LogStore) func(http.Handler) http.Handler {
 					IP:            r.RemoteAddr,
 					JsonRecebido:  jsonRecebido,
 					JsonRetornado: jsonRetornado,
+					Params:        paramsStr,
 					Scripts:       scripts,
 				})
 			}

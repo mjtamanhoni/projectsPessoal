@@ -219,7 +219,11 @@ export interface ServerEndpoint {
   port: number;
 }
 
-export const SERVIDOR_PADRAO: ServerEndpoint = { host: 'mjtsystems-gestor.duckdns.org', port: 9000 };
+// Servidor padrão - configure via variável de ambiente VITE_SERVER_HOST e VITE_SERVER_PORT
+export const SERVIDOR_PADRAO: ServerEndpoint = {
+  host: import.meta.env.VITE_SERVER_HOST || 'mjtsystems-gestor.duckdns.org',
+  port: parseInt(import.meta.env.VITE_SERVER_PORT || '9000', 10)
+};
 
 function getServerConfigLegacy(): { host: string; port: number } {
   try {

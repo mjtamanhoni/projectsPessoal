@@ -362,7 +362,11 @@ function getServerConfigLegacy(): { host: string; port: number } {
   } catch {
     /* ignora */
   }
-  return { host: 'localhost', port: 9000 };
+  // Servidor padrão - configure via variável de ambiente VITE_SERVER_HOST e VITE_SERVER_PORT
+  return {
+    host: import.meta.env.VITE_SERVER_HOST || 'localhost',
+    port: parseInt(import.meta.env.VITE_SERVER_PORT || '9000', 10)
+  };
 }
 
 export function getServerConfig(): { host: string; port: number } {

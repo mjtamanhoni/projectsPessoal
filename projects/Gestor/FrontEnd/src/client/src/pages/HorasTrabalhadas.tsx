@@ -10,7 +10,7 @@ import { HoraTrabalhadaForm } from '@/components/forms/HoraTrabalhadaForm';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { Spinner } from '@/components/ui/Spinner';
-import { formatCurrency, formatDate, ceilTo2 } from '@/lib/utils';
+import { formatCurrency, formatDate, ceilTo2, getEmpresaLogadaId } from '@/lib/utils';
 import type { HoraTrabalhada, Cliente, Usuario, Servico, HoraAbatida, HoraExcedida } from '@/types';
 import type { HoraTrabalhadaInput } from '@/schemas';
 import api from '@/lib/api';
@@ -198,7 +198,13 @@ export function HorasTrabalhadas() {
   };
 
   useEffect(() => {
-    Promise.all([api.get('/clientes'), api.get('/usuarios'), api.get('/servicos')]).then(([c, u, s]) => {
+    const empresaId = getEmpresaLogadaId();
+    const params = empresaId ? { empresa_id: empresaId } : undefined;
+    Promise.all([
+      api.get('/clientes', { params }),
+      api.get('/usuarios', { params }),
+      api.get('/servicos'),
+    ]).then(([c, u, s]) => {
       setClientes(c.data as Cliente[]);
       setUsuarios(u.data as Usuario[]);
       setServicos(s.data as Servico[]);

@@ -18,6 +18,11 @@ router.put('/', authMiddleware, (req: Request, res: Response) => {
   const body = req.body;
 
   if (body.horseApi) {
+    // Configuracao global do servidor: somente superadmin pode alterar
+    if (!authReq.isSuperadmin) {
+      res.status(403).json({ error: 'Acesso restrito a superadmin' });
+      return;
+    }
     saveSettings(body);
   }
 

@@ -127,6 +127,14 @@ export default function Login() {
 
         <button
           className="link-button"
+          style={{ top: 310, left: 0, width: '100%', position: 'absolute' }}
+          onClick={() => navigate('/redefinir-senha')}
+        >
+          Esqueci minha senha
+        </button>
+
+        <button
+          className="link-button"
           style={{ top: 342, left: 0, width: '100%', position: 'absolute' }}
           onClick={() => navigate('/login-pin')}
         >

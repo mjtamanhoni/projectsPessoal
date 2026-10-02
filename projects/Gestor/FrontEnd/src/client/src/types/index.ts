@@ -93,6 +93,8 @@ export interface Usuario {
   nome: string;
   email?: string;
   status?: number;
+  empresa_id?: number;
+  is_superadmin?: boolean;
 }
 
 export interface User {

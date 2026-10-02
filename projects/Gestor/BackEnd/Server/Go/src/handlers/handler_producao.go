@@ -43,7 +43,7 @@ func (h *ProducaoHandler) InsumoRecalcular(w http.ResponseWriter, r *http.Reques
 		}
 	}()
 
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	insumoID := parseInt(r.URL.Query().Get("id"), 0)
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -236,12 +236,12 @@ func (h *ProducaoHandler) CompraInsumoAtualizar(w http.ResponseWriter, r *http.R
 		return
 	}
 	if len(items) == 0 {
-		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		jsonError(w, "Dados nÃ£o informados", http.StatusBadRequest)
 		return
 	}
 
 	header := items[0]
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -268,7 +268,7 @@ func (h *ProducaoHandler) CompraInsumoAtualizar(w http.ResponseWriter, r *http.R
 
 	rawItens, ok := header["itens"]
 	if !ok {
-		jsonError(w, "itens não informados", http.StatusBadRequest)
+		jsonError(w, "itens nÃ£o informados", http.StatusBadRequest)
 		return
 	}
 	itensArr, ok := rawItens.([]interface{})
@@ -433,9 +433,9 @@ func (h *ProducaoHandler) CompraInsumoAtualizar(w http.ResponseWriter, r *http.R
 
 func (h *ProducaoHandler) CompraInsumoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -455,7 +455,7 @@ func (h *ProducaoHandler) CompraInsumoExcluir(w http.ResponseWriter, r *http.Req
 		WHERE cii.compra_id = $1 AND cii.empresa_id = $2 LIMIT 1`,
 		id, empresaID).Scan(&insumoID, &quantidade, &dataCompra)
 	if err != nil {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -473,7 +473,7 @@ func (h *ProducaoHandler) CompraInsumoExcluir(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -491,7 +491,7 @@ func (h *ProducaoHandler) CompraInsumoExcluir(w http.ResponseWriter, r *http.Req
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Compra de insumo excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Compra de insumo excluÃ­da com sucesso"})
 }
 
 // --- Produto Fabricado ---
@@ -606,7 +606,7 @@ func (h *ProducaoHandler) FabricacaoAtualizar(w http.ResponseWriter, r *http.Req
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -724,7 +724,7 @@ func (h *ProducaoHandler) FabricacaoAtualizar(w http.ResponseWriter, r *http.Req
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Fabricação salva com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "FabricaÃ§Ã£o salva com sucesso"})
 }
 
 func (h *ProducaoHandler) FabricacaoExcluir(w http.ResponseWriter, r *http.Request) {
@@ -847,12 +847,12 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 		return
 	}
 	if len(items) == 0 {
-		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		jsonError(w, "Dados nÃ£o informados", http.StatusBadRequest)
 		return
 	}
 
 	header := items[0]
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -880,7 +880,7 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 
 	rawItens, ok := header["itens"]
 	if !ok {
-		jsonError(w, "itens não informados", http.StatusBadRequest)
+		jsonError(w, "itens nÃ£o informados", http.StatusBadRequest)
 		return
 	}
 	itensArr, ok := rawItens.([]interface{})
@@ -993,7 +993,7 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 		adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
 			"venda_produto_item_id", "venda_produto_item_removido", "venda_produto_item_adicional", item)
 		if err != nil {
-			jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
+			jsonError(w, "Erro ao salvar customizaÃ§Ã£o: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if adicionalValor > 0 {
@@ -1095,9 +1095,9 @@ func (h *ProducaoHandler) VendaProdutoAtualizar(w http.ResponseWriter, r *http.R
 
 func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -1113,7 +1113,7 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 		`SELECT data_venda::text FROM venda_produto WHERE id = $1 AND empresa_id = $2`,
 		id, empresaID).Scan(&dataVenda)
 	if err != nil {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -1159,7 +1159,7 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -1176,13 +1176,13 @@ func (h *ProducaoHandler) VendaProdutoExcluir(w http.ResponseWriter, r *http.Req
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Venda excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Venda excluÃ­da com sucesso"})
 }
 
 // VendaProdutoReceber realiza o recebimento de uma venda: marca a venda como
 // recebida (status = 2) e baixa o contas a receber gerado por ela. Caso a
-// venda não tenha contas a receber vinculado (vendas antigas), cria um novo
-// já recebido.
+// venda nÃ£o tenha contas a receber vinculado (vendas antigas), cria um novo
+// jÃ¡ recebido.
 func (h *ProducaoHandler) VendaProdutoReceber(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ID              int     `json:"id"`
@@ -1192,13 +1192,13 @@ func (h *ProducaoHandler) VendaProdutoReceber(w http.ResponseWriter, r *http.Req
 		Acrescimo       float64 `json:"acrescimo"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "JSON inválido", http.StatusBadRequest)
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 	if body.ID <= 0 {
-		jsonError(w, "ID da venda não informado", http.StatusBadRequest)
+		jsonError(w, "ID da venda nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -1220,7 +1220,7 @@ func (h *ProducaoHandler) VendaProdutoReceber(w http.ResponseWriter, r *http.Req
 			WHERE vp.id = $1 AND vp.empresa_id = $2`,
 		body.ID, empresaID).Scan(&valorTotal, &clienteID, &dataVenda, &clienteNome)
 	if err != nil {
-		jsonError(w, "Venda não encontrada", http.StatusNotFound)
+		jsonError(w, "Venda nÃ£o encontrada", http.StatusNotFound)
 		return
 	}
 	primeiroNome := ""
@@ -1237,7 +1237,7 @@ func (h *ProducaoHandler) VendaProdutoReceber(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Venda não encontrada", http.StatusNotFound)
+		jsonError(w, "Venda nÃ£o encontrada", http.StatusNotFound)
 		return
 	}
 
@@ -1476,12 +1476,12 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if len(items) == 0 {
-		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		jsonError(w, "Dados nÃ£o informados", http.StatusBadRequest)
 		return
 	}
 
 	header := items[0]
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -1511,7 +1511,7 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 
 	isNew := id == 0
 	if isNew && !temItens {
-		jsonError(w, "itens não informados", http.StatusBadRequest)
+		jsonError(w, "itens nÃ£o informados", http.StatusBadRequest)
 		return
 	}
 	var itensArr []interface{}
@@ -1574,12 +1574,12 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 			`SELECT status, venda_id FROM encomenda WHERE id = $1 AND empresa_id = $2`,
 			id, empresaID).Scan(&statusAtual, &vendaIDAtual)
 		if err != nil {
-			jsonError(w, "Registro não encontrado", http.StatusNotFound)
+			jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 			return
 		}
 
 		if temItens && statusAtual >= 3 {
-			jsonError(w, "Encomenda finalizada/saiu para entrega, não é possível editar", http.StatusBadRequest)
+			jsonError(w, "Encomenda finalizada/saiu para entrega, nÃ£o Ã© possÃ­vel editar", http.StatusBadRequest)
 			return
 		}
 
@@ -1589,7 +1589,7 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 			switch statusNovo {
 			case 2:
 				if statusAtual >= 4 {
-					jsonError(w, "Encomenda entregue/cancelada não pode voltar para finalizada", http.StatusBadRequest)
+					jsonError(w, "Encomenda entregue/cancelada nÃ£o pode voltar para finalizada", http.StatusBadRequest)
 					return
 				}
 				if statusAtual < 2 {
@@ -1611,26 +1611,26 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 				novoStatus = 2
 			case 3:
 				if statusAtual != 2 {
-					jsonError(w, "Encomenda só pode sair para entrega após ser finalizada", http.StatusBadRequest)
+					jsonError(w, "Encomenda sÃ³ pode sair para entrega apÃ³s ser finalizada", http.StatusBadRequest)
 					return
 				}
 				novoStatus = 3
 			case 4:
 				if statusAtual != 3 {
-					jsonError(w, "Encomenda só pode ser entregue após sair para entrega", http.StatusBadRequest)
+					jsonError(w, "Encomenda sÃ³ pode ser entregue apÃ³s sair para entrega", http.StatusBadRequest)
 					return
 				}
 				novoStatus = 4
 			case 5:
 				if statusAtual >= 4 {
-					jsonError(w, "Encomenda entregue/cancelada não pode ser cancelada", http.StatusBadRequest)
+					jsonError(w, "Encomenda entregue/cancelada nÃ£o pode ser cancelada", http.StatusBadRequest)
 					return
 				}
 				novoStatus = 5
 			case 0, 1:
 				novoStatus = statusNovo
 			default:
-				jsonError(w, "Status inválido", http.StatusBadRequest)
+				jsonError(w, "Status invÃ¡lido", http.StatusBadRequest)
 				return
 			}
 		}
@@ -1753,7 +1753,7 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 			adicionalValor, err := salvarCustomizacaoItem(r.Context(), tx, empresaID, itemID,
 				"encomenda_item_id", "encomenda_item_removido", "encomenda_item_adicional", item)
 			if err != nil {
-				jsonError(w, "Erro ao salvar customização: "+err.Error(), http.StatusInternalServerError)
+				jsonError(w, "Erro ao salvar customizaÃ§Ã£o: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 			if adicionalValor > 0 {
@@ -1790,9 +1790,9 @@ func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Requ
 
 func (h *ProducaoHandler) EncomendaExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -1808,11 +1808,11 @@ func (h *ProducaoHandler) EncomendaExcluir(w http.ResponseWriter, r *http.Reques
 		`SELECT status FROM encomenda WHERE id = $1 AND empresa_id = $2`,
 		id, empresaID).Scan(&status)
 	if err != nil {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 	if status >= 3 {
-		jsonError(w, "Encomenda finalizada/saiu para entrega, não é possível excluir", http.StatusBadRequest)
+		jsonError(w, "Encomenda finalizada/saiu para entrega, nÃ£o Ã© possÃ­vel excluir", http.StatusBadRequest)
 		return
 	}
 
@@ -1839,17 +1839,17 @@ func (h *ProducaoHandler) EncomendaExcluir(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Encomenda excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Encomenda excluÃ­da com sucesso"})
 }
 
 // gerarVendaDeEncomendaTx cria a venda de produto a partir dos itens da encomenda,
-// com baixa de estoque de produtos fabricados e geração de contas a receber.
-// A encomenda deve estar com status < 3 (não finalizada/saiu para entrega). Executa dentro da transação informada.
+// com baixa de estoque de produtos fabricados e geraÃ§Ã£o de contas a receber.
+// A encomenda deve estar com status < 3 (nÃ£o finalizada/saiu para entrega). Executa dentro da transaÃ§Ã£o informada.
 func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx, empresaID, usuarioID, encomendaID int, dataVenda string, recebido bool, categoriaReceberID int) (int, error) {
 	if dataVenda == "" {
 		dataVenda = time.Now().Format("2006-01-02")
@@ -1862,10 +1862,10 @@ func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx
 		 WHERE id = $1 AND empresa_id = $2 FOR UPDATE`,
 		encomendaID, empresaID).Scan(&clienteID, &observacao, &status)
 	if err != nil {
-		return 0, fmt.Errorf("Encomenda não encontrada")
+		return 0, fmt.Errorf("Encomenda nÃ£o encontrada")
 	}
 	if status >= 3 {
-		return 0, fmt.Errorf("Encomenda já finalizada")
+		return 0, fmt.Errorf("Encomenda jÃ¡ finalizada")
 	}
 
 	type encomendaItem struct {
@@ -1890,7 +1890,7 @@ func (h *ProducaoHandler) gerarVendaDeEncomendaTx(ctx context.Context, tx pgx.Tx
 	}
 	itemRows.Close()
 	if len(encomendaItens) == 0 {
-		return 0, fmt.Errorf("Encomenda sem itens, não é possível gerar venda")
+		return 0, fmt.Errorf("Encomenda sem itens, nÃ£o Ã© possÃ­vel gerar venda")
 	}
 
 	// Cria a venda de produto
@@ -2139,12 +2139,12 @@ func (h *ProducaoHandler) EncomendaGerarVenda(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if len(items) == 0 {
-		jsonError(w, "Dados não informados", http.StatusBadRequest)
+		jsonError(w, "Dados nÃ£o informados", http.StatusBadRequest)
 		return
 	}
 
 	header := items[0]
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	encomendaID := getID(header)
@@ -2152,7 +2152,7 @@ func (h *ProducaoHandler) EncomendaGerarVenda(w http.ResponseWriter, r *http.Req
 		encomendaID = getInt(header, "id_encomenda")
 	}
 	if encomendaID == 0 {
-		jsonError(w, "ID da encomenda não informado", http.StatusBadRequest)
+		jsonError(w, "ID da encomenda nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -2177,11 +2177,11 @@ func (h *ProducaoHandler) EncomendaGerarVenda(w http.ResponseWriter, r *http.Req
 		`SELECT status FROM encomenda WHERE id = $1 AND empresa_id = $2`,
 		encomendaID, empresaID).Scan(&status)
 	if err != nil {
-		jsonError(w, "Encomenda não encontrada", http.StatusNotFound)
+		jsonError(w, "Encomenda nÃ£o encontrada", http.StatusNotFound)
 		return
 	}
 	if status >= 3 {
-		jsonError(w, "Encomenda já finalizada", http.StatusBadRequest)
+		jsonError(w, "Encomenda jÃ¡ finalizada", http.StatusBadRequest)
 		return
 	}
 
@@ -2242,7 +2242,7 @@ func (h *ProducaoHandler) FabricacaoCustoAdicionalAtualizar(w http.ResponseWrite
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
@@ -2291,9 +2291,9 @@ func (h *ProducaoHandler) FabricacaoCustoAdicionalAtualizar(w http.ResponseWrite
 
 func (h *ProducaoHandler) FabricacaoCustoAdicionalExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -2309,7 +2309,7 @@ func (h *ProducaoHandler) FabricacaoCustoAdicionalExcluir(w http.ResponseWriter,
 		`SELECT fabricacao_id FROM fabricacao_custo_adicional WHERE id = $1 AND empresa_id = $2`,
 		id, empresaID).Scan(&fabricacaoID)
 	if err != nil {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -2320,7 +2320,7 @@ func (h *ProducaoHandler) FabricacaoCustoAdicionalExcluir(w http.ResponseWriter,
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -2331,7 +2331,7 @@ func (h *ProducaoHandler) FabricacaoCustoAdicionalExcluir(w http.ResponseWriter,
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Custo adicional excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Custo adicional excluÃ­do com sucesso"})
 }
 
 // --- Estoque Insumo ---
@@ -2432,7 +2432,7 @@ func (h *ProducaoHandler) PerdaInsumoAtualizar(w http.ResponseWriter, r *http.Re
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -2487,9 +2487,9 @@ func (h *ProducaoHandler) PerdaInsumoAtualizar(w http.ResponseWriter, r *http.Re
 
 func (h *ProducaoHandler) PerdaInsumoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -2507,7 +2507,7 @@ func (h *ProducaoHandler) PerdaInsumoExcluir(w http.ResponseWriter, r *http.Requ
 		`SELECT insumo_id, quantidade, data_perda FROM perda_insumo WHERE id = $1 AND empresa_id = $2`,
 		id, empresaID).Scan(&insumoID, &quantidade, &dataPerda)
 	if err != nil {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -2518,7 +2518,7 @@ func (h *ProducaoHandler) PerdaInsumoExcluir(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -2530,7 +2530,7 @@ func (h *ProducaoHandler) PerdaInsumoExcluir(w http.ResponseWriter, r *http.Requ
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Perda de insumo excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Perda de insumo excluÃ­da com sucesso"})
 }
 
 // --- Perda Produto Fabricado ---
@@ -2579,7 +2579,7 @@ func (h *ProducaoHandler) PerdaProdutoFabricadoAtualizar(w http.ResponseWriter, 
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -2634,9 +2634,9 @@ func (h *ProducaoHandler) PerdaProdutoFabricadoAtualizar(w http.ResponseWriter, 
 
 func (h *ProducaoHandler) PerdaProdutoFabricadoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -2654,7 +2654,7 @@ func (h *ProducaoHandler) PerdaProdutoFabricadoExcluir(w http.ResponseWriter, r 
 		`SELECT produto_fabricado_id, quantidade, data_perda FROM perda_produto_fabricado WHERE id = $1 AND empresa_id = $2`,
 		id, empresaID).Scan(&produtoFabricadoID, &quantidade, &dataPerda)
 	if err != nil {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -2665,7 +2665,7 @@ func (h *ProducaoHandler) PerdaProdutoFabricadoExcluir(w http.ResponseWriter, r 
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -2677,7 +2677,7 @@ func (h *ProducaoHandler) PerdaProdutoFabricadoExcluir(w http.ResponseWriter, r 
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Perda de produto excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Perda de produto excluÃ­da com sucesso"})
 }
 
 // --- Uso Consumo ---
@@ -2726,7 +2726,7 @@ func (h *ProducaoHandler) UsoConsumoAtualizar(w http.ResponseWriter, r *http.Req
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -2781,9 +2781,9 @@ func (h *ProducaoHandler) UsoConsumoAtualizar(w http.ResponseWriter, r *http.Req
 
 func (h *ProducaoHandler) UsoConsumoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -2801,7 +2801,7 @@ func (h *ProducaoHandler) UsoConsumoExcluir(w http.ResponseWriter, r *http.Reque
 		`SELECT produto_fabricado_id, quantidade, data_uso FROM uso_consumo WHERE id = $1 AND empresa_id = $2`,
 		id, empresaID).Scan(&produtoFabricadoID, &quantidade, &dataUso)
 	if err != nil {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -2812,7 +2812,7 @@ func (h *ProducaoHandler) UsoConsumoExcluir(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -2824,7 +2824,7 @@ func (h *ProducaoHandler) UsoConsumoExcluir(w http.ResponseWriter, r *http.Reque
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Uso/consumo excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Uso/consumo excluÃ­do com sucesso"})
 }
 
 // Internal helpers
@@ -3158,7 +3158,7 @@ func (h *ProducaoHandler) EncomendaPagamentoListar(w http.ResponseWriter, r *htt
 }
 
 func (h *ProducaoHandler) EncomendaPagamentoSalvar(w http.ResponseWriter, r *http.Request) {
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 
 	body, err := h.BasicCRUD.parseBody(r)
 	if err != nil {
@@ -3260,7 +3260,7 @@ func (h *ProducaoHandler) EncomendaPagamentoSalvar(w http.ResponseWriter, r *htt
 }
 
 func (h *ProducaoHandler) EncomendaPagamentoExcluir(w http.ResponseWriter, r *http.Request) {
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	encomendaID := parseInt(r.URL.Query().Get("encomenda_id"), 0)
 	pagamentoID := parseInt(r.URL.Query().Get("id"), 0)
 

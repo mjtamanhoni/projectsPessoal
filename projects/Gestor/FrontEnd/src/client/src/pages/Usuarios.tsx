@@ -14,26 +14,38 @@ import { UsuarioPinForm } from '@/components/forms/UsuarioPinForm';
 import { UsuarioFormularioForm } from '@/components/forms/UsuarioFormularioForm';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
 import { Spinner } from '@/components/ui/Spinner';
 import type { Usuario } from '@/types';
+import type { Empresa } from '@/types';
 import type { UsuarioFormulario, Formulario } from '@/types';
 import type { UsuarioSenhaInput } from '@/schemas';
 import type { UsuarioPinInput } from '@/schemas';
 import type { UsuarioInput } from '@/schemas';
+import type { UsuarioAdminSenhaInput } from '@/schemas';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { Plus, KeyRound, RefreshCw, Trash2 } from 'lucide-react';
 import { PrintButton } from '@/components/ui/PrintButton';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
-import api from '@/lib/api';
+import api, { getErrorMsg } from '@/lib/api';
 
 const columnHelper = createColumnHelper<Usuario>();
 
 export function Usuarios() {
-  const { data: usuarios, loading, error, create, update, remove, fetchOne, refetch } = useApi<Usuario>('/usuarios');
+  const { isSuperadmin } = useAuth();
+  const [filtroEmpresa, setFiltroEmpresa] = useState<string>('');
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const endpoint = filtroEmpresa === '' ? '/usuarios' : `/usuarios?empresa_id=${filtroEmpresa}`;
+  const { data: usuarios, loading, error, create, update, fetchOne, refetch } = useApi<Usuario>(endpoint);
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('1');
+
+  useEffect(() => {
+    if (!isSuperadmin) return;
+    api.get('/empresas').then((r) => setEmpresas(r.data as Empresa[])).catch(() => {});
+  }, [isSuperadmin]);
 
   const usuariosFiltrados = useMemo(
     () =>
@@ -47,11 +59,13 @@ export function Usuarios() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Usuario | null>(null);
   const [fetchingOne, setFetchingOne] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; empresa_id?: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [senhaModalOpen, setSenhaModalOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState<Usuario | null>(null);
+  const [confirmCredencial, setConfirmCredencial] = useState<{ tipo: 'senha' | 'pin'; data: UsuarioSenhaInput | UsuarioAdminSenhaInput | UsuarioPinInput } | null>(null);
+  const [alterandoCredencial, setAlterandoCredencial] = useState(false);
   const { addToast } = useToast();
 
   const [formularios, setFormularios] = useState<Formulario[]>([]);
@@ -126,6 +140,11 @@ export function Usuarios() {
       cell: (info) => info.getValue() || '-',
     }),
     columnHelper.display({
+      id: 'empresa',
+      header: 'Empresa',
+      cell: ({ row }) => String(row.original.empresa_id ?? '-'),
+    }),
+    columnHelper.display({
       id: 'acoes',
       header: 'Acoes',
       enableColumnFilter: false,
@@ -135,7 +154,7 @@ export function Usuarios() {
           <RowActions
             rota="/usuarios"
             onEdit={() => handleEdit(row.original)}
-            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
+            onDelete={() => setConfirmDelete({ id: row.original.id ?? row.original.codigo!, empresa_id: row.original.empresa_id })}
             extras={[
               {
                 rotulo: 'Alterar Senha',
@@ -196,12 +215,17 @@ export function Usuarios() {
     if (confirmDelete === null) return;
     setDeleting(true);
     try {
-      await remove(confirmDelete);
+      await api.delete('/usuarios', {
+        params: {
+          id: confirmDelete.id,
+          ...(confirmDelete.empresa_id ? { empresa_id: confirmDelete.empresa_id } : {}),
+        },
+      });
       setConfirmDelete(null);
+      await refetch();
       addToast('success', 'Usuario excluido com sucesso');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao excluir usuario';
-      addToast('error', msg);
+      addToast('error', getErrorMsg(err, 'Erro ao excluir usuario'));
     } finally {
       setDeleting(false);
     }
@@ -217,27 +241,58 @@ export function Usuarios() {
     setPinModalOpen(true);
   };
 
-  const handleSenhaSubmit = async (data: UsuarioSenhaInput) => {
+  const handleSenhaSubmit = async (data: UsuarioSenhaInput | UsuarioAdminSenhaInput) => {
+    if (isSuperadmin) {
+      setSenhaModalOpen(false);
+      setConfirmCredencial({ tipo: 'senha', data });
+      return;
+    }
     try {
       await api.put('/usuarios/senha', data);
       setSenhaModalOpen(false);
       setSelectedUsuario(null);
       addToast('success', 'Senha alterada com sucesso');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao alterar senha';
-      addToast('error', msg);
+      addToast('error', getErrorMsg(err, 'Erro ao alterar senha'));
     }
   };
 
   const handlePinSubmit = async (data: UsuarioPinInput) => {
+    if (isSuperadmin) {
+      setPinModalOpen(false);
+      setConfirmCredencial({ tipo: 'pin', data });
+      return;
+    }
     try {
       await api.put('/usuarios/pin', data);
       setPinModalOpen(false);
       setSelectedUsuario(null);
       addToast('success', 'PIN alterado com sucesso');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao alterar PIN';
-      addToast('error', msg);
+      addToast('error', getErrorMsg(err, 'Erro ao alterar PIN'));
+    }
+  };
+
+  const executarCredencial = async () => {
+    if (!confirmCredencial || !selectedUsuario) return;
+    setAlterandoCredencial(true);
+    try {
+      const empresaId = selectedUsuario.empresa_id;
+      if (confirmCredencial.tipo === 'senha') {
+        const d = confirmCredencial.data as UsuarioAdminSenhaInput;
+        await api.put('/usuarios/admin/senha', { id: d.id, novaSenha: d.novaSenha, empresa_id: empresaId });
+        addToast('success', 'Senha alterada com sucesso');
+      } else {
+        const d = confirmCredencial.data as UsuarioPinInput;
+        await api.put('/usuarios/admin/pin', { id: d.id, novoPin: d.novoPin, empresa_id: empresaId });
+        addToast('success', 'PIN alterado com sucesso');
+      }
+      setConfirmCredencial(null);
+      setSelectedUsuario(null);
+    } catch (err: unknown) {
+      addToast('error', getErrorMsg(err, 'Erro ao alterar credencial'));
+    } finally {
+      setAlterandoCredencial(false);
     }
   };
 
@@ -352,7 +407,23 @@ export function Usuarios() {
       </PageHeader>
 
       <Card>
-        <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center justify-end gap-2 mb-4">
+          {isSuperadmin && (
+            <select
+              value={filtroEmpresa}
+              onChange={(e) => setFiltroEmpresa(e.target.value)}
+              className="px-3 py-2 bg-background-input border border-border-primary rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
+              title="Filtrar por empresa"
+            >
+              <option value="">Empresa atual</option>
+              <option value="0">Todas as empresas</option>
+              {empresas.map((e) => (
+                <option key={e.id ?? e.codigo} value={e.id ?? e.codigo}>
+                  {e.fantasia || e.razao_social || `Empresa ${e.id}`}
+                </option>
+              ))}
+            </select>
+          )}
           <button onClick={() => refetch()} className="p-2 rounded-lg border border-border-primary hover:bg-background-hover transition-colors" title="Atualizar">
             <RefreshCw size={18} className="text-text-secondary" />
           </button>
@@ -390,13 +461,14 @@ export function Usuarios() {
         )}
       </Modal>
 
-      <Modal isOpen={senhaModalOpen} onClose={() => { setSenhaModalOpen(false); setSelectedUsuario(null); }} title="Alterar Senha">
+      <Modal isOpen={senhaModalOpen} onClose={() => { setSenhaModalOpen(false); setSelectedUsuario(null); }} title={isSuperadmin ? 'Redefinir Senha' : 'Alterar Senha'}>
         {selectedUsuario && (
           <UsuarioSenhaForm
             onSubmit={handleSenhaSubmit}
             onCancel={() => { setSenhaModalOpen(false); setSelectedUsuario(null); }}
             usuarioId={selectedUsuario.id ?? selectedUsuario.codigo!}
             usuarioNome={selectedUsuario.nome}
+            admin={isSuperadmin}
           />
         )}
       </Modal>
@@ -443,6 +515,21 @@ export function Usuarios() {
         variant="danger"
         confirmLabel="Excluir"
         loading={deletingUf}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmCredencial !== null}
+        onClose={() => { setConfirmCredencial(null); setSelectedUsuario(null); }}
+        onConfirm={executarCredencial}
+        title={confirmCredencial?.tipo === 'senha' ? 'Alterar Senha' : 'Alterar PIN'}
+        message={
+          confirmCredencial?.tipo === 'senha'
+            ? `A senha de "${selectedUsuario?.nome ?? ''}" sera redefinida sem a senha anterior. O usuario podera acessar o sistema com a nova senha imediatamente. Deseja continuar?`
+            : `O PIN de "${selectedUsuario?.nome ?? ''}" sera redefinido sem o PIN anterior. Deseja continuar?`
+        }
+        variant="warning"
+        confirmLabel="Sim, alterar"
+        loading={alterandoCredencial}
       />
     </Layout>
   );

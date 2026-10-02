@@ -24,6 +24,7 @@ type LogEntry struct {
 	IP            string              `json:"ip,omitempty"`
 	JsonRecebido  string              `json:"jsonRecebido,omitempty"`
 	JsonRetornado string              `json:"jsonRetornado,omitempty"`
+	Params        string              `json:"params,omitempty"`
 	Scripts       []map[string]string `json:"scripts,omitempty"`
 }
 
@@ -113,12 +114,16 @@ func (s *LogStore) ReadLog(anoMes, empresaID string) (map[string][]LogEntry, err
 			continue
 		}
 		base := strings.TrimSuffix(name, ".log")
-		if prefix != "" && !strings.HasPrefix(base, prefix) {
-			continue
-		}
+		// Arquivos sao gravados como "<empresa_id>_<yyyymmdd>.log" (ex.: "1_20260930.log").
+		// Separa a parte da empresa da parte da data ANTES de validar o formato.
+		empPart := ""
 		datePart := base
-		if prefix != "" {
-			datePart = base[len(prefix):]
+		if idx := strings.Index(base, "_"); idx >= 0 {
+			empPart = base[:idx]
+			datePart = base[idx+1:]
+		}
+		if prefix != "" && empPart != prefix {
+			continue
 		}
 		if len(datePart) != 8 {
 			continue
@@ -132,6 +137,10 @@ func (s *LogStore) ReadLog(anoMes, empresaID string) (map[string][]LogEntry, err
 		if err != nil {
 			continue
 		}
+		// Ordena por hora DESC (mais recente primeiro)
+		sort.Slice(dayEntries, func(i, j int) bool {
+			return dayEntries[i].Hora > dayEntries[j].Hora
+		})
 		dateKey := datePart[:4] + "-" + datePart[4:6] + "-" + datePart[6:8]
 		data[dateKey] = append(dayEntries, data[dateKey]...)
 	}

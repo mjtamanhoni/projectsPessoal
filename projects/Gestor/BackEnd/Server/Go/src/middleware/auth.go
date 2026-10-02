@@ -14,6 +14,7 @@ type contextKey string
 const (
 	UserIDKey        contextKey = "user_id"
 	EmpresaIDKey     contextKey = "empresa_id"
+	EmpresaLogadaKey contextKey = "empresa_logada"
 	IsSuperadminKey  contextKey = "is_superadmin"
 )
 
@@ -26,15 +27,20 @@ func SetJWTSecret(secret string) {
 type Claims struct {
 	ID          int  `json:"id"`
 	Empresa     int  `json:"empresa"`
+	// EmpresaLogada: id real da empresa resolvido a partir do CNPJ/CPF informado no login.
+	// Sempre > 0. Usado em INSERT/UPDATE/DELETE (escrita). Diferente de Empresa,
+	// que para superadmin vale 0 (acesso global de leitura).
+	EmpresaLogada int  `json:"empresa_logada"`
 	IsSuperadmin bool `json:"is_superadmin"`
 	jwt.RegisteredClaims
 }
 
-func GerarToken(userID, empresaID int, isSuperadmin bool) (string, error) {
+func GerarToken(userID, empresaID, empresaLogada int, isSuperadmin bool) (string, error) {
 	claims := Claims{
-		ID:          userID,
-		Empresa:     empresaID,
-		IsSuperadmin: isSuperadmin,
+		ID:            userID,
+		Empresa:       empresaID,
+		EmpresaLogada: empresaLogada,
+		IsSuperadmin:  isSuperadmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -71,6 +77,7 @@ func JWTAuth(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), UserIDKey, claims.ID)
 		ctx = context.WithValue(ctx, EmpresaIDKey, claims.Empresa)
+		ctx = context.WithValue(ctx, EmpresaLogadaKey, claims.EmpresaLogada)
 		ctx = context.WithValue(ctx, IsSuperadminKey, claims.IsSuperadmin)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -85,6 +92,35 @@ func GetUserID(r *http.Request) int {
 
 func GetEmpresaID(r *http.Request) int {
 	if v, ok := r.Context().Value(EmpresaIDKey).(int); ok {
+		return v
+	}
+	// Se for superadmin, retorna 0 (acesso a todas empresas)
+	if GetIsSuperadmin(r) {
+		return 0
+	}
+	return 1
+}
+
+func GetEmpresaIDOrZero(r *http.Request) int {
+	if v, ok := r.Context().Value(EmpresaIDKey).(int); ok {
+		return v
+	}
+	// Se for superadmin, retorna 0 (acesso a todas empresas)
+	if GetIsSuperadmin(r) {
+		return 0
+	}
+	return 0
+}
+
+// GetEmpresaLogada retorna o id REAL da empresa resolvido no login a partir do
+// CNPJ/CPF. Vale para todo usuario (inclusive superadmin) e deve ser usado em
+// INSERT/UPDATE/DELETE para que empresa_id nunca seja 0 (viola fk_ht_empresa).
+func GetEmpresaLogada(r *http.Request) int {
+	if v, ok := r.Context().Value(EmpresaLogadaKey).(int); ok && v > 0 {
+		return v
+	}
+	// Token antigo (sem claim empresa_logada): cai para a empresa do token
+	if v, ok := r.Context().Value(EmpresaIDKey).(int); ok && v > 0 {
 		return v
 	}
 	return 1

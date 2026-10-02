@@ -1,7 +1,10 @@
 package config
 
 import (
+	"log"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -18,14 +21,28 @@ type Config struct {
 }
 
 func Load() *Config {
+	// Carrega variáveis de ambiente do arquivo .env (ignora erro se não existir)
+	godotenv.Load()
+
+	// Valores sensíveis NÃO devem ter fallback - devem ser obrigatórios via variáveis de ambiente
+	dbPassword := os.Getenv("DB_PASSWORD")
+	if dbPassword == "" {
+		log.Fatal("ERRO: Variável de ambiente DB_PASSWORD é obrigatória. Configure o arquivo .env")
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("ERRO: Variável de ambiente JWT_SECRET é obrigatória. Configure o arquivo .env")
+	}
+
 	return &Config{
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "M74E25@Ta"),
+		DBPassword: dbPassword,
 		DBName:     getEnv("DB_NAME", "gestor"),
 		ServerPort: getEnv("SERVER_PORT", "9000"),
-		JWTSecret:  getEnv("JWT_SECRET", "c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d"),
+		JWTSecret:  jwtSecret,
 		DataDir:    getEnv("DATA_DIR", "data"),
 		FotosDir:   getEnv("FOTOS_DIR", "../Fotos"),
 		APKDir:     getEnv("APK_DIR", "../apk"),

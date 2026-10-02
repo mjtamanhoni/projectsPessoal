@@ -28,20 +28,29 @@ const formOrdem: Record<string, string[]> = {
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const empresaId = req.empresaId;
-    if (!empresaId) {
-      res.status(400).json({ error: 'Empresa nao identificada' });
-      return;
-    }
+    const isSuperadmin = req.isSuperadmin ?? false;
 
     let empresaModulos: EmpresaModulo[] = [];
     let moduloFormularios: ModuloFormulario[] = [];
     let modulos: Modulo[] = [];
     let formularios: Formulario[] = [];
 
-    try { empresaModulos = (await horseApi.listarEmpresaModulos({ empresa_id: empresaId } as Record<string, unknown>)) || []; } catch {}
-    try { moduloFormularios = (await horseApi.listarModuloFormularios()) || []; } catch {}
-    try { modulos = (await horseApi.listarModulos()) || []; } catch {}
-    try { formularios = (await horseApi.listarFormularios()) || []; } catch {}
+    if (isSuperadmin) {
+      // Superadmin vê todos os módulos
+      try { modulos = (await horseApi.listarModulos()) || []; } catch {}
+      try { formularios = (await horseApi.listarFormularios()) || []; } catch {}
+      try { moduloFormularios = (await horseApi.listarModuloFormularios()) || []; } catch {}
+      empresaModulos = modulos.map(m => ({ empresa_id: 0, modulo_id: m.id ?? m.codigo ?? 0 }));
+    } else {
+      if (!empresaId) {
+        res.status(400).json({ error: 'Empresa nao identificada' });
+        return;
+      }
+      try { empresaModulos = (await horseApi.listarEmpresaModulos({ empresa_id: empresaId } as Record<string, unknown>)) || []; } catch {}
+      try { moduloFormularios = (await horseApi.listarModuloFormularios()) || []; } catch {}
+      try { modulos = (await horseApi.listarModulos()) || []; } catch {}
+      try { formularios = (await horseApi.listarFormularios()) || []; } catch {}
+    }
 
     const formMap = new Map<number, string>();
     for (const f of formularios as Array<{ id?: number; codigo?: number; nome: string }>) {

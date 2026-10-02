@@ -3,7 +3,7 @@ import { horseApi } from '../services/horseApi';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
-import { loginBodySchema } from '../schemas';
+import { loginBodySchema, redefinirSenhaPublicaBodySchema } from '../schemas';
 
 const router = Router();
 
@@ -29,6 +29,38 @@ router.post('/login', authLimiter, validate(loginBodySchema), async (req: Reques
 
     const result = await horseApi.login({ login, senha, empresa });
     res.json({ ...result, empresaId: result.empresa ?? empresa });
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    const message = error instanceof Error ? error.message : 'Erro interno do servidor';
+    res.status(status).json({ error: message });
+  }
+});
+
+router.post('/redefinir-senha', authLimiter, validate(redefinirSenhaPublicaBodySchema), async (req: Request, res: Response) => {
+  try {
+    const { login, empresa, senhaAtual, novaSenha } = req.body;
+    const result = await horseApi.redefinirSenhaPublica(login, empresa, senhaAtual, novaSenha);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    const message = error instanceof Error ? error.message : 'Erro interno do servidor';
+    res.status(status).json({ error: message });
+  }
+});
+
+router.post('/trocar-empresa', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.isSuperadmin) {
+      res.status(403).json({ error: 'Apenas o superadmin pode trocar de empresa' });
+      return;
+    }
+    const { empresa_id } = req.body;
+    if (!empresa_id || Number(empresa_id) <= 0) {
+      res.status(400).json({ error: 'empresa_id e obrigatorio' });
+      return;
+    }
+    const result = await horseApi.trocarEmpresa(Number(empresa_id));
+    res.json(result);
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
     const message = error instanceof Error ? error.message : 'Erro interno do servidor';

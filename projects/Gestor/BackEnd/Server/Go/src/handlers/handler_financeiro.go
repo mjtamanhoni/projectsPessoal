@@ -84,9 +84,9 @@ func (h *FinanceiroHandler) ContasPagarAtualizar(w http.ResponseWriter, r *http.
 
 func (h *FinanceiroHandler) ContasPagarExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(),
@@ -96,10 +96,10 @@ func (h *FinanceiroHandler) ContasPagarExcluir(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Conta a pagar excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Conta a pagar excluÃ­da com sucesso"})
 }
 
 func (h *FinanceiroHandler) ContasPagarPagar(w http.ResponseWriter, r *http.Request) {
@@ -111,12 +111,12 @@ func (h *FinanceiroHandler) ContasPagarPagar(w http.ResponseWriter, r *http.Requ
 		Acrescimo    float64 `json:"acrescimo"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "JSON inválido", http.StatusBadRequest)
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if body.ID <= 0 {
-		jsonError(w, "Código da Conta a Pagar não informado.", http.StatusBadRequest)
+		jsonError(w, "CÃ³digo da Conta a Pagar nÃ£o informado.", http.StatusBadRequest)
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *FinanceiroHandler) ContasPagarPagar(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Conta a pagar não encontrada", http.StatusNotFound)
+		jsonError(w, "Conta a pagar nÃ£o encontrada", http.StatusNotFound)
 		return
 	}
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Pagamento registrado com sucesso"})
@@ -167,12 +167,12 @@ func (h *FinanceiroHandler) ContasPagarEstornar(w http.ResponseWriter, r *http.R
 		ID int `json:"id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "JSON inválido", http.StatusBadRequest)
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if body.ID <= 0 {
-		jsonError(w, "Código da Conta a Pagar não informado.", http.StatusBadRequest)
+		jsonError(w, "CÃ³digo da Conta a Pagar nÃ£o informado.", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(),
@@ -183,7 +183,7 @@ func (h *FinanceiroHandler) ContasPagarEstornar(w http.ResponseWriter, r *http.R
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Conta a pagar não encontrada", http.StatusNotFound)
+		jsonError(w, "Conta a pagar nÃ£o encontrada", http.StatusNotFound)
 		return
 	}
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Estorno de pagamento realizado com sucesso"})
@@ -244,9 +244,9 @@ func (h *FinanceiroHandler) ContasReceberAtualizar(w http.ResponseWriter, r *htt
 
 func (h *FinanceiroHandler) ContasReceberExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(),
@@ -256,10 +256,10 @@ func (h *FinanceiroHandler) ContasReceberExcluir(w http.ResponseWriter, r *http.
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Conta a receber excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Conta a receber excluÃ­da com sucesso"})
 }
 
 func (h *FinanceiroHandler) ContasReceberReceber(w http.ResponseWriter, r *http.Request) {
@@ -271,12 +271,12 @@ func (h *FinanceiroHandler) ContasReceberReceber(w http.ResponseWriter, r *http.
 		Acrescimo      float64 `json:"acrescimo"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "JSON inválido", http.StatusBadRequest)
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if body.ID <= 0 {
-		jsonError(w, "Código da Conta a Receber não informado.", http.StatusBadRequest)
+		jsonError(w, "CÃ³digo da Conta a Receber nÃ£o informado.", http.StatusBadRequest)
 		return
 	}
 
@@ -316,7 +316,7 @@ func (h *FinanceiroHandler) ContasReceberReceber(w http.ResponseWriter, r *http.
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Conta a receber não encontrada", http.StatusNotFound)
+		jsonError(w, "Conta a receber nÃ£o encontrada", http.StatusNotFound)
 		return
 	}
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Recebimento registrado com sucesso"})
@@ -327,12 +327,12 @@ func (h *FinanceiroHandler) ContasReceberEstornar(w http.ResponseWriter, r *http
 		ID int `json:"id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "JSON inválido", http.StatusBadRequest)
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if body.ID <= 0 {
-		jsonError(w, "Código da Conta a Receber não informado.", http.StatusBadRequest)
+		jsonError(w, "CÃ³digo da Conta a Receber nÃ£o informado.", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(),
@@ -343,7 +343,7 @@ func (h *FinanceiroHandler) ContasReceberEstornar(w http.ResponseWriter, r *http
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Conta a receber não encontrada", http.StatusNotFound)
+		jsonError(w, "Conta a receber nÃ£o encontrada", http.StatusNotFound)
 		return
 	}
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Estorno de recebimento realizado com sucesso"})

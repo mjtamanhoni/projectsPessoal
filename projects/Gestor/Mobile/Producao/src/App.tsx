@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate, useNavigate, useSearchParams } fro
 import { AuthProvider, useAuth } from './auth';
 import Login from './pages/Login';
 import LoginPin from './pages/LoginPin';
+import RedefinirSenha from './pages/RedefinirSenha';
 import Dashboard from './pages/Dashboard';
 import MenuPrincipal from './pages/MenuPrincipal';
 import Cadastro from './pages/Cadastro';
@@ -97,6 +98,10 @@ function Router() {
       <Route
         path="/login-pin"
         element={autenticado ? <Navigate to="/dashboard" replace /> : <LoginPin />}
+      />
+      <Route
+        path="/redefinir-senha"
+        element={autenticado ? <Navigate to="/dashboard" replace /> : <RedefinirSenha />}
       />
       <Route
         path="/server-config"

@@ -9,7 +9,7 @@ import { Save } from 'lucide-react';
 import { horaTrabalhadaSchema, type HoraTrabalhadaInput } from '@/schemas';
 import type { HoraTrabalhada, Cliente, Servico, Usuario } from '@/types';
 import api from '@/lib/api';
-import { ceilTo2 } from '@/lib/utils';
+import { ceilTo2, getEmpresaLogadaId } from '@/lib/utils';
 
 function formatHoras(decimal: number): string {
   if (!decimal) return '00:00:00';
@@ -60,10 +60,12 @@ export function HoraTrabalhadaForm({ onSubmit, onCancel, initial, focusDate }: H
   useEffect(() => {
     const loadData = async () => {
       try {
+        const empresaId = getEmpresaLogadaId();
+        const params = empresaId ? { empresa_id: empresaId } : undefined;
         const [clientesRes, servicosRes, usuariosRes] = await Promise.all([
-          api.get('/clientes'),
+          api.get('/clientes', { params }),
           api.get('/servicos'),
-          api.get('/usuarios'),
+          api.get('/usuarios', { params }),
         ]);
         setClientes(clientesRes.data as Cliente[]);
         setServicos(servicosRes.data as Servico[]);

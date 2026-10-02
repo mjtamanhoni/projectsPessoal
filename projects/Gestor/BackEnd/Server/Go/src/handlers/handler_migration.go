@@ -7,10 +7,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"gestor-server/database"
+	"gestor-server/middleware"
 )
 
 func MigracoesListar(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !middleware.GetIsSuperadmin(r) {
+			jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+			return
+		}
 		status, err := database.MigracoesStatus(pool)
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -22,6 +27,10 @@ func MigracoesListar(pool *pgxpool.Pool) http.HandlerFunc {
 
 func MigracoesAplicar(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !middleware.GetIsSuperadmin(r) {
+			jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+			return
+		}
 		var body struct {
 			Nome string `json:"nome"`
 		}

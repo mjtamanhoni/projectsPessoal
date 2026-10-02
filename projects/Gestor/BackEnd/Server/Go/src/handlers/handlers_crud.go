@@ -6,12 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 
 	"gestor-server/database"
 	"gestor-server/middleware"
@@ -50,6 +54,20 @@ func jsonSuccess(w http.ResponseWriter, data interface{}) {
 func hashSenha(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(h[:])
+}
+
+func hashSenhaBcrypt(s string) string {
+	hash, _ := bcrypt.GenerateFromPassword([]byte(s), bcrypt.DefaultCost)
+	return string(hash)
+}
+
+func verificarSenha(senha string, hashArmazenado string) bool {
+	// Tenta bcrypt primeiro (novo padrÃ£o)
+	if err := bcrypt.CompareHashAndPassword([]byte(hashArmazenado), []byte(senha)); err == nil {
+		return true
+	}
+	// Fallback: verifica SHA-256 (legado)
+	return hashArmazenado == hashSenha(senha)
 }
 
 // --- Fornecedor ---
@@ -94,10 +112,10 @@ func (h *BasicCRUD) FornecedorAtualizar(w http.ResponseWriter, r *http.Request) 
 
 func (h *BasicCRUD) FornecedorExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 
@@ -108,15 +126,31 @@ func (h *BasicCRUD) FornecedorExcluir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Fornecedor excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Fornecedor excluÃ­do com sucesso"})
 }
 
 // --- Cliente ---
 func (h *BasicCRUD) ClienteListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
+	isSuperadmin := middleware.GetIsSuperadmin(r)
+
+	// Superadmin pode filtrar por empresa_id via query param.
+	// "0" (ou ausencia do param com token escopado) = todas as empresas.
+	if isSuperadmin {
+		if param := r.URL.Query().Get("empresa_id"); param != "" {
+			empresaID = parseInt(param, 0)
+		}
+	} else {
+		// Para usuÃ¡rios NÃƒO superadmin, SEMPRE filtra pela empresa do token
+		// Ignora query param empresa_id para evitar bypass
+		if tokenEmpresaID := middleware.GetEmpresaID(r); tokenEmpresaID > 0 {
+			empresaID = tokenEmpresaID
+		}
+	}
+
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	nome := r.URL.Query().Get("nome")
 	email := r.URL.Query().Get("email")
@@ -153,9 +187,9 @@ func (h *BasicCRUD) ClienteAtualizar(w http.ResponseWriter, r *http.Request) {
 
 func (h *BasicCRUD) ClienteExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM cliente WHERE id = $1 AND empresa_id = $2`, id, empresaID)
@@ -164,10 +198,10 @@ func (h *BasicCRUD) ClienteExcluir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Cliente excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Cliente excluÃ­do com sucesso"})
 }
 
 // --- Marca ---
@@ -181,9 +215,9 @@ func (h *BasicCRUD) MarcaAtualizar(w http.ResponseWriter, r *http.Request) {
 
 func (h *BasicCRUD) MarcaExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM marca WHERE id = $1 AND empresa_id = $2`, id, empresaID)
@@ -192,10 +226,10 @@ func (h *BasicCRUD) MarcaExcluir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Marca excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Marca excluÃ­da com sucesso"})
 }
 
 // --- Produto Classificacao ---
@@ -209,9 +243,9 @@ func (h *BasicCRUD) ProdutoClassificacaoAtualizar(w http.ResponseWriter, r *http
 
 func (h *BasicCRUD) ProdutoClassificacaoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM produto_classificacao WHERE id = $1 AND empresa_id = $2`, id, empresaID)
@@ -220,10 +254,10 @@ func (h *BasicCRUD) ProdutoClassificacaoExcluir(w http.ResponseWriter, r *http.R
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Classificação excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "ClassificaÃ§Ã£o excluÃ­da com sucesso"})
 }
 
 // --- Categoria Pagar ---
@@ -300,11 +334,26 @@ func (h *BasicCRUD) CategoriaReceberExcluir(w http.ResponseWriter, r *http.Reque
 func (h *BasicCRUD) UsuarioListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
 	isSuperadmin := middleware.GetIsSuperadmin(r)
+
+	// Superadmin pode filtrar por empresa_id via query param.
+	// "0" (ou ausencia do param com token escopado) = todas as empresas.
+	if isSuperadmin {
+		if param := r.URL.Query().Get("empresa_id"); param != "" {
+			empresaID = parseInt(param, 0)
+		}
+	} else {
+		// Para usuÃ¡rios NÃƒO superadmin, SEMPRE filtra pela empresa do token
+		// Ignora query param empresa_id para evitar bypass
+		if tokenEmpresaID := middleware.GetEmpresaID(r); tokenEmpresaID > 0 {
+			empresaID = tokenEmpresaID
+		}
+	}
+
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	nome := r.URL.Query().Get("nome")
 	email := r.URL.Query().Get("email")
 
-	query := `SELECT id, nome, email, is_superadmin FROM usuario WHERE (empresa_id = $1 OR $1 = 0)`
+	query := `SELECT id, empresa_id, nome, email, is_superadmin FROM usuario WHERE (empresa_id = $1 OR $1 = 0)`
 	var args []interface{}
 	argN := 2
 	if !isSuperadmin {
@@ -322,6 +371,7 @@ func (h *BasicCRUD) UsuarioListar(w http.ResponseWriter, r *http.Request) {
 		query += fmt.Sprintf(" AND upper(email) = upper($%d)", argN); argN++; args = append(args, email)
 	}
 	query += " ORDER BY id DESC"
+	
 	rows, err := h.Pool.Query(r.Context(), query, append([]interface{}{empresaID}, args...)...)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -337,7 +387,8 @@ func (h *BasicCRUD) UsuarioAtualizar(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
+	isSuperadminRequester := middleware.GetIsSuperadmin(r)
 
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
@@ -352,20 +403,51 @@ func (h *BasicCRUD) UsuarioAtualizar(w http.ResponseWriter, r *http.Request) {
 		email := getStr(item, "email")
 		senha := getStr(item, "senha")
 		pin := getStr(item, "pin")
+
 		isSuperadmin := false
 		if v, ok := item["is_superadmin"]; ok {
 			isSuperadmin, _ = v.(bool)
 		}
 
+		if !isSuperadminRequester && isSuperadmin {
+			jsonError(w, "Apenas superadmin pode criar/alterar usuÃ¡rios superadmin", http.StatusForbidden)
+			return
+		}
+
+		// Empresa do registro: superadmin pode informar empresa_id no body
+		// (criar/editar usuario em qualquer empresa); demais usam a empresa do login.
+		empresaItem := empresaID
+		if isSuperadminRequester {
+			if v, ok := item["empresa_id"]; ok {
+				n := 0
+				switch t := v.(type) {
+				case float64:
+					n = int(t)
+				case int:
+					n = t
+				}
+				if n > 0 {
+					empresaItem = n
+				}
+			}
+		}
+
 		if id == 0 {
-			id, err = database.GerarID(r.Context(), tx, empresaID, "usuario")
+			var existe int
+			if err := tx.QueryRow(r.Context(),
+				`SELECT 1 FROM public.empresa WHERE id = $1`, empresaItem).Scan(&existe); err != nil {
+				jsonError(w, "Empresa informada nao encontrada", http.StatusBadRequest)
+				return
+			}
+
+			id, err = database.GerarID(r.Context(), tx, empresaItem, "usuario")
 			if err != nil {
 				jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			cols := []string{"id", "empresa_id", "nome"}
-			vals := []interface{}{id, empresaID, nome}
+			vals := []interface{}{id, empresaItem, nome}
 			phs := []string{"$1", "$2", "$3"}
 			paramIdx := 4
 
@@ -377,13 +459,13 @@ func (h *BasicCRUD) UsuarioAtualizar(w http.ResponseWriter, r *http.Request) {
 			}
 			if senha != "" {
 				cols = append(cols, "senha")
-				vals = append(vals, hashSenha(senha))
+				vals = append(vals, hashSenhaBcrypt(senha))
 				phs = append(phs, fmt.Sprintf("$%d", paramIdx))
 				paramIdx++
 			}
 			if pin != "" {
 				cols = append(cols, "pin")
-				vals = append(vals, hashSenha(pin))
+				vals = append(vals, hashSenhaBcrypt(pin))
 				phs = append(phs, fmt.Sprintf("$%d", paramIdx))
 				paramIdx++
 			}
@@ -411,22 +493,30 @@ func (h *BasicCRUD) UsuarioAtualizar(w http.ResponseWriter, r *http.Request) {
 			}
 			if senha != "" {
 				setClauses = append(setClauses, fmt.Sprintf("senha = $%d", paramIdx))
-				vals = append(vals, hashSenha(senha))
+				vals = append(vals, hashSenhaBcrypt(senha))
 				paramIdx++
 			}
 			if pin != "" {
 				setClauses = append(setClauses, fmt.Sprintf("pin = $%d", paramIdx))
-				vals = append(vals, hashSenha(pin))
+				vals = append(vals, hashSenhaBcrypt(pin))
 				paramIdx++
 			}
-			setClauses = append(setClauses, fmt.Sprintf("is_superadmin = $%d", paramIdx))
-			vals = append(vals, isSuperadmin)
-			paramIdx++
+			if isSuperadminRequester {
+				setClauses = append(setClauses, fmt.Sprintf("is_superadmin = $%d", paramIdx))
+				vals = append(vals, isSuperadmin)
+				paramIdx++
+			}
 
-			vals = append(vals, id, empresaID)
-			_, err = tx.Exec(r.Context(),
+			vals = append(vals, id, empresaItem)
+			tag, errUpd := tx.Exec(r.Context(),
 				fmt.Sprintf("UPDATE usuario SET %s WHERE id = $%d AND empresa_id = $%d",
 					strings.Join(setClauses, ", "), paramIdx, paramIdx+1), vals...)
+			if errUpd != nil {
+				err = errUpd
+			} else if tag.RowsAffected() == 0 {
+				jsonError(w, "Usuario nao encontrado na empresa informada", http.StatusNotFound)
+				return
+			}
 		}
 
 		if err != nil {
@@ -435,26 +525,32 @@ func (h *BasicCRUD) UsuarioAtualizar(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Usuário(s) salvo(s) com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "UsuÃ¡rio(s) salvo(s) com sucesso"})
 }
 
 func (h *BasicCRUD) UsuarioExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
+	// Superadmin pode excluir usuario de outra empresa informando empresa_id
+	if middleware.GetIsSuperadmin(r) {
+		if p := parseInt(r.URL.Query().Get("empresa_id"), 0); p > 0 {
+			empresaID = p
+		}
+	}
 	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM usuario WHERE id = $1 AND empresa_id = $2`, id, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Usuário excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "UsuÃ¡rio excluÃ­do com sucesso"})
 }
 
 func (h *BasicCRUD) UsuarioAlterarSenha(w http.ResponseWriter, r *http.Request) {
@@ -462,29 +558,43 @@ func (h *BasicCRUD) UsuarioAlterarSenha(w http.ResponseWriter, r *http.Request) 
 		ID         int    `json:"id"`
 		SenhaAtual string `json:"senha_atual"`
 		NovaSenha  string `json:"nova_senha"`
+		EmpresaID  int    `json:"empresa_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "JSON inválido", http.StatusBadRequest)
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
 		return
 	}
 
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
+	isSuperadmin := middleware.GetIsSuperadmin(r)
+
+	// Superadmin pode informar empresa_id explicitamente (padrao: empresa do login)
+	if isSuperadmin && body.EmpresaID > 0 {
+		empresaID = body.EmpresaID
+	}
+
+	if empresaID == 0 {
+		jsonError(w, "Empresa não determinada", http.StatusBadRequest)
+		return
+	}
 
 	var senhaHash string
 	err := h.Pool.QueryRow(r.Context(),
-		`SELECT senha FROM usuario WHERE id = $1 AND empresa_id = $2`, body.ID, empresaID).Scan(&senhaHash)
+		`SELECT senha FROM usuario WHERE id = $1 AND empresa_id = $2`,
+		body.ID, empresaID).Scan(&senhaHash)
 	if err != nil {
-		jsonError(w, "Usuário não encontrado", http.StatusNotFound)
+		jsonError(w, "UsuÃ¡rio nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	if hashSenha(body.SenhaAtual) != senhaHash {
-		jsonError(w, "Senha atual inválida", http.StatusUnauthorized)
+	if !verificarSenha(body.SenhaAtual, senhaHash) {
+		jsonError(w, "Senha atual invÃ¡lida", http.StatusUnauthorized)
 		return
 	}
 
+	novoHash := hashSenhaBcrypt(body.NovaSenha)
 	_, err = h.Pool.Exec(r.Context(),
 		`UPDATE usuario SET senha = $1 WHERE id = $2 AND empresa_id = $3`,
-		hashSenha(body.NovaSenha), body.ID, empresaID)
+		novoHash, body.ID, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -494,22 +604,110 @@ func (h *BasicCRUD) UsuarioAlterarSenha(w http.ResponseWriter, r *http.Request) 
 
 func (h *BasicCRUD) UsuarioAlterarPin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		ID      int    `json:"id"`
-		NovoPin string `json:"novo_pin"`
+		ID       int    `json:"id"`
+		NovoPin  string `json:"novo_pin"`
+		EmpresaID int    `json:"empresa_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "JSON inválido", http.StatusBadRequest)
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+
+	empresaID := middleware.GetEmpresaLogada(r)
+	isSuperadmin := middleware.GetIsSuperadmin(r)
+
+	// Superadmin pode informar empresa_id explicitamente (padrao: empresa do login)
+	if isSuperadmin && body.EmpresaID > 0 {
+		empresaID = body.EmpresaID
+	}
+
+	if empresaID == 0 {
+		jsonError(w, "Empresa não determinada", http.StatusBadRequest)
+		return
+	}
+
 	_, err := h.Pool.Exec(r.Context(),
 		`UPDATE usuario SET pin = $1 WHERE id = $2 AND empresa_id = $3`,
-		hashSenha(body.NovoPin), body.ID, empresaID)
+		hashSenhaBcrypt(body.NovoPin), body.ID, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	jsonSuccess(w, map[string]interface{}{"mensagem": "PIN alterado com sucesso"})
+}
+
+// --- Admin: Redefinir Senha (sem senha atual, apenas SuperAdmin) ---
+func (h *BasicCRUD) UsuarioAdminRedefinirSenha(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Apenas administradores podem executar esta aÃ§Ã£o", http.StatusForbidden)
+		return
+	}
+
+	var body struct {
+		ID        int    `json:"id"`
+		NovaSenha string `json:"nova_senha"`
+		EmpresaID int    `json:"empresa_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
+		return
+	}
+
+	if body.ID == 0 || body.NovaSenha == "" {
+		jsonError(w, "ID do usuÃ¡rio e nova senha sÃ£o obrigatÃ³rios", http.StatusBadRequest)
+		return
+	}
+	if body.EmpresaID == 0 {
+		body.EmpresaID = middleware.GetEmpresaLogada(r)
+	}
+
+	novoHash := hashSenhaBcrypt(body.NovaSenha)
+	_, err := h.Pool.Exec(r.Context(),
+		`UPDATE usuario SET senha = $1 WHERE id = $2 AND empresa_id = $3`,
+		novoHash, body.ID, body.EmpresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Senha redefinida com sucesso"})
+}
+
+// --- Admin: Redefinir PIN (sem PIN atual, apenas SuperAdmin) ---
+func (h *BasicCRUD) UsuarioAdminRedefinirPin(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Apenas administradores podem executar esta aÃ§Ã£o", http.StatusForbidden)
+		return
+	}
+
+	var body struct {
+		ID        int    `json:"id"`
+		NovoPin   string `json:"novo_pin"`
+		EmpresaID int    `json:"empresa_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
+		return
+	}
+
+	if body.ID == 0 || body.NovoPin == "" {
+		jsonError(w, "ID do usuÃ¡rio e novo PIN sÃ£o obrigatÃ³rios", http.StatusBadRequest)
+		return
+	}
+	if body.EmpresaID == 0 {
+		body.EmpresaID = middleware.GetEmpresaLogada(r)
+	}
+
+	novoHash := hashSenhaBcrypt(body.NovoPin)
+	_, err := h.Pool.Exec(r.Context(),
+		`UPDATE usuario SET pin = $1 WHERE id = $2 AND empresa_id = $3`,
+		novoHash, body.ID, body.EmpresaID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonSuccess(w, map[string]interface{}{"mensagem": "PIN redefinido com sucesso"})
 }
 
 // --- Servico ---
@@ -547,11 +745,11 @@ func (h *BasicCRUD) ServicoExcluir(w http.ResponseWriter, r *http.Request) {
 	h.genericDelete(w, r, "servico")
 }
 
-// --- Empresa Pública ---
+// --- Empresa PÃºblica ---
 func (h *BasicCRUD) EmpresaListarPublico(w http.ResponseWriter, r *http.Request) {
 	query := `SELECT e.id, e.razao_social, e.fantasia,
 		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
-		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.delivery,
+		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.logomarca_paginas, e.logomarca_relatorios, e.logomarca_fiscal, e.delivery,
 		COALESCE(e.is_open, 0) AS is_open,
 		COALESCE(cnt.total, 0) AS total_encomendas
 		FROM public.empresa e
@@ -578,12 +776,16 @@ func (h *BasicCRUD) EmpresaListarPublico(w http.ResponseWriter, r *http.Request)
 
 // --- Empresa ---
 func (h *BasicCRUD) EmpresaListar(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	nome := r.URL.Query().Get("nome")
 
 	query := `SELECT e.id, e.razao_social as nome, e.razao_social, e.fantasia,
 		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
-		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.delivery
+		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.logomarca_paginas, e.logomarca_relatorios, e.logomarca_fiscal, e.delivery
 		FROM public.empresa e WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -604,12 +806,15 @@ func (h *BasicCRUD) EmpresaListar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BasicCRUD) EmpresaAtualizar(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	items, err := h.parseBody(r)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-usuarioID := middleware.GetUserID(r)
 	idSalvo := 0
 
 	tx, err := h.Pool.Begin(r.Context())
@@ -633,6 +838,12 @@ for _, item := range items {
 		chavePix := getStr(item, "chave_pix")
 		_, temLogomarca := item["logomarca"]
 		logomarca := getStr(item, "logomarca")
+		_, temLogomarcaPaginas := item["logomarca_paginas"]
+		logomarcaPaginas := getStr(item, "logomarca_paginas")
+		_, temLogomarcaRelatorios := item["logomarca_relatorios"]
+		logomarcaRelatorios := getStr(item, "logomarca_relatorios")
+		_, temLogomarcaFiscal := item["logomarca_fiscal"]
+		logomarcaFiscal := getStr(item, "logomarca_fiscal")
 		temDelivery := false
 		delivery := 0
 		if v, ok := item["delivery"]; ok && v != nil {
@@ -669,9 +880,9 @@ for _, item := range items {
 		if id == 0 {
 			err = tx.QueryRow(r.Context(),
 				`INSERT INTO public.empresa (razao_social, fantasia, cnpj_cpf, inscricao_estadual_identidade,
-					regime_tributario, endereco, telefone, celular, email, chave_pix, logomarca, delivery, is_open)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
-				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, logomarca, delivery, isOpen,
+					regime_tributario, endereco, telefone, celular, email, chave_pix, logomarca, logomarca_paginas, logomarca_relatorios, logomarca_fiscal, delivery, is_open)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
+				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, logomarca, logomarcaPaginas, logomarcaRelatorios, logomarcaFiscal, delivery, isOpen,
 			).Scan(&id)
 		} else {
 			setClauses := []string{"razao_social=$1", "fantasia=$2", "cnpj_cpf=$3",
@@ -681,6 +892,18 @@ for _, item := range items {
 			if temLogomarca {
 				setClauses = append(setClauses, fmt.Sprintf("logomarca=$%d", len(vals)+1))
 				vals = append(vals, logomarca)
+			}
+			if temLogomarcaPaginas {
+				setClauses = append(setClauses, fmt.Sprintf("logomarca_paginas=$%d", len(vals)+1))
+				vals = append(vals, logomarcaPaginas)
+			}
+			if temLogomarcaRelatorios {
+				setClauses = append(setClauses, fmt.Sprintf("logomarca_relatorios=$%d", len(vals)+1))
+				vals = append(vals, logomarcaRelatorios)
+			}
+			if temLogomarcaFiscal {
+				setClauses = append(setClauses, fmt.Sprintf("logomarca_fiscal=$%d", len(vals)+1))
+				vals = append(vals, logomarcaFiscal)
 			}
 			if temDelivery {
 				setClauses = append(setClauses, fmt.Sprintf("delivery=$%d", len(vals)+1))
@@ -703,7 +926,6 @@ for _, item := range items {
 		idSalvo = id
 	}
 	tx.Commit(r.Context())
-	_ = usuarioID
 	resp := map[string]interface{}{"mensagem": "Empresa salva com sucesso"}
 	if len(items) == 1 {
 		resp["id"] = idSalvo
@@ -712,6 +934,10 @@ for _, item := range items {
 }
 
 func (h *BasicCRUD) EmpresaToggleIsOpen(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	body, err := h.parseBody(r)
 	if err != nil || len(body) == 0 {
 		jsonError(w, "Body obrigatorio", http.StatusBadRequest)
@@ -751,9 +977,13 @@ func (h *BasicCRUD) EmpresaToggleIsOpen(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *BasicCRUD) EmpresaExcluir(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM public.empresa WHERE id = $1`, id)
@@ -762,13 +992,17 @@ func (h *BasicCRUD) EmpresaExcluir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Empresa excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Empresa excluÃ­da com sucesso"})
 }
 
 func (h *BasicCRUD) EmpresaAtualizarSequencias(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
 		jsonError(w, "Erro interno", http.StatusInternalServerError)
@@ -841,12 +1075,16 @@ func (h *BasicCRUD) EmpresaAtualizarSequencias(w http.ResponseWriter, r *http.Re
 
 	tx.Commit(r.Context())
 	jsonSuccess(w, map[string]interface{}{
-		"mensagem": fmt.Sprintf("Sequências atualizadas para %d tabela(s) em %d empresa(s)", total, len(empresaIDs)),
+		"mensagem": fmt.Sprintf("SequÃªncias atualizadas para %d tabela(s) em %d empresa(s)", total, len(empresaIDs)),
 		"total":    total,
 	})
 }
 
 func (h *BasicCRUD) EmpresaLimparDados(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	empresaID := parseInt(r.URL.Query().Get("empresa_id"), 0)
 	if empresaID == 0 {
 		var body struct {
@@ -857,7 +1095,7 @@ func (h *BasicCRUD) EmpresaLimparDados(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if empresaID <= 0 {
-		jsonError(w, "Código da Empresa não informado.", http.StatusBadRequest)
+		jsonError(w, "CÃ³digo da Empresa nÃ£o informado.", http.StatusBadRequest)
 		return
 	}
 
@@ -944,11 +1182,19 @@ func (h *BasicCRUD) FormularioListar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BasicCRUD) FormularioAtualizar(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.globalUpsert(w, r, "formulario",
 		[]string{"nome"})
 }
 
 func (h *BasicCRUD) FormularioExcluir(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.globalExcluir(w, r, "formulario")
 }
 
@@ -993,7 +1239,7 @@ func (h *BasicCRUD) UsuarioFormularioAtualizar(w http.ResponseWriter, r *http.Re
 
 func (h *BasicCRUD) UsuarioFormularioExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 
 	if id == 0 {
 		jsonError(w, "ID nao informado", http.StatusBadRequest)
@@ -1068,14 +1314,14 @@ func (h *BasicCRUD) UsuarioFormularioPermissaoSalvar(w http.ResponseWriter, r *h
 		Permissoes          []interface{} `json:"permissoes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "JSON inválido", http.StatusBadRequest)
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	if body.UsuarioFormularioID == 0 {
-		jsonError(w, "usuario_formulario_id é obrigatório", http.StatusBadRequest)
+		jsonError(w, "usuario_formulario_id Ã© obrigatÃ³rio", http.StatusBadRequest)
 		return
 	}
 
@@ -1087,8 +1333,8 @@ func (h *BasicCRUD) UsuarioFormularioPermissaoSalvar(w http.ResponseWriter, r *h
 	defer tx.Rollback(r.Context())
 
 	_, err = tx.Exec(r.Context(),
-		`DELETE FROM public.usuario_formulario_permissao WHERE usuario_formulario_id = $1`,
-		body.UsuarioFormularioID)
+		`DELETE FROM public.usuario_formulario_permissao WHERE usuario_formulario_id = $1 AND empresa_id = $2`,
+		body.UsuarioFormularioID, empresaID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -1123,7 +1369,7 @@ func (h *BasicCRUD) UsuarioFormularioPermissaoSalvar(w http.ResponseWriter, r *h
 	}
 
 	tx.Commit(r.Context())
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Permissões salvas com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "PermissÃµes salvas com sucesso"})
 }
 
 func (h *BasicCRUD) UsuarioPermissoes(w http.ResponseWriter, r *http.Request) {
@@ -1215,11 +1461,19 @@ func (h *BasicCRUD) ModuloListar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BasicCRUD) ModuloAtualizar(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.globalUpsert(w, r, "modulo",
 		[]string{"nome", "descricao"})
 }
 
 func (h *BasicCRUD) ModuloExcluir(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.globalExcluir(w, r, "modulo")
 }
 
@@ -1247,11 +1501,19 @@ func (h *BasicCRUD) ModuloFormularioListar(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *BasicCRUD) ModuloFormularioSalvar(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.globalUpsert(w, r, "modulo_formulario",
 		[]string{"modulo_id", "formulario_id", "abertura"})
 }
 
 func (h *BasicCRUD) ModuloFormularioExcluir(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.globalExcluir(w, r, "modulo_formulario")
 }
 
@@ -1276,11 +1538,19 @@ func (h *BasicCRUD) EmpresaModuloListar(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *BasicCRUD) EmpresaModuloSalvar(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.genericUpsert(w, r, "public", "empresa_modulo",
 		[]string{"modulo_id", "empresa_id"})
 }
 
 func (h *BasicCRUD) EmpresaModuloExcluir(w http.ResponseWriter, r *http.Request) {
+	if !middleware.GetIsSuperadmin(r) {
+		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
+		return
+	}
 	h.genericDelete(w, r, "empresa_modulo")
 }
 
@@ -1315,7 +1585,7 @@ func getStr(m map[string]interface{}, key string) string {
 	return ""
 }
 
-// dataOuNil retorna nil (NULL no banco) quando a data é vazia, ou a própria string.
+// dataOuNil retorna nil (NULL no banco) quando a data Ã© vazia, ou a prÃ³pria string.
 func dataOuNil(s string) interface{} {
 	if s == "" {
 		return nil
@@ -1383,9 +1653,9 @@ func (h *BasicCRUD) FormaPagamentoAtualizar(w http.ResponseWriter, r *http.Reque
 
 func (h *BasicCRUD) FormaPagamentoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM forma_pagamento WHERE id = $1 AND empresa_id = $2`, id, empresaID)
@@ -1394,10 +1664,10 @@ func (h *BasicCRUD) FormaPagamentoExcluir(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Forma de pagamento excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Forma de pagamento excluÃ­da com sucesso"})
 }
 
 // --- Condicao Pagamento ---
@@ -1411,9 +1681,9 @@ func (h *BasicCRUD) CondicaoPagamentoAtualizar(w http.ResponseWriter, r *http.Re
 
 func (h *BasicCRUD) CondicaoPagamentoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM condicao_pagamento WHERE id = $1 AND empresa_id = $2`, id, empresaID)
@@ -1422,10 +1692,10 @@ func (h *BasicCRUD) CondicaoPagamentoExcluir(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Condição de pagamento excluída com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "CondiÃ§Ã£o de pagamento excluÃ­da com sucesso"})
 }
 
 // --- Forma Pagamento Condicao ---
@@ -1472,7 +1742,7 @@ func (h *BasicCRUD) BandeiraCartaoAtualizar(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 
 	if len(items) > 0 {
 		if v, ok := getFieldValue(items[0], "empresa_id"); ok {
@@ -1563,7 +1833,7 @@ func (h *BasicCRUD) BandeiraCartaoAtualizar(w http.ResponseWriter, r *http.Reque
 
 func (h *BasicCRUD) BandeiraCartaoExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
 		jsonError(w, "ID nao informado", http.StatusBadRequest)
 		return
@@ -1584,7 +1854,7 @@ func (h *BasicCRUD) BandeiraCartaoExcluir(w http.ResponseWriter, r *http.Request
 func (h *BasicCRUD) BandeiraCartaoPublicoListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
 	if empresaID == 0 {
-		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
+		jsonError(w, "ParÃ¢metro 'empresa' Ã© obrigatÃ³rio", http.StatusBadRequest)
 		return
 	}
 	rows, err := h.Pool.Query(r.Context(),
@@ -1629,7 +1899,7 @@ func (h *BasicCRUD) FormaPagamentoCondicaoSalvar(w http.ResponseWriter, r *http.
 		return
 	}
 
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 
 	if len(items) == 0 {
 		jsonError(w, "Nenhum registro informado", http.StatusBadRequest)
@@ -1687,6 +1957,92 @@ func (h *BasicCRUD) FormaPagamentoCondicaoSalvar(w http.ResponseWriter, r *http.
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Condições atualizadas com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "CondiÃ§Ãµes atualizadas com sucesso"})
+}
+
+// --- Redefinir Senha (PÃºblico - sem autenticaÃ§Ã£o) ---
+func (h *BasicCRUD) UsuarioRedefinirSenhaPublico(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Login      string `json:"login"`
+		Empresa    string `json:"empresa"`
+		SenhaAtual string `json:"senha_atual"`
+		NovaSenha  string `json:"nova_senha"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "JSON invÃ¡lido", http.StatusBadRequest)
+		return
+	}
+
+	if body.Login == "" || body.Empresa == "" || body.SenhaAtual == "" || body.NovaSenha == "" {
+		jsonError(w, "Todos os campos sÃ£o obrigatÃ³rios", http.StatusBadRequest)
+		return
+	}
+
+	// Resolve empresa por CNPJ/CPF ou ID
+	empresaID := 1
+	digits := regexp.MustCompile(`\D`).ReplaceAllString(strings.TrimSpace(body.Empresa), "")
+	if len(digits) >= 11 {
+		err := h.Pool.QueryRow(r.Context(),
+			`SELECT id FROM public.empresa WHERE regexp_replace(cnpj_cpf, '[^0-9]', '', 'g') = $1`, digits,
+		).Scan(&empresaID)
+		if err != nil {
+			jsonError(w, "Empresa nÃ£o encontrada", http.StatusNotFound)
+			return
+		}
+	} else if n := parseInt(digits, 0); n > 0 {
+		empresaID = n
+	}
+
+	// Busca o usuÃ¡rio
+	var userID int
+	var senhaHash string
+	var empresaIDUsuario *int
+	err := h.Pool.QueryRow(r.Context(),
+		`SELECT id, senha, empresa_id FROM usuario WHERE (nome = $1 OR email = $1) AND empresa_id = $2`,
+		body.Login, empresaID,
+	).Scan(&userID, &senhaHash, &empresaIDUsuario)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Superadmin pode redefinir a propria senha informando o CNPJ de
+		// qualquer empresa: busca sem o filtro e so aceita se for superadmin.
+		var isSuper bool
+		err = h.Pool.QueryRow(r.Context(),
+			`SELECT id, senha, empresa_id, is_superadmin FROM usuario WHERE (nome = $1 OR email = $1) ORDER BY is_superadmin DESC, id`,
+			body.Login,
+		).Scan(&userID, &senhaHash, &empresaIDUsuario, &isSuper)
+		if err == nil && !isSuper {
+			err = pgx.ErrNoRows
+		}
+	}
+	if err != nil {
+		jsonError(w, "UsuÃ¡rio nÃ£o encontrado", http.StatusNotFound)
+		return
+	}
+	empresaIDRegistro := empresaID
+	if empresaIDUsuario != nil {
+		empresaIDRegistro = *empresaIDUsuario
+	}
+
+	if senhaHash == "" {
+		jsonError(w, "UsuÃ¡rio nÃ£o possui senha configurada", http.StatusForbidden)
+		return
+	}
+
+	// Valida a senha atual (suporta SHA-256 legado e bcrypt)
+	if !verificarSenha(body.SenhaAtual, senhaHash) {
+		jsonError(w, "Senha atual invÃ¡lida", http.StatusUnauthorized)
+		return
+	}
+
+	// Salva a nova senha com bcrypt
+	novoHash := hashSenhaBcrypt(body.NovaSenha)
+	_, err = h.Pool.Exec(r.Context(),
+		`UPDATE usuario SET senha = $1 WHERE id = $2 AND empresa_id = $3`,
+		novoHash, userID, empresaIDRegistro)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Senha redefinida com sucesso"})
 }
 

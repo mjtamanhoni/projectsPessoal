@@ -90,6 +90,15 @@ class HorseApiService {
     }
   }
 
+  async redefinirSenhaPublica(login: string, empresa: string, senhaAtual: string, novaSenha: string): Promise<unknown> {
+    try {
+      const res = await this.api.post('/usuario/redefinirSenha', { login, empresa, senha_atual: senhaAtual, nova_senha: novaSenha });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarClientes(params?: Record<string, unknown>): Promise<Cliente[]> {
     try {
       const res = await this.api.get('/cliente', { params, headers: this.getAuthHeaders() });
@@ -622,27 +631,64 @@ class HorseApiService {
     }
   }
 
-  async excluirUsuario(id: number): Promise<unknown> {
+  async excluirUsuario(id: number, empresaId?: number): Promise<unknown> {
     try {
-      const res = await this.api.delete('/usuario', { params: { id }, headers: this.getAuthHeaders() });
+      const params: Record<string, unknown> = { id };
+      if (empresaId) params.empresa_id = empresaId;
+      const res = await this.api.delete('/usuario', { params, headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);
     }
   }
 
-  async alterarSenhaUsuario(id: number, novaSenha: string): Promise<unknown> {
+  async trocarEmpresa(empresaId: number): Promise<unknown> {
     try {
-      const res = await this.api.put('/usuario/alterarSenha', { id, nova_senha: novaSenha }, { headers: this.getAuthHeaders() });
+      const res = await this.api.post('/usuario/trocarEmpresa', { empresa_id: empresaId }, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);
     }
   }
 
-  async alterarPinUsuario(id: number, novoPin: string): Promise<unknown> {
+  async alterarSenhaUsuario(id: number, senhaAtual: string, novaSenha: string, empresaId?: number): Promise<unknown> {
     try {
-      const res = await this.api.put('/usuario/alterarPin', { id, novo_pin: novoPin }, { headers: this.getAuthHeaders() });
+      const payload: Record<string, unknown> = { id, senha_atual: senhaAtual, nova_senha: novaSenha };
+      if (empresaId) payload.empresa_id = empresaId;
+      const res = await this.api.put('/usuario/alterarSenha', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async alterarPinUsuario(id: number, novoPin: string, empresaId?: number): Promise<unknown> {
+    try {
+      const payload: Record<string, unknown> = { id, novo_pin: novoPin };
+      if (empresaId) payload.empresa_id = empresaId;
+      const res = await this.api.put('/usuario/alterarPin', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async adminRedefinirSenha(id: number, novaSenha: string, empresaId?: number): Promise<unknown> {
+    try {
+      const payload: Record<string, unknown> = { id, nova_senha: novaSenha };
+      if (empresaId && empresaId > 0) payload.empresa_id = empresaId;
+      const res = await this.api.put('/usuario/adminRedefinirSenha', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async adminRedefinirPin(id: number, novoPin: string, empresaId?: number): Promise<unknown> {
+    try {
+      const payload: Record<string, unknown> = { id, novo_pin: novoPin };
+      if (empresaId && empresaId > 0) payload.empresa_id = empresaId;
+      const res = await this.api.put('/usuario/adminRedefinirPin', payload, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);

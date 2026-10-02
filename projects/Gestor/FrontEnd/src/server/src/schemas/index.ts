@@ -88,16 +88,20 @@ export const usuarioBodySchema = z.object({
   email: z.string().email('Email invalido').max(100).optional().or(z.literal('')),
   senha: z.string().min(4, 'Senha deve ter pelo menos 4 caracteres').max(100).optional().or(z.literal('')),
   pin: z.string().length(4, 'PIN deve ter exatamente 4 digitos').optional().or(z.literal('')),
+  empresa_id: z.number().int().positive().optional(),
 });
 
 export const usuarioSenhaBodySchema = z.object({
   id: z.number().int().positive(),
+  senhaAtual: z.string().min(1, 'Senha atual e obrigatoria').max(100),
   novaSenha: z.string().min(4, 'Senha deve ter pelo menos 4 caracteres').max(100),
+  empresa_id: z.number().int().positive().optional(),
 });
 
 export const usuarioPinBodySchema = z.object({
   id: z.number().int().positive(),
   novoPin: z.string().length(4, 'PIN deve ter exatamente 4 digitos'),
+  empresa_id: z.number().int().positive().optional(),
 });
 
 export const formularioBodySchema = z.object({
@@ -489,6 +493,13 @@ export const loginBodySchema = z.object({
   },
   { message: 'Informe login e senha, ou PIN', path: ['login'] }
 );
+
+export const redefinirSenhaPublicaBodySchema = z.object({
+  login: z.string().min(1, 'Login e obrigatorio').max(200),
+  empresa: z.string().min(1, 'Empresa e obrigatoria').max(20),
+  senhaAtual: z.string().min(1, 'Senha atual e obrigatoria').max(100),
+  novaSenha: z.string().min(4, 'Nova senha deve ter pelo menos 4 caracteres').max(100),
+});
 
 export const formaPagamentoBodySchema = z.object({
   codigo: z.number().int().positive().optional(),

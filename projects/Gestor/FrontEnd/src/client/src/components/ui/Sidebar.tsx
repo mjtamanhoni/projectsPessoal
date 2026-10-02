@@ -7,10 +7,14 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useModule } from '@/context/ModuleContext';
 import { useAppMode } from '@/context/AppModeContext';
+import { useToast } from '@/context/ToastContext';
 import { getLogo } from '@/lib/settings';
 import { getUploadsUrl } from '@/lib/empresaLogo';
 import { getModuleIcon, getModuleImage } from '@/lib/moduleIcons';
 import { formRouteMap } from '@/lib/permissions';
+import { ConfirmDialog } from './ConfirmDialog';
+import api, { getErrorMsg } from '@/lib/api';
+import type { Empresa } from '@/types';
 
 const superadminFormNames = new Set([
   'Modulos',
@@ -242,12 +246,47 @@ function FormLink({ f, collapsed }: { f: { id: number; nome: string }; collapsed
 }
 
 export function Sidebar() {
-  const { user, empresaNome, logout, temAcesso, permissoes, irrestrito, empresa } = useAuth();
+  const { user, empresaNome, logout, temAcesso, permissoes, irrestrito, empresa, isSuperadmin } = useAuth();
   const { selectedModule, selectModule, menuData, menuLoading, menuError, refetchMenu } = useModule();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(() => empresa?.delivery === 1);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>();
   const appMode = useAppMode();
+  const { addToast } = useToast();
+
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [trocaPendente, setTrocaPendente] = useState<Empresa | null>(null);
+  const [trocando, setTrocando] = useState(false);
+
+  useEffect(() => {
+    if (!isSuperadmin) return;
+    api.get('/empresas').then((r) => setEmpresas(r.data as Empresa[])).catch(() => {});
+  }, [isSuperadmin]);
+
+  const executarTroca = async () => {
+    if (!trocaPendente?.id) return;
+    setTrocando(true);
+    try {
+      const res = await api.post('/auth/trocar-empresa', { empresa_id: trocaPendente.id });
+      const token = (res.data as { token: string }).token;
+      const stored = sessionStorage.getItem('user');
+      const userObj = stored ? (JSON.parse(stored) as Record<string, unknown>) : {};
+      const novoUsuario = {
+        ...userObj,
+        token,
+        empresaId: (res.data as { empresa: number }).empresa,
+        empresa_info: (res.data as { empresa_info?: unknown }).empresa_info,
+      };
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(novoUsuario));
+      sessionStorage.removeItem('empresaNome');
+      window.location.reload();
+    } catch (err: unknown) {
+      addToast('error', getErrorMsg(err, 'Erro ao trocar de empresa'));
+      setTrocando(false);
+      setTrocaPendente(null);
+    }
+  };
 
   const logo = getLogo() ?? (empresa?.logomarca ? getUploadsUrl(empresa.logomarca) : null);
   const visibleSettings = temAcesso('/settings');
@@ -292,6 +331,25 @@ export function Sidebar() {
               <h1 className="text-lg font-heading font-bold text-accent-primary truncate">Gestor Financeiro</h1>
               <p className="text-xs text-text-muted capitalize truncate">{user?.nome}</p>
               {empresaNome && <p className="text-[11px] text-text-muted/60 truncate">{empresaNome}</p>}
+              {isSuperadmin && empresas.length > 0 && (
+                <select
+                  className="mt-1.5 w-full px-2 py-1.5 bg-background-input border border-border-primary rounded-lg text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                  value={user?.empresaId ?? ''}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    const alvo = empresas.find((emp) => (emp.id ?? emp.codigo) === id);
+                    if (alvo && id !== user?.empresaId) setTrocaPendente(alvo);
+                  }}
+                  title="Trocar de empresa (superadmin)"
+                >
+                  <option value="" disabled>Selecionar empresa...</option>
+                  {empresas.map((emp) => (
+                    <option key={emp.id ?? emp.codigo} value={emp.id ?? emp.codigo}>
+                      {emp.fantasia || emp.razao_social || `Empresa ${emp.id}`}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
         )}
@@ -426,6 +484,17 @@ export function Sidebar() {
           {!collapsed && <span>Sair</span>}
         </button>
       </div>
+
+      <ConfirmDialog
+        isOpen={trocaPendente !== null}
+        onClose={() => setTrocaPendente(null)}
+        onConfirm={executarTroca}
+        title="Trocar de empresa"
+        message={`Todos os dados exibidos passarao a ser da empresa "${trocaPendente?.fantasia || trocaPendente?.razao_social || ''}" e as proximas gravacoes serao feitas nela. Deseja continuar?`}
+        variant="warning"
+        confirmLabel="Sim, trocar"
+        loading={trocando}
+      />
     </aside>
   );
 }

@@ -36,6 +36,20 @@ api.interceptors.response.use(
 
 export default api;
 
+export function getErrorMsg(err: unknown, fallback = 'Erro inesperado'): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const e = err as { response?: { data?: { error?: string; details?: string[] } }; message?: string };
+    const details = e.response?.data?.details;
+    if (details && details.length > 0) {
+      const base = e.response?.data?.error;
+      return base ? `${base}: ${details.join('; ')}` : details.join('; ');
+    }
+    return e.response?.data?.error ?? e.message ?? fallback;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 export async function buscarCep(cep: string): Promise<{ logradouro: string; bairro: string; localidade: string; uf: string } | null> {
   const nums = cep.replace(/\D/g, '');
   if (nums.length !== 8) return null;

@@ -1,3 +1,15 @@
+export function getEmpresaLogadaId(): number | null {
+  try {
+    const raw = sessionStorage.getItem('user');
+    if (!raw) return null;
+    const user = JSON.parse(raw) as { empresaId?: number };
+    const id = user.empresaId;
+    return typeof id === 'number' && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',

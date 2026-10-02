@@ -70,7 +70,7 @@ func (h *HorasHandler) HorasTrabalhadasAtualizar(w http.ResponseWriter, r *http.
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
 		jsonError(w, "Erro interno", http.StatusInternalServerError)
@@ -180,9 +180,9 @@ func (h *HorasHandler) HorasTrabalhadasAtualizar(w http.ResponseWriter, r *http.
 
 func (h *HorasHandler) HorasTrabalhadasExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	if id == 0 {
-		jsonError(w, "ID não informado", http.StatusBadRequest)
+		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(),
@@ -192,10 +192,10 @@ func (h *HorasHandler) HorasTrabalhadasExcluir(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		jsonError(w, "Registro não encontrado", http.StatusNotFound)
+		jsonError(w, "Registro nÃ£o encontrado", http.StatusNotFound)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluído com sucesso"})
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Registro excluÃ­do com sucesso"})
 }
 
 // --- Horas Abatidas ---
@@ -243,7 +243,7 @@ func (h *HorasHandler) HorasAbatidasAtualizar(w http.ResponseWriter, r *http.Req
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
 		jsonError(w, "Erro interno", http.StatusInternalServerError)
@@ -355,7 +355,7 @@ func (h *HorasHandler) HorasExcedidasAtualizar(w http.ResponseWriter, r *http.Re
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	empresaID := middleware.GetEmpresaID(r)
+	empresaID := middleware.GetEmpresaLogada(r)
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
 		jsonError(w, "Erro interno", http.StatusInternalServerError)

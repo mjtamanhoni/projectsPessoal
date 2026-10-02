@@ -45,10 +45,26 @@ if %errorlevel% neq 0 (
 echo Servidor compilado com sucesso.
 echo.
 
+
+echo ========================================
+echo  Compilando Backend Go...
+echo ========================================
+cd /d "%~dp0..\BackEnd\Server\Go\src"
+go build -o gestor-server.exe .
+if %errorlevel% neq 0 (
+    echo [ERRO] Falha ao compilar o backend Go
+    pause
+    exit /b %errorlevel%
+)
+echo Backend Go compilado com sucesso.
+echo.
+
+
 echo ========================================
 echo  Iniciando Backend Go (porta 9000)...
 echo ========================================
-start "Gestor - Backend (Go)" /D "%~dp0..\BackEnd\Server\Go\src" cmd /k "go run main.go"
+cd /d "%~dp0..\BackEnd\Server\Go\src"
+start "Gestor - Backend (Go)" cmd /k "gestor-server.exe"
 
 echo   Aguardando backend na porta 9000...
 :wait_go
@@ -59,10 +75,25 @@ echo Backend Go OK.
 echo.
 
 echo ========================================
-echo  Iniciando servidor em http://localhost:3001
-echo  Para acessar de outra maquina, use http://IP_DESTA_MAQUINA:3001
-echo  Pressione Ctrl+C para parar.
+echo  Iniciando BFF Express (porta 3001)...
 echo ========================================
 cd /d "%~dp0src\server"
-npm start
+start "Gestor - BFF Express" cmd /k "set HORSE_JWT_SECRET=c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d && set HORSE_API_BASE_URL=http://localhost:9000 && npm start"
+
+echo   Aguardando BFF na porta 3001...
+:wait_bff
+timeout /t 2 /nobreak >nul
+netstat -ano | findstr ":3001 " >nul 2>&1
+if errorlevel 1 goto wait_bff
+echo BFF Express OK.
+echo.
+
+echo ========================================
+echo  Servidores iniciados:
+echo   - Backend Go:  http://localhost:9000
+echo   - BFF Express: http://localhost:3001
+echo   - Frontend:    http://localhost:3001
+echo ========================================
+echo  Pressione Ctrl+C nas janelas dos servidores para parar.
+echo ========================================
 pause

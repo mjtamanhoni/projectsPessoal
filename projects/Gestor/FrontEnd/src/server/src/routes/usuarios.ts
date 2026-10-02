@@ -23,16 +23,8 @@ router.post('/', authMiddleware, validate(usuarioBodySchema), async (req: AuthRe
     const usuarios = Array.isArray(body) ? body : [body];
     const result = await horseApi.salvarUsuarios(usuarios);
 
-    if (isNew && body.senha && body.pin) {
-      const codigoResp = (result as Record<string, unknown>)?.codigo;
-      const userId = Number(codigoResp ?? 0);
-      if (userId > 0) {
-        await Promise.all([
-          horseApi.alterarSenhaUsuario(userId, body.senha),
-          horseApi.alterarPinUsuario(userId, body.pin),
-        ]);
-      }
-    }
+    // A senha e PIN já são definidos no UsuarioAtualizar do Go durante a criação
+    // Não é necessário chamar alterarSenhaUsuario/alterarPinUsuario novamente
 
     res.json(result);
   } catch (error: unknown) {
@@ -43,12 +35,14 @@ router.post('/', authMiddleware, validate(usuarioBodySchema), async (req: AuthRe
 
 router.delete('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.query;
+    const { id, empresa_id } = req.query;
     if (!id) {
       res.status(400).json({ error: 'ID e obrigatorio' });
       return;
     }
-    const result = await horseApi.excluirUsuario(Number(id));
+    // Superadmin pode excluir usuario de outra empresa informando empresa_id
+    const empresaId = req.isSuperadmin && empresa_id ? Number(empresa_id) : undefined;
+    const result = await horseApi.excluirUsuario(Number(id), empresaId);
     res.json(result);
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
@@ -58,8 +52,13 @@ router.delete('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
 router.put('/senha', authMiddleware, validate(usuarioSenhaBodySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { id, novaSenha } = req.body;
-    const result = await horseApi.alterarSenhaUsuario(id, novaSenha);
+    const { id, senhaAtual, novaSenha, empresa_id } = req.body;
+    const empresaId = empresa_id ?? (req.isSuperadmin ? undefined : req.empresaId);
+    if ((!empresaId || empresaId === 0) && !req.isSuperadmin) {
+      res.status(400).json({ error: 'empresa_id é obrigatório' });
+      return;
+    }
+    const result = await horseApi.alterarSenhaUsuario(id, senhaAtual, novaSenha, empresaId);
     res.json(result);
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
@@ -69,8 +68,51 @@ router.put('/senha', authMiddleware, validate(usuarioSenhaBodySchema), async (re
 
 router.put('/pin', authMiddleware, validate(usuarioPinBodySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { id, novoPin } = req.body;
-    const result = await horseApi.alterarPinUsuario(id, novoPin);
+    const { id, novoPin, empresa_id } = req.body;
+    const empresaId = empresa_id ?? (req.isSuperadmin ? undefined : req.empresaId);
+    if ((!empresaId || empresaId === 0) && !req.isSuperadmin) {
+      res.status(400).json({ error: 'empresa_id é obrigatório' });
+      return;
+    }
+    const result = await horseApi.alterarPinUsuario(id, novoPin, empresaId);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.put('/admin/senha', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.isSuperadmin) {
+      res.status(403).json({ error: 'Apenas o superadmin pode redefinir senhas de outros usuarios' });
+      return;
+    }
+    const { id, novaSenha, empresa_id } = req.body;
+    if (!id || !novaSenha) {
+      res.status(400).json({ error: 'ID e nova senha sao obrigatorios' });
+      return;
+    }
+    const result = await horseApi.adminRedefinirSenha(id, novaSenha, empresa_id ? Number(empresa_id) : undefined);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.put('/admin/pin', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.isSuperadmin) {
+      res.status(403).json({ error: 'Apenas o superadmin pode redefinir PINs de outros usuarios' });
+      return;
+    }
+    const { id, novoPin, empresa_id } = req.body;
+    if (!id || !novoPin) {
+      res.status(400).json({ error: 'ID e novo PIN sao obrigatorios' });
+      return;
+    }
+    const result = await horseApi.adminRedefinirPin(id, novoPin, empresa_id ? Number(empresa_id) : undefined);
     res.json(result);
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
