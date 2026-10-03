@@ -54,7 +54,9 @@ pdfjs.zip
 extract_pdf.js
 Roteiro_Melhorias_Gestor.b64
 Roteiro_Melhorias_Gestor.pdf
-projects/Gestor/docs/
+projects/Gestor/docs/*
+!projects/Gestor/docs/ROTEIRO-AMBIENTES.md
+!projects/Gestor/docs/ROTEIRO-AMBIENTES.pdf
 projects/Gestor - Copia/
 projects/Gestor_Backup_*/
 
