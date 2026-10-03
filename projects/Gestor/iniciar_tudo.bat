@@ -2,12 +2,19 @@
 title Gestor Financeiro - Iniciar Tudo
 cd /d "%~dp0"
 
+REM Portas vem dos .env de cada ambiente - padroes 9000/3001/5173
 set GO_PORT=9000
 set BFF_PORT=3001
 set CLIENT_PORT=5173
+for /f "usebackq tokens=1,* delims==" %%a in (`findstr /b "SERVER_PORT=" "BackEnd\Server\Go\src\.env" 2^>nul`) do set "GO_PORT=%%b"
+for /f "usebackq tokens=1,* delims==" %%a in (`findstr /b /c:"PORT=" "FrontEnd\src\server\.env" 2^>nul`) do set "BFF_PORT=%%b"
+if exist "FrontEnd\src\client\.env.local" (
+    for /f "usebackq tokens=1,* delims==" %%a in (`findstr /b "VITE_PORT=" "FrontEnd\src\client\.env.local" 2^>nul`) do set "CLIENT_PORT=%%b"
+)
 
 echo ========================================
 echo  Gestor Financeiro - Reinicio Completo
+echo   Go %GO_PORT% / BFF %BFF_PORT% / Client %CLIENT_PORT%
 echo ========================================
 echo.
 

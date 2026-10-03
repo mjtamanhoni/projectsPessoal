@@ -2,15 +2,21 @@
 title Gestor - Publicar
 cd /d "%~dp0"
 
+REM Portas vem dos .env (GO: SERVER_PORT / BFF: PORT) - padrao 9000/3001
+set GO_PORT=9000
+set BFF_PORT=3001
+for /f "usebackq tokens=1,* delims==" %%a in (`findstr /b "SERVER_PORT=" "..\BackEnd\Server\Go\src\.env" 2^>nul`) do set "GO_PORT=%%b"
+for /f "usebackq tokens=1,* delims==" %%a in (`findstr /b /c:"PORT=" "src\server\.env" 2^>nul`) do set "BFF_PORT=%%b"
+
 echo ========================================
 echo  Finalizando processos anteriores...
 echo ========================================
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9000 "') do (
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%GO_PORT% "') do (
     if not "%%a"=="0" (
         taskkill /F /PID %%a >nul 2>&1
     )
 )
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3001 "') do (
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BFF_PORT% "') do (
     if not "%%a"=="0" (
         taskkill /F /PID %%a >nul 2>&1
     )
@@ -61,38 +67,38 @@ echo.
 
 
 echo ========================================
-echo  Iniciando Backend Go (porta 9000)...
+echo  Iniciando Backend Go (porta %GO_PORT%)...
 echo ========================================
 cd /d "%~dp0..\BackEnd\Server\Go\src"
 start "Gestor - Backend (Go)" cmd /k "gestor-server.exe"
 
-echo   Aguardando backend na porta 9000...
+echo   Aguardando backend na porta %GO_PORT%...
 :wait_go
 timeout /t 2 /nobreak >nul
-netstat -ano | findstr ":9000 " >nul 2>&1
+netstat -ano | findstr ":%GO_PORT% " >nul 2>&1
 if errorlevel 1 goto wait_go
 echo Backend Go OK.
 echo.
 
 echo ========================================
-echo  Iniciando BFF Express (porta 3001)...
+echo  Iniciando BFF Express (porta %BFF_PORT%)...
 echo ========================================
 cd /d "%~dp0src\server"
-start "Gestor - BFF Express" cmd /k "set HORSE_JWT_SECRET=c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d && set HORSE_API_BASE_URL=http://localhost:9000 && npm start"
+start "Gestor - BFF Express" cmd /k "npm start"
 
-echo   Aguardando BFF na porta 3001...
+echo   Aguardando BFF na porta %BFF_PORT%...
 :wait_bff
 timeout /t 2 /nobreak >nul
-netstat -ano | findstr ":3001 " >nul 2>&1
+netstat -ano | findstr ":%BFF_PORT% " >nul 2>&1
 if errorlevel 1 goto wait_bff
 echo BFF Express OK.
 echo.
 
 echo ========================================
 echo  Servidores iniciados:
-echo   - Backend Go:  http://localhost:9000
-echo   - BFF Express: http://localhost:3001
-echo   - Frontend:    http://localhost:3001
+echo   - Backend Go:  http://localhost:%GO_PORT%
+echo   - BFF Express: http://localhost:%BFF_PORT%
+echo   - Frontend:    http://localhost:%BFF_PORT%
 echo ========================================
 echo  Pressione Ctrl+C nas janelas dos servidores para parar.
 echo ========================================
