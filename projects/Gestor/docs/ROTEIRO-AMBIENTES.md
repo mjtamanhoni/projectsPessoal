@@ -148,7 +148,7 @@ git tag antes-promocao-AAAA-MM-DD
 - **DEV** = `dev` · **PROD** = `main` — promoção de 05/10/2026 (tag `antes-promocao-2026-10-05`).
 - Árvores Git **limpas** nas duas pastas (`package-lock.json` do PROD realinhado na DEV).
 - Segredo JWT do PROD **rotacionado** (ver §1); Go e BFF conferem em cada ambiente.
-- GitHub (`origin`): `main` sincronizado; **`dev` e as tags ainda não foram enviadas** — pendência:
+- **GitHub (`origin`) ainda está defasado** — local está à frente (falta enviar `main`, `dev` e as tags):
   ```bat
   git push origin main dev --tags
   ```
