@@ -69,7 +69,7 @@ func (h *TestPageHandler) TestPage(w http.ResponseWriter, r *http.Request) {
         .test-btn { background: #1a73e8; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .test-btn:hover { background: #1557b0; }
         #result { background: #263238; color: #e0e0e0; padding: 15px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 13px; white-space: pre-wrap; min-height: 60px; max-height: 400px; overflow: auto; }
-        input, textarea { width: 100%: padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; font-family: 'Consolas', monospace; font-size: 13px; }
+        input, textarea { width: 100%%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; font-family: 'Consolas', monospace; font-size: 13px; }
         .send-btn { background: #0f9d58; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; }
         .send-btn:hover { background: #0b8043; }
         .input-group { margin-bottom: 10px; }

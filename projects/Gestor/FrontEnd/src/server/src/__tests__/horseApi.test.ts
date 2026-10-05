@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 
+// O segredo vem SEMPRE do ambiente (.env). Nunca hardcode segredos em testes:
+// este arquivo é versionado e o repositório é público.
+if (!process.env.HORSE_JWT_SECRET) {
+  process.env.HORSE_JWT_SECRET = 'segredo-de-teste-local';
+}
+
 describe('Auth Middleware', () => {
   it('deve rejeitar requisição sem token', async () => {
     const { authMiddleware } = await import('../middleware/auth');
@@ -20,7 +26,7 @@ describe('Auth Middleware', () => {
 
   it('deve chamar next() com token válido', async () => {
     const jwt = await import('jsonwebtoken');
-    const token = jwt.sign({ id: 1, empresa: 1 }, 'c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d', { expiresIn: '1h' });
+    const token = jwt.sign({ id: 1, empresa: 1 }, process.env.HORSE_JWT_SECRET as string, { expiresIn: '1h' });
 
     const { authMiddleware } = await import('../middleware/auth');
 

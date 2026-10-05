@@ -23,7 +23,7 @@ export const config = {
       //URL base da API Horse (ex: http://localhost:9000)
       baseUrl: process.env.HORSE_API_BASE_URL || 'http://localhost:9000',
 
-      //Chave secreta HWT (deve ser a mesma do Horse)
-      secretKey: process.env.HORSE_API_SECRET_KEY || 'c7f9a1b2-48d3-4e6a-9d8a-2f1e6c4a9b7d',
+      //Chave secreta JWT (deve ser a mesma do Horse) - NUNCA hardcode segredos aqui, use o .env
+      secretKey: process.env.HORSE_API_SECRET_KEY || process.env.HORSE_JWT_SECRET || 'sua_chave_jwt_aqui',
     },
   };
