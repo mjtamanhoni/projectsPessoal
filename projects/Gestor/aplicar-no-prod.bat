@@ -3,7 +3,7 @@ title Gestor - Aplicar no PROD
 cd /d "%~dp0"
 
 echo ========================================
-echo  Promove DEV -> MAIN e aplica no PROD
+echo  Promove DEV -^> MAIN e aplica no PROD
 echo ========================================
 echo.
 
@@ -12,7 +12,7 @@ for /f %%a in ('git status --porcelain') do (
     echo [ERRO] Ha alteracoes nao commitadas no DEV:
     git status --short
     echo.
-    echo  Commite primeiro (ou use git stash) e rode de novo.
+    echo  Commite primeiro ^(ou use git stash^) e rode de novo.
     pause
     exit /b 1
 )
@@ -20,7 +20,7 @@ for /f %%a in ('git status --porcelain') do (
 REM Fast-forward main para dev sem trocar o working tree do DEV
 git fetch . dev:main
 if %errorlevel% neq 0 (
-    echo [ERRO] main nao avanca para dev (divergencia?)
+    echo [ERRO] main nao avanca para dev ^(divergencia?^)
     echo        Resolva manualmente: git checkout main ^&^& git merge dev
     pause
     exit /b %errorlevel%
