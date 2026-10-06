@@ -94,6 +94,10 @@ Rodar na pasta DEV. Ele faz sozinho, com segurança:
 1. **Recusa** se houver alteração não commitada (nunca promove meio-trabalho).
 2. `git fetch . dev:main` → `main` avança para o `dev` (fast-forward, não bagunça sua pasta).
 3. Chama o `atualizar.bat` do PROD → `git pull` + rebuild (client, BFF, Go) + restart.
+4. **Depois** (fora do script), envie para o GitHub, senão o repositório remoto fica para trás:
+   ```bat
+   git push origin main dev --tags
+   ```
 
 **Resultado:** o PROD roda exatamente o commit que você testou. As janelas novas abrem automaticamente.
 
@@ -124,6 +128,7 @@ git tag antes-promocao-AAAA-MM-DD
 | Salvar no histórico | `git add -A` + `git commit -m "..."` |
 | Ver histórico | `git log --oneline -10` |
 | Promover para PROD | rodar `aplicar-no-prod.bat` |
+| Enviar ao GitHub | `git push origin main dev --tags` |
 | Marcar um ponto | `git tag nome-da-tag` |
 | Voltar código antigo (PROD) | rodar `rollback.bat` |
 | Ver em que commit está o PROD | `git -C C:\Users\mjtam\developer-prod log --oneline -1` |
@@ -148,10 +153,8 @@ git tag antes-promocao-AAAA-MM-DD
 - **DEV** = `dev` · **PROD** = `main` — promoção de 05/10/2026 (tag `antes-promocao-2026-10-05`).
 - Árvores Git **limpas** nas duas pastas (`package-lock.json` do PROD realinhado na DEV).
 - Segredo JWT do PROD **rotacionado** (ver §1); Go e BFF conferem em cada ambiente.
-- **GitHub (`origin`) ainda está defasado** — local está à frente (falta enviar `main`, `dev` e as tags):
-  ```bat
-  git push origin main dev --tags
-  ```
+- **GitHub (`origin`) sincronizado** (enviado em 05/10/2026): `main`, `dev` e as duas tags.
+  Sempre que promover, feche com `git push origin main dev --tags` (§4, passo 4).
 - **Backup** de 05/10/2026: `projects\Gestor_Backup_2026-10-05_200237\` (Gestor + curso, sem `node_modules`).
   Os `.env` do PROD antes da rotação estão em `_env_PROD_antes_rotacao\`.
 
