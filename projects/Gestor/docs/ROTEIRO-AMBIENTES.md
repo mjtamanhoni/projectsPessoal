@@ -190,3 +190,107 @@ robocopy "C:\Users\mjtam\developer\projects\Gestor" "$dest\Gestor" /E /XD node_m
 | `Gestor_Backup_2026-10-05_200237` | Gestor + curso (7.852 arquivos, sem `node_modules`) + `_env_PROD_antes_rotacao` |
 
 Backups são **ignorados pelo Git** (`Gestor_Backup_*` no `.gitignore`) — ficam só no disco.
+
+---
+
+## 11. Passo a passo — realizar o commit (DEV e PROD)
+
+> **Pastas completas (os dois repositórios são independentes):**
+>
+> | Ambiente | Repositório (raiz) | Pasta do projeto |
+> |---|---|---|
+> | **DEV** | `C:\Users\mjtam\developer` | `C:\Users\mjtam\developer\projects\Gestor` |
+> | **PROD** | `C:\Users\mjtam\developer-prod` | `C:\Users\mjtam\developer-prod\projects\Gestor` |
+
+### 11.1 Commit na DEV (caminho normal — é aqui que você trabalha)
+
+Abra o **Prompt de Comando** (ou PowerShell) e cole:
+
+```bat
+cd /d C:\Users\mjtam\developer
+git status
+```
+
+Confira o que mudou (`git status` lista em vermelho os arquivos alterados):
+
+```bat
+:: adicionar arquivos específicos (use o caminho completo relativo à raiz)
+cd /d C:\Users\mjtam\developer
+git add projects/Gestor/src/meuarquivo.ts
+git add projects/Gestor/docs/ROTEIRO-AMBIENTES.md
+
+:: ou adicionar tudo de uma vez
+git add -A
+
+:: conferir o que entrou no stage
+git status
+
+:: gravar no histórico (branch dev)
+git commit -m "mensagem clara do que mudou"
+
+:: conferir
+git log --oneline -3
+```
+
+**Cuidados obrigatórios:**
+
+| Situação | O que fazer |
+|---|---|
+| Arquivo novo `.json` / `.sql` / `.bat` / `.png` / `.ps1` | o `.gitignore` tem globais que **ignoram** esses tipos → use `git add -f projects/Gestor/caminho/arquivo.json` |
+| Arquivo `.env` | **NUNCA** commitar — já está no `.gitignore`; segredo só em `.env` |
+| `package-lock.json` mexido sem querer | `git checkout -- projects/Gestor/Mobile/Cliente/package-lock.json` |
+| Quer desfazer o stage | `git reset <arquivo>` |
+
+Depois de commitar na DEV, valide (testes/lint) e **promova** com `aplicar-no-prod.bat` (§4).
+
+### 11.2 No PROD — como os commits chegam (o caminho correto)
+
+**No PROD você NÃO commita.** Ele só recebe o que já foi commitado e testado na DEV:
+
+```bat
+cd /d C:\Users\mjtam\developer-prod
+git status
+git log --oneline -3
+```
+
+- `git status` deve ficar **limpo** (se aparecer algo sujo, é `package-lock.json`: `git checkout -- <arquivo>`).
+- O commit **já está lá** porque o `aplicar-no-prod.bat` faz o `git pull` sozinho.
+- Se quiser **confirmar** que PROD = DEV, compare os hashes:
+  ```bat
+  cd /d C:\Users\mjtam\developer       & git rev-parse HEAD
+  cd /d C:\Users\mjtam\developer-prod  & git rev-parse HEAD
+  ```
+  Os dois precisam ser **iguais**.
+
+### 11.3 Exceção — commit no PROD (só se realmente for inevitável)
+
+> ⚠️ Quebra a regra de ouro (§7, item 5) e o **próximo `aplicar-no-prod.bat` vai dar conflito**.
+> Só faça isso se estiver com o PROD quebrado e **sem** como levar a correção pela DEV.
+
+```bat
+cd /d C:\Users\mjtam\developer-prod
+git status
+git add projects/Gestor/caminho/arquivo
+git commit -m "CORRECAO EMERGENCIAL: ..."
+git log --oneline -3
+```
+
+**Obrigatório em seguida** — senão a próxima promoção trava:
+
+1. **Copie o mesmo arquivo para a DEV** (o caminho abaixo é literal):
+   ```
+   copia: C:\Users\mjtam\developer-prod\projects\Gestor\...\arquivo
+   para : C:\Users\mjtam\developer\projects\Gestor\...\arquivo
+   ```
+2. Commit normalmente na DEV (§11.1): `git add` + `git commit`.
+3. Faça o push dos dois (`git push origin main` e `git push origin dev`).
+4. Na próxima promoção o conteúdo já é idêntico → o `git pull` resolve sozinho.
+
+**Alternativa mais simples (recomendada):** desfaça o commit do PROD, corrija na DEV e promova de novo:
+
+```bat
+cd /d C:\Users\mjtam\developer-prod
+git reset --hard HEAD~1
+git status
+:: aí corrige na DEV e roda aplicar-no-prod.bat
+```
