@@ -126,6 +126,7 @@ git tag antes-promocao-AAAA-MM-DD
 |---|---|
 | Ver o que mudei | `git status` / `git diff` |
 | Salvar no histórico | `git add -A` + `git commit -m "..."` |
+| Commit com confirmação (script) | rodar `Commit_Git.bat` (§11.0) |
 | Ver histórico | `git log --oneline -10` |
 | Promover para PROD | rodar `aplicar-no-prod.bat` |
 | Enviar ao GitHub | `git push origin main dev --tags` |
@@ -201,6 +202,38 @@ Backups são **ignorados pelo Git** (`Gestor_Backup_*` no `.gitignore`) — fica
 > |---|---|---|
 > | **DEV** | `C:\Users\mjtam\developer` | `C:\Users\mjtam\developer\projects\Gestor` |
 > | **PROD** | `C:\Users\mjtam\developer-prod` | `C:\Users\mjtam\developer-prod\projects\Gestor` |
+
+### 11.0 Forma rápida — o script `Commit_Git.bat`
+
+Em vez de digitar os comandos, use o script pronto. Ele existe nas **duas** pastas:
+
+| Ambiente | Caminho completo |
+|---|---|
+| **DEV** | `C:\Users\mjtam\developer\projects\Gestor\Commit_Git.bat` |
+| **PROD** | `C:\Users\mjtam\developer-prod\projects\Gestor\Commit_Git.bat` |
+
+**Como usar** — duplo clique (ele pergunta tudo) ou já passando o comentário no prompt:
+
+```bat
+cd /d C:\Users\mjtam\developer\projects\Gestor
+Commit_Git.bat "mensagem do commit"
+```
+
+O que ele faz sozinho:
+
+1. Detecta em qual pasta está e oferece `[1] DEV` / `[2] PROD` (Enter = manter o detectado).
+2. Confere que é repositório Git e mostra a **branch** e o `git status --short`.
+3. Se a árvore estiver **limpa**, avisa e sai sem fazer nada.
+4. No **PROD** mostra o aviso (§11.3) e exige `s` para seguir.
+5. Pede o **comentário** (ou usa o argumento) — recusa se vier vazio.
+6. Deixa escolher: `[A]` adicionar tudo · `[E]` escolher um a um · `[C]` cancelar.
+7. Mostra **o que vai entrar** + o comentário e pede confirmação `[S/n]`.
+8. Faz o `git commit` e imprime os 3 últimos commits.
+9. Na **DEV**: sugere o `aplicar-no-prod.bat` e pergunta se já envia ao GitHub (`git push`).
+   No **PROD**: lembra de levar a mesma mudança para a DEV (§11.3).
+
+> As perguntas aceitam **Enter** para o padrão. Caminhos de arquivo no item 6 são
+> relativos à raiz do repositório (ex.: `projects/Gestor/src/meuarquivo.ts`).
 
 ### 11.1 Commit na DEV (caminho normal — é aqui que você trabalha)
 

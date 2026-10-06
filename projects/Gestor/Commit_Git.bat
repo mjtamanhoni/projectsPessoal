@@ -76,9 +76,8 @@ goto :fim
 :ok_prod
 
 echo.
-set "MSG="
-if not "%*"=="" set "MSG=%*"
-if defined MSG set "MSG=%MSG:"=%"
+set "MSG=%*"
+set "MSG=%MSG:"=%"
 if defined MSG goto :msg_ok
 set /p "MSG=Comentario do commit: "
 :msg_ok
