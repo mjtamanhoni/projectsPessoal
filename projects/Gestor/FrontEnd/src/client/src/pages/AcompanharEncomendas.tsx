@@ -18,7 +18,7 @@ import { gerarTextoCupomEncomenda, imprimirCupomEncomendaSerial, type CupomEncom
 import { gerarRelatorioSintetico, gerarRelatorioAnaliticoProdutos, gerarRelatorioAnaliticoCliente, viewPDF } from '@/lib/relatorio-encomendas';
 import { PagamentoMultiploModal } from '@/components/forms/PagamentoMultiploModal';
 import { CupomVendaModal } from '@/components/cupom/CupomVendaModal';
-import api from '@/lib/api';
+import api, { getErrorMsg } from '@/lib/api';
 import type { JSX } from 'react';
 import type jsPDF from 'jspdf';
 
@@ -116,8 +116,7 @@ export function AcompanharEncomendas() {
       setIsOpen(novo === 1);
       addToast('success', novo === 1 ? 'Loja aberta para encomendas' : 'Loja fechada para encomendas');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao alterar status da loja';
-      addToast('error', msg);
+      addToast('error', getErrorMsg(err, 'Erro ao alterar status da loja'));
     } finally {
       setToggleLoading(false);
     }

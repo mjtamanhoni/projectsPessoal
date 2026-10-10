@@ -8,6 +8,8 @@ import {
 } from '../api';
 import BackButton from '../components/BackButton';
 
+const DEFAULT_PORT = Number(import.meta.env.VITE_SERVER_PORT || 9000);
+
 export default function ServerConfig() {
   const navigate = useNavigate();
   const [servers, setServers] = useState<ServerEndpoint[]>(() => getServerList());
@@ -22,13 +24,13 @@ export default function ServerConfig() {
     );
   };
 
-  const adicionar = () => setServers((prev) => [...prev, { host: '', port: 9000 }]);
+  const adicionar = () => setServers((prev) => [...prev, { host: '', port: DEFAULT_PORT }]);
   const remover = (i: number) => setServers((prev) => prev.filter((_, idx) => idx !== i));
 
   const testar = async () => {
     setStatus(null);
     const validos = servers
-      .map((s) => ({ host: s.host.trim(), port: Number(s.port) || 9000 }))
+      .map((s) => ({ host: s.host.trim(), port: Number(s.port) || DEFAULT_PORT }))
       .filter((s) => s.host);
     if (validos.length === 0) {
       setStatus({ ok: false, msg: 'Informe pelo menos um servidor' });
@@ -85,7 +87,7 @@ export default function ServerConfig() {
               style={{ top: 38 + i * 70, left: 260, width: 80 }}
               type="tel"
               inputMode="numeric"
-              placeholder="9000"
+              placeholder={String(DEFAULT_PORT)}
               value={String(s.port)}
               onChange={(e) => atualizar(i, 'port', e.target.value)}
             />

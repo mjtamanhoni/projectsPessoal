@@ -934,10 +934,6 @@ for _, item := range items {
 }
 
 func (h *BasicCRUD) EmpresaToggleIsOpen(w http.ResponseWriter, r *http.Request) {
-	if !middleware.GetIsSuperadmin(r) {
-		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
-		return
-	}
 	body, err := h.parseBody(r)
 	if err != nil || len(body) == 0 {
 		jsonError(w, "Body obrigatorio", http.StatusBadRequest)
@@ -947,6 +943,11 @@ func (h *BasicCRUD) EmpresaToggleIsOpen(w http.ResponseWriter, r *http.Request) 
 	id := getID(item)
 	if id == 0 {
 		jsonError(w, "ID da empresa obrigatorio", http.StatusBadRequest)
+		return
+	}
+	// Superadmin pode alternar qualquer empresa; demais apenas a propria.
+	if !middleware.GetIsSuperadmin(r) && id != middleware.GetEmpresaLogada(r) {
+		jsonError(w, "Acesso restrito a sua propia empresa", http.StatusForbidden)
 		return
 	}
 	isOpen := 0

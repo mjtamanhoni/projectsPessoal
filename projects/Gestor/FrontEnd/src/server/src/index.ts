@@ -259,6 +259,6 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 app.listen(config.port, () => {
   console.log(`\n  🚀 Servidor BFF rodando em http://localhost:${config.port}`);
-  console.log(`  🔗 Conectado ao Horse API: ${config.horseApi.baseUrl}`);
+  console.log(`  🔗 Conectado à API Go (Servidor Go): ${config.horseApi.baseUrl}`);
   console.log(`  🌍 Ambiente: ${config.nodeEnv}\n`);
 });

@@ -219,6 +219,10 @@ export interface ServerEndpoint {
   port: number;
 }
 
+// Último servidor que respondeu com sucesso - usado pelo getBaseURL()/fotoUrl()
+// para que as imagens apontem para o mesmo servidor que a API (fallback da lista).
+let ultimoServidor: ServerEndpoint | null = null;
+
 // Servidor padrão - configure via variável de ambiente VITE_SERVER_HOST e VITE_SERVER_PORT
 export const SERVIDOR_PADRAO: ServerEndpoint = {
   host: import.meta.env.VITE_SERVER_HOST || 'mjtsystems-gestor.duckdns.org',
@@ -272,6 +276,7 @@ export function setServerList(list: ServerEndpoint[]) {
   localStorage.setItem(SERVERS_KEY, JSON.stringify(valid));
   const first = valid[0];
   localStorage.setItem(SERVER_KEY, JSON.stringify({ host: first.host, port: first.port }));
+  ultimoServidor = null;
 }
 
 export function getDocumentoLembrado(): string {
@@ -310,7 +315,9 @@ export function setEmpresaSelecionadaMemoria(empresa: EmpresaPublic | null) {
 }
 
 export function getBaseURL(): string {
-  const { host, port } = getServerConfig();
+  // Usa o último servidor que respondeu (fallback) para imagens/bases;
+  // senão, o principal da lista.
+  const { host, port } = ultimoServidor ?? getServerConfig();
   return `http://${host}:${port}`;
 }
 
@@ -326,15 +333,20 @@ async function request(path: string, options: RequestInit = {}): Promise<Respons
   aguarde(descricaoOperacao(path, options));
 
   const servers = getServerList();
+  // Tenta primeiro o servidor que já respondeu; depois o restante da lista.
+  const ordem = ultimoServidor
+    ? [ultimoServidor, ...servers.filter((s) => !(s.host === ultimoServidor?.host && s.port === ultimoServidor?.port))]
+    : servers;
   let res: Response | null = null;
 
   try {
-    for (const srv of servers) {
+    for (const srv of ordem) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
       try {
         res = await fetch(`http://${srv.host}:${srv.port}${path}`, { ...options, headers, signal: controller.signal });
         clearTimeout(timer);
+        ultimoServidor = srv;
         break;
       } catch {
         clearTimeout(timer);

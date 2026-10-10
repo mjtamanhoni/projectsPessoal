@@ -1,5 +1,7 @@
 const STORAGE_KEY = 'server_config';
 
+const DEV_PROXY = import.meta.env.DEV;
+
 export interface ServerConfig {
   host: string;
   port: number;
@@ -20,6 +22,7 @@ export function saveServerConfig(config: ServerConfig): void {
 }
 
 export function getBaseURL(): string {
+  if (DEV_PROXY) return '/api';
   const cfg = getServerConfig();
   if (!cfg) return '/api';
   const protocol = cfg.port === 443 ? 'https' : 'http';
@@ -27,5 +30,6 @@ export function getBaseURL(): string {
 }
 
 export function hasServerConfig(): boolean {
+  if (DEV_PROXY) return true;
   return getServerConfig() !== null;
 }

@@ -7,11 +7,13 @@ import { getServerConfig, saveServerConfig, type ServerConfig } from '@/lib/serv
 import { fetchSettings } from '@/lib/settings';
 import axios from 'axios';
 
+const BFF_PORT = String(import.meta.env.VITE_BFF_PORT || '3001');
+
 export function ServerConfig() {
   const navigate = useNavigate();
   const existing = getServerConfig();
   const [host, setHost] = useState(existing?.host ?? '');
-  const [port, setPort] = useState(String(existing?.port ?? 3001));
+  const [port, setPort] = useState(String(existing?.port ?? BFF_PORT));
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
   const [error, setError] = useState('');
@@ -27,12 +29,20 @@ export function ServerConfig() {
     setTesting(true);
     setTestResult(null);
     setError('');
-    const cfg: ServerConfig = { host, port: parseInt(port, 10) || 3001 };
+    const cfg: ServerConfig = { host, port: parseInt(port, 10) || Number(BFF_PORT) };
     const baseURL = `http://${cfg.host}:${cfg.port}`;
     try {
-      await axios.get(`${baseURL}/health`, { timeout: 5000 });
-      setTestResult('ok');
-      saveServerConfig(cfg);
+      const res = await axios.get(`${baseURL}/api/settings`, { timeout: 5000, validateStatus: () => true });
+      if (res.status === 401 || res.status === 200) {
+        setTestResult('ok');
+        saveServerConfig(cfg);
+      } else if (res.status === 404) {
+        setTestResult('fail');
+        setError(`Essa porta não é do BFF (respondeu 404). Use a porta do BFF: ${BFF_PORT}.`);
+      } else {
+        setTestResult('fail');
+        setError(`Resposta inesperada do servidor (HTTP ${res.status}). Verifique host e porta.`);
+      }
     } catch {
       setTestResult('fail');
       setError('Não foi possível conectar ao servidor. Verifique o host e a porta.');
@@ -43,7 +53,7 @@ export function ServerConfig() {
 
   const handleSave = async () => {
     if (!host.trim()) { setError('Informe o host do servidor'); return; }
-    const cfg: ServerConfig = { host: host.trim(), port: parseInt(port, 10) || 3001 };
+    const cfg: ServerConfig = { host: host.trim(), port: parseInt(port, 10) || Number(BFF_PORT) };
     saveServerConfig(cfg);
     try {
       await fetchSettings();
@@ -73,7 +83,7 @@ export function ServerConfig() {
           />
           <Input
             label="Porta"
-            placeholder="3001"
+            placeholder={BFF_PORT}
             value={port}
             onChange={(e) => { setPort(e.target.value.replace(/\D/g, '')); setTestResult(null); setError(''); }}
           />

@@ -68,6 +68,13 @@ C:\Users\mjtam\developer-prod   ← PRODUÇÃO    (branch main)   NUNCA edite ar
 | Banco | `gestor_dev` | `gestor` |
 | Como sobe | `iniciar_tudo.bat` | `publicar.bat` |
 
+> **Blindagem da DEV:** com o servidor de desenvolvimento do Vite rodando
+> (`import.meta.env.DEV`), o frontend **ignora** a tela *Configuração do Servidor*
+> e usa sempre o proxy `/api` → BFF `3002` → Go `9001`. Host/porta salvos no
+> navegador não têm efeito em DEV, então é impossível apontar para o PROD por engano.
+> Os padrões dessa tela vêm do `.env.local` do client (`VITE_BFF_PORT=3002`,
+> `VITE_GO_PORT=9001`) — só existe na DEV.
+
 ---
 
 ## 3. Fluxo diário

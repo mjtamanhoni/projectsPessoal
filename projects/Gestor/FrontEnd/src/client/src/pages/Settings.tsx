@@ -253,8 +253,11 @@ export function Settings() {
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Server size={20} className="text-blue-600" />
               </div>
-              <h2 className="text-lg font-semibold text-text-primary">Servidor Horse</h2>
+              <h2 className="text-lg font-semibold text-text-primary">Conexão BFF → Servidor Go</h2>
             </div>
+            <p className="text-xs text-text-muted mb-4">
+              URL usada pelo BFF para acessar a API Go e o banco de dados (definida no <code>.env</code> do BFF: <code>HORSE_API_BASE_URL</code>).
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <label className="label-field">Protocolo</label>
@@ -284,7 +287,7 @@ export function Settings() {
                   value={settings.horseApi.port}
                   onChange={(e) => setSettings({ ...settings, horseApi: { ...settings.horseApi, port: Number(e.target.value) } })}
                   className="input-field"
-                  placeholder="9000"
+                  placeholder={String(import.meta.env.VITE_GO_PORT || 9000)}
                 />
               </div>
             </div>

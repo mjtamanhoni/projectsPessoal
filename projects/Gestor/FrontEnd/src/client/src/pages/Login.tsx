@@ -281,7 +281,7 @@ export function Login() {
               )}
               <div className="flex items-center gap-2 mb-2">
                 <Server size={16} className="text-text-secondary" />
-                <span className="text-sm font-medium text-text-primary">Conexão Horse API</span>
+                <span className="text-sm font-medium text-text-primary">Conexão BFF → Servidor Go</span>
               </div>
               <div className="space-y-3">
                 <div className="space-y-1.5">
@@ -312,7 +312,7 @@ export function Login() {
                     value={connSettings.horseApi.port}
                     onChange={(e) => setConnSettings({ ...connSettings, horseApi: { ...connSettings.horseApi, port: Number(e.target.value) } })}
                     className="input-field"
-                    placeholder="9000"
+                    placeholder={String(import.meta.env.VITE_GO_PORT || 9000)}
                   />
                 </div>
               </div>

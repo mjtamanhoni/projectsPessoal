@@ -407,7 +407,9 @@ export function setServerList(list: ServerEndpoint[]) {
 }
 
 export function getBaseURL(): string {
-  const { host, port } = getServerConfig();
+  // Usa o último servidor que respondeu (fallback) para imagens/bases;
+  // senão, o principal da lista.
+  const { host, port } = ultimoServidor ?? getServerConfig();
   return `http://${host}:${port}`;
 }
 

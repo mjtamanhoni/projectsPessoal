@@ -9,6 +9,8 @@ function gerarVersao(): string {
 
 export default defineConfig({
   root: 'src',
+  // root é 'src', mas os .env (VITE_SERVER_HOST/PORT) ficam na raiz do projeto
+  envDir: '..',
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(gerarVersao()),

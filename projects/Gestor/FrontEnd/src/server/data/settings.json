@@ -1,7 +1,7 @@
 {
   "horseApi": {
-    "host": "mjtsystems-gestor.duckdns.org",
-    "port": 9000,
+    "host": "localhost",
+    "port": 9001,
     "protocol": "http"
   },
   "rateLimit": {

@@ -48,6 +48,10 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
         },
+        '/apk': {
+          target: proxyTarget,
+          changeOrigin: true,
+        },
       },
     },
   };
