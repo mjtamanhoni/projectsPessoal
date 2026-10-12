@@ -817,6 +817,7 @@ router.get('/agent/install', (_req: express.Request, res: Response) => {
     'reg add "HKCU\\Software\\Classes\\gestor-agent" /ve /d "URL:Gestor Print Agent" /f >nul',
     'reg add "HKCU\\Software\\Classes\\gestor-agent" /v "URL Protocol" /f >nul',
     'reg add "HKCU\\Software\\Classes\\gestor-agent\\shell\\open\\command" /ve /d "C:\\print-agent\\iniciar-agent.bat %%1" /f >nul',
+    'reg delete "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers" /v "C:\\print-agent\\iniciar-agent.bat" /f >nul 2>&1',
     'powershell -NoProfile -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut([Environment]::GetFolderPath(\'Desktop\') + \'\\Gestor Agent.lnk\'); $s.TargetPath=\'C:\\print-agent\\iniciar-agent.bat\'; $s.WorkingDirectory=\'C:\\print-agent\'; $s.Save()"',
     'echo  Atalho "Gestor Agent" criado na Area de Trabalho.',
     'echo  Protocolo gestor-agent:// registrado.',
