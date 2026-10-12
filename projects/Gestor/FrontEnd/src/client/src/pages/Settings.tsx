@@ -518,7 +518,7 @@ export function Settings() {
                   {testandoImpressora ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                   {testandoImpressora ? 'Testando...' : 'Testar Impressao'}
                 </Button>
-                {(!agentStatus || agentStatus.agents.length === 0) && (
+                {(!agentStatus || agentStatus.agents.length === 0) && (<>
                   <Button type="button" variant="secondary" onClick={async () => {
                     try {
                       const url = `/api/print/agent/install?url=${encodeURIComponent(window.location.origin)}`;
@@ -539,9 +539,13 @@ export function Settings() {
                     }
                   }}>
                     <Download size={16} />
-                    Instalar Agent
+                    Baixar Instalador
                   </Button>
-                )}
+                  <Button type="button" variant="secondary" onClick={() => { window.location.href = 'gestor-agent://start'; }}>
+                    <Play size={16} />
+                    Iniciar Agent
+                  </Button>
+                </>)}
               </div>
 
               {showAgentInstall && (!agentStatus || agentStatus.agents.length === 0) && (
@@ -556,10 +560,10 @@ export function Settings() {
                   <div className="rounded bg-green-50 border border-green-200 p-3 text-sm text-green-800">
                     <p className="font-semibold mb-1">Arquivo baixado! Abra sua pasta de Downloads.</p>
                     <p>Clique <strong>duas vezes</strong> em <strong>instalar-agent.bat</strong> para instalar e iniciar o agent.</p>
-                    <p className="text-xs mt-2 text-green-700">O agent sera instalado automaticamente e comecara a imprimir.</p>
+                    <p className="text-xs mt-2 text-green-700">Na instalacao, o botao <strong>Iniciar Agent</strong> e o atalho <strong>Gestor Agent</strong> na Area de Trabalho passam a funcionar.</p>
                   </div>
                   <p className="text-[11px] text-text-tertiary">
-                    O agent deve ficar aberto enquanto quiser imprimir. Para fechar, pressione Ctrl+C.
+                    Depois de instalado, use <strong>Iniciar Agent</strong> (ou o atalho) para ligar o agent. A janela deve ficar aberta enquanto quiser imprimir; para fechar, pressione Ctrl+C.
                   </p>
                 </div>
               )}
@@ -697,7 +701,8 @@ export function Settings() {
                   <p>O Print Agent roda no <strong>PC local</strong> (onde a impressora USB esta conectada) e recebe os dados de impressao do servidor.</p>
                   <div className="bg-gray-50 rounded p-2 text-[11px]">
                     <p className="font-semibold text-text-primary mb-1">Para instalar:</p>
-                    <p>Clique em <strong>Instalar Agent</strong> acima, depois abra o arquivo <strong>instalar-agent.bat</strong> na pasta Downloads.</p>
+                    <p>Clique em <strong>Baixar Instalador</strong> acima e execute o arquivo <strong>instalar-agent.bat</strong> na pasta Downloads (apenas na 1a vez).</p>
+                    <p className="mt-1">Para iniciar depois: clique em <strong>Iniciar Agent</strong> ou use o atalho <strong>Gestor Agent</strong> na Area de Trabalho.</p>
                   </div>
                 </div>
               )}
