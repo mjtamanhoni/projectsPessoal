@@ -9,7 +9,7 @@ import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
-import type { Encomenda, EncomendaItem, Cliente, FormaPagamento, BandeiraCartao, EncomendaPagamento, VendaProduto } from '@/types';
+import type { Encomenda, EncomendaItem, Cliente, FormaPagamento, BandeiraCartao, EncomendaPagamento, VendaProduto, Empresa } from '@/types';
 import { CheckCircle, XCircle, Printer, RefreshCw, MapPin, Menu, FileText, BarChart3, Users, Store, Eye, Star } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDecimals, parseItemCustomizacao } from '@/lib/utils';
@@ -106,6 +106,20 @@ export function AcompanharEncomendas() {
   useEffect(() => {
     if (empresa) setIsOpen((empresa.is_open ?? 0) === 1);
   }, [empresa]);
+
+  useEffect(() => {
+    if (!empresa?.id) return;
+    let cancelado = false;
+    api.get('/auth/empresas')
+      .then((r) => {
+        if (cancelado) return;
+        const lista = r.data as Empresa[];
+        const atual = Array.isArray(lista) ? lista.find((e) => e.id === empresa.id) : null;
+        if (atual) setIsOpen((atual.is_open ?? 0) === 1);
+      })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, [empresa?.id]);
 
   const handleToggleIsOpen = async () => {
     if (!empresa?.id) return;
