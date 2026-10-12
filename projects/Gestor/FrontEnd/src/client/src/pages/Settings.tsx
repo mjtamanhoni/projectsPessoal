@@ -541,7 +541,7 @@ export function Settings() {
                     <Download size={16} />
                     Baixar Instalador
                   </Button>
-                  <Button type="button" variant="secondary" onClick={() => { window.location.href = 'gestor-agent://start'; }}>
+                  <Button type="button" variant="secondary" onClick={() => { window.location.href = 'gestor-agent://start/' + window.location.origin; }}>
                     <Play size={16} />
                     Iniciar Agent
                   </Button>
