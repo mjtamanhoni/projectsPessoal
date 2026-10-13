@@ -24,10 +24,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       if (currentPath !== '/login') {
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('user');
         const event = new CustomEvent('auth:unauthorized', { detail: error.response?.data?.error || 'Sessão expirada' });
         window.dispatchEvent(event);
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
       }
     }
     return Promise.reject(error);

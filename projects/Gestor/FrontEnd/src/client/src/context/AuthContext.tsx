@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import api from '@/lib/api';
+import { getBaseURL } from '@/lib/serverConfig';
 import { fetchSettings, getCachedSettings } from '@/lib/settings';
 import { preloadEmpresaLogomarca } from '@/lib/empresaLogo';
 import { formRouteMap, routeFormMap, ACAO } from '@/lib/permissions';
@@ -15,6 +16,8 @@ interface AuthContextType {
   homeRoute: string;
   empresaNome: string;
   empresa: Empresa | null;
+  isOpenLoja: boolean | null;
+  setIsOpenLoja: (aberto: boolean) => void;
   login: (login: string, senha: string, pin?: string, empresa?: number | string) => Promise<void>;
   logout: () => void;
   temAcesso: (rota: string) => boolean;
@@ -115,11 +118,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [irrestrito, setIrrestrito] = useState<boolean>(() => loadPermissions().irrestrito);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [empresaNome, setEmpresaNome] = useState<string>(() => sessionStorage.getItem('empresaNome') || '');
+  const [isOpenLoja, setIsOpenLojaState] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   const sessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activityCleanupRef = useRef<(() => void) | null>(null);
   const performLogoutRef = useRef<() => void>(() => {});
+  const isOpenLojaRef = useRef<boolean | null>(null);
+  const empresaIdLojaRef = useRef<number | null>(null);
+
+  const setIsOpenLoja = useCallback((aberto: boolean) => {
+    isOpenLojaRef.current = aberto;
+    setIsOpenLojaState(aberto);
+  }, []);
+
+  const fecharLojaRequest = useCallback(() => {
+    const id = empresaIdLojaRef.current;
+    const aberto = isOpenLojaRef.current;
+    const token = sessionStorage.getItem('token');
+    if (!id || !token || aberto !== true) return;
+    isOpenLojaRef.current = false;
+    setIsOpenLojaState(false);
+    const url = `${getBaseURL()}/empresas/is-open`;
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id, is_open: 0 }),
+      keepalive: true,
+    }).catch(() => {});
+  }, []);
 
   const rotasPermitidas = useMemo(() => buildRotasPermitidas(permissoes, irrestrito), [permissoes, irrestrito]);
   const homeRoute = useMemo(() => determineHomeRoute(rotasPermitidas, irrestrito), [rotasPermitidas, irrestrito]);
@@ -158,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const doLogout = useCallback((reason: string) => {
+    fecharLojaRequest();
     clearSessionTimer();
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
@@ -174,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveRedirectPath(window.location.pathname);
       window.location.href = `/login?expired=1&message=${encodeURIComponent(reason)}`;
     }
-  }, [clearSessionTimer]);
+  }, [clearSessionTimer, fecharLojaRequest]);
 
   performLogoutRef.current = () => doLogout('Sessão expirada por inatividade');
 
@@ -248,8 +276,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    empresaIdLojaRef.current = empresa?.id ?? null;
+    if (!empresa?.id) return;
+    let cancelado = false;
+    api.get('/auth/empresas')
+      .then((r) => {
+        if (cancelado) return;
+        const lista = r.data as Empresa[];
+        const atual = Array.isArray(lista) ? lista.find((e) => e.id === empresa.id) : null;
+        if (atual) {
+          const aberto = (atual.is_open ?? 0) === 1;
+          isOpenLojaRef.current = aberto;
+          setIsOpenLojaState(aberto);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, [empresa?.id]);
+
+  useEffect(() => {
+    const onPageHide = () => fecharLojaRequest();
+    const onPageShow = (e: PageTransitionEvent) => {
+      const empId = empresaIdLojaRef.current;
+      if (!e.persisted || !empId) return;
+      api.get('/auth/empresas')
+        .then((r) => {
+          const lista = r.data as Empresa[];
+          const atual = Array.isArray(lista) ? lista.find((x) => x.id === empId) : null;
+          if (atual && empresaIdLojaRef.current === empId) {
+            const aberto = (atual.is_open ?? 0) === 1;
+            isOpenLojaRef.current = aberto;
+            setIsOpenLojaState(aberto);
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('beforeunload', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('beforeunload', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, [fecharLojaRequest]);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
+      fecharLojaRequest();
       clearSessionTimer();
       setUser(null);
       setIsSuperadmin(false);
@@ -271,7 +346,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('settings:saved', refreshHandler);
       clearSessionTimer();
     };
-  }, [clearSessionTimer, startSessionTimer]);
+  }, [clearSessionTimer, startSessionTimer, fecharLojaRequest]);
 
   const login = useCallback(async (login: string, senha: string, pin?: string, empresa?: number | string) => {
     const body = pin
@@ -316,7 +391,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [startSessionTimer]);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, login, logout, temAcesso, temPermissao, loading, pausarTimerInatividade, retomarTimerInatividade }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, isOpenLoja, setIsOpenLoja, login, logout, temAcesso, temPermissao, loading, pausarTimerInatividade, retomarTimerInatividade }}>
       {children}
     </AuthContext.Provider>
   );

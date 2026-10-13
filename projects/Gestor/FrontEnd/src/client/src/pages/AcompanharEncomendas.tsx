@@ -9,7 +9,7 @@ import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
-import type { Encomenda, EncomendaItem, Cliente, FormaPagamento, BandeiraCartao, EncomendaPagamento, VendaProduto, Empresa } from '@/types';
+import type { Encomenda, EncomendaItem, Cliente, FormaPagamento, BandeiraCartao, EncomendaPagamento, VendaProduto } from '@/types';
 import { CheckCircle, XCircle, Printer, RefreshCw, MapPin, Menu, FileText, BarChart3, Users, Store, Eye, Star } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatCurrency, formatDecimals, parseItemCustomizacao } from '@/lib/utils';
@@ -71,7 +71,7 @@ function formatDescricaoCustomizacao(item: EncomendaItem): string {
 
 export function AcompanharEncomendas() {
   const { data: encomendas, loading, error, refetch } = useApi<Encomenda>('/encomendas');
-  const { pausarTimerInatividade, retomarTimerInatividade, empresa } = useAuth();
+  const { pausarTimerInatividade, retomarTimerInatividade, empresa, isOpenLoja, setIsOpenLoja } = useAuth();
   const { addToast } = useToast();
 
   const [dataFiltro, setDataFiltro] = useState<string>(hoje());
@@ -99,27 +99,9 @@ export function AcompanharEncomendas() {
   const [pagamentoModalAberto, setPagamentoModalAberto] = useState(false);
   const [pagamentoEncomenda, setPagamentoEncomenda] = useState<Encomenda | null>(null);
   const [pagamentosCarregados, setPagamentosCarregados] = useState<EncomendaPagamento[]>([]);
-  const [isOpen, setIsOpen] = useState<boolean>(() => (empresa?.is_open ?? 0) === 1);
+  const isOpen = isOpenLoja === true;
   const [toggleLoading, setToggleLoading] = useState(false);
   const [cupomVenda, setCupomVenda] = useState<VendaProduto | null>(null);
-
-  useEffect(() => {
-    if (empresa) setIsOpen((empresa.is_open ?? 0) === 1);
-  }, [empresa]);
-
-  useEffect(() => {
-    if (!empresa?.id) return;
-    let cancelado = false;
-    api.get('/auth/empresas')
-      .then((r) => {
-        if (cancelado) return;
-        const lista = r.data as Empresa[];
-        const atual = Array.isArray(lista) ? lista.find((e) => e.id === empresa.id) : null;
-        if (atual) setIsOpen((atual.is_open ?? 0) === 1);
-      })
-      .catch(() => {});
-    return () => { cancelado = true; };
-  }, [empresa?.id]);
 
   const handleToggleIsOpen = async () => {
     if (!empresa?.id) return;
@@ -127,7 +109,7 @@ export function AcompanharEncomendas() {
     try {
       const novo = isOpen ? 0 : 1;
       await api.post('/empresas/is-open', { id: empresa.id, is_open: novo });
-      setIsOpen(novo === 1);
+      setIsOpenLoja(novo === 1);
       addToast('success', novo === 1 ? 'Loja aberta para encomendas' : 'Loja fechada para encomendas');
     } catch (err: unknown) {
       addToast('error', getErrorMsg(err, 'Erro ao alterar status da loja'));
