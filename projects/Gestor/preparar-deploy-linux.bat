@@ -79,10 +79,19 @@ robocopy "%FONTE%\FrontEnd\src\client" "%STAGE%\FrontEnd\src\client" /E /NFL /ND
 if errorlevel 8 goto :falha
 
 echo [5/6] Compactando em gestor-linux.zip...
+where tar >nul 2>nul
+if errorlevel 1 goto :zip_powershell
+tar -a -c -f "%ZIP%" -C "%STAGE%" .
+if errorlevel 1 goto :zip_powershell
+goto :zip_ok
+
+:zip_powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path '%STAGE%\*' -DestinationPath '%ZIP%' -Force"
 if errorlevel 1 (
     echo [AVISO] Falha ao criar o zip. A pasta continua pronta: %STAGE%
 )
+
+:zip_ok
 
 echo.
 echo [6/6] Conferindo o pacote...
@@ -169,12 +178,14 @@ echo   1) Envie o pacote do servidor Windows para o Linux:
 echo.
 echo        scp "%ZIP%" SEU_USUARIO@IP_DO_SERVIDOR:/tmp/
 echo.
-echo   2) No servidor Linux, siga o roteiro completo:
+echo   2) No servidor Linux, extraia e siga o roteiro:
 echo.
-echo        docs\ROTEIRO-UBUNTU.md
-echo        docs\roteiro-implantacao-ubuntu.pdf
+echo        sudo rm -rf /opt/gestor
+echo        sudo unzip -q gestor-linux.zip -d /opt/gestor
+echo        sudo chown -R gestor:gestor /opt/gestor
 echo.
-echo      Resumo: descompactar em /opt/gestor, criar os .env,
+echo      Depois: docs\ROTEIRO-UBUNTU.md (secoes 4 a 13).
+echo      Resumo: instalar Go e Node, criar os .env,
 echo      aplicar o ddl_gestor_v2.sql, compilar Go e Node,
 echo      criar os services systemd e configurar o nginx.
 echo.
