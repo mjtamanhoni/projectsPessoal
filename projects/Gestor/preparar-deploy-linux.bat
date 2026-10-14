@@ -182,6 +182,7 @@ echo   2) No servidor Linux, extraia e siga o roteiro:
 echo.
 echo        sudo rm -rf /opt/gestor
 echo        sudo unzip -q gestor-linux.zip -d /opt/gestor
+echo        sudo chmod -R u+rwX,go+rX /opt/gestor
 echo        sudo chown -R gestor:gestor /opt/gestor
 echo.
 echo      Depois: docs\ROTEIRO-UBUNTU.md (secoes 4 a 13).
