@@ -792,8 +792,9 @@ INSERT INTO formulario (nome) VALUES
 ('Receitas Ingredientes'), ('Custos Adicionais'),
 ('Custos Fab.'), ('Fabricacoes'), ('Vendas Produto'),
 ('Estoque Insumo'), ('Estoque Produto Fabricado'),
-('Relatorio Insumos'), ('Relatorio Produtos Fabricados'),
-('Relatorio Fabricacoes'), ('Relatorio Vendas Produto');
+	('Relatorio Insumos'), ('Relatorio Produtos Fabricados'),
+	('Relatorio Fabricacoes'), ('Relatorio Vendas Produto'),
+	('Relatorio IA');
 
 -- 4. Modulo x Formulario (GERAL)
 INSERT INTO modulo_formulario (modulo_id, formulario_id, abertura) VALUES

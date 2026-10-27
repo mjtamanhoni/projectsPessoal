@@ -712,6 +712,43 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "026_relatorio_ia",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.relatorio_ia_conversa (
+				empresa_id    INTEGER NOT NULL,
+				id            INTEGER NOT NULL,
+				usuario_id    INTEGER NOT NULL,
+				titulo        VARCHAR(200) NOT NULL,
+				criado_em     TIMESTAMP NOT NULL DEFAULT NOW(),
+				atualizado_em TIMESTAMP NOT NULL DEFAULT NOW(),
+				PRIMARY KEY (empresa_id, id)
+			);
+
+			CREATE TABLE IF NOT EXISTS public.relatorio_ia_mensagem (
+				empresa_id   INTEGER NOT NULL,
+				conversa_id  INTEGER NOT NULL,
+				id           INTEGER NOT NULL,
+				papel        VARCHAR(10) NOT NULL,
+				conteudo     TEXT NOT NULL,
+				sql_gerado   TEXT,
+				dados        JSONB,
+				criado_em    TIMESTAMP NOT NULL DEFAULT NOW(),
+				PRIMARY KEY (empresa_id, conversa_id, id)
+			);
+
+			CREATE TABLE IF NOT EXISTS public.relatorio_ia_log (
+				id          BIGSERIAL PRIMARY KEY,
+				empresa_id  INTEGER NOT NULL,
+				usuario_id  INTEGER NOT NULL,
+				sql_gerado  TEXT NOT NULL,
+				linhas      INTEGER NOT NULL DEFAULT 0,
+				status      VARCHAR(20) NOT NULL DEFAULT 'ok',
+				mensagem    TEXT,
+				criado_em   TIMESTAMP NOT NULL DEFAULT NOW()
+			);
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

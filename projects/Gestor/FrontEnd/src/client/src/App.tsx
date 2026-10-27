@@ -66,6 +66,7 @@ const FormasPagamento = lazy(() => import('@/pages/FormasPagamento').then((m) =>
 const CondicoesPagamento = lazy(() => import('@/pages/CondicoesPagamento').then((m) => ({ default: m.CondicoesPagamento })));
 const Help = lazy(() => import('@/pages/Help').then((m) => ({ default: m.Help })));
 const ServerConfigPage = lazy(() => import('@/pages/ServerConfig').then((m) => ({ default: m.ServerConfig })));
+const RelatorioIAPage = lazy(() => import('@/pages/RelatorioIA').then((m) => ({ default: m.RelatorioIA })));
 
 const superadminRoutes = new Set([
   '/modulos',
@@ -157,6 +158,7 @@ export default function App() {
           {routesFor(SHARED, mode) && <Route path="/modulo-formularios" element={<Private><ModuloFormularios /></Private>} />}
           {routesFor(SHARED, mode) && <Route path="/empresa-modulos" element={<Private><EmpresaModulos /></Private>} />}
           {routesFor(SHARED, mode) && <Route path="/help" element={<Private><Help /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/relatorio-ia" element={<Private><RelatorioIAPage /></Private>} />}
           {/* gestor */}
           {routesFor(GESTOR, mode) && <Route path="/clientes" element={<Private><Clientes /></Private>} />}
           {routesFor(GESTOR, mode) && <Route path="/fornecedores" element={<Private><Fornecedores /></Private>} />}

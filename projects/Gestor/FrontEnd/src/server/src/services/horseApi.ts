@@ -2158,6 +2158,126 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
       return this.handleError(error);
     }
   }
+
+  // --- Relatorio IA ---
+  async relatorioIaConsulta(sql: string): Promise<{ colunas: string[]; linhas: Record<string, unknown>[]; sql: string; total_linhas: number }> {
+    try {
+      const res = await this.api.post('/relatorio-ia/consulta', { sql }, { headers: this.getAuthHeaders() });
+      return res.data as { colunas: string[]; linhas: Record<string, unknown>[]; sql: string; total_linhas: number };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaSchema(): Promise<RelatorioIASchema> {
+    try {
+      const res = await this.api.get('/relatorio-ia/schema', { headers: this.getAuthHeaders() });
+      return res.data as RelatorioIASchema;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaListarConversas(): Promise<Array<{ id: number; titulo: string; criado_em: string; atualizado_em: string }>> {
+    try {
+      const res = await this.api.get('/relatorio-ia/conversas', { headers: this.getAuthHeaders() });
+      return Array.isArray(res.data) ? res.data : [];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaCriarConversa(titulo: string): Promise<{ id: number; titulo: string }> {
+    try {
+      const res = await this.api.post('/relatorio-ia/conversas', { titulo }, { headers: this.getAuthHeaders() });
+      return res.data as { id: number; titulo: string };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaMensagens(conversaId: number): Promise<Array<RelatorioIAMensagem>> {
+    try {
+      const res = await this.api.get('/relatorio-ia/conversaMensagens', {
+        params: { conversa_id: conversaId },
+        headers: this.getAuthHeaders(),
+      });
+      return Array.isArray(res.data) ? res.data : [];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaSalvarMensagem(msg: {
+    conversa_id: number;
+    papel: 'usuario' | 'ia';
+    conteudo: string;
+    sql_gerado?: string;
+    dados?: unknown;
+  }): Promise<unknown> {
+    try {
+      const res = await this.api.post('/relatorio-ia/mensagem', msg, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaExcluirConversa(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/relatorio-ia/conversa', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaQuota(): Promise<{ usadas: number }> {
+    try {
+      const res = await this.api.get('/relatorio-ia/quota', { headers: this.getAuthHeaders() });
+      return res.data as { usadas: number };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+}
+
+export interface RelatorioIAMensagem {
+  id: number;
+  papel: string;
+  conteudo: string;
+  sql_gerado?: string | null;
+  dados?: {
+    colunas?: string[];
+    linhas?: Record<string, unknown>[];
+    sql?: string;
+    total_linhas?: number;
+  } | null;
+  criado_em: string;
+}
+
+export interface RelatorioIASchemaColuna {
+  nome: string;
+  tipo: string;
+  pk: boolean;
+}
+
+export interface RelatorioIASchemaFK {
+  coluna: string;
+  tabela_ref: string;
+  coluna_ref: string;
+}
+
+export interface RelatorioIASchemaTabela {
+  nome: string;
+  tem_empresa: boolean;
+  colunas: RelatorioIASchemaColuna[];
+  fk: RelatorioIASchemaFK[];
+}
+
+export interface RelatorioIASchema {
+  empresa_id: number;
+  tabelas: RelatorioIASchemaTabela[];
 }
 
 export const horseApi = new HorseApiService();
