@@ -47,6 +47,7 @@ func main() {
 	horasHandler := &handlers.HorasHandler{Pool: pool, BasicCRUD: basicCRUD}
 	producao := &handlers.ProducaoHandler{Pool: pool, BasicCRUD: basicCRUD}
 	loginHandler := &handlers.LoginHandler{Pool: pool}
+	relatorioIA := &handlers.RelatorioIAHandler{Pool: pool}
 	testPage := &handlers.TestPageHandler{Pool: pool, Cfg: cfg}
 	apkHandler := handlers.NewAPKHandler(cfg.APKDir)
 	logStore := gestorLogger.New(filepath.Join(cfg.DataDir, "logs"))
@@ -418,6 +419,16 @@ carregar();
 		r.Get("/horasExcedidas", horasHandler.HorasExcedidasListar)
 		r.Post("/horasExcedidas", horasHandler.HorasExcedidasAtualizar)
 		r.Delete("/horasExcedidas", horasHandler.HorasExcedidasExcluir)
+
+		// Relatorio IA (consultas em linguagem natural - somente leitura)
+		r.Post("/relatorio-ia/consulta", relatorioIA.Consulta)
+		r.Get("/relatorio-ia/conversas", relatorioIA.ConversasListar)
+		r.Post("/relatorio-ia/conversas", relatorioIA.ConversaCriar)
+		r.Get("/relatorio-ia/conversaMensagens", relatorioIA.MensagensListar)
+		r.Post("/relatorio-ia/mensagem", relatorioIA.MensagemSalvar)
+		r.Delete("/relatorio-ia/conversa", relatorioIA.ConversaExcluir)
+		r.Get("/relatorio-ia/quota", relatorioIA.Quota)
+		r.Get("/relatorio-ia/schema", relatorioIA.Schema)
 
 		// Dashboard
 		r.Get("/dashboard", financeiro.DashboardListar)

@@ -63,6 +63,8 @@ export const formRouteMap: Record<string, string> = {
   'Uso Consumo': '/uso-consumo',
   'Formas de Pagamento': '/formas-pagamento',
   'Condicoes de Pagamento': '/condicoes-pagamento',
+  'Relatorio IA': '/relatorio-ia',
+  'Relatório IA': '/relatorio-ia',
 };
 
 export const routeFormMap: Record<string, string> = Object.fromEntries(
