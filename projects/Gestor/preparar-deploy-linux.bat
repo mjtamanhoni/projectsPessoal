@@ -65,6 +65,9 @@ if exist "%FONTE%\BackEnd\Server\src\ddl_gestor_v2.sql" (
 for %%f in ("%FONTE%\BackEnd\Server\src\formulario_*.sql") do (
     if exist "%%f" copy /y "%%f" "%STAGE%\BackEnd\Server\src\" >nul
 )
+for %%f in ("%FONTE%\BackEnd\Server\src\relatorio_ia_*.sql") do (
+    if exist "%%f" copy /y "%%f" "%STAGE%\BackEnd\Server\src\" >nul
+)
 if not exist "%STAGE%\BackEnd\Server\src\ddl_gestor_v2.sql" (
     echo [ERRO] ddl_gestor_v2.sql nao encontrado em %FONTE%\BackEnd\Server\src
     goto :falha
