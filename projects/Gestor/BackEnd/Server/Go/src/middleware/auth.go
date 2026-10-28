@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/subtle"
 	"net/http"
 	"strings"
 	"time"
@@ -124,6 +125,23 @@ func GetEmpresaLogada(r *http.Request) int {
 		return v
 	}
 	return 1
+}
+
+// InternalAuthHeader identifica chamadas feitas pelo BFF (servico interno).
+const InternalAuthHeader = "X-Gestor-Internal"
+
+// ValidarSegredoInterno confere se a requisicao veio do BFF, que compartilha
+// o mesmo HORSE_JWT_SECRET. Usado para endpoints que devolvem segredos
+// (ex.: chave da IA em texto puro) sem expo-los a chamadas diretas do browser.
+func ValidarSegredoInterno(r *http.Request) bool {
+	if len(jwtSecret) == 0 {
+		return false
+	}
+	enviado := r.Header.Get(InternalAuthHeader)
+	if enviado == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(enviado), jwtSecret) == 1
 }
 
 func GetIsSuperadmin(r *http.Request) bool {

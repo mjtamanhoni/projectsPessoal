@@ -6,20 +6,130 @@ import { config } from '../config';
 
 const router = Router();
 
-// Configuracoes visiveis da IA (sem segredos): modelo e cota diaria.
-router.get('/config', authMiddleware, (_req, res: Response) => {
-  res.json({
-    modelo: config.llm.model,
-    quotaDiaria: config.llm.quotaDiaria,
-    configurado: !!config.llm.apiKey,
-  });
+// Empresa alvo da operacao: usuario comum sempre a propria; superadmin pode
+// informar empresa_id (a tela de configuracao permite escolher a empresa).
+function empresaAlvo(req: AuthRequest, solicitada?: unknown): number {
+  const alvo = Number(solicitada);
+  if (req.isSuperadmin && Number.isInteger(alvo) && alvo > 0) return alvo;
+  return Number(req.empresaId) || 0;
+}
+
+interface ConfigEfetivaIA {
+  empresaId: number;
+  modelo: string;
+  quotaDiaria: number;
+  configurado: boolean;
+  origemChave: 'empresa' | 'global' | 'nenhuma';
+  origemModelo: 'empresa' | 'global';
+}
+
+async function configEfetivaIA(empresaId: number): Promise<ConfigEfetivaIA> {
+  const empresaCfg = await horseApi.relatorioIaLlmConfig(empresaId).catch(() => null);
+  const modeloEmpresa = (empresaCfg?.modelo ?? '').trim();
+  const quotaEmpresa = empresaCfg?.quota_diaria ?? 0;
+  const temChaveEmpresa = empresaCfg?.configurado === true;
+
+  return {
+    empresaId,
+    modelo: modeloEmpresa || config.llm.model,
+    quotaDiaria: quotaEmpresa > 0 ? quotaEmpresa : config.llm.quotaDiaria,
+    configurado: temChaveEmpresa || !!config.llm.apiKey,
+    origemChave: temChaveEmpresa ? 'empresa' : config.llm.apiKey ? 'global' : 'nenhuma',
+    origemModelo: modeloEmpresa ? 'empresa' : 'global',
+  };
+}
+
+async function configParaGerar(empresaId: number) {
+  const empresaKey = await horseApi.relatorioIaLlmKey(empresaId).catch(() => null);
+  const apiKey = (empresaKey?.api_key ?? '').trim() || config.llm.apiKey;
+  const baseUrl = ((empresaKey?.base_url ?? '').trim() || config.llm.baseUrl).replace(/\/+$/, '');
+  const model = (empresaKey?.modelo ?? '').trim() || config.llm.model;
+  const quotaDiaria =
+    empresaKey?.quota_diaria && empresaKey.quota_diaria > 0
+      ? empresaKey.quota_diaria
+      : config.llm.quotaDiaria;
+
+  return {
+    empresaId,
+    apiKey,
+    baseUrl,
+    model,
+    quotaDiaria,
+    origemChave: (empresaKey?.api_key ?? '').trim() ? ('empresa' as const) : ('global' as const),
+  };
+}
+
+// Configuracoes visiveis da IA (sem segredos): modelo e cota efetivos.
+router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const empresaId = empresaAlvo(req, req.query.empresa_id);
+    if (!empresaId) {
+      res.status(400).json({ error: 'Empresa nao identificada' });
+      return;
+    }
+    res.json(await configEfetivaIA(empresaId));
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
 });
 
-// Cota do usuario logado hoje.
-router.get('/quota', authMiddleware, async (_req: AuthRequest, res: Response) => {
+// Configuracao armazenada da empresa (chave mascarada) para a aba Config.
+router.get('/llm-config', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const quota = await horseApi.relatorioIaQuota();
-    res.json({ usadas: quota.usadas, limite: config.llm.quotaDiaria });
+    const empresaId = empresaAlvo(req, req.query.empresa_id);
+    if (!empresaId) {
+      res.status(400).json({ error: 'Empresa nao identificada' });
+      return;
+    }
+    res.json(await horseApi.relatorioIaLlmConfig(empresaId));
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+// Salva a configuracao da empresa. Usuario comum so edita a propria empresa.
+router.put('/llm-config', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const body = req.body as {
+      empresa_id?: number;
+      api_key?: string;
+      base_url?: string;
+      modelo?: string;
+      quota_diaria?: number;
+      remover_chave?: boolean;
+    };
+    const empresaId = empresaAlvo(req, body.empresa_id);
+    if (!empresaId) {
+      res.status(400).json({ error: 'Empresa nao identificada' });
+      return;
+    }
+    res.json(await horseApi.relatorioIaSalvarLlmConfig({ ...body, empresa_id: empresaId }));
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+// Cota da empresa hoje (todos os usuarios somam).
+router.get('/quota', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const empresaId = empresaAlvo(req, req.query.empresa_id);
+    if (!empresaId) {
+      res.status(400).json({ error: 'Empresa nao identificada' });
+      return;
+    }
+    const [quota, cfg] = await Promise.all([
+      horseApi.relatorioIaQuota(empresaId),
+      configEfetivaIA(empresaId),
+    ]);
+    res.json({
+      usadas: quota.usadas,
+      limite: cfg.quotaDiaria,
+      empresaId,
+      origemChave: cfg.origemChave,
+    });
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
     res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
@@ -98,17 +208,35 @@ router.delete('/conversas/:id', authMiddleware, async (req: AuthRequest, res: Re
 // (que executa consultas somente-leitura via Go) e devolve resposta + dados.
 router.post('/gerar', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { mensagem, conversaId } = req.body as { mensagem?: string; conversaId?: number };
+    const { mensagem, conversaId, empresa_id } = req.body as {
+      mensagem?: string;
+      conversaId?: number;
+      empresa_id?: number;
+    };
     const texto = (mensagem ?? '').trim();
     if (!texto) {
       res.status(400).json({ error: 'Mensagem obrigatoria' });
       return;
     }
 
-    const quota = await horseApi.relatorioIaQuota();
-    if (quota.usadas >= config.llm.quotaDiaria) {
+    const empresaId = empresaAlvo(req, empresa_id ?? req.query.empresa_id);
+    if (!empresaId) {
+      res.status(400).json({ error: 'Empresa nao identificada' });
+      return;
+    }
+    const cfg = await configParaGerar(empresaId);
+    if (!cfg.apiKey) {
+      res.status(503).json({
+        error:
+          'IA nao configurada: cadastre a chave da empresa na aba Config do Relatorio IA ou defina LLM_API_KEY no .env do BFF.',
+      });
+      return;
+    }
+
+    const quota = await horseApi.relatorioIaQuota(empresaId);
+    if (quota.usadas >= cfg.quotaDiaria) {
       res.status(429).json({
-        error: `Cota diaria de ${config.llm.quotaDiaria} consultas atingida. Aguarde amanha ou aumente LLM_QUOTA_DIARIA no .env.`,
+        error: `Cota diaria de ${cfg.quotaDiaria} consultas da empresa atingida. Aguarde amanha ou aumente a cota na aba Config.`,
       });
       return;
     }
@@ -137,6 +265,7 @@ router.post('/gerar', authMiddleware, async (req: AuthRequest, res: Response) =>
           consulta = await horseApi.relatorioIaConsulta(sql);
           return consulta;
         },
+        llm: { apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, model: cfg.model },
       });
 
       await horseApi.relatorioIaSalvarMensagem({

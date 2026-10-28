@@ -2232,10 +2232,56 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     }
   }
 
-  async relatorioIaQuota(): Promise<{ usadas: number }> {
+  async relatorioIaQuota(empresaId?: number): Promise<{ usadas: number; empresa_id?: number }> {
     try {
-      const res = await this.api.get('/relatorio-ia/quota', { headers: this.getAuthHeaders() });
-      return res.data as { usadas: number };
+      const res = await this.api.get('/relatorio-ia/quota', {
+        params: empresaId ? { empresa_id: empresaId } : undefined,
+        headers: this.getAuthHeaders(),
+      });
+      return res.data as { usadas: number; empresa_id?: number };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaLlmConfig(empresaId?: number): Promise<RelatorioIALLMConfig> {
+    try {
+      const res = await this.api.get('/relatorio-ia/llm-config', {
+        params: empresaId ? { empresa_id: empresaId } : undefined,
+        headers: this.getAuthHeaders(),
+      });
+      return res.data as RelatorioIALLMConfig;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaLlmKey(empresaId?: number): Promise<RelatorioIALLMKey> {
+    try {
+      const res = await this.api.get('/relatorio-ia/llm-key', {
+        params: empresaId ? { empresa_id: empresaId } : undefined,
+        headers: {
+          ...this.getAuthHeaders(),
+          'X-Gestor-Internal': config.horseApi.jwtSecret,
+        },
+      });
+      return res.data as RelatorioIALLMKey;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async relatorioIaSalvarLlmConfig(data: {
+    empresa_id?: number;
+    api_key?: string;
+    base_url?: string;
+    modelo?: string;
+    quota_diaria?: number;
+    remover_chave?: boolean;
+  }): Promise<RelatorioIALLMConfig> {
+    try {
+      const res = await this.api.put('/relatorio-ia/llm-config', data, { headers: this.getAuthHeaders() });
+      return res.data as RelatorioIALLMConfig;
     } catch (error) {
       return this.handleError(error);
     }
@@ -2254,6 +2300,23 @@ export interface RelatorioIAMensagem {
     total_linhas?: number;
   } | null;
   criado_em: string;
+}
+
+export interface RelatorioIALLMConfig {
+  empresa_id: number;
+  api_key_mascarada: string;
+  configurado: boolean;
+  base_url: string;
+  modelo: string;
+  quota_diaria: number;
+}
+
+export interface RelatorioIALLMKey {
+  empresa_id: number;
+  api_key: string;
+  base_url: string;
+  modelo: string;
+  quota_diaria: number;
 }
 
 export interface RelatorioIASchemaColuna {

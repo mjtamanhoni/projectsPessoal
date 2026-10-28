@@ -102,15 +102,27 @@ async function chamarLLM(llm: {
   throw ultimoErro;
 }
 
+export interface LLMOverride {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+}
+
 export async function gerarRelatorioIA(params: {
   historico: Array<{ papel: string; conteudo: string }>;
   executarConsulta: (sql: string) => Promise<ResultadoConsulta>;
+  llm?: LLMOverride;
 }): Promise<{ resposta: string; consulta: ResultadoConsulta | null }> {
-  const llm = config.llm;
+  const llm = {
+    ...config.llm,
+    ...(params.llm?.apiKey ? { apiKey: params.llm.apiKey } : {}),
+    ...(params.llm?.baseUrl ? { baseUrl: params.llm.baseUrl } : {}),
+    ...(params.llm?.model ? { model: params.llm.model } : {}),
+  };
 
   if (!llm.apiKey) {
     throw new AppError(
-      'IA nao configurada: defina LLM_API_KEY no arquivo .env do servidor (BFF).',
+      'IA nao configurada: cadastre a chave da empresa na aba Config do Relatorio IA ou defina LLM_API_KEY no arquivo .env do servidor (BFF).',
       503,
     );
   }

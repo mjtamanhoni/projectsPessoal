@@ -408,24 +408,28 @@ func (h *RelatorioIAHandler) ConversaExcluir(w http.ResponseWriter, r *http.Requ
 	jsonSuccess(w, map[string]interface{}{"mensagem": "Conversa excluida"})
 }
 
-// Quota devolve o numero de consultas feitas hoje pelo usuario (mensagens do usuario).
+// Quota devolve o numero de consultas feitas hoje pela empresa (todos os
+// usuarios somam na mesma cota diaria). Superadmin pode consultar outra
+// empresa via ?empresa_id=X.
 // GET /relatorio-ia/quota
 func (h *RelatorioIAHandler) Quota(w http.ResponseWriter, r *http.Request) {
-	empresaID := middleware.GetEmpresaLogada(r)
-	usuarioID := middleware.GetUserID(r)
+	empresaID, err := empresaAlvoLLM(r, parseInt(r.URL.Query().Get("empresa_id"), 0))
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusForbidden)
+		return
+	}
 
 	var usadas int
 	if err := h.Pool.QueryRow(r.Context(), `
 		SELECT COUNT(*)
-		FROM relatorio_ia_mensagem m
-		JOIN relatorio_ia_conversa c ON c.empresa_id = m.empresa_id AND c.id = m.conversa_id
-		WHERE m.empresa_id = $1 AND c.usuario_id = $2
-		  AND m.papel = 'usuario'
-		  AND m.criado_em >= CURRENT_DATE`,
-		empresaID, usuarioID).Scan(&usadas); err != nil {
+		FROM relatorio_ia_mensagem
+		WHERE empresa_id = $1
+		  AND papel = 'usuario'
+		  AND criado_em >= CURRENT_DATE`,
+		empresaID).Scan(&usadas); err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	jsonSuccess(w, map[string]interface{}{"usadas": usadas})
+	jsonSuccess(w, map[string]interface{}{"usadas": usadas, "empresa_id": empresaID})
 }

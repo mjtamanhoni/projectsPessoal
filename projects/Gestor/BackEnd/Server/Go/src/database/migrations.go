@@ -749,6 +749,21 @@ var Migracoes = []Migracao{
 			);
 		`,
 	},
+	{
+		Nome: "027_empresa_llm_config",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.empresa_llm_config (
+				empresa_id    INTEGER NOT NULL PRIMARY KEY,
+				api_key       TEXT,
+				base_url      VARCHAR(300),
+				modelo        VARCHAR(100),
+				quota_diaria  INTEGER NOT NULL DEFAULT 20,
+				atualizado_em TIMESTAMP NOT NULL DEFAULT NOW(),
+				CONSTRAINT fk_empresa_llm_config_empresa
+					FOREIGN KEY (empresa_id) REFERENCES public.empresa(id) ON DELETE CASCADE
+			);
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

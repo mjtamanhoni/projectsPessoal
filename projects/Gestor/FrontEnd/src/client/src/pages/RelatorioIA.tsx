@@ -12,8 +12,14 @@ import {
   Copy,
   Loader2,
   AlertCircle,
+  Settings2,
+  Save,
+  Building2,
+  CheckCircle2,
 } from 'lucide-react';
 import { MontarRelatorio } from './MontarRelatorio';
+import { useAuth } from '@/context/AuthContext';
+import { ACAO } from '@/lib/permissions';
 
 interface Conversa {
   id: number;
@@ -38,6 +44,31 @@ interface Mensagem {
   criado_em?: string;
 }
 
+interface ConfigEfetiva {
+  empresaId: number;
+  modelo: string;
+  quotaDiaria: number;
+  configurado: boolean;
+  origemChave: 'empresa' | 'global' | 'nenhuma';
+  origemModelo: 'empresa' | 'global';
+}
+
+interface ConfigEmpresa {
+  empresa_id: number;
+  api_key_mascarada: string;
+  configurado: boolean;
+  base_url: string;
+  modelo: string;
+  quota_diaria: number;
+}
+
+interface EmpresaOpcao {
+  id?: number;
+  codigo?: number;
+  razao_social: string;
+  fantasia?: string;
+}
+
 const EXEMPLOS = [
   'Horas de entrada e saida dos ultimos 5 dias, totalizando horas e valores a receber.',
   'Lista dos ultimos 4 cancelamentos de encomendas, com data, cliente, total e produtos, totalizando o valor.',
@@ -52,8 +83,10 @@ function fmtCelula(v: unknown): string {
 }
 
 export function RelatorioIA() {
-  const [aba, setAba] = useState<'ia' | 'montar'>('ia');
-  const [cfg, setCfg] = useState<{ modelo: string; quotaDiaria: number; configurado: boolean } | null>(null);
+  const { isSuperadmin, temPermissao, empresa: empresaAtual } = useAuth();
+  const [aba, setAba] = useState<'ia' | 'montar' | 'config'>('ia');
+  const [cfg, setCfg] = useState<ConfigEfetiva | null>(null);
+  const [cfgEmpresa, setCfgEmpresa] = useState<ConfigEmpresa | null>(null);
   const [quota, setQuota] = useState({ usadas: 0, limite: 20 });
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [conversaAtiva, setConversaAtiva] = useState<number | null>(null);
@@ -64,6 +97,17 @@ export function RelatorioIA() {
   const [copiado, setCopiado] = useState<number | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const [empresas, setEmpresas] = useState<EmpresaOpcao[]>([]);
+  const [empresaSel, setEmpresaSel] = useState<number | null>(null);
+  const [chaveInput, setChaveInput] = useState('');
+  const [modeloInput, setModeloInput] = useState('');
+  const [baseUrlInput, setBaseUrlInput] = useState('');
+  const [quotaInput, setQuotaInput] = useState(20);
+  const [removerChave, setRemoverChave] = useState(false);
+  const [salvandoConfig, setSalvandoConfig] = useState(false);
+  const [avisoConfig, setAvisoConfig] = useState('');
+  const podeEditarConfig = isSuperadmin || temPermissao('/relatorio-ia', ACAO.EDITAR);
+
   const carregarConversas = useCallback(async () => {
     try {
       const r = await api.get<Conversa[]>('/relatorio-ia/conversas');
@@ -73,20 +117,98 @@ export function RelatorioIA() {
     }
   }, []);
 
-  const carregarQuota = useCallback(async () => {
+  const carregarQuota = useCallback(async (empresaId?: number | null) => {
     try {
-      const r = await api.get<{ usadas: number; limite: number }>('/relatorio-ia/quota');
+      const r = await api.get<{ usadas: number; limite: number }>('/relatorio-ia/quota', {
+        params: empresaId ? { empresa_id: empresaId } : undefined,
+      });
       setQuota(r.data);
     } catch {
       // mantem valor padrao
     }
   }, []);
 
+  const carregarConfig = useCallback(async (empresaId?: number | null) => {
+    const params = empresaId ? { empresa_id: empresaId } : undefined;
+    const [efetiva, armazenada] = await Promise.allSettled([
+      api.get<ConfigEfetiva>('/relatorio-ia/config', { params }),
+      api.get<ConfigEmpresa>('/relatorio-ia/llm-config', { params }),
+    ]);
+    if (efetiva.status === 'fulfilled') {
+      setCfg(efetiva.value.data);
+    }
+    if (armazenada.status === 'fulfilled') {
+      setCfgEmpresa(armazenada.value.data);
+      setModeloInput(armazenada.value.data.modelo ?? '');
+      setBaseUrlInput(armazenada.value.data.base_url ?? '');
+      setQuotaInput(armazenada.value.data.quota_diaria || 20);
+      setChaveInput('');
+      setRemoverChave(false);
+    } else {
+      setErro(getErrorMsg(armazenada.reason));
+    }
+  }, []);
+
   useEffect(() => {
-    api.get('/relatorio-ia/config').then((r) => setCfg(r.data)).catch(() => {});
+    carregarConfig();
     carregarConversas();
     carregarQuota();
-  }, [carregarConversas, carregarQuota]);
+  }, [carregarConfig, carregarConversas, carregarQuota]);
+
+  useEffect(() => {
+    if (!isSuperadmin) return;
+    api
+      .get<EmpresaOpcao[]>('/auth/empresas')
+      .then((r) => setEmpresas(Array.isArray(r.data) ? r.data : []))
+      .catch(() => {});
+  }, [isSuperadmin]);
+
+  useEffect(() => {
+    if (!isSuperadmin || empresaSel !== null) return;
+    const id = empresaAtual?.id ?? cfg?.empresaId ?? null;
+    if (id) setEmpresaSel(id);
+  }, [isSuperadmin, empresaAtual?.id, cfg?.empresaId, empresaSel]);
+
+  const trocarEmpresaConfig = async (id: number) => {
+    setEmpresaSel(id);
+    setErro('');
+    setAvisoConfig('');
+    await carregarConfig(id);
+    await carregarQuota(id);
+  };
+
+  const salvarConfig = async () => {
+    if (!podeEditarConfig) return;
+    setSalvandoConfig(true);
+    setErro('');
+    setAvisoConfig('');
+    try {
+      const payload: {
+        empresa_id?: number;
+        api_key?: string;
+        base_url?: string;
+        modelo?: string;
+        quota_diaria?: number;
+        remover_chave?: boolean;
+      } = {
+        modelo: modeloInput.trim(),
+        base_url: baseUrlInput.trim(),
+        quota_diaria: Number(quotaInput) || 20,
+        remover_chave: removerChave,
+      };
+      if (isSuperadmin && empresaSel) payload.empresa_id = empresaSel;
+      if (chaveInput.trim()) payload.api_key = chaveInput.trim();
+
+      await api.put('/relatorio-ia/llm-config', payload);
+      setAvisoConfig('Configuracao da IA salva com sucesso.');
+      await carregarConfig(empresaSel);
+      await carregarQuota(empresaSel);
+    } catch (e) {
+      setErro(getErrorMsg(e));
+    } finally {
+      setSalvandoConfig(false);
+    }
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -285,7 +407,8 @@ export function RelatorioIA() {
             [
               ['ia', 'IA'],
               ['montar', 'Montar Relatorio'],
-            ] as Array<['ia' | 'montar', string]>
+              ['config', 'Configuracao'],
+            ] as Array<['ia' | 'montar' | 'config', string]>
           ).map(([id, rotulo]) => (
             <button
               key={id}
@@ -303,6 +426,184 @@ export function RelatorioIA() {
 
         {aba === 'montar' ? (
           <MontarRelatorio />
+        ) : aba === 'config' ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-3xl mx-auto space-y-5">
+              <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Settings2 size={18} /> Configuracao da IA
+                </h2>
+                <p className="text-sm text-text-secondary mt-1">
+                  Cada empresa pode usar a propria chave, modelo e cota diaria. Sem chave da
+                  empresa, o sistema usa a chave global configurada no servidor.
+                </p>
+              </div>
+
+              {isSuperadmin && (
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                    Empresa
+                  </label>
+                  <div className="relative">
+                    <Building2
+                      size={15}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+                    />
+                    <select
+                      value={empresaSel ?? ''}
+                      onChange={(e) => {
+                        const id = Number(e.target.value);
+                        if (id) void trocarEmpresaConfig(id);
+                      }}
+                      className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border-subtle bg-bg-muted/40 text-sm text-text-primary outline-none focus:border-blue-500"
+                    >
+                      <option value="">Selecione uma empresa...</option>
+                      {empresas.map((e) => {
+                        const id = e.id ?? e.codigo ?? 0;
+                        return (
+                          <option key={id} value={id}>
+                            {e.fantasia || e.razao_social}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                    Chave da API (Google AI Studio / OpenAI / Groq)
+                  </label>
+                  <input
+                    type="password"
+                    value={chaveInput}
+                    onChange={(e) => {
+                      setChaveInput(e.target.value);
+                      if (e.target.value) setRemoverChave(false);
+                    }}
+                    autoComplete="off"
+                    placeholder={
+                      cfgEmpresa?.api_key_mascarada
+                        ? `Configurada: ${cfgEmpresa.api_key_mascarada} (deixe em branco para manter)`
+                        : 'Cole aqui a chave gerada para esta empresa'
+                    }
+                    className="w-full px-3 py-2.5 rounded-lg border border-border-subtle bg-bg-muted/40 text-sm text-text-primary outline-none focus:border-blue-500"
+                  />
+                  <p className="text-[11px] text-text-muted mt-1.5">
+                    A chave fica salva no banco e nunca volta ao navegador em texto puro (apenas
+                    mascarada). Cada empresa precisa de uma chave/projeto proprio no provedor para
+                    ter cota separada.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                    Modelo (opcional)
+                  </label>
+                  <input
+                    value={modeloInput}
+                    onChange={(e) => setModeloInput(e.target.value)}
+                    placeholder={cfg?.modelo ?? 'gpt-4o-mini'}
+                    className="w-full px-3 py-2.5 rounded-lg border border-border-subtle bg-bg-muted/40 text-sm text-text-primary outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                    URL base (opcional)
+                  </label>
+                  <input
+                    value={baseUrlInput}
+                    onChange={(e) => setBaseUrlInput(e.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    className="w-full px-3 py-2.5 rounded-lg border border-border-subtle bg-bg-muted/40 text-sm text-text-primary outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                    Cota diaria da empresa
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10000}
+                    value={quotaInput}
+                    onChange={(e) => setQuotaInput(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-lg border border-border-subtle bg-bg-muted/40 text-sm text-text-primary outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <div className="w-full rounded-lg border border-border-subtle bg-bg-muted/40 px-3 py-2.5 text-xs text-text-secondary">
+                    <div>
+                      Efetivo: <span className="text-text-primary">{cfg?.modelo ?? '-'}</span>
+                    </div>
+                    <div>
+                      Cota: <span className="text-text-primary">{cfg?.quotaDiaria ?? '-'}</span>/dia
+                    </div>
+                    <div>
+                      Chave:{' '}
+                      <span className="text-text-primary">
+                        {cfg?.origemChave === 'empresa'
+                          ? 'da empresa'
+                          : cfg?.origemChave === 'global'
+                            ? 'global do servidor'
+                            : 'nao configurada'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={salvarConfig}
+                  disabled={!podeEditarConfig || salvandoConfig}
+                  className="btn-primary text-sm flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {salvandoConfig ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Save size={14} />
+                  )}
+                  Salvar configuracao
+                </button>
+                <button
+                  onClick={() => {
+                    setRemoverChave(true);
+                    setChaveInput('');
+                    setAvisoConfig('A chave da empresa sera removida ao salvar.');
+                  }}
+                  disabled={!podeEditarConfig || !cfgEmpresa?.configurado}
+                  className="btn-secondary text-sm disabled:opacity-50"
+                >
+                  Remover chave da empresa
+                </button>
+                {removerChave && (
+                  <span className="text-[11px] text-amber-400">
+                    Remocao marcada: salve para voltar a usar a chave global.
+                  </span>
+                )}
+              </div>
+
+              {!podeEditarConfig && (
+                <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+                  <AlertCircle size={16} className="flex-none mt-0.5" />
+                  Voce nao tem a permissao Editar no Relatorio IA; pode visualizar a configuracao,
+                  mas nao salvar.
+                </div>
+              )}
+
+              {avisoConfig && (
+                <div className="flex items-start gap-2 rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+                  <CheckCircle2 size={16} className="flex-none mt-0.5" /> {avisoConfig}
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
         <div className="flex flex-1 min-h-0">
         {/* ---------- Sidebar do historico ---------- */}
@@ -343,7 +644,7 @@ export function RelatorioIA() {
 
           <div className="p-4 border-t border-border-subtle text-xs text-text-secondary">
             <div className="flex justify-between mb-1.5">
-              <span>Consultas de hoje</span>
+              <span>Consultas da empresa hoje</span>
               <span className="text-text-primary font-medium">
                 {quota.usadas} de {quota.limite}
               </span>
@@ -357,7 +658,11 @@ export function RelatorioIA() {
             {cfg && (
               <div className="mt-2 text-[11px] text-text-muted">
                 Modelo: {cfg.modelo}
-                {!cfg.configurado && ' — IA nao configurada'}
+                {cfg.origemChave === 'empresa'
+                  ? ' — chave da empresa'
+                  : cfg.origemChave === 'global'
+                    ? ' — chave global'
+                    : ' — IA nao configurada'}
               </div>
             )}
           </div>

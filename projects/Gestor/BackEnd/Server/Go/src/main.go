@@ -426,9 +426,12 @@ carregar();
 		r.Post("/relatorio-ia/conversas", relatorioIA.ConversaCriar)
 		r.Get("/relatorio-ia/conversaMensagens", relatorioIA.MensagensListar)
 		r.Post("/relatorio-ia/mensagem", relatorioIA.MensagemSalvar)
-		r.Delete("/relatorio-ia/conversa", relatorioIA.ConversaExcluir)
-		r.Get("/relatorio-ia/quota", relatorioIA.Quota)
-		r.Get("/relatorio-ia/schema", relatorioIA.Schema)
+	r.Delete("/relatorio-ia/conversa", relatorioIA.ConversaExcluir)
+	r.Get("/relatorio-ia/quota", relatorioIA.Quota)
+	r.Get("/relatorio-ia/llm-config", relatorioIA.LLMConfigGet)
+	r.Put("/relatorio-ia/llm-config", relatorioIA.LLMConfigSalvar)
+	r.Get("/relatorio-ia/llm-key", relatorioIA.LLMKeyGet)
+	r.Get("/relatorio-ia/schema", relatorioIA.Schema)
 
 		// Dashboard
 		r.Get("/dashboard", financeiro.DashboardListar)
