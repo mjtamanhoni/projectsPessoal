@@ -7,7 +7,6 @@ interface Props {
 
 export function SplashScreen({ onFinalizar }: Props) {
   const [saindo, setSaindo] = useState(false);
-  const [videoFalhou, setVideoFalhou] = useState(false);
 
   const finalizar = useCallback(() => {
     setSaindo(true);
@@ -15,43 +14,25 @@ export function SplashScreen({ onFinalizar }: Props) {
   }, [onFinalizar]);
 
   useEffect(() => {
-    const timer = window.setTimeout(finalizar, videoFalhou ? 3400 : 6000);
+    const timer = window.setTimeout(finalizar, 3400);
     return () => window.clearTimeout(timer);
-  }, [finalizar, videoFalhou]);
+  }, [finalizar]);
 
   return (
     <div className={`splash${saindo ? ' splash-out' : ''}`}>
-      {!videoFalhou && (
-        <video
-          className="splash-video"
-          src="/splash.mp4"
-          poster="/splash-poster.svg"
-          autoPlay
-          muted
-          playsInline
-          preload="auto"
-          onEnded={finalizar}
-          onError={() => setVideoFalhou(true)}
-        />
-      )}
-
       <div className="splash-shade" />
 
-      {videoFalhou && (
-        <div className="splash-fallback">
-          <div className="splash-glow" />
-          <div className="splash-logo">
-            <ReceiptIcon size={64} />
-          </div>
-          <h1>Títulos a Pagar</h1>
-          <p>Contas em dia, decisões melhores.</p>
-          <div className="splash-dots" aria-label="Carregando">
-            <span />
-            <span />
-            <span />
-          </div>
+      <div className="splash-fallback">
+        <div className="splash-glow" />
+        <img className="splash-logo-img" src="/splash-logo.png" alt="Títulos a Pagar" />
+        <h1>Títulos a Pagar</h1>
+        <p>Contas em dia, decisões melhores.</p>
+        <div className="splash-dots" aria-label="Carregando">
+          <span />
+          <span />
+          <span />
         </div>
-      )}
+      </div>
 
       <div className="splash-brand">
         <span className="splash-brand-mark">

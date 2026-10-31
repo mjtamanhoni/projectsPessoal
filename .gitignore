@@ -70,5 +70,8 @@ projects/Gestor_Backup_*/
 !projects/Gestor/**/*.bat
 !projects/Gestor/**/.gitignore
 !projects/Gestor/**/android/**/res/**/*.png
+!projects/Gestor/Mobile/TitulosPagar/public/splash-logo.png
+!projects/Gestor/Mobile/TitulosPagar/Logomarca/*.png
+!projects/Gestor/Mobile/TitulosPagar/Logomarca/*.jpeg
 !projects/Gestor/FrontEnd/src/server/database/*.sql
 !projects/Gestor/BackEnd/Server/src/*.sql
