@@ -1018,6 +1018,13 @@ var Migracoes = []Migracao{
 	{
 		Nome: "030_titulos_pagar_menu_e_validacao",
 		SQLUp: `
+			-- Sincroniza a sequence com o maior id existente (pode estar dessincronizada)
+			SELECT setval(
+				pg_get_serial_sequence('public.modulo_formulario', 'id')::regclass,
+				COALESCE(MAX(id), 0) + 1,
+				false
+			) FROM public.modulo_formulario;
+
 			-- Vincula o formulario ao modulo GESTOR para aparecer no menu
 			INSERT INTO public.modulo_formulario (modulo_id, formulario_id, abertura)
 			SELECT m.id, f.id, 6
