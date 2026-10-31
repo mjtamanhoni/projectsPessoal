@@ -19,6 +19,7 @@ interface RowActionsProps {
   onEdit?: () => void;
   onDelete?: () => void;
   extras?: RowActionDef[];
+  icon?: LucideIcon;
 }
 
 const LARGURA_MENU = 176;
@@ -29,7 +30,7 @@ interface Posicao {
   top: number;
 }
 
-export function RowActions({ rota, onEdit, onDelete, extras }: RowActionsProps) {
+export function RowActions({ rota, onEdit, onDelete, extras, icon: Icon = MoreHorizontal }: RowActionsProps) {
   const [aberto, setAberto] = useState(false);
   const [pos, setPos] = useState<Posicao | null>(null);
   const botaoRef = useRef<HTMLButtonElement>(null);
@@ -98,7 +99,7 @@ export function RowActions({ rota, onEdit, onDelete, extras }: RowActionsProps) 
         className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors"
         aria-label="Acoes"
       >
-        <MoreHorizontal size={16} className="text-text-secondary" />
+        <Icon size={16} className="text-text-secondary" />
       </button>
       {aberto && pos &&
         createPortal(
@@ -110,7 +111,7 @@ export function RowActions({ rota, onEdit, onDelete, extras }: RowActionsProps) 
             {itens.map((item, idx) => {
               const botao = (
                 <button
-                  onClick={item.onClick}
+                  onClick={() => { fechar(); item.onClick(); }}
                   className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-bg-muted transition-colors"
                 >
                   <item.icone size={15} style={{ color: item.cor }} />

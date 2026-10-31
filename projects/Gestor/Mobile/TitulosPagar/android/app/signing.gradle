@@ -1,0 +1,15 @@
+android {
+    signingConfigs {
+        release {
+            storeFile file("release.keystore")
+            storePassword System.getenv("KEYSTORE_PASS") ?: "gestor123"
+            keyAlias "titulos"
+            keyPassword System.getenv("KEYSTORE_PASS") ?: "gestor123"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}

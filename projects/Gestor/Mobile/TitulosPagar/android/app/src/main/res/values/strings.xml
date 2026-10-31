@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Títulos a Pagar</string>
+    <string name="title_activity_main">Títulos a Pagar</string>
+    <string name="package_name">com.conesoft.titulospagar</string>
+    <string name="custom_url_scheme">com.conesoft.titulospagar</string>
+</resources>

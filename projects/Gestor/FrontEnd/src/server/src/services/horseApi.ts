@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao, TituloPagar, TituloPagarInput, PagamentoEfetuado, PagamentoEfetuadoInput } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -306,6 +306,87 @@ class HorseApiService {
   async estornarContaPagar(id: number): Promise<unknown> {
     try {
       const res = await this.api.put('/contasPagar/estornar', { id }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarTitulosPagar(params?: Record<string, unknown>): Promise<TituloPagar[]> {
+    try {
+      const res = await this.api.get('/titulosPagar', { params, headers: this.getAuthHeaders() });
+      return this.mapArray<TituloPagar>(res.data);
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarTitulosPagar(titulos: TituloPagarInput[]): Promise<unknown> {
+    try {
+      const mapped = titulos.map((t) => ({
+        id: t.id,
+        credor: t.credor,
+        descricao: t.descricao,
+        numero_documento: t.numeroDocumento,
+        valor_total: t.valorTotal,
+        data_emissao: t.dataEmissao,
+        data_vencimento: t.dataVencimento,
+        status: t.status,
+      }));
+      const payload = mapped.length === 1 ? mapped[0] : mapped;
+      const res = await this.api.post('/titulosPagar', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirTituloPagar(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/titulosPagar', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async baixarTituloTotal(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.post('/titulosPagar/baixaTotal', { id }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarPagamentosEfetuados(params?: Record<string, unknown>): Promise<PagamentoEfetuado[]> {
+    try {
+      const res = await this.api.get('/pagamentosEfetuados', { params, headers: this.getAuthHeaders() });
+      return this.mapArray<PagamentoEfetuado>(res.data);
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarPagamentoEfetuado(data: PagamentoEfetuadoInput): Promise<unknown> {
+    try {
+      const payload = {
+        titulo_id: data.tituloId,
+        data_pagamento: data.dataPagamento,
+        valor_pago: data.valorPago,
+        forma_pagamento: data.formaPagamento,
+        observacao: data.observacao,
+      };
+      const res = await this.api.post('/pagamentosEfetuados', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirPagamentoEfetuado(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/pagamentosEfetuados', { params: { id }, headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);

@@ -1543,8 +1543,8 @@ func (h *BasicCRUD) EmpresaModuloSalvar(w http.ResponseWriter, r *http.Request) 
 		jsonError(w, "Acesso restrito a superadmin", http.StatusForbidden)
 		return
 	}
-	h.genericUpsert(w, r, "public", "empresa_modulo",
-		[]string{"modulo_id", "empresa_id"})
+	h.genericUpsertComEmpresa(w, r, "public", "empresa_modulo",
+		[]string{"modulo_id"})
 }
 
 func (h *BasicCRUD) EmpresaModuloExcluir(w http.ResponseWriter, r *http.Request) {

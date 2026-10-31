@@ -25,6 +25,7 @@ var TabelasEmpresa = []string{
 	"perda_insumo", "perda_produto_fabricado", "uso_consumo",
 	"produto_classificacao", "lancamento_automatico_config",
 	"forma_pagamento", "condicao_pagamento", "bandeira_cartao",
+	"titulos_pagar", "pagamentos_efetuados",
 }
 
 // TabelasGlobais: tabelas com id global (empresa_id = 0).

@@ -14,8 +14,8 @@ type Migracao struct {
 }
 
 type MigracaoStatus struct {
-	Nome      string `json:"nome"`
-	Aplicada  bool   `json:"aplicada"`
+	Nome       string `json:"nome"`
+	Aplicada   bool   `json:"aplicada"`
 	AplicadaEm string `json:"aplicada_em,omitempty"`
 }
 
@@ -762,6 +762,294 @@ var Migracoes = []Migracao{
 				CONSTRAINT fk_empresa_llm_config_empresa
 					FOREIGN KEY (empresa_id) REFERENCES public.empresa(id) ON DELETE CASCADE
 			);
+		`,
+	},
+	{
+		Nome: "028_titulos_pagar_empresa",
+		SQLUp: `
+			-- Reconstroi titulos_pagar e pagamentos_efetuados com isolamento por empresa.
+			-- As tabelas antigas estavam sem empresa_id e usavam sequencias globais.
+			-- Como estavam vazias, sao recriadas com PK composta (empresa_id, id).
+			-- O id passa a ser gerado por empresa via empresa_sequences/GerarID.
+
+			DO $$
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1
+					FROM pg_type t
+					JOIN pg_namespace n ON n.oid = t.typnamespace
+					WHERE t.typname = 'status_conta' AND n.nspname = 'public'
+				) THEN
+					CREATE TYPE public.status_conta AS ENUM ('PENDENTE', 'PARCIAL', 'QUITADO', 'CANCELADO');
+				END IF;
+			END $$;
+
+			DO $$
+			DECLARE
+				v_count BIGINT;
+			BEGIN
+				IF to_regclass('public.titulos_pagar') IS NOT NULL THEN
+					EXECUTE 'SELECT COUNT(*) FROM public.titulos_pagar' INTO v_count;
+					IF v_count > 0 THEN
+						RAISE EXCEPTION 'Migration 028 abortada: public.titulos_pagar possui % registro(s)', v_count;
+					END IF;
+				END IF;
+				IF to_regclass('public.pagamentos_efetuados') IS NOT NULL THEN
+					EXECUTE 'SELECT COUNT(*) FROM public.pagamentos_efetuados' INTO v_count;
+					IF v_count > 0 THEN
+						RAISE EXCEPTION 'Migration 028 abortada: public.pagamentos_efetuados possui % registro(s)', v_count;
+					END IF;
+				END IF;
+			END $$;
+
+			DROP VIEW IF EXISTS public.vw_titulos_saldo;
+			DROP TABLE IF EXISTS public.pagamentos_efetuados CASCADE;
+			DROP TABLE IF EXISTS public.titulos_pagar CASCADE;
+			DROP SEQUENCE IF EXISTS public.titulos_pagar_id_titulo_seq CASCADE;
+			DROP SEQUENCE IF EXISTS public.pagamentos_efetuados_id_pagamento_seq CASCADE;
+
+			CREATE TABLE public.titulos_pagar (
+				empresa_id INTEGER NOT NULL,
+				id INTEGER NOT NULL,
+				usuario_id INTEGER,
+				credor VARCHAR(150) NOT NULL,
+				descricao TEXT,
+				numero_documento VARCHAR(50),
+				valor_total NUMERIC(15,2) NOT NULL,
+				data_emissao DATE NOT NULL DEFAULT CURRENT_DATE,
+				data_vencimento DATE NOT NULL,
+				status public.status_conta NOT NULL DEFAULT 'PENDENTE',
+				criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				atualizado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				CONSTRAINT titulos_pagar_pk PRIMARY KEY (empresa_id, id),
+				CONSTRAINT fk_titulos_pagar_empresa FOREIGN KEY (empresa_id) REFERENCES public.empresa(id),
+				CONSTRAINT fk_titulos_pagar_usuario FOREIGN KEY (empresa_id, usuario_id) REFERENCES public.usuario(empresa_id, id),
+				CONSTRAINT ck_titulos_pagar_valor_total CHECK (valor_total > 0),
+				CONSTRAINT ck_titulos_pagar_datas CHECK (data_vencimento >= data_emissao)
+			);
+
+			CREATE TABLE public.pagamentos_efetuados (
+				empresa_id INTEGER NOT NULL,
+				id INTEGER NOT NULL,
+				titulo_id INTEGER NOT NULL,
+				usuario_id INTEGER,
+				data_pagamento DATE NOT NULL DEFAULT CURRENT_DATE,
+				valor_pago NUMERIC(15,2) NOT NULL,
+				forma_pagamento VARCHAR(50),
+				observacao TEXT,
+				criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				CONSTRAINT pagamentos_efetuados_pk PRIMARY KEY (empresa_id, id),
+				CONSTRAINT fk_pagamentos_efetuados_empresa FOREIGN KEY (empresa_id) REFERENCES public.empresa(id),
+				CONSTRAINT fk_pagamentos_efetuados_titulo FOREIGN KEY (empresa_id, titulo_id) REFERENCES public.titulos_pagar(empresa_id, id) ON DELETE RESTRICT,
+				CONSTRAINT fk_pagamentos_efetuados_usuario FOREIGN KEY (empresa_id, usuario_id) REFERENCES public.usuario(empresa_id, id),
+				CONSTRAINT ck_pagamentos_efetuados_valor_pago CHECK (valor_pago > 0)
+			);
+
+			CREATE INDEX idx_titulos_pagar_emp_status ON public.titulos_pagar (empresa_id, status);
+			CREATE INDEX idx_titulos_pagar_emp_venc ON public.titulos_pagar (empresa_id, data_vencimento);
+			CREATE INDEX idx_titulos_pagar_emp_credor ON public.titulos_pagar (empresa_id, credor);
+			CREATE INDEX idx_titulos_pagar_emp_doc ON public.titulos_pagar (empresa_id, numero_documento);
+			CREATE INDEX idx_pagamentos_efetuados_emp_titulo ON public.pagamentos_efetuados (empresa_id, titulo_id);
+			CREATE INDEX idx_pagamentos_efetuados_emp_data ON public.pagamentos_efetuados (empresa_id, data_pagamento);
+
+			CREATE OR REPLACE FUNCTION public.fn_titulos_pagar_atualizado_em()
+			RETURNS TRIGGER AS $$
+			BEGIN
+				NEW.atualizado_em = NOW();
+				RETURN NEW;
+			END;
+			$$ LANGUAGE plpgsql;
+
+			DROP TRIGGER IF EXISTS trg_titulos_pagar_atualizado_em ON public.titulos_pagar;
+			CREATE TRIGGER trg_titulos_pagar_atualizado_em
+			BEFORE UPDATE ON public.titulos_pagar
+			FOR EACH ROW EXECUTE FUNCTION public.fn_titulos_pagar_atualizado_em();
+
+			CREATE OR REPLACE FUNCTION public.fn_pagamentos_efetuados_valida()
+			RETURNS TRIGGER AS $$
+			DECLARE
+				v_total NUMERIC(15,2);
+				v_pago NUMERIC(15,2);
+				v_status public.status_conta;
+			BEGIN
+				SELECT valor_total, status INTO v_total, v_status
+				FROM public.titulos_pagar
+				WHERE empresa_id = NEW.empresa_id AND id = NEW.titulo_id
+				FOR UPDATE;
+
+				IF NOT FOUND THEN
+					RAISE EXCEPTION 'Titulo % da empresa % nao encontrado', NEW.titulo_id, NEW.empresa_id;
+				END IF;
+
+				IF v_status = 'CANCELADO' THEN
+					RAISE EXCEPTION 'Nao e possivel pagar um titulo cancelado';
+				END IF;
+
+				SELECT COALESCE(SUM(valor_pago), 0) INTO v_pago
+				FROM public.pagamentos_efetuados
+				WHERE empresa_id = NEW.empresa_id
+				  AND titulo_id = NEW.titulo_id
+				  AND (TG_OP = 'INSERT' OR id <> NEW.id);
+
+				IF v_pago + NEW.valor_pago > v_total THEN
+					RAISE EXCEPTION 'Pagamento excede o valor do titulo (total %, ja pago %, novo %)', v_total, v_pago, NEW.valor_pago;
+				END IF;
+
+				RETURN NEW;
+			END;
+			$$ LANGUAGE plpgsql;
+
+			DROP TRIGGER IF EXISTS trg_pagamentos_efetuados_valida ON public.pagamentos_efetuados;
+			CREATE TRIGGER trg_pagamentos_efetuados_valida
+			BEFORE INSERT OR UPDATE ON public.pagamentos_efetuados
+			FOR EACH ROW EXECUTE FUNCTION public.fn_pagamentos_efetuados_valida();
+
+			CREATE OR REPLACE FUNCTION public.fn_recalcular_status_titulo(p_empresa_id INTEGER, p_titulo_id INTEGER)
+			RETURNS VOID AS $$
+			DECLARE
+				v_total NUMERIC(15,2);
+				v_pago NUMERIC(15,2);
+				v_status public.status_conta;
+			BEGIN
+				SELECT valor_total, status INTO v_total, v_status
+				FROM public.titulos_pagar
+				WHERE empresa_id = p_empresa_id AND id = p_titulo_id
+				FOR UPDATE;
+
+				IF NOT FOUND OR v_status = 'CANCELADO' THEN
+					RETURN;
+				END IF;
+
+				SELECT COALESCE(SUM(valor_pago), 0) INTO v_pago
+				FROM public.pagamentos_efetuados
+				WHERE empresa_id = p_empresa_id AND titulo_id = p_titulo_id;
+
+				IF v_pago <= 0 THEN
+					UPDATE public.titulos_pagar SET status = 'PENDENTE'
+					WHERE empresa_id = p_empresa_id AND id = p_titulo_id;
+				ELSIF v_pago < v_total THEN
+					UPDATE public.titulos_pagar SET status = 'PARCIAL'
+					WHERE empresa_id = p_empresa_id AND id = p_titulo_id;
+				ELSE
+					UPDATE public.titulos_pagar SET status = 'QUITADO'
+					WHERE empresa_id = p_empresa_id AND id = p_titulo_id;
+				END IF;
+			END;
+			$$ LANGUAGE plpgsql;
+
+			CREATE OR REPLACE FUNCTION public.fn_pagamentos_efetuados_status()
+			RETURNS TRIGGER AS $$
+			BEGIN
+				IF TG_OP = 'DELETE' THEN
+					PERFORM public.fn_recalcular_status_titulo(OLD.empresa_id, OLD.titulo_id);
+					RETURN OLD;
+				END IF;
+
+				PERFORM public.fn_recalcular_status_titulo(NEW.empresa_id, NEW.titulo_id);
+				IF TG_OP = 'UPDATE' AND (OLD.empresa_id <> NEW.empresa_id OR OLD.titulo_id <> NEW.titulo_id) THEN
+					PERFORM public.fn_recalcular_status_titulo(OLD.empresa_id, OLD.titulo_id);
+				END IF;
+				RETURN NEW;
+			END;
+			$$ LANGUAGE plpgsql;
+
+			DROP TRIGGER IF EXISTS trg_pagamentos_efetuados_status ON public.pagamentos_efetuados;
+			CREATE TRIGGER trg_pagamentos_efetuados_status
+			AFTER INSERT OR UPDATE OR DELETE ON public.pagamentos_efetuados
+			FOR EACH ROW EXECUTE FUNCTION public.fn_pagamentos_efetuados_status();
+
+			CREATE OR REPLACE FUNCTION public.fn_titulos_pagar_recalc()
+			RETURNS TRIGGER AS $$
+			BEGIN
+				PERFORM public.fn_recalcular_status_titulo(NEW.empresa_id, NEW.id);
+				RETURN NEW;
+			END;
+			$$ LANGUAGE plpgsql;
+
+			DROP TRIGGER IF EXISTS trg_titulos_pagar_recalc ON public.titulos_pagar;
+			CREATE TRIGGER trg_titulos_pagar_recalc
+			AFTER UPDATE OF valor_total ON public.titulos_pagar
+			FOR EACH ROW EXECUTE FUNCTION public.fn_titulos_pagar_recalc();
+
+			CREATE OR REPLACE VIEW public.vw_titulos_saldo AS
+			SELECT
+				t.empresa_id,
+				t.id,
+				t.usuario_id,
+				t.credor,
+				t.descricao,
+				t.numero_documento,
+				t.valor_total,
+				t.data_emissao,
+				t.data_vencimento,
+				t.status,
+				COALESCE(SUM(p.valor_pago), 0) AS total_pago,
+				t.valor_total - COALESCE(SUM(p.valor_pago), 0) AS saldo_devedor,
+				CASE
+					WHEN t.status = 'CANCELADO' THEN NULL
+					WHEN t.data_vencimento < CURRENT_DATE AND COALESCE(SUM(p.valor_pago), 0) < t.valor_total
+						THEN CURRENT_DATE - t.data_vencimento
+					ELSE 0
+				END AS dias_atraso,
+				MAX(p.data_pagamento) AS ultimo_pagamento,
+				t.criado_em,
+				t.atualizado_em
+			FROM public.titulos_pagar t
+			LEFT JOIN public.pagamentos_efetuados p
+				ON p.empresa_id = t.empresa_id AND p.titulo_id = t.id
+			GROUP BY t.empresa_id, t.id;
+		`,
+	},
+	{
+		Nome: "029_formulario_titulos_pagar",
+		SQLUp: `
+			DO $$
+			DECLARE
+				v_id INTEGER;
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM public.formulario WHERE nome = 'Titulos a Pagar') THEN
+					SELECT COALESCE(MAX(id), 0) + 1 INTO v_id FROM public.formulario;
+					INSERT INTO public.formulario (id, nome) VALUES (v_id, 'Titulos a Pagar');
+					PERFORM setval(pg_get_serial_sequence('public.formulario', 'id'), v_id, true);
+				END IF;
+			END $$;
+		`,
+	},
+	{
+		Nome: "030_titulos_pagar_menu_e_validacao",
+		SQLUp: `
+			-- Vincula o formulario ao modulo GESTOR para aparecer no menu
+			INSERT INTO public.modulo_formulario (modulo_id, formulario_id, abertura)
+			SELECT m.id, f.id, 6
+			FROM public.modulo m, public.formulario f
+			WHERE m.nome = 'GESTOR'
+			  AND f.nome = 'Titulos a Pagar'
+			  AND NOT EXISTS (
+				SELECT 1 FROM public.modulo_formulario mf
+				WHERE mf.modulo_id = m.id AND mf.formulario_id = f.id
+			  );
+
+			-- Impede reduzir o valor total abaixo do ja pago
+			CREATE OR REPLACE FUNCTION public.fn_titulos_pagar_valida_total()
+			RETURNS TRIGGER AS $$
+			DECLARE
+				v_pago NUMERIC(15,2);
+			BEGIN
+				SELECT COALESCE(SUM(valor_pago), 0) INTO v_pago
+				FROM public.pagamentos_efetuados
+				WHERE empresa_id = NEW.empresa_id AND titulo_id = NEW.id;
+
+				IF NEW.valor_total < v_pago THEN
+					RAISE EXCEPTION 'Valor total (%) nao pode ser menor que o total ja pago (%)', NEW.valor_total, v_pago;
+				END IF;
+				RETURN NEW;
+			END;
+			$$ LANGUAGE plpgsql;
+
+			DROP TRIGGER IF EXISTS trg_titulos_pagar_valida_total ON public.titulos_pagar;
+			CREATE TRIGGER trg_titulos_pagar_valida_total
+			BEFORE UPDATE OF valor_total ON public.titulos_pagar
+			FOR EACH ROW EXECUTE FUNCTION public.fn_titulos_pagar_valida_total();
 		`,
 	},
 }

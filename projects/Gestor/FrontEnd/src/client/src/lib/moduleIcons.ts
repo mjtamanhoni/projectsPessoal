@@ -92,6 +92,16 @@ const moduleIconMap: Record<string, ModuleIconInfo> = {
     color: '#dc2626',
     bgGradient: 'from-red-500/20 to-red-600/10',
   },
+  'Titulos a Pagar': {
+    icon: CreditCard,
+    color: '#dc2626',
+    bgGradient: 'from-red-500/20 to-red-600/10',
+  },
+  'Títulos a Pagar': {
+    icon: CreditCard,
+    color: '#dc2626',
+    bgGradient: 'from-red-500/20 to-red-600/10',
+  },
   'Contas a Receber': {
     icon: Receipt,
     color: '#16a34a',

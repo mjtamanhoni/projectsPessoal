@@ -84,6 +84,14 @@
   .status-badge.atrasado {
     @apply bg-red-100 text-red-800;
   }
+
+  .status-badge.parcial {
+    @apply bg-orange-100 text-orange-800;
+  }
+
+  .status-badge.cancelado {
+    @apply bg-gray-100 text-gray-700;
+  }
 }
 
 @keyframes slide-in {

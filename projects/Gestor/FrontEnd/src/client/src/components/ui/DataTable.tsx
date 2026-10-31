@@ -162,7 +162,16 @@ export function DataTable<T>({
                 <Fragment key={row.id}>
                   <tr className={`border-b border-border-subtle hover:bg-bg-muted/50 transition-colors ${getRowClassName?.(row.original) ?? ''}`}>
                     {row.getVisibleCells().map((cell) => {
-                      const isExpand = (cell.column.columnDef.meta as Record<string, unknown> | undefined)?.expand;
+                      const expandMeta = cell.column.columnDef.meta as {
+                        expand?: boolean;
+                        expandLabel?: string;
+                        expandLabelExpanded?: string;
+                      } | undefined;
+                      const isExpand = expandMeta?.expand;
+                      const isExpanded = expandedRows.has(row.id);
+                      const expandLabel = isExpanded
+                        ? (expandMeta?.expandLabelExpanded ?? expandMeta?.expandLabel)
+                        : expandMeta?.expandLabel;
                       return (
                       <td key={cell.id} className={`py-3 px-4 text-sm text-text-primary ${
                           (cell.column.columnDef.meta as Record<string, string> | undefined)?.align === 'right' ? 'text-right' : 'text-left'
@@ -187,9 +196,16 @@ export function DataTable<T>({
                                 });
                                 if (!isAlreadyExpanded) onExpand?.(row.original);
                               }}
-                              className="p-0.5 rounded hover:bg-bg-muted transition-colors"
+                              aria-expanded={isExpanded}
+                              aria-label={isExpanded ? 'Retrair' : 'Expandir'}
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                                isExpanded
+                                  ? 'bg-accent-primary/10 text-accent-primary'
+                                  : 'text-text-secondary hover:bg-bg-muted hover:text-text-primary'
+                              }`}
                             >
-                              {expandedRows.has(row.id) ? <ChevronDown size={16} className="text-text-secondary" /> : <ChevronRight size={16} className="text-text-secondary" />}
+                              {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                              {expandLabel && <span>{expandLabel}</span>}
                             </button>
                           ) : (
                             flexRender(cell.column.columnDef.cell, cell.getContext())

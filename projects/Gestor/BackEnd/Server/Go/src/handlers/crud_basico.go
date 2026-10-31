@@ -232,6 +232,18 @@ func (b *BasicCRUD) Excluir(w http.ResponseWriter, r *http.Request, table string
 
 func (b *BasicCRUD) genericUpsert(w http.ResponseWriter, r *http.Request,
 	schema, table string, requiredFields []string) {
+	b.genericUpsertInternal(w, r, schema, table, requiredFields, false)
+}
+
+// genericUpsertComEmpresa permite que o proprio payload informe empresa_id.
+// Usado apenas em tabelas de associacao entre empresas e outros registros.
+func (b *BasicCRUD) genericUpsertComEmpresa(w http.ResponseWriter, r *http.Request,
+	schema, table string, requiredFields []string) {
+	b.genericUpsertInternal(w, r, schema, table, requiredFields, true)
+}
+
+func (b *BasicCRUD) genericUpsertInternal(w http.ResponseWriter, r *http.Request,
+	schema, table string, requiredFields []string, allowEmpresaID bool) {
 
 	items, err := b.parseBody(r)
 	if err != nil {
@@ -239,12 +251,19 @@ func (b *BasicCRUD) genericUpsert(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	empresaID := middleware.GetEmpresaLogada(r)
+	loggedEmpresaID := middleware.GetEmpresaLogada(r)
 	usuarioID := middleware.GetUserID(r)
 
 	for _, item := range items {
+		if allowEmpresaID {
+			if getInt(item, "empresa_id") <= 0 {
+				jsonError(w, "empresa_id é obrigatório", http.StatusBadRequest)
+				return
+			}
+			continue
+		}
 		if _, ok := getFieldValue(item, "empresa_id"); ok {
-			jsonError(w, "NÃ£o Ã© permitido alterar empresa_id", http.StatusForbidden)
+			jsonError(w, "Não é permitido alterar empresa_id", http.StatusForbidden)
 			return
 		}
 	}
@@ -258,6 +277,10 @@ func (b *BasicCRUD) genericUpsert(w http.ResponseWriter, r *http.Request,
 	defer tx.Rollback(r.Context())
 
 	for _, item := range items {
+		empresaID := loggedEmpresaID
+		if allowEmpresaID {
+			empresaID = getInt(item, "empresa_id")
+		}
 		id := getID(item)
 
 		if id == 0 {

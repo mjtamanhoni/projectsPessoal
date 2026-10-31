@@ -221,10 +221,11 @@ COMMENT ON TABLE permissao IS 'Permissoes do sistema (Visualizar, Incluir, Edita
 -- empresa_sequences: Geracao de IDs sequenciais por empresa
 CREATE TABLE empresa_sequences (
     empresa_id INTEGER NOT NULL,
+    tabela VARCHAR(100) NOT NULL,
     last_id INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
-ALTER TABLE empresa_sequences ADD CONSTRAINT empresa_sequences_pk PRIMARY KEY (empresa_id);
+ALTER TABLE empresa_sequences ADD CONSTRAINT empresa_sequences_pk PRIMARY KEY (empresa_id, tabela);
 ALTER TABLE empresa_sequences ADD CONSTRAINT fk_es_empresa FOREIGN KEY (empresa_id) REFERENCES empresa(id);
 COMMENT ON TABLE empresa_sequences IS 'Controle de IDs sequenciais por empresa';
 
@@ -767,7 +768,8 @@ VALUES (
     'mjtamanhoni@gmail.com'
 );
 
-INSERT INTO empresa_sequences (empresa_id, last_id) VALUES (1, 500);
+-- empresa_sequences e populada na inicializacao do backend Go (SeedSequences),
+-- usando MAX(id) de cada tabela por empresa.
 
 -- 2. Modulos
 INSERT INTO modulo (nome, descricao) VALUES
@@ -794,7 +796,7 @@ INSERT INTO formulario (nome) VALUES
 ('Estoque Insumo'), ('Estoque Produto Fabricado'),
 	('Relatorio Insumos'), ('Relatorio Produtos Fabricados'),
 	('Relatorio Fabricacoes'), ('Relatorio Vendas Produto'),
-	('Relatorio IA');
+	('Relatorio IA'), ('Titulos a Pagar');
 
 -- 4. Modulo x Formulario (GERAL)
 INSERT INTO modulo_formulario (modulo_id, formulario_id, abertura) VALUES
@@ -805,6 +807,9 @@ INSERT INTO modulo_formulario (modulo_id, formulario_id, abertura) VALUES
 -- Modulo x Formulario (GESTOR)
 INSERT INTO modulo_formulario (modulo_id, formulario_id, abertura) VALUES
 (2,2,1), (2,3,2), (2,6,3), (2,14,4), (2,17,5);
+-- Modulo x Formulario (GESTOR) - Titulos a Pagar
+INSERT INTO modulo_formulario (modulo_id, formulario_id, abertura)
+SELECT 2, id, 6 FROM formulario WHERE nome = 'Titulos a Pagar';
 -- Modulo x Formulario (HORAS)
 INSERT INTO modulo_formulario (modulo_id, formulario_id, abertura) VALUES
 (3,7,1), (3,11,2), (3,13,3), (3,12,4);

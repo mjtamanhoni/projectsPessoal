@@ -108,6 +108,57 @@ export interface BaixaRequest {
   acrescimo?: number;
 }
 
+export interface TituloPagar {
+  id?: number;
+  empresaId?: number;
+  usuarioId?: number | null;
+  credor: string;
+  descricao?: string | null;
+  numeroDocumento?: string | null;
+  valorTotal: number;
+  dataEmissao?: string;
+  dataVencimento: string;
+  status?: string;
+  totalPago?: number;
+  saldoDevedor?: number;
+  diasAtraso?: number | null;
+  ultimoPagamento?: string | null;
+  criadoEm?: string;
+  atualizadoEm?: string;
+}
+
+export interface TituloPagarInput {
+  id?: number;
+  credor: string;
+  descricao?: string;
+  numeroDocumento?: string;
+  valorTotal: number;
+  dataEmissao?: string;
+  dataVencimento: string;
+  status?: string;
+}
+
+export interface PagamentoEfetuado {
+  id?: number;
+  empresaId?: number;
+  tituloId: number;
+  usuarioId?: number | null;
+  usuarioNome?: string | null;
+  dataPagamento: string;
+  valorPago: number;
+  formaPagamento?: string | null;
+  observacao?: string | null;
+  criadoEm?: string;
+}
+
+export interface PagamentoEfetuadoInput {
+  tituloId: number;
+  dataPagamento?: string;
+  valorPago: number;
+  formaPagamento?: string;
+  observacao?: string;
+}
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;

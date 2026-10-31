@@ -87,6 +87,38 @@ export interface ContaReceber {
   lancamento_origem?: number;
 }
 
+export interface TituloPagar {
+  id?: number;
+  empresaId?: number;
+  usuarioId?: number | null;
+  credor: string;
+  descricao?: string | null;
+  numeroDocumento?: string | null;
+  valorTotal: number;
+  dataEmissao?: string;
+  dataVencimento: string;
+  status?: string;
+  totalPago?: number;
+  saldoDevedor?: number;
+  diasAtraso?: number | null;
+  ultimoPagamento?: string | null;
+  criadoEm?: string;
+  atualizadoEm?: string;
+}
+
+export interface PagamentoEfetuado {
+  id?: number;
+  empresaId?: number;
+  tituloId: number;
+  usuarioId?: number | null;
+  usuarioNome?: string | null;
+  dataPagamento: string;
+  valorPago: number;
+  formaPagamento?: string | null;
+  observacao?: string | null;
+  criadoEm?: string;
+}
+
 export interface Usuario {
   codigo?: number;
   id?: number;

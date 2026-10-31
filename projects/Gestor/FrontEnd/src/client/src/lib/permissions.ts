@@ -12,6 +12,7 @@ export const formRouteMap: Record<string, string> = {
   'Dashboard': '/dashboard',
   'Contas a Receber': '/contas-receber',
   'Contas a Pagar': '/contas-pagar',
+  'Titulos a Pagar': '/titulos-pagar',
   'Clientes': '/clientes',
   'Fornecedores': '/fornecedores',
   'Categorias': '/categorias',

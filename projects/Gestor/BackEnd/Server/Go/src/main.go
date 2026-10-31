@@ -393,6 +393,17 @@ carregar();
 		r.Put("/contasPagar/pagar", financeiro.ContasPagarPagar)
 		r.Put("/contasPagar/estornar", financeiro.ContasPagarEstornar)
 
+		// Titulos a Pagar
+		r.Get("/titulosPagar", financeiro.TitulosPagarListar)
+		r.Post("/titulosPagar", financeiro.TitulosPagarAtualizar)
+		r.Delete("/titulosPagar", financeiro.TitulosPagarExcluir)
+		r.Post("/titulosPagar/baixaTotal", financeiro.TitulosPagarBaixaTotal)
+
+		// Pagamentos Efetuados
+		r.Get("/pagamentosEfetuados", financeiro.PagamentosEfetuadosListar)
+		r.Post("/pagamentosEfetuados", financeiro.PagamentosEfetuadosSalvar)
+		r.Delete("/pagamentosEfetuados", financeiro.PagamentosEfetuadosExcluir)
+
 		// Contas Receber
 		r.Get("/contasReceber", financeiro.ContasReceberListar)
 		r.Post("/contasReceber", financeiro.ContasReceberAtualizar)
