@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import {
   getServerList,
+  getServidorAtivo,
+  sameServer,
   SERVIDOR_PADRAO,
   setServerList,
+  setServidorAtivo,
   testServer,
   type ServerEndpoint,
 } from '../api';
@@ -10,10 +13,16 @@ import { PlusIcon, ServerIcon, TrashIcon } from './Icons';
 
 interface Props {
   onSaved?: () => void;
+  allowMultiple?: boolean;
 }
 
-export function ServerConfigForm({ onSaved }: Props) {
+export function ServerConfigForm({ onSaved, allowMultiple = false }: Props) {
   const [servers, setServers] = useState<ServerEndpoint[]>(() => getServerList());
+  const [ativoIndex, setAtivoIndex] = useState(() => {
+    const ativo = getServidorAtivo();
+    const indice = getServerList().findIndex((server) => sameServer(server, ativo));
+    return indice >= 0 ? indice : 0;
+  });
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [testando, setTestando] = useState(false);
 
@@ -27,11 +36,19 @@ export function ServerConfigForm({ onSaved }: Props) {
     );
   };
 
-  const adicionar = () =>
+  const adicionar = () => {
+    if (!allowMultiple) return;
     setServers((prev) => [...prev, { host: '', port: SERVIDOR_PADRAO.port }]);
+  };
 
-  const remover = (index: number) =>
+  const remover = (index: number) => {
     setServers((prev) => prev.filter((_, i) => i !== index));
+    setAtivoIndex((prev) => {
+      if (index === prev) return 0;
+      if (index < prev) return prev - 1;
+      return prev;
+    });
+  };
 
   const testarESalvar = async () => {
     setStatus(null);
@@ -47,6 +64,17 @@ export function ServerConfigForm({ onSaved }: Props) {
       return;
     }
 
+    let ativoValido = 0;
+    let contador = 0;
+    for (let i = 0; i < servers.length; i++) {
+      if (!servers[i].host.trim()) continue;
+      if (i === ativoIndex) {
+        ativoValido = contador;
+        break;
+      }
+      contador++;
+    }
+
     setTestando(true);
     const resultados: string[] = [];
     for (const server of validos) {
@@ -58,6 +86,7 @@ export function ServerConfigForm({ onSaved }: Props) {
       }
     }
     setServerList(validos);
+    setServidorAtivo(validos[ativoValido] ?? validos[0]);
     const acessiveis = resultados.filter((r) => r.startsWith('OK')).length;
     setStatus({
       ok: acessiveis > 0,
@@ -67,6 +96,8 @@ export function ServerConfigForm({ onSaved }: Props) {
     if (acessiveis > 0) onSaved?.();
   };
 
+  const multiplos = servers.length > 1;
+
   return (
     <div className="server-config">
       <div className="section-heading">
@@ -75,15 +106,25 @@ export function ServerConfigForm({ onSaved }: Props) {
         </span>
         <div>
           <h3>Servidor</h3>
-          <p>Endereços usados pelo app, com fallback automático.</p>
+          <p>
+            {multiplos
+              ? 'Escolha qual servidor o app deve acessar.'
+              : 'Endereço usado pelo app.'}
+          </p>
         </div>
       </div>
 
       <div className="server-list">
         {servers.map((server, index) => (
-          <div className="server-row" key={index}>
+          <div
+            className={`server-row${multiplos && index === ativoIndex ? ' active' : ''}`}
+            key={index}
+          >
             <div className="server-row-head">
-              <span>Servidor {index + 1}{index === 0 ? ' (principal)' : ''}</span>
+              <span>
+                Servidor {index + 1}
+                {multiplos && index === ativoIndex ? ' (em uso)' : ''}
+              </span>
               <button
                 type="button"
                 className="icon-button danger"
@@ -94,6 +135,19 @@ export function ServerConfigForm({ onSaved }: Props) {
                 <TrashIcon size={17} />
               </button>
             </div>
+
+            {multiplos && (
+              <label className="server-active">
+                <input
+                  type="radio"
+                  name="servidor-ativo"
+                  checked={index === ativoIndex}
+                  onChange={() => setAtivoIndex(index)}
+                />
+                <span>Usar este servidor</span>
+              </label>
+            )}
+
             <label className="field">
               <span>Host</span>
               <input
@@ -119,9 +173,15 @@ export function ServerConfigForm({ onSaved }: Props) {
         ))}
       </div>
 
-      <button type="button" className="btn btn-ghost btn-block" onClick={adicionar}>
-        <PlusIcon size={18} /> Adicionar servidor
-      </button>
+      {allowMultiple ? (
+        <button type="button" className="btn btn-ghost btn-block" onClick={adicionar}>
+          <PlusIcon size={18} /> Adicionar servidor
+        </button>
+      ) : (
+        <p className="server-hint">
+          Apenas usuários superadmin podem cadastrar mais de um servidor.
+        </p>
+      )}
 
       {status && (
         <p className={`server-status${status.ok ? ' ok' : ' error'}`}>{status.msg}</p>

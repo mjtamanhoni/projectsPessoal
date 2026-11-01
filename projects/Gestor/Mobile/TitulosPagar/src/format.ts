@@ -37,6 +37,29 @@ export function isOverdue(dataVencimento?: string | null): boolean {
   return venc < hojeISO();
 }
 
+export const MESES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
+
+export function mesAnoLabel(value?: string | null): string {
+  if (!value) return 'Sem data';
+  const [ano, mes] = value.slice(0, 7).split('-');
+  const indice = Number(mes) - 1;
+  if (!ano || Number.isNaN(indice) || !MESES[indice]) return 'Sem data';
+  return `${MESES[indice]}/${ano}`;
+}
+
 export function parseMoney(value: string): number {
   const limpo = value.replace(/[^\d,.-]/g, '');
   if (!limpo) return 0;

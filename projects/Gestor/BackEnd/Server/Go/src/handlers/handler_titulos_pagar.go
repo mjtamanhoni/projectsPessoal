@@ -24,7 +24,7 @@ func (h *FinanceiroHandler) TitulosPagarListar(w http.ResponseWriter, r *http.Re
 	dataInicial := r.URL.Query().Get("data_inicial")
 	dataFinal := r.URL.Query().Get("data_final")
 
-	query := `SELECT empresa_id, id, usuario_id, credor, descricao, numero_documento,
+	query := `SELECT empresa_id, id, usuario_id, credor, descricao, numero_documento, chave_pix,
 		valor_total::float8 AS valor_total, data_emissao, data_vencimento, status::text AS status,
 		total_pago::float8 AS total_pago, saldo_devedor::float8 AS saldo_devedor,
 		dias_atraso, ultimo_pagamento, criado_em, atualizado_em
@@ -71,7 +71,7 @@ func (h *FinanceiroHandler) TitulosPagarListar(w http.ResponseWriter, r *http.Re
 
 func (h *FinanceiroHandler) TitulosPagarAtualizar(w http.ResponseWriter, r *http.Request) {
 	h.BasicCRUD.genericUpsert(w, r, "", "titulos_pagar",
-		[]string{"usuario_id", "credor", "descricao", "numero_documento", "valor_total", "data_emissao", "data_vencimento", "status"})
+		[]string{"usuario_id", "credor", "descricao", "numero_documento", "chave_pix", "valor_total", "data_emissao", "data_vencimento", "status"})
 }
 
 func (h *FinanceiroHandler) TitulosPagarExcluir(w http.ResponseWriter, r *http.Request) {

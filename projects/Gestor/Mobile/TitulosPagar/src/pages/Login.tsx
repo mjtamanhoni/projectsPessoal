@@ -25,7 +25,7 @@ export function Login() {
   const [servidorAberto, setServidorAberto] = useState(false);
   const [servidor, setServidor] = useState(() => getServerConfig());
 
-  if (autenticado) return <Navigate to="/titulos" replace />;
+  if (autenticado) return <Navigate to="/dashboard" replace />;
 
   const entrar = async () => {
     setErro('');
@@ -37,7 +37,7 @@ export function Login() {
     try {
       await login(cnpjCpf, usuario.trim(), senha);
       salvarUltimoCnpj(cnpjCpf);
-      navigate('/titulos', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (e) {
       setErro(extrairErro(e));
     } finally {

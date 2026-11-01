@@ -51,7 +51,7 @@ export function Configuracoes() {
         </section>
 
         <section className="settings-card">
-          <ServerConfigForm />
+          <ServerConfigForm allowMultiple={Boolean(usuario?.is_superadmin)} />
         </section>
 
         <section className="settings-card about-card">

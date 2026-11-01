@@ -1,21 +1,30 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { extrairErro, type TituloPagarInput } from '../api';
-import { daquiA30DiasISO, hojeISO, parseMoney } from '../format';
+import { extrairErro, type TituloPagar, type TituloPagarInput } from '../api';
+import { daquiA30DiasISO, hojeISO, moneyInput, parseMoney } from '../format';
 
 interface Props {
+  titulo?: TituloPagar;
   onSubmit: (data: TituloPagarInput) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
 
-export function TituloForm({ onSubmit, onCancel, loading }: Props) {
-  const [credor, setCredor] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [numeroDocumento, setNumeroDocumento] = useState('');
-  const [valor, setValor] = useState('');
-  const [dataEmissao, setDataEmissao] = useState(hojeISO());
-  const [dataVencimento, setDataVencimento] = useState(daquiA30DiasISO());
+export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
+  const editando = Boolean(titulo?.id);
+  const [credor, setCredor] = useState(titulo?.credor ?? '');
+  const [descricao, setDescricao] = useState(titulo?.descricao ?? '');
+  const [numeroDocumento, setNumeroDocumento] = useState(titulo?.numero_documento ?? '');
+  const [chavePix, setChavePix] = useState(titulo?.chave_pix ?? '');
+  const [valor, setValor] = useState(() =>
+    titulo ? moneyInput(Number(titulo.valor_total ?? 0)) : ''
+  );
+  const [dataEmissao, setDataEmissao] = useState(
+    () => (titulo?.data_emissao ? titulo.data_emissao.slice(0, 10) : hojeISO())
+  );
+  const [dataVencimento, setDataVencimento] = useState(
+    () => (titulo?.data_vencimento ? titulo.data_vencimento.slice(0, 10) : daquiA30DiasISO())
+  );
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
@@ -43,12 +52,15 @@ export function TituloForm({ onSubmit, onCancel, loading }: Props) {
     setSalvando(true);
     try {
       await onSubmit({
+        id: titulo?.id,
         credor: credor.trim(),
         descricao: descricao.trim() || undefined,
         numero_documento: numeroDocumento.trim() || undefined,
+        chave_pix: chavePix.trim(),
         valor_total: valorTotal,
         data_emissao: dataEmissao || undefined,
         data_vencimento: dataVencimento,
+        status: titulo?.status,
       });
     } catch (e) {
       setErro(extrairErro(e));
@@ -104,6 +116,18 @@ export function TituloForm({ onSubmit, onCancel, loading }: Props) {
         </label>
       </div>
 
+      <label className="field">
+        <span>Chave PIX</span>
+        <input
+          className="input"
+          placeholder="Chave PIX do credor (opcional)"
+          value={chavePix}
+          onChange={(event) => setChavePix(event.target.value)}
+          autoCapitalize="none"
+          autoCorrect="off"
+        />
+      </label>
+
       <div className="form-grid">
         <label className="field">
           <span>Emissão</span>
@@ -132,7 +156,7 @@ export function TituloForm({ onSubmit, onCancel, loading }: Props) {
           Cancelar
         </button>
         <button type="submit" className="btn btn-primary" disabled={ocupado}>
-          {ocupado ? 'Salvando...' : 'Cadastrar título'}
+          {ocupado ? 'Salvando...' : editando ? 'Salvar alterações' : 'Cadastrar título'}
         </button>
       </div>
     </form>

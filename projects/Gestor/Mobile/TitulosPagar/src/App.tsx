@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
 import { SplashScreen } from './components/SplashScreen';
 import { Login } from './pages/Login';
+import { Dashboard } from './pages/Dashboard';
 import { Titulos } from './pages/Titulos';
 import { Configuracoes } from './pages/Configuracoes';
 
@@ -15,7 +16,7 @@ function RequireAuth({ children }: { children: ReactElement }) {
 
 function HomeRedirect() {
   const { autenticado } = useAuth();
-  return <Navigate to={autenticado ? '/titulos' : '/login'} replace />;
+  return <Navigate to={autenticado ? '/dashboard' : '/login'} replace />;
 }
 
 export default function App() {
@@ -28,6 +29,14 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route
+            path="/dashboard"
+            element={
+              <RequireAuth>
+                <Dashboard />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/titulos"
             element={

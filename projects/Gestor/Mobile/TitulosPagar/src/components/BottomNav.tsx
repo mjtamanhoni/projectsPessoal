@@ -1,9 +1,16 @@
 import { NavLink } from 'react-router-dom';
-import { ReceiptIcon, SettingsIcon } from './Icons';
+import { DashboardIcon, ReceiptIcon, SettingsIcon } from './Icons';
 
 export function BottomNav() {
   return (
     <nav className="bottom-nav" aria-label="Navegação principal">
+      <NavLink
+        to="/dashboard"
+        className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+      >
+        <DashboardIcon size={22} />
+        <span>Painel</span>
+      </NavLink>
       <NavLink
         to="/titulos"
         className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}

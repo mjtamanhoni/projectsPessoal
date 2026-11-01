@@ -27,6 +27,7 @@ export interface TituloPagar {
   credor: string;
   descricao?: string;
   numero_documento?: string;
+  chave_pix?: string | null;
   valor_total: number;
   data_emissao?: string;
   data_vencimento: string;
@@ -38,9 +39,11 @@ export interface TituloPagar {
 }
 
 export interface TituloPagarInput {
+  id?: number;
   credor: string;
   descricao?: string;
   numero_documento?: string;
+  chave_pix?: string;
   valor_total: number;
   data_emissao?: string;
   data_vencimento: string;
@@ -75,6 +78,7 @@ export interface ServerEndpoint {
 
 const SERVER_KEY = 'titulos.server';
 const SERVERS_KEY = 'titulos.servers';
+const ACTIVE_SERVER_KEY = 'titulos.activeServer';
 export const TOKEN_KEY = 'titulos.token';
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -83,7 +87,21 @@ export const SERVIDOR_PADRAO: ServerEndpoint = {
   port: parseInt(import.meta.env.VITE_SERVER_PORT || '9001', 10),
 };
 
-let ultimoServidor: ServerEndpoint | null = null;
+export function sameServer(a: ServerEndpoint, b: ServerEndpoint): boolean {
+  return a.host === b.host && a.port === b.port;
+}
+
+function lerServidorAtivoSalvo(): ServerEndpoint | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_SERVER_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw) as Partial<ServerEndpoint>;
+    if (!c || !c.host) return null;
+    return { host: String(c.host), port: Number(c.port) || SERVIDOR_PADRAO.port };
+  } catch {
+    return null;
+  }
+}
 
 function getServerConfigLegacy(): ServerEndpoint {
   try {
@@ -98,8 +116,32 @@ function getServerConfigLegacy(): ServerEndpoint {
   return { ...SERVIDOR_PADRAO };
 }
 
+export function getServidorAtivo(): ServerEndpoint {
+  const servers = getServerList();
+  const salvo = lerServidorAtivoSalvo();
+  if (salvo) {
+    const encontrado = servers.find((server) => sameServer(server, salvo));
+    if (encontrado) return encontrado;
+  }
+  return servers[0];
+}
+
+export function setServidorAtivo(server: ServerEndpoint) {
+  try {
+    localStorage.setItem(
+      ACTIVE_SERVER_KEY,
+      JSON.stringify({
+        host: server.host.trim(),
+        port: Number(server.port) || SERVIDOR_PADRAO.port,
+      })
+    );
+  } catch {
+    /* ignora */
+  }
+}
+
 export function getServerConfig(): ServerEndpoint {
-  return getServerList()[0];
+  return getServidorAtivo();
 }
 
 export function getServerList(): ServerEndpoint[] {
@@ -127,7 +169,9 @@ export function setServerList(list: ServerEndpoint[]) {
   if (valid.length === 0) return;
   localStorage.setItem(SERVERS_KEY, JSON.stringify(valid));
   localStorage.setItem(SERVER_KEY, JSON.stringify(valid[0]));
-  ultimoServidor = null;
+  const salvo = lerServidorAtivoSalvo();
+  const ativo = salvo ? valid.find((server) => sameServer(server, salvo)) : undefined;
+  localStorage.setItem(ACTIVE_SERVER_KEY, JSON.stringify(ativo ?? valid[0]));
 }
 
 export function getToken(): string | null {
@@ -156,10 +200,9 @@ async function request(path: string, options: RequestInit = {}, autenticado = tr
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const ativo = getServidorAtivo();
   const servers = getServerList();
-  const ordem = ultimoServidor
-    ? [ultimoServidor, ...servers.filter((s) => !(s.host === ultimoServidor?.host && s.port === ultimoServidor?.port))]
-    : servers;
+  const ordem = [ativo, ...servers.filter((s) => !sameServer(s, ativo))];
 
   let res: Response | null = null;
 
@@ -169,7 +212,6 @@ async function request(path: string, options: RequestInit = {}, autenticado = tr
     try {
       res = await fetch(`http://${srv.host}:${srv.port}${path}`, { ...options, headers, signal: controller.signal });
       clearTimeout(timer);
-      ultimoServidor = srv;
       break;
     } catch {
       clearTimeout(timer);
@@ -240,6 +282,13 @@ export async function listarTitulos(): Promise<TituloPagar[]> {
 
 export async function salvarTitulo(data: TituloPagarInput): Promise<void> {
   const res = await request('/titulosPagar', { method: 'POST', body: JSON.stringify(data) });
+  await parseResponse(res);
+}
+
+export async function excluirTitulo(id: number): Promise<void> {
+  const res = await request(`/titulosPagar?id=${encodeURIComponent(String(id))}`, {
+    method: 'DELETE',
+  });
   await parseResponse(res);
 }
 

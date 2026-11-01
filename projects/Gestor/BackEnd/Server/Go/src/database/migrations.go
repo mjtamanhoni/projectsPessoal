@@ -1059,6 +1059,42 @@ var Migracoes = []Migracao{
 			FOR EACH ROW EXECUTE FUNCTION public.fn_titulos_pagar_valida_total();
 		`,
 	},
+	{
+		Nome: "031_titulos_pagar_chave_pix",
+		SQLUp: `
+			ALTER TABLE public.titulos_pagar ADD COLUMN IF NOT EXISTS chave_pix VARCHAR(255);
+
+			DROP VIEW IF EXISTS public.vw_titulos_saldo;
+			CREATE VIEW public.vw_titulos_saldo AS
+			SELECT
+				t.empresa_id,
+				t.id,
+				t.usuario_id,
+				t.credor,
+				t.descricao,
+				t.numero_documento,
+				t.chave_pix,
+				t.valor_total,
+				t.data_emissao,
+				t.data_vencimento,
+				t.status,
+				COALESCE(SUM(p.valor_pago), 0) AS total_pago,
+				t.valor_total - COALESCE(SUM(p.valor_pago), 0) AS saldo_devedor,
+				CASE
+					WHEN t.status = 'CANCELADO' THEN NULL
+					WHEN t.data_vencimento < CURRENT_DATE AND COALESCE(SUM(p.valor_pago), 0) < t.valor_total
+						THEN CURRENT_DATE - t.data_vencimento
+					ELSE 0
+				END AS dias_atraso,
+				MAX(p.data_pagamento) AS ultimo_pagamento,
+				t.criado_em,
+				t.atualizado_em
+			FROM public.titulos_pagar t
+			LEFT JOIN public.pagamentos_efetuados p
+				ON p.empresa_id = t.empresa_id AND p.titulo_id = t.id
+			GROUP BY t.empresa_id, t.id;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

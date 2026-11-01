@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  excluirTitulo,
   extrairErro,
   listarPagamentos,
   listarTitulos,
@@ -15,6 +16,7 @@ import {
   formatCurrency,
   formatDate,
   isOverdue,
+  mesAnoLabel,
   statusDoTitulo,
 } from '../format';
 import { BottomNav } from '../components/BottomNav';
@@ -23,11 +25,14 @@ import { PagamentoForm } from '../components/PagamentoForm';
 import { TituloForm } from '../components/TituloForm';
 import {
   CalendarIcon,
+  EditIcon,
   HistoryIcon,
+  MenuIcon,
   PlusIcon,
   ReceiptIcon,
   RefreshIcon,
   SearchIcon,
+  TrashIcon,
   WalletIcon,
 } from '../components/Icons';
 
@@ -57,6 +62,10 @@ export function Titulos() {
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [novoAberto, setNovoAberto] = useState(false);
+  const [editarTitulo, setEditarTitulo] = useState<TituloPagar | null>(null);
+  const [excluirAlvo, setExcluirAlvo] = useState<TituloPagar | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [menuAbertoId, setMenuAbertoId] = useState<number | null>(null);
   const [pagamentoTitulo, setPagamentoTitulo] = useState<TituloPagar | null>(null);
   const [historicoTitulo, setHistoricoTitulo] = useState<TituloPagar | null>(null);
   const [historico, setHistorico] = useState<PagamentoEfetuado[]>([]);
@@ -127,11 +136,29 @@ export function Titulos() {
         if (!isOverdue(titulo.data_vencimento)) return false;
       }
       if (!termo) return true;
-      return [titulo.credor, titulo.descricao, titulo.numero_documento]
+      return [titulo.credor, titulo.descricao, titulo.numero_documento, titulo.chave_pix]
         .filter(Boolean)
         .some((valor) => String(valor).toLowerCase().includes(termo));
     });
   }, [titulos, busca, filtro]);
+
+  const grupos = useMemo(() => {
+    const ordenados = [...listaFiltrada].sort((a, b) =>
+      (a.data_vencimento || '').localeCompare(b.data_vencimento || '')
+    );
+    const mapa = new Map<string, TituloPagar[]>();
+    for (const titulo of ordenados) {
+      const chave = (titulo.data_vencimento || '').slice(0, 7) || 'sem-data';
+      const itens = mapa.get(chave);
+      if (itens) itens.push(titulo);
+      else mapa.set(chave, [titulo]);
+    }
+    return Array.from(mapa.entries()).map(([chave, itens]) => ({
+      chave,
+      rotulo: chave === 'sem-data' ? 'Sem data' : mesAnoLabel(chave),
+      itens,
+    }));
+  }, [listaFiltrada]);
 
   const cadastrarTitulo = async (data: TituloPagarInput) => {
     try {
@@ -142,6 +169,33 @@ export function Titulos() {
     } catch (e) {
       notificar('error', extrairErro(e));
       throw e;
+    }
+  };
+
+  const salvarEdicao = async (data: TituloPagarInput) => {
+    try {
+      await salvarTitulo(data);
+      setEditarTitulo(null);
+      notificar('ok', 'Título atualizado com sucesso.');
+      await carregar();
+    } catch (e) {
+      notificar('error', extrairErro(e));
+      throw e;
+    }
+  };
+
+  const confirmarExclusao = async () => {
+    if (!excluirAlvo?.id) return;
+    setExcluindo(true);
+    try {
+      await excluirTitulo(excluirAlvo.id);
+      setExcluirAlvo(null);
+      notificar('ok', 'Título excluído com sucesso.');
+      await carregar();
+    } catch (e) {
+      notificar('error', extrairErro(e));
+    } finally {
+      setExcluindo(false);
     }
   };
 
@@ -227,7 +281,7 @@ export function Titulos() {
         <div className="search-box">
           <SearchIcon size={19} />
           <input
-            placeholder="Buscar por credor, descrição ou documento"
+            placeholder="Buscar por credor, descrição, documento ou PIX"
             value={busca}
             onChange={(event) => setBusca(event.target.value)}
           />
@@ -246,9 +300,7 @@ export function Titulos() {
           ))}
         </div>
 
-        {feedback && (
-          <div className={`feedback ${feedback.tone}`}>{feedback.msg}</div>
-        )}
+        {feedback && <div className={`feedback ${feedback.tone}`}>{feedback.msg}</div>}
 
         {erro && (
           <div className="feedback error">
@@ -264,7 +316,7 @@ export function Titulos() {
             <div className="spinner" />
             <span>Carregando títulos...</span>
           </div>
-        ) : listaFiltrada.length === 0 ? (
+        ) : grupos.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">
               <ReceiptIcon size={32} />
@@ -282,64 +334,123 @@ export function Titulos() {
             )}
           </div>
         ) : (
-          <div className="title-list">
-            {listaFiltrada.map((titulo) => {
-              const status = statusDoTitulo(titulo);
-              const saldo = saldoDoTitulo(titulo);
-              return (
-                <article className="title-card" key={titulo.id}>
-                  <div className="title-card-head">
-                    <div className="title-card-name">
-                      <h2>{titulo.credor}</h2>
-                      {titulo.descricao && <p>{titulo.descricao}</p>}
-                    </div>
-                    <span className={`status-badge ${status.tone}`}>{status.label}</span>
-                  </div>
+          grupos.map((grupo) => (
+            <section className="title-group" key={grupo.chave}>
+              <header className="title-group-head">
+                <span>{grupo.rotulo}</span>
+                <small>
+                  {grupo.itens.length} {grupo.itens.length === 1 ? 'título' : 'títulos'}
+                </small>
+              </header>
 
-                  <div className="title-meta">
-                    <span>
-                      <CalendarIcon size={14} /> Vence {formatDate(titulo.data_vencimento)}
-                    </span>
-                    {titulo.numero_documento && <span>Doc. {titulo.numero_documento}</span>}
-                  </div>
+              <div className="title-list">
+                {grupo.itens.map((titulo) => {
+                  const status = statusDoTitulo(titulo);
+                  const saldo = saldoDoTitulo(titulo);
+                  const menuAberto = menuAbertoId === titulo.id;
+                  return (
+                    <article className="title-card" key={titulo.id}>
+                      <div className="title-card-head">
+                        <div className="title-card-name">
+                          <h2>{titulo.credor}</h2>
+                          {titulo.descricao && <p>{titulo.descricao}</p>}
+                        </div>
+                        <div className="title-card-head-actions">
+                          <span className={`status-badge ${status.tone}`}>{status.label}</span>
+                          <button
+                            type="button"
+                            className="icon-button menu-button"
+                            onClick={() => setMenuAbertoId(menuAberto ? null : titulo.id ?? null)}
+                            aria-label="Ações do título"
+                            aria-haspopup="menu"
+                            aria-expanded={menuAberto}
+                          >
+                            <MenuIcon size={18} />
+                          </button>
+                        </div>
+                      </div>
 
-                  <div className="title-values">
-                    <div>
-                      <small>Total</small>
-                      <strong>{formatCurrency(titulo.valor_total)}</strong>
-                    </div>
-                    <div>
-                      <small>Pago</small>
-                      <strong className="green">{formatCurrency(titulo.total_pago)}</strong>
-                    </div>
-                    <div>
-                      <small>Saldo</small>
-                      <strong className="accent">{formatCurrency(saldo)}</strong>
-                    </div>
-                  </div>
+                      {menuAberto && (
+                        <>
+                          <div
+                            className="card-menu-backdrop"
+                            onClick={() => setMenuAbertoId(null)}
+                          />
+                          <div className="card-menu" role="menu">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setMenuAbertoId(null);
+                                setEditarTitulo(titulo);
+                              }}
+                            >
+                              <EditIcon size={16} /> Editar
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="danger"
+                              onClick={() => {
+                                setMenuAbertoId(null);
+                                setExcluirAlvo(titulo);
+                              }}
+                            >
+                              <TrashIcon size={16} /> Excluir
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              disabled={!podePagar(titulo)}
+                              onClick={() => {
+                                setMenuAbertoId(null);
+                                setPagamentoTitulo(titulo);
+                              }}
+                            >
+                              <WalletIcon size={16} /> Informar pagamento
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setMenuAbertoId(null);
+                                setHistoricoTitulo(titulo);
+                              }}
+                            >
+                              <HistoryIcon size={16} /> Lista de pagamentos
+                            </button>
+                          </div>
+                        </>
+                      )}
 
-                  <div className="title-actions">
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => setHistoricoTitulo(titulo)}
-                    >
-                      <HistoryIcon size={16} /> Pagamentos
-                    </button>
-                    {podePagar(titulo) && (
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        onClick={() => setPagamentoTitulo(titulo)}
-                      >
-                        Informar pagamento
-                      </button>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                      <div className="title-meta">
+                        <span>
+                          <CalendarIcon size={14} /> Vence {formatDate(titulo.data_vencimento)}
+                        </span>
+                        {titulo.numero_documento && <span>Doc. {titulo.numero_documento}</span>}
+                        {titulo.chave_pix && <span>PIX: {titulo.chave_pix}</span>}
+                      </div>
+
+                      <div className="title-values">
+                        <div>
+                          <small>Total</small>
+                          <strong>{formatCurrency(titulo.valor_total)}</strong>
+                        </div>
+                        <div>
+                          <small>Pago</small>
+                          <strong className="green">{formatCurrency(titulo.total_pago)}</strong>
+                        </div>
+                        <div>
+                          <small>Saldo</small>
+                          <strong className="accent">{formatCurrency(saldo)}</strong>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ))
         )}
       </main>
 
@@ -356,6 +467,53 @@ export function Titulos() {
           onClose={() => setNovoAberto(false)}
         >
           <TituloForm onSubmit={cadastrarTitulo} onCancel={() => setNovoAberto(false)} />
+        </Modal>
+      )}
+
+      {editarTitulo && (
+        <Modal
+          title="Editar título"
+          subtitle={editarTitulo.credor}
+          onClose={() => setEditarTitulo(null)}
+        >
+          <TituloForm
+            titulo={editarTitulo}
+            onSubmit={salvarEdicao}
+            onCancel={() => setEditarTitulo(null)}
+          />
+        </Modal>
+      )}
+
+      {excluirAlvo && (
+        <Modal
+          title="Excluir título"
+          subtitle={excluirAlvo.credor}
+          onClose={() => {
+            if (!excluindo) setExcluirAlvo(null);
+          }}
+        >
+          <p className="confirm-text">
+            Deseja realmente excluir este título? Os pagamentos registrados também serão
+            removidos. Esta ação não pode ser desfeita.
+          </p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setExcluirAlvo(null)}
+              disabled={excluindo}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => void confirmarExclusao()}
+              disabled={excluindo}
+            >
+              {excluindo ? 'Excluindo...' : 'Excluir'}
+            </button>
+          </div>
         </Modal>
       )}
 
