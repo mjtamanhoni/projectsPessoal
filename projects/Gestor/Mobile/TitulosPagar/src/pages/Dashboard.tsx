@@ -140,7 +140,7 @@ export function Dashboard() {
           </div>
         )}
 
-        <section className="summary-grid" aria-label="Resumo financeiro">
+        <section className="summary-grid dashboard-summary" aria-label="Resumo financeiro">
           <div className="summary-card">
             <span className="summary-icon red">
               <ReceiptIcon size={18} />

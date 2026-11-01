@@ -13,6 +13,7 @@ import {
 } from '../api';
 import { useAuth } from '../auth';
 import {
+  MESES,
   formatCurrency,
   formatDate,
   isOverdue,
@@ -26,6 +27,7 @@ import { TituloForm } from '../components/TituloForm';
 import {
   CalendarIcon,
   EditIcon,
+  FilterIcon,
   HistoryIcon,
   MenuIcon,
   PlusIcon,
@@ -34,6 +36,7 @@ import {
   SearchIcon,
   TrashIcon,
   WalletIcon,
+  XIcon,
 } from '../components/Icons';
 
 type Filtro = 'todos' | 'abertos' | 'atrasados' | 'baixados';
@@ -61,6 +64,8 @@ export function Titulos() {
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  const [mes, setMes] = useState('');
+  const [ano, setAno] = useState('');
   const [novoAberto, setNovoAberto] = useState(false);
   const [editarTitulo, setEditarTitulo] = useState<TituloPagar | null>(null);
   const [excluirAlvo, setExcluirAlvo] = useState<TituloPagar | null>(null);
@@ -119,15 +124,22 @@ export function Titulos() {
     };
   }, [historicoTitulo, notificar]);
 
-  const totais = useMemo(() => {
-    const total = titulos.reduce((acc, titulo) => acc + Number(titulo.valor_total ?? 0), 0);
-    const pago = titulos.reduce((acc, titulo) => acc + Number(titulo.total_pago ?? 0), 0);
-    return { total, pago, saldo: total - pago };
+  const anos = useMemo(() => {
+    const conjunto = new Set<string>();
+    conjunto.add(String(new Date().getFullYear()));
+    for (const titulo of titulos) {
+      const anoAtual = (titulo.data_vencimento || '').slice(0, 4);
+      if (anoAtual) conjunto.add(anoAtual);
+    }
+    return Array.from(conjunto).sort((a, b) => b.localeCompare(a));
   }, [titulos]);
 
   const listaFiltrada = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return titulos.filter((titulo) => {
+      const vencimento = titulo.data_vencimento || '';
+      if (mes && vencimento.slice(5, 7) !== mes) return false;
+      if (ano && vencimento.slice(0, 4) !== ano) return false;
       const status = (titulo.status || '').toUpperCase();
       if (filtro === 'abertos' && (status === 'QUITADO' || status === 'CANCELADO')) return false;
       if (filtro === 'baixados' && status !== 'QUITADO') return false;
@@ -140,7 +152,7 @@ export function Titulos() {
         .filter(Boolean)
         .some((valor) => String(valor).toLowerCase().includes(termo));
     });
-  }, [titulos, busca, filtro]);
+  }, [titulos, busca, filtro, mes, ano]);
 
   const grupos = useMemo(() => {
     const ordenados = [...listaFiltrada].sort((a, b) =>
@@ -254,28 +266,54 @@ export function Titulos() {
           </span>
         </div>
 
-        <section className="summary-grid" aria-label="Resumo financeiro">
-          <div className="summary-card">
-            <span className="summary-icon red">
-              <ReceiptIcon size={18} />
+        <section className="dashboard-filter" aria-label="Filtro por mês e ano">
+          <div className="section-heading">
+            <span className="section-icon">
+              <FilterIcon size={20} />
             </span>
-            <small>Total a pagar</small>
-            <strong>{formatCurrency(totais.total)}</strong>
+            <div>
+              <h3>Filtrar por mês/ano</h3>
+              <p>Escolha o período para filtrar a lista. Sem filtro, mostra todos.</p>
+            </div>
           </div>
-          <div className="summary-card">
-            <span className="summary-icon green">
-              <WalletIcon size={18} />
-            </span>
-            <small>Pago</small>
-            <strong className="green">{formatCurrency(totais.pago)}</strong>
+
+          <div className="form-grid">
+            <label className="field">
+              <span>Mês</span>
+              <select className="input" value={mes} onChange={(event) => setMes(event.target.value)}>
+                <option value="">Todos os meses</option>
+                {MESES.map((nome, indice) => (
+                  <option key={nome} value={String(indice + 1).padStart(2, '0')}>
+                    {nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Ano</span>
+              <select className="input" value={ano} onChange={(event) => setAno(event.target.value)}>
+                <option value="">Todos os anos</option>
+                {anos.map((valor) => (
+                  <option key={valor} value={valor}>
+                    {valor}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <div className="summary-card">
-            <span className="summary-icon gold">
-              <WalletIcon size={18} />
-            </span>
-            <small>Saldo</small>
-            <strong className="accent">{formatCurrency(totais.saldo)}</strong>
-          </div>
+
+          {(mes || ano) && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                setMes('');
+                setAno('');
+              }}
+            >
+              <XIcon size={15} /> Limpar filtro
+            </button>
+          )}
         </section>
 
         <div className="search-box">
