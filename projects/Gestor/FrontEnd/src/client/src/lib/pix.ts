@@ -24,14 +24,18 @@ function crc16CCITT(texto: string): string {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
+export function semAcentos(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 export function gerarPayloadPix({ chave, nome, cidade, valor, txid }: PixParams): string {
   const chaveLimpa = chave.trim();
   if (!chaveLimpa) return '';
 
   const merchantInfo = tlv('26', tlv('00', 'br.gov.bcb.pix') + tlv('01', chaveLimpa));
-  const nomeRecebedor = nome.trim().slice(0, 25) || 'RECEBEDOR';
-  const cidadeRecebedor = (cidade ?? '').trim().slice(0, 15) || 'BRASIL';
-  const txidFixo = txid ?? '***';
+  const nomeRecebedor = semAcentos(nome.trim()).slice(0, 25) || 'RECEBEDOR';
+  const cidadeRecebedor = semAcentos((cidade ?? '').trim()).slice(0, 15) || 'BRASIL';
+  const txidFixo = semAcentos(txid ?? '***');
 
   let payload = tlv('00', '01');
   payload += merchantInfo;

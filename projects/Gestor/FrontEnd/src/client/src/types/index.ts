@@ -94,6 +94,7 @@ export interface TituloPagar {
   credor: string;
   descricao?: string | null;
   numeroDocumento?: string | null;
+  chavePix?: string | null;
   valorTotal: number;
   dataEmissao?: string;
   dataVencimento: string;

@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { extrairErro, type PagamentoInput, type TituloPagar } from '../api';
 import { formatCurrency, hojeISO, moneyInput, parseMoney } from '../format';
+import { gerarPayloadPix } from '../pix';
+import { CheckIcon, CopyIcon } from './Icons';
 
 interface Props {
   titulo: TituloPagar;
@@ -20,6 +22,48 @@ export function PagamentoForm({ titulo, onSubmit, onCancel, loading }: Props) {
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [copiadoChave, setCopiadoChave] = useState(false);
+  const [copiadoCodigo, setCopiadoCodigo] = useState(false);
+
+  const chavePix = (titulo.chave_pix ?? '').trim();
+  const valorInformado = parseMoney(valor);
+  const pixPayload = useMemo(() => {
+    if (!chavePix || !Number.isFinite(valorInformado) || valorInformado <= 0) return '';
+    return gerarPayloadPix({
+      chave: chavePix,
+      nome: titulo.credor || 'RECEBEDOR',
+      valor: valorInformado,
+    });
+  }, [chavePix, titulo.credor, valorInformado]);
+
+  const copiarTexto = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  };
+
+  const copiarChave = async () => {
+    if (!chavePix) return;
+    await copiarTexto(chavePix);
+    setCopiadoChave(true);
+    setTimeout(() => setCopiadoChave(false), 2000);
+  };
+
+  const copiarCodigo = async () => {
+    if (!pixPayload) return;
+    await copiarTexto(pixPayload);
+    setCopiadoCodigo(true);
+    setTimeout(() => setCopiadoCodigo(false), 2000);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -79,6 +123,40 @@ export function PagamentoForm({ titulo, onSubmit, onCancel, loading }: Props) {
           autoFocus
         />
       </label>
+
+      {chavePix && (
+        <div className="pix-box">
+          <div className="pix-box-head">
+            <div className="pix-box-info">
+              <span className="pix-label">Chave PIX do credor</span>
+              <strong className="pix-key">{chavePix}</strong>
+            </div>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={copiarChave}>
+              {copiadoChave ? <CheckIcon size={15} /> : <CopyIcon size={15} />}
+              {copiadoChave ? 'Copiado' : 'Copiar'}
+            </button>
+          </div>
+
+          {pixPayload ? (
+            <div className="pix-code-box">
+              <span className="pix-label">Código PIX (copia e cola)</span>
+              <textarea
+                className="input textarea pix-code"
+                readOnly
+                rows={3}
+                value={pixPayload}
+                onFocus={(event) => event.currentTarget.select()}
+              />
+              <button type="button" className="btn btn-primary btn-block" onClick={copiarCodigo}>
+                {copiadoCodigo ? <CheckIcon size={18} /> : <CopyIcon size={18} />}
+                {copiadoCodigo ? 'Código copiado!' : 'Copiar código PIX'}
+              </button>
+            </div>
+          ) : (
+            <p className="pix-hint">Informe o valor do pagamento para gerar o código PIX.</p>
+          )}
+        </div>
+      )}
 
       <div className="form-grid">
         <label className="field">

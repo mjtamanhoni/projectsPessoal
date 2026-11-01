@@ -1,7 +1,10 @@
-import { useForm, Controller } from 'react-hook-form';
+import { useMemo, useState } from 'react';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
+import { gerarPayloadPix } from '@/lib/pix';
+import { Check, Copy } from 'lucide-react';
 import type { TituloPagar } from '@/types';
 
 export interface PagamentoTituloFormData {
@@ -40,6 +43,49 @@ export function PagamentoTituloForm({ titulo, onSubmit, onCancel, loading = fals
     },
   });
 
+  const [copiadoChave, setCopiadoChave] = useState(false);
+  const [copiadoCodigo, setCopiadoCodigo] = useState(false);
+  const valorPagoTexto = useWatch({ control, name: 'valorPago' });
+  const chavePix = (titulo.chavePix ?? '').trim();
+  const valorInformado = parseCurrencyInput(valorPagoTexto ?? '');
+  const pixPayload = useMemo(() => {
+    if (!chavePix || !Number.isFinite(valorInformado) || valorInformado <= 0) return '';
+    return gerarPayloadPix({
+      chave: chavePix,
+      nome: titulo.credor || 'RECEBEDOR',
+      valor: valorInformado,
+    });
+  }, [chavePix, titulo.credor, valorInformado]);
+
+  const copiarTexto = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  };
+
+  const copiarChave = async () => {
+    if (!chavePix) return;
+    await copiarTexto(chavePix);
+    setCopiadoChave(true);
+    setTimeout(() => setCopiadoChave(false), 2000);
+  };
+
+  const copiarCodigo = async () => {
+    if (!pixPayload) return;
+    await copiarTexto(pixPayload);
+    setCopiadoCodigo(true);
+    setTimeout(() => setCopiadoCodigo(false), 2000);
+  };
+
   const handleFormSubmit = (data: FormValues) => {
     onSubmit({
       dataPagamento: data.dataPagamento,
@@ -59,6 +105,44 @@ export function PagamentoTituloForm({ titulo, onSubmit, onCancel, loading = fals
           <span>Saldo: <strong className="text-accent-primary">{formatCurrency(saldo)}</strong></span>
         </div>
       </div>
+
+      {chavePix && (
+        <div className="rounded-lg border border-border-subtle bg-bg-muted p-3 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs font-medium text-text-secondary">Chave PIX do credor</p>
+              <p className="break-all text-sm text-text-primary">{chavePix}</p>
+            </div>
+            <Button type="button" variant="secondary" onClick={copiarChave} className="shrink-0">
+              {copiadoChave ? <Check size={16} /> : <Copy size={16} />}
+              {copiadoChave ? 'Copiado' : 'Copiar chave'}
+            </Button>
+          </div>
+
+          {pixPayload ? (
+            <div className="space-y-2 border-t border-border-subtle pt-3">
+              <p className="text-xs font-medium text-text-secondary">
+                Código PIX (copia e cola) para {formatCurrency(valorInformado)}
+              </p>
+              <textarea
+                readOnly
+                value={pixPayload}
+                rows={3}
+                onFocus={(event) => event.currentTarget.select()}
+                className="w-full resize-none rounded-md border border-border-subtle bg-bg-card p-2 font-mono text-[11px] leading-relaxed text-text-secondary"
+              />
+              <Button type="button" variant="secondary" onClick={copiarCodigo} className="w-full">
+                {copiadoCodigo ? <Check size={16} /> : <Copy size={16} />}
+                {copiadoCodigo ? 'Código PIX copiado!' : 'Copiar código PIX'}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted">
+              Informe o valor do pagamento para gerar o código PIX.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Controller
