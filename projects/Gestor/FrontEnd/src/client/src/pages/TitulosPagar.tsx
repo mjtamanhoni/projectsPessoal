@@ -8,25 +8,32 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
 import { TituloPagarForm, type TituloPagarFormData } from '@/components/forms/TituloPagarForm';
 import { PagamentoTituloForm, type PagamentoTituloFormData } from '@/components/forms/PagamentoTituloForm';
-import { formatCurrency, formatDate, isOverdue } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { saldoDoTitulo, statusDoTitulo } from '@/lib/titulosPagar';
+import type { PrintColumn } from '@/lib/cadastro-pdf';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
 import type { TituloPagar, PagamentoEfetuado } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
+import { RelatorioTitulosPagar } from '@/components/reports/RelatorioTitulosPagar';
+import { PrintButton } from '@/components/ui/PrintButton';
 import { Plus, Menu, Trash2, CircleDollarSign, RefreshCw, FileText, Wallet } from 'lucide-react';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 const columnHelper = createColumnHelper<TituloPagar>();
 
-function statusDoTitulo(titulo: TituloPagar): { label: string; className: string } {
-  if (titulo.status === 'QUITADO') return { label: 'Baixado', className: 'pago' };
-  if (titulo.status === 'PARCIAL') return { label: 'Parcial', className: 'parcial' };
-  if (titulo.status === 'CANCELADO') return { label: 'Cancelado', className: 'cancelado' };
-  if (isOverdue(titulo.dataVencimento)) return { label: 'Atrasado', className: 'atrasado' };
-  return { label: 'Pendente', className: 'pendente' };
-}
+const printColumns: PrintColumn[] = [
+  { header: 'Credor', accessor: (row) => String(row.credor ?? '') },
+  { header: 'Descrição', accessor: (row) => String(row.descricao ?? '') },
+  { header: 'Documento', accessor: (row) => String(row.numeroDocumento ?? '') },
+  { header: 'Vencimento', accessor: (row) => formatDate(String(row.dataVencimento ?? '')) },
+  { header: 'Valor Total', accessor: (row) => formatCurrency(Number(row.valorTotal ?? 0)) },
+  { header: 'Pago', accessor: (row) => formatCurrency(Number(row.totalPago ?? 0)) },
+  { header: 'Saldo', accessor: (row) => formatCurrency(saldoDoTitulo(row as unknown as TituloPagar)) },
+  { header: 'Status', accessor: (row) => statusDoTitulo(row as unknown as TituloPagar).label },
+];
 
 export function TitulosPagar() {
   const [titulos, setTitulos] = useState<TituloPagar[]>([]);
@@ -35,6 +42,7 @@ export function TitulosPagar() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<TituloPagar | null>(null);
   const [saving, setSaving] = useState(false);
+  const [relatorioAberto, setRelatorioAberto] = useState(false);
 
   const [pagamentoTitulo, setPagamentoTitulo] = useState<TituloPagar | null>(null);
   const [pagamentoSaving, setPagamentoSaving] = useState(false);
@@ -350,9 +358,33 @@ export function TitulosPagar() {
     }),
   ];
 
+  if (relatorioAberto) {
+    return (
+      <Layout>
+        <PageHeader title="Relatório de Títulos a Pagar" subtitle="Totais e relação dos títulos">
+          <Button variant="secondary" onClick={() => setRelatorioAberto(false)}>
+            Voltar
+          </Button>
+        </PageHeader>
+        <RelatorioTitulosPagar
+          titulos={titulos}
+          loading={loading}
+          error={error}
+          onRefresh={() => void fetchTitulos()}
+        />
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <PageHeader title="Títulos a Pagar" subtitle="Gerencie os títulos e seus pagamentos">
+        <PrintButton title="Títulos a Pagar" data={titulos} columns={printColumns} />
+        <ShowForPermission rota="/titulos-pagar" acao={ACAO.VISUALIZAR}>
+          <Button variant="secondary" onClick={() => setRelatorioAberto(true)}>
+            <FileText size={18} /> Relatório
+          </Button>
+        </ShowForPermission>
         <ShowForPermission rota="/titulos-pagar" acao={ACAO.INCLUIR}>
           <Button onClick={() => { setEditing(null); setModalOpen(true); }}>
             <Plus size={18} /> Novo Título

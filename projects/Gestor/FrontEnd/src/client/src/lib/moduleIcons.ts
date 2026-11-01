@@ -102,6 +102,11 @@ const moduleIconMap: Record<string, ModuleIconInfo> = {
     color: '#dc2626',
     bgGradient: 'from-red-500/20 to-red-600/10',
   },
+  'Relatório de Títulos a Pagar': {
+    icon: BarChart3,
+    color: '#dc2626',
+    bgGradient: 'from-red-500/20 to-red-600/10',
+  },
   'Contas a Receber': {
     icon: Receipt,
     color: '#16a34a',
