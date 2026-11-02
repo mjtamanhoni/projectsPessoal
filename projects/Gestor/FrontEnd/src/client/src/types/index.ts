@@ -95,6 +95,7 @@ export interface TituloPagar {
   descricao?: string | null;
   numeroDocumento?: string | null;
   chavePix?: string | null;
+  parcela?: number | null;
   valorTotal: number;
   dataEmissao?: string;
   dataVencimento: string;

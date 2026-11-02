@@ -1095,6 +1095,57 @@ var Migracoes = []Migracao{
 			GROUP BY t.empresa_id, t.id;
 		`,
 	},
+	{
+		Nome: "032_titulos_pagar_parcela",
+		SQLUp: `
+			ALTER TABLE public.titulos_pagar ADD COLUMN IF NOT EXISTS parcela INTEGER;
+			UPDATE public.titulos_pagar SET parcela = 1 WHERE parcela IS NULL;
+			ALTER TABLE public.titulos_pagar ALTER COLUMN parcela SET DEFAULT 1;
+			ALTER TABLE public.titulos_pagar ALTER COLUMN parcela SET NOT NULL;
+
+			DO $$
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1 FROM pg_constraint WHERE conname = 'ck_titulos_pagar_parcela'
+				) THEN
+					ALTER TABLE public.titulos_pagar
+						ADD CONSTRAINT ck_titulos_pagar_parcela CHECK (parcela >= 1);
+				END IF;
+			END;
+			$$;
+
+			DROP VIEW IF EXISTS public.vw_titulos_saldo;
+			CREATE VIEW public.vw_titulos_saldo AS
+			SELECT
+				t.empresa_id,
+				t.id,
+				t.usuario_id,
+				t.credor,
+				t.descricao,
+				t.numero_documento,
+				t.chave_pix,
+				t.parcela,
+				t.valor_total,
+				t.data_emissao,
+				t.data_vencimento,
+				t.status,
+				COALESCE(SUM(p.valor_pago), 0) AS total_pago,
+				t.valor_total - COALESCE(SUM(p.valor_pago), 0) AS saldo_devedor,
+				CASE
+					WHEN t.status = 'CANCELADO' THEN NULL
+					WHEN t.data_vencimento < CURRENT_DATE AND COALESCE(SUM(p.valor_pago), 0) < t.valor_total
+						THEN CURRENT_DATE - t.data_vencimento
+					ELSE 0
+				END AS dias_atraso,
+				MAX(p.data_pagamento) AS ultimo_pagamento,
+				t.criado_em,
+				t.atualizado_em
+			FROM public.titulos_pagar t
+			LEFT JOIN public.pagamentos_efetuados p
+				ON p.empresa_id = t.empresa_id AND p.titulo_id = t.id
+			GROUP BY t.empresa_id, t.id;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

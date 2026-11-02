@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { extrairErro, type PagamentoInput, type TituloPagar } from '../api';
-import { formatCurrency, hojeISO, moneyInput, parseMoney } from '../format';
+import { formatCurrency, hojeISO, mascaraMoeda, parseMoney } from '../format';
 import { gerarPayloadPix } from '../pix';
 import { CheckIcon, CopyIcon } from './Icons';
 
@@ -16,7 +16,7 @@ const FORMAS = ['PIX', 'DINHEIRO', 'TRANSFERÊNCIA', 'CARTÃO', 'BOLETO', 'OUTRO
 
 export function PagamentoForm({ titulo, onSubmit, onCancel, loading }: Props) {
   const saldo = Number(titulo.saldo_devedor ?? titulo.valor_total ?? 0);
-  const [valor, setValor] = useState(() => moneyInput(saldo));
+  const [valor, setValor] = useState(() => mascaraMoeda(saldo.toFixed(2)));
   const [dataPagamento, setDataPagamento] = useState(hojeISO());
   const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [observacao, setObservacao] = useState('');
@@ -119,7 +119,7 @@ export function PagamentoForm({ titulo, onSubmit, onCancel, loading }: Props) {
           inputMode="decimal"
           placeholder="0,00"
           value={valor}
-          onChange={(event) => setValor(event.target.value)}
+          onChange={(event) => setValor(mascaraMoeda(event.target.value))}
           autoFocus
         />
       </label>

@@ -35,6 +35,10 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       res.status(400).json({ error: 'Valor e data de vencimento são obrigatórios' });
       return;
     }
+    if (titulos.some((t) => t.parcela != null && (!Number.isInteger(Number(t.parcela)) || Number(t.parcela) < 1))) {
+      res.status(400).json({ error: 'Parcela deve ser um número inteiro maior ou igual a 1' });
+      return;
+    }
     const result = await horseApi.salvarTitulosPagar(titulos);
     res.json(result);
   } catch (error: unknown) {

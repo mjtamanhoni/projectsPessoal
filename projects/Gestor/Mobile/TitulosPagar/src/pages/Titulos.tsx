@@ -172,11 +172,11 @@ export function Titulos() {
     }));
   }, [listaFiltrada]);
 
-  const cadastrarTitulo = async (data: TituloPagarInput) => {
+  const cadastrarTitulo = async (data: TituloPagarInput[]) => {
     try {
       await salvarTitulo(data);
       setNovoAberto(false);
-      notificar('ok', 'Título cadastrado com sucesso.');
+      notificar('ok', data.length > 1 ? `${data.length} parcelas cadastradas com sucesso.` : 'Título cadastrado com sucesso.');
       await carregar();
     } catch (e) {
       notificar('error', extrairErro(e));
@@ -184,7 +184,7 @@ export function Titulos() {
     }
   };
 
-  const salvarEdicao = async (data: TituloPagarInput) => {
+  const salvarEdicao = async (data: TituloPagarInput[]) => {
     try {
       await salvarTitulo(data);
       setEditarTitulo(null);
@@ -466,6 +466,7 @@ export function Titulos() {
                           <CalendarIcon size={14} /> Vence {formatDate(titulo.data_vencimento)}
                         </span>
                         {titulo.numero_documento && <span>Doc. {titulo.numero_documento}</span>}
+                        {Number(titulo.parcela ?? 1) > 1 && <span>Parcela {titulo.parcela}</span>}
                         {titulo.chave_pix && <span>PIX: {titulo.chave_pix}</span>}
                       </div>
 

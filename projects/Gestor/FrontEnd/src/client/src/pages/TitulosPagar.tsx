@@ -106,15 +106,22 @@ export function TitulosPagar() {
     setPagamentoTitulo(null);
   };
 
-  const handleSubmitTitulo = async (data: TituloPagarFormData) => {
+  const handleSubmitTitulo = async (items: TituloPagarFormData[]) => {
     setSaving(true);
     try {
-      const payload = editing ? { ...data, id: editing.id } : data;
-      await api.post('/titulos-pagar', payload);
+      const payload = items.map((data) => (editing ? { ...data, id: editing.id } : data));
+      await api.post('/titulos-pagar', payload.length === 1 ? payload[0] : payload);
       setModalOpen(false);
       setEditing(null);
       await fetchTitulos();
-      addToast('success', editing ? 'Título atualizado com sucesso' : 'Título cadastrado com sucesso');
+      addToast(
+        'success',
+        editing
+          ? 'Título atualizado com sucesso'
+          : payload.length > 1
+            ? `${payload.length} parcelas cadastradas com sucesso`
+            : 'Título cadastrado com sucesso'
+      );
     } catch (err: unknown) {
       const errorData = err as { response?: { data?: { error?: string } }; message?: string };
       addToast('error', errorData.response?.data?.error || errorData.message || 'Erro ao salvar título');
@@ -313,7 +320,14 @@ export function TitulosPagar() {
     }),
     columnHelper.accessor('dataVencimento', {
       header: 'Vencimento',
-      cell: (info) => formatDate(info.getValue()),
+      cell: (info) => (
+        <div>
+          <span>{formatDate(info.getValue())}</span>
+          {Number(info.row.original.parcela ?? 1) > 1 && (
+            <span className="block text-xs text-text-muted">Parcela {info.row.original.parcela}</span>
+          )}
+        </div>
+      ),
       sortingFn: 'datetime',
     }),
     columnHelper.accessor((row) => statusDoTitulo(row).label, {

@@ -1,11 +1,22 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { extrairErro, type TituloPagar, type TituloPagarInput } from '../api';
-import { daquiA30DiasISO, hojeISO, moneyInput, parseMoney } from '../format';
+import {
+  adicionarMeses,
+  daquiA30DiasISO,
+  dividirValor,
+  formatCurrency,
+  formatDate,
+  hojeISO,
+  mascaraMoeda,
+  parseMoney,
+} from '../format';
+
+type ModoParcelamento = 'dividir' | 'repetir';
 
 interface Props {
   titulo?: TituloPagar;
-  onSubmit: (data: TituloPagarInput) => Promise<void>;
+  onSubmit: (data: TituloPagarInput[]) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
@@ -17,7 +28,7 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
   const [numeroDocumento, setNumeroDocumento] = useState(titulo?.numero_documento ?? '');
   const [chavePix, setChavePix] = useState(titulo?.chave_pix ?? '');
   const [valor, setValor] = useState(() =>
-    titulo ? moneyInput(Number(titulo.valor_total ?? 0)) : ''
+    titulo ? mascaraMoeda(Number(titulo.valor_total ?? 0).toFixed(2)) : ''
   );
   const [dataEmissao, setDataEmissao] = useState(
     () => (titulo?.data_emissao ? titulo.data_emissao.slice(0, 10) : hojeISO())
@@ -25,8 +36,36 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
   const [dataVencimento, setDataVencimento] = useState(
     () => (titulo?.data_vencimento ? titulo.data_vencimento.slice(0, 10) : daquiA30DiasISO())
   );
+  const [quantidadeParcelas, setQuantidadeParcelas] = useState(1);
+  const [modoParcelamento, setModoParcelamento] = useState<ModoParcelamento>('dividir');
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+
+  const valorInformado = parseMoney(valor);
+  const quantidade = Math.max(1, Math.floor(quantidadeParcelas || 1));
+  const valoresDivididos = dividirValor(valorInformado, quantidade);
+  const valorParcela = valoresDivididos[0] ?? 0;
+  const valorUltima = valoresDivididos[valoresDivididos.length - 1] ?? 0;
+
+  const montarParcelas = () => {
+    const valores =
+      quantidade <= 1
+        ? [valorInformado]
+        : modoParcelamento === 'repetir'
+          ? Array.from({ length: quantidade }, () => valorInformado)
+          : dividirValor(valorInformado, quantidade);
+
+    let data = dataVencimento;
+    return valores.map((valorAtual, indice) => {
+      if (indice > 0) data = adicionarMeses(data, 1);
+      return {
+        valor_total: valorAtual,
+        data_vencimento: data,
+      };
+    });
+  };
+
+  const parcelasPreview = montarParcelas();
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -51,17 +90,30 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
 
     setSalvando(true);
     try {
-      await onSubmit({
-        id: titulo?.id,
+      const base = {
         credor: credor.trim(),
         descricao: descricao.trim() || undefined,
         numero_documento: numeroDocumento.trim() || undefined,
         chave_pix: chavePix.trim(),
-        valor_total: valorTotal,
         data_emissao: dataEmissao || undefined,
         data_vencimento: dataVencimento,
         status: titulo?.status,
-      });
+      };
+
+      if (editando) {
+        await onSubmit([
+          { ...base, id: titulo?.id, valor_total: valorTotal, parcela: titulo?.parcela ?? 1 },
+        ]);
+      } else {
+        await onSubmit(
+          parcelasPreview.map((parcela, indice) => ({
+            ...base,
+            valor_total: parcela.valor_total,
+            data_vencimento: parcela.data_vencimento,
+            parcela: indice + 1,
+          }))
+        );
+      }
     } catch (e) {
       setErro(extrairErro(e));
     } finally {
@@ -111,7 +163,7 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
             inputMode="decimal"
             placeholder="0,00"
             value={valor}
-            onChange={(event) => setValor(event.target.value)}
+            onChange={(event) => setValor(mascaraMoeda(event.target.value))}
           />
         </label>
       </div>
@@ -148,6 +200,70 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
           />
         </label>
       </div>
+
+      {!editando && (
+        <div className="parcelamento-box">
+          <label className="field">
+            <span>Quantidade de parcelas</span>
+            <input
+              className="input"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={999}
+              step={1}
+              value={quantidadeParcelas}
+              onChange={(event) =>
+                setQuantidadeParcelas(Math.max(1, Math.floor(Number(event.target.value) || 1)))
+              }
+            />
+          </label>
+
+          {quantidade > 1 && (
+            <>
+              <div className="choice-grid">
+              <button
+                type="button"
+                className={`choice-card${modoParcelamento === 'dividir' ? ' active' : ''}`}
+                onClick={() => setModoParcelamento('dividir')}
+              >
+                <span className="choice-title">Dividir o valor</span>
+                <span className="choice-desc">
+                  {quantidade} parcelas de {formatCurrency(valorParcela)}
+                  {valorUltima !== valorParcela && ` (última de ${formatCurrency(valorUltima)})`}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className={`choice-card${modoParcelamento === 'repetir' ? ' active' : ''}`}
+                onClick={() => setModoParcelamento('repetir')}
+              >
+                <span className="choice-title">Repetir o valor</span>
+                <span className="choice-desc">
+                  {quantidade} parcelas de {formatCurrency(valorInformado)} (total{' '}
+                  {formatCurrency(valorInformado * quantidade)})
+                </span>
+              </button>
+              </div>
+              <div className="parcelamento-preview">
+                <strong>Vencimentos</strong>
+                {parcelasPreview.slice(0, 3).map((parcela, indice) => (
+                  <span key={indice}>
+                    {indice + 1}ª: {formatDate(parcela.data_vencimento)} —{' '}
+                    {formatCurrency(parcela.valor_total)}
+                  </span>
+                ))}
+                {quantidade > 3 && <span>...e mais {quantidade - 3} parcelas</span>}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {editando && Number(titulo?.parcela ?? 1) > 1 && (
+        <p className="parcelamento-note">Este título é a parcela {titulo?.parcela}.</p>
+      )}
 
       {erro && <p className="form-error">{erro}</p>}
 

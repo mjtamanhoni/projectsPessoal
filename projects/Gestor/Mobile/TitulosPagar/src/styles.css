@@ -398,6 +398,73 @@ p {
   gap: 12px;
 }
 
+.parcelamento-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.choice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  text-align: left;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.choice-card.active {
+  border-color: var(--gold);
+  background: rgba(255, 184, 0, 0.12);
+}
+
+.choice-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.choice-desc {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.parcelamento-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.parcelamento-preview strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.parcelamento-note {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
 .form-actions {
   display: flex;
   gap: 10px;

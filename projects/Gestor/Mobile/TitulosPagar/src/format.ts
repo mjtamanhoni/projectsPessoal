@@ -24,6 +24,16 @@ export function hojeISO(): string {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
+export function adicionarMeses(dataISO: string, meses: number): string {
+  if (!dataISO) return '';
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  if (!ano || !mes || !dia) return dataISO;
+  const alvo = new Date(ano, mes - 1 + meses, 1);
+  const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+  const diaFinal = Math.min(dia, ultimoDia);
+  return `${alvo.getFullYear()}-${String(alvo.getMonth() + 1).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`;
+}
+
 export function daquiA30DiasISO(): string {
   const now = new Date();
   now.setDate(now.getDate() + 30);
@@ -60,6 +70,17 @@ export function mesAnoLabel(value?: string | null): string {
   return `${MESES[indice]}/${ano}`;
 }
 
+export function mascaraMoeda(valor: string, casas = 2): string {
+  const digitos = valor.replace(/\D/g, '');
+  if (digitos === '') return '';
+  const intLen = Math.max(digitos.length - casas, 0);
+  const intPart = (digitos.slice(0, intLen) || '0')
+    .replace(/^0+(?=\d)/, '')
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const decPart = digitos.slice(intLen).padStart(casas, '0');
+  return `${intPart},${decPart}`;
+}
+
 export function parseMoney(value: string): number {
   const limpo = value.replace(/[^\d,.-]/g, '');
   if (!limpo) return 0;
@@ -90,6 +111,16 @@ export function parseMoney(value: string): number {
 export function moneyInput(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return '';
   return value.toFixed(2).replace('.', ',');
+}
+
+export function dividirValor(valor: number, parcelas: number): number[] {
+  if (!Number.isFinite(valor) || parcelas <= 0) return [];
+  const centavos = Math.round(valor * 100);
+  const base = Math.floor(centavos / parcelas);
+  const resto = centavos - base * parcelas;
+  return Array.from({ length: parcelas }, (_, indice) =>
+    (base + (indice === parcelas - 1 ? resto : 0)) / 100
+  );
 }
 
 export function mascaraCpfCnpj(value: string): string {

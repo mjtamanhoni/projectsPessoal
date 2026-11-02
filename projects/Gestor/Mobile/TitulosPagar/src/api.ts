@@ -28,6 +28,7 @@ export interface TituloPagar {
   descricao?: string;
   numero_documento?: string;
   chave_pix?: string | null;
+  parcela?: number | null;
   valor_total: number;
   data_emissao?: string;
   data_vencimento: string;
@@ -44,6 +45,7 @@ export interface TituloPagarInput {
   descricao?: string;
   numero_documento?: string;
   chave_pix?: string;
+  parcela?: number;
   valor_total: number;
   data_emissao?: string;
   data_vencimento: string;
@@ -280,7 +282,7 @@ export async function listarTitulos(): Promise<TituloPagar[]> {
   return (await parseResponse(res)) as TituloPagar[];
 }
 
-export async function salvarTitulo(data: TituloPagarInput): Promise<void> {
+export async function salvarTitulo(data: TituloPagarInput | TituloPagarInput[]): Promise<void> {
   const res = await request('/titulosPagar', { method: 'POST', body: JSON.stringify(data) });
   await parseResponse(res);
 }

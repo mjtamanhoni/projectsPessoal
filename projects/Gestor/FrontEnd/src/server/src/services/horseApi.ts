@@ -329,6 +329,7 @@ class HorseApiService {
         descricao: t.descricao,
         numero_documento: t.numeroDocumento,
         chave_pix: t.chavePix,
+        parcela: t.parcela,
         valor_total: t.valorTotal,
         data_emissao: t.dataEmissao,
         data_vencimento: t.dataVencimento,
