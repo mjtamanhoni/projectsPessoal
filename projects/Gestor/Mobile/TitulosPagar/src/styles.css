@@ -359,6 +359,40 @@ p {
   letter-spacing: 0.3px;
 }
 
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper-input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-weight: 600;
+}
+
+.stepper-btn {
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.stepper-btn:active:not(:disabled) {
+  background: var(--surface);
+}
+
+.stepper-btn:disabled {
+  opacity: 0.35;
+}
+
 .input-with-action {
   position: relative;
 }

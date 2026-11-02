@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { extrairErro, type TituloPagar, type TituloPagarInput } from '../api';
+import { MinusIcon, PlusIcon } from './Icons';
 import {
   adicionarMeses,
   daquiA30DiasISO,
@@ -36,13 +37,13 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
   const [dataVencimento, setDataVencimento] = useState(
     () => (titulo?.data_vencimento ? titulo.data_vencimento.slice(0, 10) : daquiA30DiasISO())
   );
-  const [quantidadeParcelas, setQuantidadeParcelas] = useState(1);
+  const [quantidadeParcelas, setQuantidadeParcelas] = useState('1');
   const [modoParcelamento, setModoParcelamento] = useState<ModoParcelamento>('dividir');
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   const valorInformado = parseMoney(valor);
-  const quantidade = Math.max(1, Math.floor(quantidadeParcelas || 1));
+  const quantidade = Math.max(1, Math.floor(Number(quantidadeParcelas) || 1));
   const valoresDivididos = dividirValor(valorInformado, quantidade);
   const valorParcela = valoresDivididos[0] ?? 0;
   const valorUltima = valoresDivididos[valoresDivididos.length - 1] ?? 0;
@@ -67,6 +68,16 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
 
   const parcelasPreview = montarParcelas();
 
+  const diminuirParcelas = () => {
+    const atual = Math.floor(Number(quantidadeParcelas) || 1);
+    setQuantidadeParcelas(String(Math.max(1, atual - 1)));
+  };
+
+  const aumentarParcelas = () => {
+    const atual = Math.floor(Number(quantidadeParcelas) || 0);
+    setQuantidadeParcelas(String(Math.min(999, atual + 1)));
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setErro('');
@@ -86,6 +97,13 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
     if (dataEmissao && dataVencimento < dataEmissao) {
       setErro('O vencimento deve ser igual ou posterior à emissão.');
       return;
+    }
+    if (!editando) {
+      const totalParcelas = Number(quantidadeParcelas);
+      if (!Number.isInteger(totalParcelas) || totalParcelas < 1) {
+        setErro('Informe ao menos 1 parcela.');
+        return;
+      }
     }
 
     setSalvando(true);
@@ -203,21 +221,41 @@ export function TituloForm({ titulo, onSubmit, onCancel, loading }: Props) {
 
       {!editando && (
         <div className="parcelamento-box">
-          <label className="field">
+          <div className="field">
             <span>Quantidade de parcelas</span>
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={999}
-              step={1}
-              value={quantidadeParcelas}
-              onChange={(event) =>
-                setQuantidadeParcelas(Math.max(1, Math.floor(Number(event.target.value) || 1)))
-              }
-            />
-          </label>
+            <div className="stepper">
+              <button
+                type="button"
+                className="stepper-btn"
+                onClick={diminuirParcelas}
+                disabled={ocupado || quantidade <= 1}
+                aria-label="Diminuir parcelas"
+              >
+                <MinusIcon size={18} />
+              </button>
+              <input
+                className="input stepper-input"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={3}
+                value={quantidadeParcelas}
+                onChange={(event) =>
+                  setQuantidadeParcelas(event.target.value.replace(/\D/g, '').slice(0, 3))
+                }
+                aria-label="Quantidade de parcelas"
+              />
+              <button
+                type="button"
+                className="stepper-btn"
+                onClick={aumentarParcelas}
+                disabled={ocupado || quantidade >= 999}
+                aria-label="Aumentar parcelas"
+              >
+                <PlusIcon size={18} />
+              </button>
+            </div>
+          </div>
 
           {quantidade > 1 && (
             <>
