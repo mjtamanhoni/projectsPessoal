@@ -3,21 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { getUltimoLogin, useAuth } from '../auth';
 import { extrairErro } from '../api';
 import { AuthTitle, AuthFooter } from '../components/auth';
+import { mascaraCpfCnpj } from '../format';
 
 const DOT_OFFSETS = [61, 105, 149, 193];
-
-function mascaraCpfCnpj(value: string): string {
-  const numbers = value.replace(/\D/g, '');
-  if (numbers.length <= 11) {
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
-    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
-    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
-  }
-  if (numbers.length <= 12) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8)}`;
-  if (numbers.length <= 13) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12)}`;
-  return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12, 14)}`;
-}
 
 export default function LoginPin() {
   const navigate = useNavigate();
@@ -76,8 +64,8 @@ export default function LoginPin() {
         <input
           className="field-input"
           style={{ top: 38 }}
-          type="tel"
-          inputMode="numeric"
+          type="text"
+          inputMode="text"
           placeholder="Digite o CNPJ/CPF da empresa"
           value={cnpjCpf}
           onChange={(e) => setCnpjCpf(mascaraCpfCnpj(e.target.value))}

@@ -14,11 +14,13 @@ import { Spinner } from '@/components/ui/Spinner';
 import type { Empresa, EmpresaModulo, Modulo } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, RefreshCw, KeyRound, ToggleLeft, ToggleRight, Copy, Ban } from 'lucide-react';
 import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
-import api from '@/lib/api';
+import type { RowActionDef } from '@/components/ui/RowActions';
+import api, { getErrorMsg } from '@/lib/api';
+import { copiarTexto } from '@/lib/clipboard';
 import { salvarLogomarcaCache } from '@/lib/empresaLogo';
 
 const columnHelper = createColumnHelper<Empresa>();
@@ -46,6 +48,11 @@ export function Empresas() {
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
 
+  const [tokenModal, setTokenModal] = useState(false);
+  const [tokenEmpresa, setTokenEmpresa] = useState<Empresa | null>(null);
+  const [tokenGerado, setTokenGerado] = useState<{ token: string; expira_em: string } | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+
   const [vinculos, setVinculos] = useState<Record<number, EmpresaModulo[]>>({});
   const [loadingVinculos, setLoadingVinculos] = useState<Set<number>>(new Set());
   const [emModalOpen, setEmModalOpen] = useState(false);
@@ -72,6 +79,7 @@ export function Empresas() {
     { header: 'CNPJ/CPF', accessor: (row: Record<string, unknown>) => String(row.cnpj_cpf ?? '') },
     { header: 'Telefone', accessor: (row: Record<string, unknown>) => String(row.telefone ?? '') },
     { header: 'Email', accessor: (row: Record<string, unknown>) => String(row.email ?? '') },
+    { header: 'Status', accessor: (row: Record<string, unknown>) => (Number(row.status) === 0 ? 'Inativa' : Number(row.status) === 2 ? 'Pendente' : 'Ativa') },
   ], []);
 
   const expandData = useCallback((row: Record<string, unknown>) => {
@@ -119,21 +127,67 @@ export function Empresas() {
     columnHelper.accessor('email', {
       header: 'Email',
     }),
+    columnHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ getValue }) => {
+        const status = getValue() ?? 1;
+        if (status === 0) {
+          return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inativa</span>;
+        }
+        if (status === 2) {
+          return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pendente</span>;
+        }
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativa</span>;
+      },
+    }),
     columnHelper.display({
       id: 'acoes',
       header: '',
       enableColumnFilter: false,
       enableSorting: false,
       size: 60,
-      cell: ({ row }) => (
-        <div className="flex justify-end">
-          <RowActions
-            rota="/empresas"
-            onEdit={() => handleEdit(row.original)}
-            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const emp = row.original;
+        const id = emp.id ?? emp.codigo;
+        const status = emp.status ?? 1;
+        const extras: RowActionDef[] = [];
+        if (id && id !== 1) {
+          extras.push({
+            rotulo: status === 1 ? 'Inativar' : 'Ativar',
+            icone: status === 1 ? ToggleLeft : ToggleRight,
+            cor: status === 1 ? '#f59e0b' : '#22c55e',
+            onClick: () => handleAlterarStatus(emp, status === 1 ? 0 : 1),
+            permissaoRota: '/empresas',
+            permissaoAcao: ACAO.EDITAR,
+          });
+          extras.push({
+            rotulo: 'Gerar token',
+            icone: KeyRound,
+            cor: '#6366f1',
+            onClick: () => handleGerarToken(emp),
+            permissaoRota: '/empresas',
+            permissaoAcao: ACAO.EDITAR,
+          });
+          extras.push({
+            rotulo: 'Revogar token',
+            icone: Ban,
+            cor: '#ef4444',
+            onClick: () => handleRevogarToken(emp),
+            permissaoRota: '/empresas',
+            permissaoAcao: ACAO.EDITAR,
+          });
+        }
+        return (
+          <div className="flex justify-end">
+            <RowActions
+              rota="/empresas"
+              onEdit={() => handleEdit(emp)}
+              onDelete={() => setConfirmDelete(id!)}
+              extras={extras}
+            />
+          </div>
+        );
+      },
     }),
   ];
 
@@ -209,6 +263,59 @@ export function Empresas() {
       addToast('error', msg);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleGerarToken = async (empresa: Empresa) => {
+    const id = empresa.id ?? empresa.codigo;
+    if (!id) return;
+    setTokenEmpresa(empresa);
+    setTokenGerado(null);
+    setTokenModal(true);
+    setTokenLoading(true);
+    try {
+      const res = await api.post<{ token: string; expira_em: string }>('/empresas/token', { id });
+      setTokenGerado(res.data);
+      refetch();
+    } catch (err) {
+      addToast('error', getErrorMsg(err, 'Erro ao gerar token'));
+      setTokenModal(false);
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
+  const handleRevogarToken = async (empresa: Empresa) => {
+    const id = empresa.id ?? empresa.codigo;
+    if (!id) return;
+    try {
+      await api.post('/empresas/token/revogar', { id });
+      addToast('success', 'Tokens revogados com sucesso');
+      refetch();
+    } catch (err) {
+      addToast('error', getErrorMsg(err, 'Erro ao revogar token'));
+    }
+  };
+
+  const handleAlterarStatus = async (empresa: Empresa, status: number) => {
+    const id = empresa.id ?? empresa.codigo;
+    if (!id) return;
+    try {
+      await api.post('/empresas/status', { id, status });
+      addToast('success', status === 1 ? 'Empresa ativada com sucesso' : 'Empresa inativada com sucesso');
+      refetch();
+    } catch (err) {
+      addToast('error', getErrorMsg(err, 'Erro ao alterar status'));
+    }
+  };
+
+  const copiarToken = async () => {
+    if (!tokenGerado?.token) return;
+    const ok = await copiarTexto(tokenGerado.token);
+    if (ok) {
+      addToast('success', 'Token copiado');
+    } else {
+      addToast('error', 'Nao foi possivel copiar. Selecione o token e copie manualmente.');
     }
   };
 
@@ -357,6 +464,50 @@ export function Empresas() {
           <div className="flex justify-center gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => { setEmModalOpen(false); setEmEmpresaId(null); }}>Cancelar</Button>
             <Button type="button" onClick={handleEmSubmit}><Plus size={16} /> Salvar</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={tokenModal}
+        onClose={() => { setTokenModal(false); setTokenGerado(null); setTokenEmpresa(null); }}
+        title="Token de primeiro acesso"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-text-secondary">
+            Token para <strong>{tokenEmpresa?.fantasia || tokenEmpresa?.razao_social}</strong>. Ele vale por 7 dias e so pode ser usado uma vez.
+          </p>
+          <div className="rounded-lg bg-accent-primary/10 border border-accent-primary/20 p-3 text-xs text-text-secondary space-y-1">
+            <p><strong>Empresa nova:</strong> o primeiro acesso cria o usuário administrador.</p>
+            <p><strong>Empresa já cadastrada:</strong> no primeiro acesso, informe o e-mail e a senha atuais de um usuário existente. O token será vinculado a ele, sem duplicar o cadastro.</p>
+          </div>
+          {tokenLoading ? (
+            <Spinner />
+          ) : tokenGerado ? (
+            <>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-center text-2xl font-mono tracking-widest bg-bg-muted rounded-lg py-4">
+                  {tokenGerado.token}
+                </code>
+                <button onClick={copiarToken} className="p-2 rounded-lg border border-border-primary hover:bg-background-hover" title="Copiar token">
+                  <Copy size={18} />
+                </button>
+              </div>
+              <p className="text-xs text-text-muted text-center">
+                Expira em {new Date(tokenGerado.expira_em).toLocaleString('pt-BR')}
+              </p>
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Copie e envie agora. Por seguranca, o token nao sera exibido novamente.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-text-muted text-center py-4">Nao foi possivel gerar o token.</p>
+          )}
+          <div className="flex justify-center pt-2">
+            <Button type="button" variant="secondary" onClick={() => { setTokenModal(false); setTokenGerado(null); setTokenEmpresa(null); }}>
+              Fechar
+            </Button>
           </div>
         </div>
       </Modal>

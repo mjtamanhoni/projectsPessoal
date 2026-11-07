@@ -34,6 +34,15 @@ export function Login() {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
 
+  const [firstOpen, setFirstOpen] = useState(false);
+  const [firstToken, setFirstToken] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [firstEmail, setFirstEmail] = useState('');
+  const [firstSenha, setFirstSenha] = useState('');
+  const [firstConfirm, setFirstConfirm] = useState('');
+  const [firstLoading, setFirstLoading] = useState(false);
+  const [firstError, setFirstError] = useState('');
+
   useEffect(() => {
     const expired = searchParams.get('expired');
     const message = searchParams.get('message');
@@ -136,6 +145,49 @@ export function Login() {
     }
   };
 
+  const openFirst = () => {
+    setFirstToken('');
+    setFirstName('');
+    setFirstEmail(login.includes('@') ? login : '');
+    setFirstSenha('');
+    setFirstConfirm('');
+    setFirstError('');
+    setFirstOpen(true);
+  };
+
+  const handlePrimeiroAcesso = async () => {
+    setFirstError('');
+    if (!firstToken.trim() || !firstName.trim() || !firstEmail.trim() || !firstSenha.trim()) {
+      setFirstError('Todos os campos são obrigatórios');
+      return;
+    }
+    if (firstSenha !== firstConfirm) {
+      setFirstError('As senhas não coincidem');
+      return;
+    }
+    if (firstSenha.length < 4) {
+      setFirstError('A senha deve ter pelo menos 4 caracteres');
+      return;
+    }
+    setFirstLoading(true);
+    try {
+      const res = await api.post<{ empresaId?: number }>('/auth/primeiro-acesso', {
+        token: firstToken.trim(),
+        nome: firstName.trim(),
+        email: firstEmail.trim(),
+        senha: firstSenha,
+      });
+      await authLogin(firstEmail.trim(), firstSenha, undefined, res.data.empresaId);
+      setFirstOpen(false);
+      navigate('/');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string; erro?: string } }; message?: string };
+      setFirstError(axiosErr.response?.data?.error ?? axiosErr.response?.data?.erro ?? axiosErr.message ?? 'Erro ao concluir o primeiro acesso');
+    } finally {
+      setFirstLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -163,10 +215,22 @@ export function Login() {
         navigate(redirectTo || '/');
       }
     } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string; codigo?: string } }; message?: string };
+      if (axiosErr.response?.data?.codigo === 'PRIMEIRO_ACESSO') {
+        setError('');
+        setFirstToken('');
+        setFirstName('');
+        setFirstEmail(login.includes('@') ? login : '');
+        setFirstSenha('');
+        setFirstConfirm('');
+        setFirstError('');
+        setFirstOpen(true);
+        return;
+      }
       const message = (() => {
         if (err && typeof err === 'object' && 'response' in err) {
-          const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
-          return axiosErr.response?.data?.error ?? axiosErr.message ?? 'Erro ao fazer login';
+          const responseErr = err as { response?: { data?: { error?: string } }; message?: string };
+          return responseErr.response?.data?.error ?? responseErr.message ?? 'Erro ao fazer login';
         }
         return err instanceof Error ? err.message : 'Erro ao fazer login';
       })();
@@ -227,7 +291,7 @@ export function Login() {
             </Button>
           </form>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center space-y-2">
             <button
               type="button"
               onClick={openReset}
@@ -235,6 +299,14 @@ export function Login() {
             >
               <KeyRound size={14} />
               Esqueci minha senha
+            </button>
+            <button
+              type="button"
+              onClick={openFirst}
+              className="text-sm text-text-secondary hover:text-accent-primary transition-colors flex items-center justify-center gap-1.5 mx-auto"
+            >
+              <KeyRound size={14} />
+              Primeiro acesso com token
             </button>
           </div>
 
@@ -393,6 +465,70 @@ export function Login() {
               </div>
             </div>
           )}
+        </Modal>
+
+        <Modal
+          isOpen={firstOpen}
+          onClose={() => { setFirstOpen(false); setFirstError(''); }}
+          title="Primeiro acesso"
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              Informe o token recebido da empresa para concluir o acesso.
+            </p>
+            <div className="rounded-lg bg-accent-primary/10 border border-accent-primary/20 p-3 text-xs text-text-secondary space-y-1">
+              <p><strong>Empresa já cadastrada:</strong> se o e-mail pertence a um usuário existente, informe a senha atual desse usuário. O token será vinculado a ele, sem criar um novo cadastro.</p>
+              <p><strong>Empresa nova:</strong> o e-mail informado será o administrador e a senha será cadastrada agora.</p>
+            </div>
+            {firstError && (
+              <div className="p-3 bg-accent-red/10 border border-accent-red/20 rounded-lg text-sm text-accent-red">
+                {firstError}
+              </div>
+            )}
+            <Input
+              label="Token de acesso"
+              value={firstToken}
+              onChange={(e) => setFirstToken(e.target.value.toUpperCase())}
+              placeholder="Cole o token recebido"
+            />
+            <Input
+              label="Nome do administrador"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="Nome do administrador (ignorado se o e-mail já existir)"
+            />
+            <Input
+              label="E-mail"
+              type="email"
+              value={firstEmail}
+              onChange={(e) => setFirstEmail(e.target.value)}
+              placeholder="Digite seu e-mail"
+            />
+            <Input
+              label="Senha"
+              type="password"
+              value={firstSenha}
+              onChange={(e) => setFirstSenha(e.target.value)}
+              placeholder="Crie uma senha ou informe a senha atual"
+            />
+            <Input
+              label="Confirmar Senha"
+              type="password"
+              value={firstConfirm}
+              onChange={(e) => setFirstConfirm(e.target.value)}
+              placeholder="Confirme a senha"
+            />
+            <div className="flex gap-2 pt-2">
+              <Button variant="secondary" onClick={() => { setFirstOpen(false); setFirstError(''); }} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handlePrimeiroAcesso} disabled={firstLoading} className="flex-1">
+                {firstLoading ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                Ativar acesso
+              </Button>
+            </div>
+          </div>
         </Modal>
       </div>
     </div>

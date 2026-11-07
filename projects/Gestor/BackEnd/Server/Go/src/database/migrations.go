@@ -1146,6 +1146,57 @@ var Migracoes = []Migracao{
 			GROUP BY t.empresa_id, t.id;
 		`,
 	},
+	{
+		Nome: "033_empresa_ativacao_e_token",
+		SQLUp: `
+			-- Ciclo de vida da empresa:
+			--   0 = Inativa
+			--   1 = Ativa
+			--   2 = Pendente de ativacao (aguardando token de primeiro acesso)
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='empresa' AND column_name='status') THEN
+					ALTER TABLE public.empresa ADD COLUMN status SMALLINT NOT NULL DEFAULT 1;
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='empresa' AND column_name='ativada_em') THEN
+					ALTER TABLE public.empresa ADD COLUMN ativada_em TIMESTAMP;
+				END IF;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='empresa' AND column_name='ativada_por') THEN
+					ALTER TABLE public.empresa ADD COLUMN ativada_por INTEGER;
+				END IF;
+			END $$;
+
+			-- Garante a empresa principal (superadmin) sempre ativa.
+			UPDATE public.empresa
+				SET status = 1,
+					ativada_em = COALESCE(ativada_em, created_at, NOW())
+				WHERE id = 1;
+
+			-- Empresas antigas que ja existiam passam a ser consideradas ativas.
+			UPDATE public.empresa
+				SET ativada_em = COALESCE(ativada_em, created_at, NOW())
+				WHERE status = 1 AND ativada_em IS NULL;
+
+			CREATE TABLE IF NOT EXISTS public.empresa_token_acesso (
+				id SERIAL NOT NULL,
+				empresa_id INTEGER NOT NULL,
+				token_hash VARCHAR(64) NOT NULL,
+				expira_em TIMESTAMP NOT NULL,
+				usado_em TIMESTAMP,
+				revogado_em TIMESTAMP,
+				criado_por INTEGER,
+				criado_em TIMESTAMP NOT NULL DEFAULT NOW(),
+				CONSTRAINT empresa_token_acesso_pk PRIMARY KEY (id),
+				CONSTRAINT fk_empresa_token_acesso_empresa
+					FOREIGN KEY (empresa_id) REFERENCES public.empresa(id) ON DELETE CASCADE
+			);
+
+			CREATE INDEX IF NOT EXISTS idx_empresa_token_acesso_empresa
+				ON public.empresa_token_acesso (empresa_id);
+			CREATE INDEX IF NOT EXISTS idx_empresa_token_acesso_hash
+				ON public.empresa_token_acesso (token_hash);
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

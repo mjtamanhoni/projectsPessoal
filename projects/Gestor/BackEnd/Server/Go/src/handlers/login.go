@@ -55,22 +55,38 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		case float64:
 			empresaID = int(v)
 		case string:
-			digits := soDigitos(v)
-			if len(digits) >= 11 {
+			documento := normalizarDocumento(v)
+			if len(documento) >= 11 {
 				err := h.Pool.QueryRow(r.Context(),
-					`SELECT id FROM public.empresa WHERE regexp_replace(cnpj_cpf, '[^0-9]', '', 'g') = $1`, digits,
+					`SELECT id FROM public.empresa WHERE upper(regexp_replace(cnpj_cpf, '[^0-9A-Za-z]', '', 'g')) = $1`, documento,
 				).Scan(&empresaID)
 				if err != nil {
 					jsonError(w, "CPF/CNPJ não encontrado na base de dados.", http.StatusUnauthorized)
 					return
 				}
-			} else if n := parseInt(digits, 0); n > 0 {
+			} else if n := parseInt(documento, 0); n > 0 {
 				empresaID = n
 			}
 		}
 	}
 	if empresaID == 0 {
 		empresaID = 1
+	}
+
+	// Somente empresas ativas permitem login. Empresas pendentes (2) precisam
+	// concluir o primeiro acesso com o token; inativas (0) ficam bloqueadas.
+	var empresaStatus int
+	if err := h.Pool.QueryRow(r.Context(),
+		`SELECT status FROM public.empresa WHERE id = $1`, empresaID).Scan(&empresaStatus); err == nil {
+		if empresaStatus == EmpresaInativa {
+			jsonError(w, "Empresa inativa. Contate o administrador.", http.StatusForbidden)
+			return
+		}
+		if empresaStatus == EmpresaPendente {
+			jsonErrorCodigo(w, "Empresa pendente de ativação. Informe o token de primeiro acesso.",
+				http.StatusConflict, "PRIMEIRO_ACESSO", empresaID)
+			return
+		}
 	}
 
 	var userID int

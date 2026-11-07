@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { horseApi } from '../services/horseApi';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { empresaBodySchema, logomarcaBodySchema } from '../schemas';
+import { empresaBodySchema, empresaStatusBodySchema, empresaTokenBodySchema, logomarcaBodySchema } from '../schemas';
 
 const router = Router();
 
@@ -72,6 +72,36 @@ router.post('/logomarca', authMiddleware, validate(logomarcaBodySchema), async (
 router.post('/atualizar-sequencias', authMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     const result = await horseApi.atualizarSequencias();
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.post('/token', authMiddleware, validate(empresaTokenBodySchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await horseApi.gerarTokenEmpresa(Number(req.body.id));
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.post('/token/revogar', authMiddleware, validate(empresaTokenBodySchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await horseApi.revogarTokenEmpresa(Number(req.body.id));
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.post('/status', authMiddleware, validate(empresaStatusBodySchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await horseApi.alterarStatusEmpresa(Number(req.body.id), Number(req.body.status));
     res.json(result);
   } catch (error: unknown) {
     const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;

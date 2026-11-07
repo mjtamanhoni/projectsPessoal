@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -759,7 +758,7 @@ func (h *BasicCRUD) EmpresaListarPublico(w http.ResponseWriter, r *http.Request)
 			WHERE status <= 3
 			GROUP BY empresa_id
 		) cnt ON cnt.empresa_id = e.id
-		WHERE 1=1`
+		WHERE e.status = 1`
 	var args []interface{}
 	if r.URL.Query().Get("delivery") == "1" {
 		query += " AND e.delivery = 1"
@@ -785,7 +784,9 @@ func (h *BasicCRUD) EmpresaListar(w http.ResponseWriter, r *http.Request) {
 
 	query := `SELECT e.id, e.razao_social as nome, e.razao_social, e.fantasia,
 		e.cnpj_cpf, e.inscricao_estadual_identidade, e.regime_tributario,
-		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.logomarca_paginas, e.logomarca_relatorios, e.logomarca_fiscal, e.delivery
+		e.endereco, e.telefone, e.celular, e.email, e.chave_pix, e.logomarca, e.logomarca_paginas, e.logomarca_relatorios, e.logomarca_fiscal, e.delivery,
+		e.status, e.ativada_em, e.ativada_por,
+		CASE WHEN e.status = 2 THEN true ELSE false END AS primeiro_acesso_pendente
 		FROM public.empresa e WHERE 1=1`
 	var args []interface{}
 	argN := 1
@@ -880,9 +881,9 @@ for _, item := range items {
 		if id == 0 {
 			err = tx.QueryRow(r.Context(),
 				`INSERT INTO public.empresa (razao_social, fantasia, cnpj_cpf, inscricao_estadual_identidade,
-					regime_tributario, endereco, telefone, celular, email, chave_pix, logomarca, logomarca_paginas, logomarca_relatorios, logomarca_fiscal, delivery, is_open)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
-				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, logomarca, logomarcaPaginas, logomarcaRelatorios, logomarcaFiscal, delivery, isOpen,
+					regime_tributario, endereco, telefone, celular, email, chave_pix, logomarca, logomarca_paginas, logomarca_relatorios, logomarca_fiscal, delivery, is_open, status)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id`,
+				razaoSocial, fantasia, cnpjCpf, inscricaoEstadual, regimeTributario, endereco, telefone, celular, email, chavePix, logomarca, logomarcaPaginas, logomarcaRelatorios, logomarcaFiscal, delivery, isOpen, EmpresaPendente,
 			).Scan(&id)
 		} else {
 			setClauses := []string{"razao_social=$1", "fantasia=$2", "cnpj_cpf=$3",
@@ -985,6 +986,10 @@ func (h *BasicCRUD) EmpresaExcluir(w http.ResponseWriter, r *http.Request) {
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	if id == 0 {
 		jsonError(w, "ID nÃ£o informado", http.StatusBadRequest)
+		return
+	}
+	if id == 1 {
+		jsonError(w, "A empresa principal nao pode ser excluida", http.StatusBadRequest)
 		return
 	}
 	tag, err := h.Pool.Exec(r.Context(), `DELETE FROM public.empresa WHERE id = $1`, id)
@@ -1981,16 +1986,16 @@ func (h *BasicCRUD) UsuarioRedefinirSenhaPublico(w http.ResponseWriter, r *http.
 
 	// Resolve empresa por CNPJ/CPF ou ID
 	empresaID := 1
-	digits := regexp.MustCompile(`\D`).ReplaceAllString(strings.TrimSpace(body.Empresa), "")
-	if len(digits) >= 11 {
+	documento := normalizarDocumento(strings.TrimSpace(body.Empresa))
+	if len(documento) >= 11 {
 		err := h.Pool.QueryRow(r.Context(),
-			`SELECT id FROM public.empresa WHERE regexp_replace(cnpj_cpf, '[^0-9]', '', 'g') = $1`, digits,
+			`SELECT id FROM public.empresa WHERE upper(regexp_replace(cnpj_cpf, '[^0-9A-Za-z]', '', 'g')) = $1`, documento,
 		).Scan(&empresaID)
 		if err != nil {
 			jsonError(w, "Empresa nÃ£o encontrada", http.StatusNotFound)
 			return
 		}
-	} else if n := parseInt(digits, 0); n > 0 {
+	} else if n := parseInt(documento, 0); n > 0 {
 		empresaID = n
 	}
 

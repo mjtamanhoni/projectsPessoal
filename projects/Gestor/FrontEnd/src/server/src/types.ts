@@ -656,6 +656,11 @@ export interface Empresa {
   chave_pix?: string;
   logomarca?: string | null;
   delivery?: number;
+  is_open?: number;
+  status?: number;
+  ativada_em?: string | null;
+  ativada_por?: number | null;
+  primeiro_acesso_pendente?: boolean;
 }
 
 export interface Modulo {
@@ -752,9 +757,13 @@ export interface FormaPagamentoCondicao {
 
 export class AppError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  codigo?: string;
+  empresaId?: number;
+  constructor(message: string, status: number, codigo?: string, empresaId?: number) {
     super(message);
     this.status = status;
+    this.codigo = codigo;
+    this.empresaId = empresaId;
     this.name = 'AppError';
   }
 }

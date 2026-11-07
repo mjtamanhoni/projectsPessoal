@@ -73,8 +73,12 @@ class HorseApiService {
         message = `Requisição falhou com status ${status}`;
       }
 
+      const obj = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+      const codigo = typeof obj.codigo === 'string' ? obj.codigo : undefined;
+      const empresaId = typeof obj.empresa_id === 'number' ? obj.empresa_id : undefined;
+
       console.error(`[HorseAPI] ${axiosError.config?.method?.toUpperCase()} ${axiosError.config?.url} -> ${status}: ${message}`, data);
-      throw new AppError(message, status);
+      throw new AppError(message, status, codigo, empresaId);
     }
     if (error instanceof AppError) throw error;
     console.error('[HorseAPI] Erro inesperado:', error);
@@ -84,6 +88,15 @@ class HorseApiService {
   async login(data: LoginRequest): Promise<LoginResponse> {
     try {
       const res = await this.api.post('/usuario/login', data);
+      return res.data as LoginResponse;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async primeiroAcesso(data: { token: string; nome: string; email: string; senha: string }): Promise<LoginResponse> {
+    try {
+      const res = await this.api.post('/usuario/primeiroAcesso', data);
       return res.data as LoginResponse;
     } catch (error) {
       return this.handleError(error);
@@ -1852,6 +1865,33 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     try {
       const payload = empresas.length === 1 ? empresas[0] : empresas;
       const res = await this.api.post('/empresa', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async gerarTokenEmpresa(id: number): Promise<{ empresa_id: number; token: string; expira_em: string }> {
+    try {
+      const res = await this.api.post('/empresa/token', { id }, { headers: this.getAuthHeaders() });
+      return res.data as { empresa_id: number; token: string; expira_em: string };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async revogarTokenEmpresa(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.post('/empresa/token/revogar', { id }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async alterarStatusEmpresa(id: number, status: number): Promise<unknown> {
+    try {
+      const res = await this.api.post('/empresa/status', { id, status }, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);

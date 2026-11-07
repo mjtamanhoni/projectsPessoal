@@ -8,6 +8,7 @@ import RowMenu from '../components/RowMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BackButton from '../components/BackButton';
 import PlusButton from '../components/PlusButton';
+import { normalizarDocumento } from '../format';
 
 export default function Clientes() {
   const navigate = useNavigate();
@@ -71,10 +72,10 @@ const carregar = useCallback(async () => {
   };
 
   const aoSalvar = async (data: Cliente) => {
-    const doc = (data.cnpj_cpf || '').replace(/\D/g, '');
+    const doc = normalizarDocumento(data.cnpj_cpf || '');
     if (doc) {
       const existente = clientes.find(
-        (c) => c.id !== editing?.id && (c.cnpj_cpf || '').replace(/\D/g, '') === doc,
+        (c) => c.id !== editing?.id && normalizarDocumento(c.cnpj_cpf || '') === doc,
       );
       if (existente) {
         setDuplicado({ data, existente });

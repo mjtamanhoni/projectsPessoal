@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import api, { getErrorMsg } from '@/lib/api';
+import { copiarTexto } from '@/lib/clipboard';
 import autoTable from 'jspdf-autotable';
 import { buildPDFWithHeader, downloadPDF, viewPDF } from '@/lib/pdf';
 import {
@@ -283,13 +284,10 @@ export function RelatorioIA() {
   const copiarSql = async (msg: Mensagem, idx: number) => {
     const sql = msg.dados?.sql || msg.sql_gerado;
     if (!sql) return;
-    try {
-      await navigator.clipboard.writeText(sql);
-      setCopiado(idx);
-      setTimeout(() => setCopiado(null), 1500);
-    } catch {
-      // clipboard indisponivel
-    }
+    const ok = await copiarTexto(sql);
+    if (!ok) return;
+    setCopiado(idx);
+    setTimeout(() => setCopiado(null), 1500);
   };
 
   const gerarPDF = (msg: Mensagem, modo: 'ver' | 'baixar') => {

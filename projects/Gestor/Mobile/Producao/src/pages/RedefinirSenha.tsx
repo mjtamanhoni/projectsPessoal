@@ -2,19 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getServerConfig } from '../api';
 import { AuthTitle } from '../components/auth';
-
-function mascaraCpfCnpj(value: string): string {
-  const numbers = value.replace(/\D/g, '');
-  if (numbers.length <= 11) {
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
-    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
-    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
-  }
-  if (numbers.length <= 12) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8)}`;
-  if (numbers.length <= 13) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12)}`;
-  return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12, 14)}`;
-}
+import { mascaraCpfCnpj } from '../format';
 
 export default function RedefinirSenha() {
   const navigate = useNavigate();
@@ -99,8 +87,8 @@ export default function RedefinirSenha() {
         <input
           className="field-input"
           style={{ top: 38 }}
-          type="tel"
-          inputMode="numeric"
+          type="text"
+          inputMode="text"
           placeholder="Digite o CNPJ/CPF da empresa"
           value={cnpjCpf}
           onChange={(e) => setCnpjCpf(mascaraCpfCnpj(e.target.value))}

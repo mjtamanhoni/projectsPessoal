@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { validarDocumento } from '../utils/documento';
+
 export const clienteBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),
@@ -18,10 +20,7 @@ export const clienteBodySchema = z.object({
   email: z.string().email('Email invalido').max(200).optional().or(z.literal('')),
   status: z.number().int().min(0).max(1).optional(),
 }).refine(
-  (data) => {
-    const doc = (data.cpf_cnpj || data.cnpj_cpf || '').replace(/\D/g, '');
-    return doc.length >= 11;
-  },
+  (data) => validarDocumento(data.cpf_cnpj || data.cnpj_cpf || ''),
   { message: 'CPF/CNPJ invalido' },
 );
 
@@ -419,7 +418,10 @@ export const empresaBodySchema = z.object({
   id: z.number().int().positive().optional(),
   razao_social: z.string().min(1, 'Razao social e obrigatoria').max(200),
   fantasia: z.string().max(200).optional().or(z.literal('')),
-  cnpj_cpf: z.string().max(20).optional().or(z.literal('')),
+  cnpj_cpf: z.string().max(20).optional().or(z.literal('')).refine(
+    (value) => !value || validarDocumento(value),
+    { message: 'CPF/CNPJ invalido' },
+  ),
   inscricao_estadual_identidade: z.string().max(20).optional().or(z.literal('')),
   regime_tributario: z.string().max(50).optional().or(z.literal('')),
   endereco: z.string().max(500).optional().or(z.literal('')),
@@ -429,6 +431,15 @@ export const empresaBodySchema = z.object({
   chave_pix: z.string().max(255).optional().or(z.literal('')),
   logomarca: z.string().max(255).optional().or(z.literal('')),
   delivery: z.number().int().min(0).max(1).optional(),
+});
+
+export const empresaTokenBodySchema = z.object({
+  id: z.number().int().positive('ID da empresa e obrigatorio'),
+});
+
+export const empresaStatusBodySchema = z.object({
+  id: z.number().int().positive('ID da empresa e obrigatorio'),
+  status: z.number().int().min(0).max(1),
 });
 
 export const moduloBodySchema = z.object({
@@ -493,6 +504,13 @@ export const loginBodySchema = z.object({
   },
   { message: 'Informe login e senha, ou PIN', path: ['login'] }
 );
+
+export const primeiroAcessoBodySchema = z.object({
+  token: z.string().min(1, 'Token e obrigatorio').max(50),
+  nome: z.string().min(2, 'Nome e obrigatorio').max(100),
+  email: z.string().email('Email invalido').max(100),
+  senha: z.string().min(4, 'Senha deve ter pelo menos 4 caracteres').max(72),
+});
 
 export const redefinirSenhaPublicaBodySchema = z.object({
   login: z.string().min(1, 'Login e obrigatorio').max(200),

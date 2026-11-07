@@ -3,7 +3,8 @@ import { horseApi } from '../services/horseApi';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
-import { loginBodySchema, redefinirSenhaPublicaBodySchema } from '../schemas';
+import { loginBodySchema, primeiroAcessoBodySchema, redefinirSenhaPublicaBodySchema } from '../schemas';
+import { AppError } from '../types';
 
 const router = Router();
 
@@ -30,9 +31,27 @@ router.post('/login', authLimiter, validate(loginBodySchema), async (req: Reques
     const result = await horseApi.login({ login, senha, empresa });
     res.json({ ...result, empresaId: result.empresa ?? empresa });
   } catch (error: unknown) {
-    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    const status = error instanceof AppError ? error.status : 500;
     const message = error instanceof Error ? error.message : 'Erro interno do servidor';
-    res.status(status).json({ error: message });
+    const codigo = error instanceof AppError ? error.codigo : undefined;
+    const empresaId = error instanceof AppError ? error.empresaId : undefined;
+    res.status(status).json({
+      error: message,
+      ...(codigo ? { codigo } : {}),
+      ...(empresaId ? { empresa_id: empresaId } : {}),
+    });
+  }
+});
+
+router.post('/primeiro-acesso', authLimiter, validate(primeiroAcessoBodySchema), async (req: Request, res: Response) => {
+  try {
+    const result = await horseApi.primeiroAcesso(req.body);
+    res.json({ ...result, empresaId: result.empresa });
+  } catch (error: unknown) {
+    const status = error instanceof AppError ? error.status : 500;
+    const message = error instanceof Error ? error.message : 'Erro interno do servidor';
+    const codigo = error instanceof AppError ? error.codigo : undefined;
+    res.status(status).json({ error: message, ...(codigo ? { codigo } : {}) });
   }
 });
 

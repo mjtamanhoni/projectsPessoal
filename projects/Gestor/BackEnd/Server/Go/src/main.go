@@ -35,6 +35,7 @@ func main() {
 	middleware.SetJWTSecret(cfg.JWTSecret)
 
 	pool := database.Pool
+	middleware.SetPool(pool)
 
 	if err := database.InitMigracoes(pool); err != nil {
 		log.Fatalf("Erro ao init migrations: %v", err)
@@ -74,6 +75,7 @@ func main() {
 	r.Get("/usuario/login", loginHandler.Login)
 	r.Post("/usuario/login", loginHandler.Login)
 	r.Post("/usuario/redefinirSenha", basicCRUD.UsuarioRedefinirSenhaPublico)
+	r.Post("/usuario/primeiroAcesso", basicCRUD.PrimeiroAcesso)
 	r.Get("/empresaPublic", basicCRUD.EmpresaListarPublico)
 	r.Get("/clientePublico", basicCRUD.ClientePublicoBuscar)
 	r.Post("/clientePublico", basicCRUD.ClientePublicoCriar)
@@ -585,6 +587,9 @@ carregar();
 		r.Put("/empresa", basicCRUD.EmpresaAtualizar)
 		r.Delete("/empresa", basicCRUD.EmpresaExcluir)
 		r.Post("/empresa/is-open", basicCRUD.EmpresaToggleIsOpen)
+		r.Post("/empresa/token", basicCRUD.EmpresaGerarToken)
+		r.Post("/empresa/token/revogar", basicCRUD.EmpresaRevogarToken)
+		r.Post("/empresa/status", basicCRUD.EmpresaAlterarStatus)
 		r.Post("/empresa/logomarca", basicCRUD.EmpresaLogomarcaSalvar)
 		r.Post("/empresa/limpar-dados", basicCRUD.EmpresaLimparDados)
 		r.Post("/empresa/atualizar-sequencias", basicCRUD.EmpresaAtualizarSequencias)

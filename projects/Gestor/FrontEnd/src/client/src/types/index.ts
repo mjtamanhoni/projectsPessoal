@@ -659,6 +659,9 @@ export interface Empresa {
   delivery?: number;
   is_open?: number;
   status?: number;
+  ativada_em?: string | null;
+  ativada_por?: number | null;
+  primeiro_acesso_pendente?: boolean;
 }
 
 export interface Modulo {

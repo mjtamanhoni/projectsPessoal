@@ -29,7 +29,7 @@ import {
   descricaoPersonalizacao,
   type CatalogoItem,
 } from '../components/catalogo';
-import { dataHojeISO, formatarMoeda, numeroParaDecimal } from '../format';
+import { dataHojeISO, formatarMoeda, numeroParaDecimal, normalizarDocumento } from '../format';
 
 const QTD_CASAS = 2;
 
@@ -217,7 +217,7 @@ export default function Pedido() {
 
   const confirmarFormaPagamento = async (pagamentos: EncomendaPagamento[]) => {
     if (!encomendaParaPagamento || !empresa) return;
-    const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
+    const documento = normalizarDocumento(cliente?.cnpj_cpf || '');
     try {
       await salvarPagamentosEncomendaPublica(empresa.id, {
         id: encomendaParaPagamento.id ?? 0,
@@ -259,7 +259,7 @@ export default function Pedido() {
 
   const confirmarEnderecoEntrega = async (endereco: EnderecoEntrega) => {
     if (!encomendaParaEndereco || !empresa) return;
-    const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
+    const documento = normalizarDocumento(cliente?.cnpj_cpf || '');
     try {
       await salvarEnderecoEntregaPublico(empresa.id, {
         id: encomendaParaEndereco.id ?? 0,

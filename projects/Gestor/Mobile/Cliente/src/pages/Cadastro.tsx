@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { criarClientePublico, extrairErro, setDocumentoLembrado, VERSAO_APP, type Cliente, type EmpresaPublic } from '../api';
 import { useSessao } from '../auth';
 import BackButton from '../components/BackButton';
-import { mascaraCpfCnpj, mascaraTelefone, mascaraCep, buscarCep } from '../format';
+import { mascaraCpfCnpj, mascaraTelefone, mascaraCep, buscarCep, normalizarDocumento } from '../format';
 
 interface LocationState {
   documento?: string;
@@ -65,7 +65,7 @@ export default function Cadastro() {
       setErro('Informe seu nome completo');
       return;
     }
-    if (documento.replace(/\D/g, '').length < 11) {
+    if (normalizarDocumento(documento).length < 11) {
       setErro('Informe seu documento (CPF/CNPJ)');
       return;
     }
@@ -88,7 +88,7 @@ export default function Cadastro() {
       if (!criado?.id) {
         throw new Error('Resposta inválida do servidor');
       }
-      setDocumentoLembrado(documento.replace(/\D/g, ''));
+      setDocumentoLembrado(normalizarDocumento(documento));
       entrar(empresa, {
         id: criado.id,
         nome: nome.trim(),
@@ -132,8 +132,8 @@ export default function Cadastro() {
         <input
           className="field-input"
           style={{ top: 36 }}
-          type="tel"
-          inputMode="numeric"
+          type="text"
+          inputMode="text"
           placeholder="CPF ou CNPJ"
           value={documento}
           onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}

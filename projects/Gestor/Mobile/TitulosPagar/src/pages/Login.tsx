@@ -64,7 +64,7 @@ export function Login() {
           </span>
           <input
             className="input"
-            inputMode="numeric"
+            inputMode="text"
             placeholder="Digite o CNPJ/CPF da empresa"
             value={cnpjCpf}
             onChange={(event) => setCnpjCpf(mascaraCpfCnpj(event.target.value))}

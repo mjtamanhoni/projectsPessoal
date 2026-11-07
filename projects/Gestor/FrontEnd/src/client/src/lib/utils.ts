@@ -151,22 +151,57 @@ export function formatCep(value: string): string {
   return `${numbers.slice(0, 5)}-${numbers.slice(5)}`;
 }
 
-export function formatCpfCnpj(value: string): string {
-  const numbers = value.replace(/\D/g, '');
+const DOCUMENTO_RE = /[^0-9A-Za-z]/g;
 
-  if (numbers.length <= 11) {
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
-    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
-    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
+export function normalizarDocumento(value: string): string {
+  return value.replace(DOCUMENTO_RE, '').toUpperCase();
+}
+
+export function formatCpfCnpj(value: string): string {
+  const chars = normalizarDocumento(value);
+  const temLetra = /[A-Z]/.test(chars);
+
+  if (!temLetra && chars.length <= 11) {
+    if (chars.length <= 3) return chars;
+    if (chars.length <= 6) return `${chars.slice(0, 3)}.${chars.slice(3)}`;
+    if (chars.length <= 9) return `${chars.slice(0, 3)}.${chars.slice(3, 6)}.${chars.slice(6)}`;
+    return `${chars.slice(0, 3)}.${chars.slice(3, 6)}.${chars.slice(6, 9)}-${chars.slice(9, 11)}`;
   }
 
-  const limited = numbers.slice(0, 14);
+  const limited = chars.slice(0, 14);
   if (limited.length <= 2) return limited;
   if (limited.length <= 5) return `${limited.slice(0, 2)}.${limited.slice(2)}`;
   if (limited.length <= 8) return `${limited.slice(0, 2)}.${limited.slice(2, 5)}.${limited.slice(5)}`;
   if (limited.length <= 12) return `${limited.slice(0, 2)}.${limited.slice(2, 5)}.${limited.slice(5, 8)}/${limited.slice(8)}`;
   return `${limited.slice(0, 2)}.${limited.slice(2, 5)}.${limited.slice(5, 8)}/${limited.slice(8, 12)}-${limited.slice(12, 14)}`;
+}
+
+function valorCaractereDocumento(caractere: string): number {
+  return caractere.charCodeAt(0) - 48;
+}
+
+function digitoCnpj(base: string, pesos: number[]): number {
+  let soma = 0;
+  for (let i = 0; i < base.length; i += 1) {
+    soma += valorCaractereDocumento(base[i]) * pesos[i];
+  }
+  const resto = soma % 11;
+  return resto < 2 ? 0 : 11 - resto;
+}
+
+export function validarCnpj(value: string): boolean {
+  const cnpj = normalizarDocumento(value);
+  if (!/^[0-9A-Z]{12}[0-9]{2}$/.test(cnpj)) return false;
+  const dv1 = digitoCnpj(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const dv2 = digitoCnpj(cnpj.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return Number(cnpj[12]) === dv1 && Number(cnpj[13]) === dv2;
+}
+
+export function validarDocumento(value: string): boolean {
+  const documento = normalizarDocumento(value);
+  if (documento.length === 11) return /^[0-9]{11}$/.test(documento);
+  if (documento.length === 14) return validarCnpj(documento);
+  return false;
 }
 
 export interface ParcelasConfig {

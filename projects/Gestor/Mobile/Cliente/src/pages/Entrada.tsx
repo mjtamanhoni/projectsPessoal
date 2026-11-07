@@ -16,7 +16,7 @@ import {
   type Encomenda,
 } from '../api';
 import { useSessao } from '../auth';
-import { mascaraCpfCnpj, mascaraTelefone } from '../format';
+import { mascaraCpfCnpj, mascaraTelefone, normalizarDocumento } from '../format';
 import QRCode from 'qrcode';
 import AvaliacaoModal from '../components/AvaliacaoModal';
 
@@ -58,7 +58,7 @@ export default function Entrada() {
   }, []);
 
   useEffect(() => {
-    const doc = documento.replace(/\D/g, '');
+    const doc = normalizarDocumento(documento);
     if (doc.length < 11 || empresas.length === 0) return;
     cancelRef.current = false;
     const counts: Record<number, number> = {};
@@ -124,7 +124,7 @@ export default function Entrada() {
 
   // Refresh pending count periodically
   useEffect(() => {
-    const doc = documento.replace(/\D/g, '');
+    const doc = normalizarDocumento(documento);
     if (doc.length < 11 || empresas.length === 0) return;
     const refreshPendentes = async () => {
       const counts: Record<number, number> = {};
@@ -162,7 +162,7 @@ export default function Entrada() {
       setErro('Esta loja esta fechada no momento');
       return;
     }
-    const doc = documento.replace(/\D/g, '');
+    const doc = normalizarDocumento(documento);
     if (doc.length < 11) {
       setErro('Informe seu documento (CPF/CNPJ) para continuar');
       return;
@@ -319,8 +319,8 @@ export default function Entrada() {
               width: '100%',
               ...(documentoBloqueado ? { background: 'rgba(50, 50, 50, 0.5)', color: '#707070' } : {}),
             }}
-            type="tel"
-            inputMode="numeric"
+            type="text"
+            inputMode="text"
             placeholder="Digite seu CPF ou CNPJ"
             value={documento}
             disabled={documentoBloqueado}
@@ -439,7 +439,7 @@ export default function Entrada() {
           onAvaliado={() => {
             setAvaliacaoModalAberto(false);
             setAvaliacaoPendente(null);
-            const doc = documento.replace(/\D/g, '');
+            const doc = normalizarDocumento(documento);
             if (doc.length >= 11 && empresas.length > 0) {
               const counts: Record<number, number> = {};
               let novaEntrega: { empresa: EmpresaPublic; encomenda: Encomenda } | null = null;

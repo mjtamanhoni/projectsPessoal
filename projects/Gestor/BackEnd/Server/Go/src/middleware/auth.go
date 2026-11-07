@@ -5,9 +5,11 @@ import (
 	"crypto/subtle"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type contextKey string
@@ -25,14 +27,67 @@ func SetJWTSecret(secret string) {
 	jwtSecret = []byte(secret)
 }
 
+// Cache do status da empresa. Evita consultar o banco a cada requisicao,
+// permitindo bloquear empresas inativadas sem invalidar os JWT de 30 dias.
+var (
+	dbPool             *pgxpool.Pool
+	empresaStatusMu    sync.RWMutex
+	empresaStatusCache = make(map[int]empresaStatusCacheItem)
+)
+
+type empresaStatusCacheItem struct {
+	status int
+	expira time.Time
+}
+
+const empresaStatusTTL = 60 * time.Second
+
+func SetPool(p *pgxpool.Pool) {
+	dbPool = p
+}
+
+// InvalidarCacheEmpresa remove o status em cache (chamar apos ativar/inativar).
+func InvalidarCacheEmpresa(empresaID int) {
+	if empresaID <= 0 {
+		return
+	}
+	empresaStatusMu.Lock()
+	delete(empresaStatusCache, empresaID)
+	empresaStatusMu.Unlock()
+}
+
+func statusEmpresa(ctx context.Context, empresaID int) (int, bool) {
+	empresaStatusMu.RLock()
+	item, ok := empresaStatusCache[empresaID]
+	empresaStatusMu.RUnlock()
+	if ok && time.Now().Before(item.expira) {
+		return item.status, true
+	}
+	if dbPool == nil {
+		return 0, false
+	}
+	var status int
+	if err := dbPool.QueryRow(ctx,
+		`SELECT status FROM public.empresa WHERE id = $1`, empresaID).Scan(&status); err != nil {
+		return 0, false
+	}
+	empresaStatusMu.Lock()
+	empresaStatusCache[empresaID] = empresaStatusCacheItem{
+		status: status,
+		expira: time.Now().Add(empresaStatusTTL),
+	}
+	empresaStatusMu.Unlock()
+	return status, true
+}
+
 type Claims struct {
-	ID          int  `json:"id"`
-	Empresa     int  `json:"empresa"`
+	ID      int `json:"id"`
+	Empresa int `json:"empresa"`
 	// EmpresaLogada: id real da empresa resolvido a partir do CNPJ/CPF informado no login.
 	// Sempre > 0. Usado em INSERT/UPDATE/DELETE (escrita). Diferente de Empresa,
 	// que para superadmin vale 0 (acesso global de leitura).
 	EmpresaLogada int  `json:"empresa_logada"`
-	IsSuperadmin bool `json:"is_superadmin"`
+	IsSuperadmin  bool `json:"is_superadmin"`
 	jwt.RegisteredClaims
 }
 
@@ -74,6 +129,24 @@ func JWTAuth(next http.Handler) http.Handler {
 		if err != nil || !token.Valid {
 			http.Error(w, `{"erro":"Sessão inválida ou token expirado"}`, http.StatusUnauthorized)
 			return
+		}
+
+		// Superadmin continua acessando empresas inativas/pendentes para gerir o ciclo de vida.
+		if !claims.IsSuperadmin {
+			empresaID := claims.EmpresaLogada
+			if empresaID <= 0 {
+				empresaID = claims.Empresa
+			}
+			if empresaID > 0 {
+				if status, ok := statusEmpresa(r.Context(), empresaID); ok && status != 1 {
+					if status == 2 {
+						http.Error(w, `{"erro":"Empresa pendente de ativação. Contate o administrador."}`, http.StatusForbidden)
+					} else {
+						http.Error(w, `{"erro":"Empresa inativa. Contate o administrador."}`, http.StatusForbidden)
+					}
+					return
+				}
+			}
 		}
 
 		ctx := context.WithValue(r.Context(), UserIDKey, claims.ID)

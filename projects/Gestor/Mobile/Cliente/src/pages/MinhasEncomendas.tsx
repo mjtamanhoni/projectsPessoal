@@ -28,7 +28,7 @@ import {
   somaAdicionaisItem,
   descricaoPersonalizacao,
 } from '../components/catalogo';
-import { formatarDataBR, formatarMoeda, numeroParaDecimal } from '../format';
+import { formatarDataBR, formatarMoeda, numeroParaDecimal, normalizarDocumento } from '../format';
 
 const ETAPAS: Record<number, { label: string; cor: string; fundo: string }> = {
   0: { label: 'Aguardando', cor: '#92400e', fundo: '#fef3c7' },
@@ -85,7 +85,7 @@ export default function MinhasEncomendas() {
   const [excluirDe, setExcluirDe] = useState<Encomenda | null>(null);
   const [personalizandoDe, setPersonalizandoDe] = useState<{ encId: number; idx: number } | null>(null);
 
-  const documento = (cliente?.cnpj_cpf || '').replace(/\D/g, '');
+    const documento = normalizarDocumento(cliente?.cnpj_cpf || '');
 
   const catalogo = useMemo(
     () => montarCatalogo(produtos, produtosVenda),

@@ -40,17 +40,25 @@ export function mascaraTelefone(valor: string): string {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
+export function normalizarDocumento(valor: string): string {
+  return valor.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+}
+
 export function mascaraCpfCnpj(valor: string): string {
-  const numbers = valor.replace(/\D/g, '').slice(0, 14);
-  if (numbers.length <= 11) {
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
-    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
-    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
+  const chars = normalizarDocumento(valor);
+  const temLetra = /[A-Z]/.test(chars);
+  if (!temLetra && chars.length <= 11) {
+    if (chars.length <= 3) return chars;
+    if (chars.length <= 6) return `${chars.slice(0, 3)}.${chars.slice(3)}`;
+    if (chars.length <= 9) return `${chars.slice(0, 3)}.${chars.slice(3, 6)}.${chars.slice(6)}`;
+    return `${chars.slice(0, 3)}.${chars.slice(3, 6)}.${chars.slice(6, 9)}-${chars.slice(9, 11)}`;
   }
-  if (numbers.length <= 12) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8)}`;
-  if (numbers.length <= 13) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12)}`;
-  return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12, 14)}`;
+  const limited = chars.slice(0, 14);
+  if (limited.length <= 2) return limited;
+  if (limited.length <= 5) return `${limited.slice(0, 2)}.${limited.slice(2)}`;
+  if (limited.length <= 8) return `${limited.slice(0, 2)}.${limited.slice(2, 5)}.${limited.slice(5)}`;
+  if (limited.length <= 12) return `${limited.slice(0, 2)}.${limited.slice(2, 5)}.${limited.slice(5, 8)}/${limited.slice(8)}`;
+  return `${limited.slice(0, 2)}.${limited.slice(2, 5)}.${limited.slice(5, 8)}/${limited.slice(8, 12)}-${limited.slice(12, 14)}`;
 }
 
 export function emailValido(email: string): boolean {

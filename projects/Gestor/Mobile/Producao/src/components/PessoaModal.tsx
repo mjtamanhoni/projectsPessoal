@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { emailValido, mascaraCpfCnpj, mascaraTelefone, mascaraCep, buscarCep } from '../format';
+import { emailValido, mascaraCpfCnpj, mascaraTelefone, mascaraCep, buscarCep, normalizarDocumento } from '../format';
 
 interface Pessoa {
   id?: number;
@@ -78,7 +78,7 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
       setErro('Nome deve ter no máximo 200 caracteres');
       return;
     }
-    const doc = documento.replace(/\D/g, '');
+    const doc = normalizarDocumento(documento);
     if (exigirDocumento && doc.length < 11) {
       setErro('Documento (CPF/CNPJ) é obrigatório');
       return;
@@ -139,8 +139,8 @@ export default function PessoaModal({ titulo, rotulo, inicial, onCancel, onSalva
           <input
             className="modal-input"
             style={{ top: 88 }}
-            type="tel"
-            inputMode="numeric"
+            type="text"
+            inputMode="text"
             placeholder="CPF ou CNPJ"
             value={documento}
             onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}

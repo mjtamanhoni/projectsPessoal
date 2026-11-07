@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { validarDocumento } from '../lib/utils';
+
 export const clienteSchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),
@@ -7,7 +9,7 @@ export const clienteSchema = z.object({
   cpf_cnpj: z.string()
     .min(1, 'CPF/CNPJ e obrigatorio')
     .max(18)
-    .refine((v) => v.replace(/\D/g, '').length >= 11, 'CPF/CNPJ invalido'),
+    .refine((v) => validarDocumento(v), 'CPF/CNPJ invalido'),
   telefone: z.string().max(20).optional().or(z.literal('')),
   celular: z.string().max(20).optional().or(z.literal('')),
   nr: z.string().max(10).optional().or(z.literal('')),

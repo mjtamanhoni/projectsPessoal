@@ -77,7 +77,7 @@ func (h *BasicCRUD) usuarioPadraoDaEmpresa(r *http.Request, empresaID int) (int,
 // GET /clientePublico?empresa=<id>&documento=<cpf/cnpj>   ou   ?empresa=<id>&telefone=<numero>
 func (h *BasicCRUD) ClientePublicoBuscar(w http.ResponseWriter, r *http.Request) {
 	empresaID := parseInt(r.URL.Query().Get("empresa"), 0)
-	documento := apenasDigitos(r.URL.Query().Get("documento"))
+	documento := normalizarDocumento(r.URL.Query().Get("documento"))
 	telefone := apenasDigitos(r.URL.Query().Get("telefone"))
 	if empresaID == 0 {
 		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
@@ -95,7 +95,7 @@ func (h *BasicCRUD) ClientePublicoBuscar(w http.ResponseWriter, r *http.Request)
 	if documento != "" {
 		query = selects + `
 		WHERE empresa_id = $1
-		AND regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9]', '', 'g') = $2
+		AND upper(regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9A-Za-z]', '', 'g')) = $2
 		ORDER BY id`
 		args = []interface{}{empresaID, documento}
 	} else {
@@ -118,7 +118,7 @@ func (h *BasicCRUD) ClientePublicoBuscar(w http.ResponseWriter, r *http.Request)
 // em qualquer empresa. Usado para pré-preencher cadastro quando o cliente já existe em outra empresa.
 // GET /clientePublicoPorDocumento?documento=<cpf/cnpj>
 func (h *BasicCRUD) ClientePublicoBuscarPorDocumento(w http.ResponseWriter, r *http.Request) {
-	documento := apenasDigitos(r.URL.Query().Get("documento"))
+	documento := normalizarDocumento(r.URL.Query().Get("documento"))
 	if documento == "" {
 		jsonError(w, "Parâmetro 'documento' é obrigatório", http.StatusBadRequest)
 		return
@@ -127,7 +127,7 @@ func (h *BasicCRUD) ClientePublicoBuscarPorDocumento(w http.ResponseWriter, r *h
 	rows, err := h.Pool.Query(r.Context(), `
 		SELECT id, empresa_id, nome, telefone, celular, nr, complemento, bairro, cidade, uf, cep, endereco, email, cnpj_cpf, status
 		FROM public.cliente
-		WHERE regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9]', '', 'g') = $1
+		WHERE upper(regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9A-Za-z]', '', 'g')) = $1
 		ORDER BY id
 		LIMIT 1`, documento)
 	if err != nil {
@@ -159,7 +159,7 @@ func (h *BasicCRUD) ClientePublicoCriar(w http.ResponseWriter, r *http.Request) 
 
 	empresaID := getInt(body, "empresa")
 	nome := getStr(body, "nome")
-	documento := apenasDigitos(getStr(body, "cnpj_cpf"))
+	documento := normalizarDocumento(getStr(body, "cnpj_cpf"))
 	if empresaID == 0 {
 		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
 		return
@@ -176,7 +176,7 @@ func (h *BasicCRUD) ClientePublicoCriar(w http.ResponseWriter, r *http.Request) 
 	var existenteID int
 	err = h.Pool.QueryRow(r.Context(),
 		`SELECT id FROM public.cliente
-		WHERE empresa_id = $1 AND regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9]', '', 'g') = $2`,
+		WHERE empresa_id = $1 AND upper(regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9A-Za-z]', '', 'g')) = $2`,
 		empresaID, documento).Scan(&existenteID)
 	if err == nil {
 		jsonSuccess(w, map[string]interface{}{"id": existenteID, "mensagem": "Cliente já cadastrado"})
@@ -320,7 +320,7 @@ func (h *ProducaoHandler) clienteIdDaEmpresa(r *http.Request, empresaID int, cli
 		var id int
 		err := h.Pool.QueryRow(r.Context(),
 			`SELECT id FROM public.cliente
-			WHERE empresa_id = $1 AND regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9]', '', 'g') = $2`,
+			WHERE empresa_id = $1 AND upper(regexp_replace(COALESCE(cnpj_cpf, ''), '[^0-9A-Za-z]', '', 'g')) = $2`,
 			empresaID, documento).Scan(&id)
 		if err != nil {
 			return 0, fmt.Errorf("Cliente não encontrado para o documento informado")
@@ -362,7 +362,7 @@ func (h *ProducaoHandler) EncomendaPublicoCriar(w http.ResponseWriter, r *http.R
 	}
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
-		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+		getInt(header, "cliente_id"), normalizarDocumento(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -498,7 +498,7 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 		jsonError(w, "Parâmetro 'empresa' é obrigatório", http.StatusBadRequest)
 		return
 	}
-	documento := apenasDigitos(r.URL.Query().Get("documento"))
+	documento := normalizarDocumento(r.URL.Query().Get("documento"))
 	telefone := apenasDigitos(r.URL.Query().Get("telefone"))
 	id := parseInt(r.URL.Query().Get("id"), 0)
 	if documento == "" && telefone == "" {
@@ -544,7 +544,7 @@ func (h *ProducaoHandler) EncomendaPublicoListar(w http.ResponseWriter, r *http.
 	args := []interface{}{empresaID}
 	argN := 2
 	if documento != "" {
-		query += fmt.Sprintf(" AND regexp_replace(COALESCE(c.cnpj_cpf, ''), '[^0-9]', '', 'g') = $%d", argN)
+		query += fmt.Sprintf(" AND upper(regexp_replace(COALESCE(c.cnpj_cpf, ''), '[^0-9A-Za-z]', '', 'g')) = $%d", argN)
 		args = append(args, documento)
 		argN++
 	} else {
@@ -593,7 +593,7 @@ func (h *ProducaoHandler) EncomendaPublicoCancelar(w http.ResponseWriter, r *htt
 	}
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
-		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+		getInt(header, "cliente_id"), normalizarDocumento(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -642,7 +642,7 @@ func (h *ProducaoHandler) EncomendaPublicoItensAtualizar(w http.ResponseWriter, 
 	}
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
-		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+		getInt(header, "cliente_id"), normalizarDocumento(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -785,7 +785,7 @@ func (h *ProducaoHandler) EncomendaPublicoAtualizarFormaPagamento(w http.Respons
 	}
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
-		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+		getInt(header, "cliente_id"), normalizarDocumento(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -916,7 +916,7 @@ func (h *ProducaoHandler) EncomendaPublicoSalvarEnderecoEntrega(w http.ResponseW
 	}
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
-		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+		getInt(header, "cliente_id"), normalizarDocumento(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -1028,7 +1028,7 @@ func (h *ProducaoHandler) EncomendaPublicoListarPagamentos(w http.ResponseWriter
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
 		parseInt(r.URL.Query().Get("cliente_id"), 0),
-		apenasDigitos(r.URL.Query().Get("documento")),
+		normalizarDocumento(r.URL.Query().Get("documento")),
 		apenasDigitos(r.URL.Query().Get("telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
@@ -1072,7 +1072,7 @@ func (h *ProducaoHandler) EncomendaPublicoSalvarPagamentos(w http.ResponseWriter
 	}
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
-		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+		getInt(header, "cliente_id"), normalizarDocumento(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -1187,7 +1187,7 @@ func (h *ProducaoHandler) EncomendaPublicoAvaliar(w http.ResponseWriter, r *http
 	}
 
 	clienteID, err := h.clienteIdDaEmpresa(r, empresaID,
-		getInt(header, "cliente_id"), apenasDigitos(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
+		getInt(header, "cliente_id"), normalizarDocumento(getStr(header, "documento")), apenasDigitos(getStr(header, "telefone")))
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return

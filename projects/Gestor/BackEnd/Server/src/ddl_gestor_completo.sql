@@ -241,6 +241,8 @@ CREATE TABLE public.empresa (
     celular VARCHAR(20),
     email VARCHAR(200),
     status SMALLINT NOT NULL DEFAULT 1,
+    ativada_em TIMESTAMP,
+    ativada_por INTEGER,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     created_by INTEGER,
     updated_at TIMESTAMP
@@ -254,7 +256,26 @@ COMMENT ON COLUMN public.empresa.fantasia IS 'Nome fantasia / apelido';
 COMMENT ON COLUMN public.empresa.cnpj_cpf IS 'CNPJ ou CPF da empresa';
 COMMENT ON COLUMN public.empresa.inscricao_estadual_identidade IS 'Inscricao estadual (pessoa juridica) ou identidade (pessoa fisica)';
 COMMENT ON COLUMN public.empresa.regime_tributario IS 'Regime tributario: MEI, Simples Nacional, Lucro Presumido, etc.';
-COMMENT ON COLUMN public.empresa.status IS '0-Inativo, 1-Ativo';
+COMMENT ON COLUMN public.empresa.status IS '0-Inativo, 1-Ativo, 2-Pendente de primeiro acesso';
+
+-- ----------------------------------------------------------
+-- empresa_token_acesso: Tokens de primeiro acesso (uso unico)
+-- ----------------------------------------------------------
+CREATE TABLE public.empresa_token_acesso (
+    id SERIAL NOT NULL,
+    empresa_id INTEGER NOT NULL,
+    token_hash VARCHAR(64) NOT NULL,
+    expira_em TIMESTAMP NOT NULL,
+    usado_em TIMESTAMP,
+    revogado_em TIMESTAMP,
+    criado_por INTEGER,
+    criado_em TIMESTAMP NOT NULL DEFAULT NOW()
+);
+ALTER TABLE ONLY public.empresa_token_acesso ADD CONSTRAINT empresa_token_acesso_pk PRIMARY KEY (id);
+ALTER TABLE ONLY public.empresa_token_acesso ADD CONSTRAINT fk_empresa_token_acesso_empresa
+    FOREIGN KEY (empresa_id) REFERENCES public.empresa(id) ON DELETE CASCADE;
+CREATE INDEX idx_empresa_token_acesso_empresa ON public.empresa_token_acesso (empresa_id);
+CREATE INDEX idx_empresa_token_acesso_hash ON public.empresa_token_acesso (token_hash);
 
 -- ----------------------------------------------------------
 -- modulo: Modulos do sistema (GERAL, GESTOR, HORAS, PRODUCAO)
