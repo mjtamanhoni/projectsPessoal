@@ -1205,6 +1205,52 @@ class HorseApiService {
     }
   }
 
+  async listarPadrao(tabela: string, params?: Record<string, unknown>): Promise<unknown[]> {
+    try {
+      const res = await this.api.get(`/padrao/${tabela}`, { params, headers: this.getAuthHeaders() });
+      return res.data as unknown[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarPadrao(tabela: string, items: unknown[]): Promise<unknown> {
+    try {
+      const payload = items.length === 1 ? items[0] : items;
+      const res = await this.api.post(`/padrao/${tabela}`, payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirPadrao(tabela: string, params: Record<string, unknown>): Promise<unknown> {
+    try {
+      const res = await this.api.delete(`/padrao/${tabela}`, { params, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarAplicadosPadrao(empresaID: number): Promise<unknown[]> {
+    try {
+      const res = await this.api.get('/padrao/aplicados', { params: { empresa_id: empresaID }, headers: this.getAuthHeaders() });
+      return res.data as unknown[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async replicarPadrao(data: { empresa_id: number; pacote_id?: number }): Promise<unknown> {
+    try {
+      const res = await this.api.post('/padrao/replicar', data, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarBandeirasCartao(params?: Record<string, unknown>): Promise<unknown[]> {
     try {
       const res = await this.api.get('/bandeiraCartao', { params, headers: this.getAuthHeaders() });

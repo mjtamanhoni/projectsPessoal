@@ -44,6 +44,7 @@ func main() {
 	database.SeedSequences(pool)
 
 	basicCRUD := handlers.NewBasicCRUD(pool)
+	padraoHandler := handlers.NewPadraoHandler(pool)
 	financeiro := &handlers.FinanceiroHandler{Pool: pool, BasicCRUD: basicCRUD}
 	horasHandler := &handlers.HorasHandler{Pool: pool, BasicCRUD: basicCRUD}
 	producao := &handlers.ProducaoHandler{Pool: pool, BasicCRUD: basicCRUD}
@@ -439,12 +440,12 @@ carregar();
 		r.Post("/relatorio-ia/conversas", relatorioIA.ConversaCriar)
 		r.Get("/relatorio-ia/conversaMensagens", relatorioIA.MensagensListar)
 		r.Post("/relatorio-ia/mensagem", relatorioIA.MensagemSalvar)
-	r.Delete("/relatorio-ia/conversa", relatorioIA.ConversaExcluir)
-	r.Get("/relatorio-ia/quota", relatorioIA.Quota)
-	r.Get("/relatorio-ia/llm-config", relatorioIA.LLMConfigGet)
-	r.Put("/relatorio-ia/llm-config", relatorioIA.LLMConfigSalvar)
-	r.Get("/relatorio-ia/llm-key", relatorioIA.LLMKeyGet)
-	r.Get("/relatorio-ia/schema", relatorioIA.Schema)
+		r.Delete("/relatorio-ia/conversa", relatorioIA.ConversaExcluir)
+		r.Get("/relatorio-ia/quota", relatorioIA.Quota)
+		r.Get("/relatorio-ia/llm-config", relatorioIA.LLMConfigGet)
+		r.Put("/relatorio-ia/llm-config", relatorioIA.LLMConfigSalvar)
+		r.Get("/relatorio-ia/llm-key", relatorioIA.LLMKeyGet)
+		r.Get("/relatorio-ia/schema", relatorioIA.Schema)
 
 		// Dashboard
 		r.Get("/dashboard", financeiro.DashboardListar)
@@ -642,6 +643,13 @@ carregar();
 		// Forma Pagamento x Condicao
 		r.Get("/formaPagamentoCondicao", basicCRUD.FormaPagamentoCondicaoListar)
 		r.Post("/formaPagamentoCondicao", basicCRUD.FormaPagamentoCondicaoSalvar)
+
+		// Cadastros padrao (schema padrao) + replicacao
+		r.Get("/padrao/aplicados", padraoHandler.AplicadosListar)
+		r.Post("/padrao/replicar", padraoHandler.Replicar)
+		r.Get("/padrao/{tabela}", padraoHandler.Listar)
+		r.Post("/padrao/{tabela}", padraoHandler.Salvar)
+		r.Delete("/padrao/{tabela}", padraoHandler.Excluir)
 
 		// Migracoes
 		r.Get("/migracoes", handlers.MigracoesListar(pool))

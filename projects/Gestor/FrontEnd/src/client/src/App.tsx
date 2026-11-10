@@ -68,6 +68,8 @@ const CondicoesPagamento = lazy(() => import('@/pages/CondicoesPagamento').then(
 const Help = lazy(() => import('@/pages/Help').then((m) => ({ default: m.Help })));
 const ServerConfigPage = lazy(() => import('@/pages/ServerConfig').then((m) => ({ default: m.ServerConfig })));
 const RelatorioIAPage = lazy(() => import('@/pages/RelatorioIA').then((m) => ({ default: m.RelatorioIA })));
+const PadraoRegistros = lazy(() => import('@/pages/padrao/PadraoRegistros').then((m) => ({ default: m.PadraoRegistros })));
+const PadraoReplicar = lazy(() => import('@/pages/padrao/PadraoReplicar').then((m) => ({ default: m.PadraoReplicar })));
 
 const superadminRoutes = new Set([
   '/modulos',
@@ -76,6 +78,7 @@ const superadminRoutes = new Set([
   '/empresa-modulos',
   '/empresas',
   '/relatorios/cadastros/formularios',
+  '/padrao/replicar',
 ]);
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -160,6 +163,21 @@ export default function App() {
           {routesFor(SHARED, mode) && <Route path="/empresa-modulos" element={<Private><EmpresaModulos /></Private>} />}
           {routesFor(SHARED, mode) && <Route path="/help" element={<Private><Help /></Private>} />}
           {routesFor(SHARED, mode) && <Route path="/relatorio-ia" element={<Private><RelatorioIAPage /></Private>} />}
+          {/* cadastros padrao */}
+          {routesFor(SHARED, mode) && <Route path="/padrao/marcas" element={<Private><PadraoRegistros tabela="marca" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/classificacoes" element={<Private><PadraoRegistros tabela="produto_classificacao" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/insumos" element={<Private><PadraoRegistros tabela="insumo" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/adicionais" element={<Private><PadraoRegistros tabela="adicional" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/adicionais-classificacoes" element={<Private><PadraoRegistros tabela="adicional_produto_classificacao" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/custos-adicionais" element={<Private><PadraoRegistros tabela="custo_adicional_tipo" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/produtos-fabricados" element={<Private><PadraoRegistros tabela="produto_fabricado" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/receitas" element={<Private><PadraoRegistros tabela="receita_ingrediente" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/produtos-adicionais" element={<Private><PadraoRegistros tabela="produto_adicional" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/produtos-venda" element={<Private><PadraoRegistros tabela="produto_venda" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/produtos-venda-itens" element={<Private><PadraoRegistros tabela="produto_venda_item" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/pacotes" element={<Private><PadraoRegistros tabela="pacote" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/pacotes-itens" element={<Private><PadraoRegistros tabela="pacote_item" /></Private>} />}
+          {routesFor(SHARED, mode) && <Route path="/padrao/replicar" element={<Private><PadraoReplicar /></Private>} />}
           {/* gestor */}
           {routesFor(GESTOR, mode) && <Route path="/clientes" element={<Private><Clientes /></Private>} />}
           {routesFor(GESTOR, mode) && <Route path="/fornecedores" element={<Private><Fornecedores /></Private>} />}

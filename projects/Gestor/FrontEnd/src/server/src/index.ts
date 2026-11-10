@@ -62,6 +62,7 @@ import formasPagamentoRoutes from './routes/formas-pagamento';
 import condicoesPagamentoRoutes from './routes/condicoes-pagamento';
 import formasPagamentoCondicoesRoutes from './routes/formas-pagamento-condicoes';
 import relatorioIaRoutes from './routes/relatorioIa';
+import padraoRoutes from './routes/padrao';
 
 const app = express();
 
@@ -211,6 +212,7 @@ app.use('/api/formas-pagamento', formasPagamentoRoutes);
 app.use('/api/condicoes-pagamento', condicoesPagamentoRoutes);
 app.use('/api/formas-pagamento-condicoes', formasPagamentoCondicoesRoutes);
 app.use('/api/relatorio-ia', relatorioIaRoutes);
+app.use('/api/padrao', padraoRoutes);
 
 // APK proxy (stream multipart directly to Go backend)
 app.all('/api/apk*', async (req, res) => {

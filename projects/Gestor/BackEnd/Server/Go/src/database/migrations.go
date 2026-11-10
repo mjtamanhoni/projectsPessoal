@@ -1197,6 +1197,545 @@ var Migracoes = []Migracao{
 				ON public.empresa_token_acesso (token_hash);
 		`,
 	},
+	{
+		Nome: "034_criar_schema_padrao",
+		SQLUp: `
+			-- ==================================================
+			-- Schema padrao: catalogo de dados replicaveis
+			-- As tabelas daqui NAO possuem empresa_id: sao a
+			-- matriz (template) usada para popular empresas.
+			-- O vinculo do que ja foi aplicado fica em
+			-- padrao.empresa_item.
+			-- ==================================================
+			CREATE SCHEMA IF NOT EXISTS padrao;
+
+			CREATE OR REPLACE FUNCTION padrao.tocar_updated_at() RETURNS TRIGGER AS $$
+			BEGIN
+				NEW.updated_at = NOW();
+				RETURN NEW;
+			END;
+			$$ LANGUAGE plpgsql;
+
+			-- ---------- marcas ----------
+			CREATE TABLE IF NOT EXISTS padrao.marca (
+				id SERIAL PRIMARY KEY,
+				codigo VARCHAR(80) NOT NULL UNIQUE,
+				nome VARCHAR(200) NOT NULL,
+				ativo BOOLEAN NOT NULL DEFAULT TRUE,
+				versao INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP
+			);
+
+			-- ---------- classificacao de produtos de venda ----------
+			CREATE TABLE IF NOT EXISTS padrao.produto_classificacao (
+				id SERIAL PRIMARY KEY,
+				codigo VARCHAR(80) NOT NULL UNIQUE,
+				nome VARCHAR(100) NOT NULL,
+				status INTEGER NOT NULL DEFAULT 1,
+				ordem INTEGER NOT NULL DEFAULT 0,
+				versao INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP
+			);
+
+			-- ---------- insumos (materias-primas) ----------
+			CREATE TABLE IF NOT EXISTS padrao.insumo (
+				id SERIAL PRIMARY KEY,
+				codigo VARCHAR(80) NOT NULL UNIQUE,
+				nome VARCHAR(100) NOT NULL,
+				unidade_medida VARCHAR(5) NOT NULL,
+				custo_medio NUMERIC(12,4) NOT NULL DEFAULT 0,
+				marca_id INTEGER REFERENCES padrao.marca(id) ON DELETE SET NULL,
+				ativo BOOLEAN NOT NULL DEFAULT TRUE,
+				status SMALLINT NOT NULL DEFAULT 1,
+				versao INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_padrao_insumo_marca ON padrao.insumo (marca_id);
+
+			-- ---------- adicionais ----------
+			CREATE TABLE IF NOT EXISTS padrao.adicional (
+				id SERIAL PRIMARY KEY,
+				codigo VARCHAR(80) NOT NULL UNIQUE,
+				nome VARCHAR(200) NOT NULL,
+				descricao VARCHAR(500),
+				preco NUMERIC(12,2) NOT NULL DEFAULT 0,
+				ativo BOOLEAN NOT NULL DEFAULT TRUE,
+				versao INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP
+			);
+
+			-- Quais adicionais podem ser usados em cada classificacao
+			CREATE TABLE IF NOT EXISTS padrao.adicional_produto_classificacao (
+				adicional_id INTEGER NOT NULL REFERENCES padrao.adicional(id) ON DELETE CASCADE,
+				produto_classificacao_id INTEGER NOT NULL REFERENCES padrao.produto_classificacao(id) ON DELETE CASCADE,
+				status INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				PRIMARY KEY (adicional_id, produto_classificacao_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_padrao_apc_classificacao
+				ON padrao.adicional_produto_classificacao (produto_classificacao_id);
+
+			-- ---------- tipos de custo adicional de fabricacao ----------
+			CREATE TABLE IF NOT EXISTS padrao.custo_adicional_tipo (
+				id SERIAL PRIMARY KEY,
+				codigo VARCHAR(80) NOT NULL UNIQUE,
+				nome VARCHAR(100) NOT NULL,
+				ativo BOOLEAN NOT NULL DEFAULT TRUE,
+				status SMALLINT NOT NULL DEFAULT 1,
+				versao INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP
+			);
+
+			-- ---------- produto fabricado + receita ----------
+			CREATE TABLE IF NOT EXISTS padrao.produto_fabricado (
+				id SERIAL PRIMARY KEY,
+				codigo VARCHAR(80) NOT NULL UNIQUE,
+				nome VARCHAR(100) NOT NULL,
+				descricao VARCHAR(255),
+				rendimento NUMERIC(12,4),
+				unidade_medida VARCHAR(5) NOT NULL DEFAULT 'un',
+				custo_unitario NUMERIC(12,4) NOT NULL DEFAULT 0,
+				margem_lucro NUMERIC(9,2) NOT NULL DEFAULT 0,
+				valor_venda_sugerido NUMERIC(12,2) NOT NULL DEFAULT 0,
+				preco NUMERIC(12,2),
+				foto VARCHAR(255),
+				ativo BOOLEAN NOT NULL DEFAULT TRUE,
+				status SMALLINT NOT NULL DEFAULT 1,
+				versao INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS padrao.receita_ingrediente (
+				id SERIAL PRIMARY KEY,
+				produto_fabricado_id INTEGER NOT NULL REFERENCES padrao.produto_fabricado(id) ON DELETE CASCADE,
+				insumo_id INTEGER NOT NULL REFERENCES padrao.insumo(id) ON DELETE RESTRICT,
+				quantidade NUMERIC(12,4) NOT NULL,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				UNIQUE (produto_fabricado_id, insumo_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_padrao_ri_insumo ON padrao.receita_ingrediente (insumo_id);
+
+			-- Compatibilidade com o modelo legado produto x adicional
+			CREATE TABLE IF NOT EXISTS padrao.produto_adicional (
+				produto_fabricado_id INTEGER NOT NULL REFERENCES padrao.produto_fabricado(id) ON DELETE CASCADE,
+				adicional_id INTEGER NOT NULL REFERENCES padrao.adicional(id) ON DELETE CASCADE,
+				PRIMARY KEY (produto_fabricado_id, adicional_id)
+			);
+
+			-- ---------- produto de venda ----------
+			CREATE TABLE IF NOT EXISTS padrao.produto_venda (
+				id SERIAL PRIMARY KEY,
+				codigo VARCHAR(80) NOT NULL UNIQUE,
+				nome VARCHAR(200) NOT NULL,
+				descricao TEXT,
+				preco NUMERIC(12,2) NOT NULL DEFAULT 0,
+				produto_fabricado_id INTEGER REFERENCES padrao.produto_fabricado(id) ON DELETE SET NULL,
+				produto_classificacao_id INTEGER REFERENCES padrao.produto_classificacao(id) ON DELETE SET NULL,
+				foto TEXT,
+				ativo BOOLEAN NOT NULL DEFAULT TRUE,
+				versao INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_padrao_pv_fabricado ON padrao.produto_venda (produto_fabricado_id);
+			CREATE INDEX IF NOT EXISTS idx_padrao_pv_classificacao ON padrao.produto_venda (produto_classificacao_id);
+
+			CREATE TABLE IF NOT EXISTS padrao.produto_venda_item (
+				id SERIAL PRIMARY KEY,
+				produto_venda_id INTEGER NOT NULL REFERENCES padrao.produto_venda(id) ON DELETE CASCADE,
+				nome VARCHAR(200) NOT NULL,
+				pode_remover BOOLEAN NOT NULL DEFAULT FALSE,
+				pode_adicionar BOOLEAN NOT NULL DEFAULT FALSE,
+				adicional_id INTEGER REFERENCES padrao.adicional(id) ON DELETE SET NULL,
+				ordem INTEGER NOT NULL DEFAULT 0,
+				ativo BOOLEAN NOT NULL DEFAULT TRUE,
+				UNIQUE (produto_venda_id, nome)
+			);
+			CREATE INDEX IF NOT EXISTS idx_padrao_pvi_adicional ON padrao.produto_venda_item (adicional_id);
+
+			-- ---------- pacotes (ex.: Lanchonete, Pizzaria) ----------
+			CREATE TABLE IF NOT EXISTS padrao.pacote (
+				id SERIAL PRIMARY KEY,
+				codigo VARCHAR(80) NOT NULL UNIQUE,
+				nome VARCHAR(200) NOT NULL,
+				descricao TEXT,
+				ativo BOOLEAN NOT NULL DEFAULT TRUE,
+				versao INTEGER NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP
+			);
+
+			-- Itens genericos de um pacote: tipo identifica a tabela padrao
+			CREATE TABLE IF NOT EXISTS padrao.pacote_item (
+				pacote_id INTEGER NOT NULL REFERENCES padrao.pacote(id) ON DELETE CASCADE,
+				tipo VARCHAR(40) NOT NULL,
+				padrao_id INTEGER NOT NULL,
+				ordem INTEGER NOT NULL DEFAULT 0,
+				PRIMARY KEY (pacote_id, tipo, padrao_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_padrao_pacote_item_ref ON padrao.pacote_item (tipo, padrao_id);
+
+			-- ---------- controle de replicacao por empresa ----------
+			-- tipo = nome da tabela padrao (ex.: 'produto_venda')
+			-- padrao_id = id na tabela padrao
+			-- registro_id = id gerado na tabela da empresa
+			CREATE TABLE IF NOT EXISTS padrao.empresa_item (
+				id BIGSERIAL PRIMARY KEY,
+				empresa_id INTEGER NOT NULL REFERENCES public.empresa(id) ON DELETE CASCADE,
+				tipo VARCHAR(40) NOT NULL,
+				padrao_id INTEGER NOT NULL,
+				registro_id INTEGER NOT NULL,
+				versao_aplicada INTEGER NOT NULL DEFAULT 1,
+				aplicado_em TIMESTAMP NOT NULL DEFAULT NOW(),
+				UNIQUE (empresa_id, tipo, padrao_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_padrao_empresa_item_empresa ON padrao.empresa_item (empresa_id);
+			CREATE INDEX IF NOT EXISTS idx_padrao_empresa_item_ref ON padrao.empresa_item (tipo, padrao_id);
+
+			-- ---------- triggers de updated_at ----------
+			DROP TRIGGER IF EXISTS trg_padrao_marca_updated ON padrao.marca;
+			CREATE TRIGGER trg_padrao_marca_updated BEFORE UPDATE ON padrao.marca
+				FOR EACH ROW EXECUTE FUNCTION padrao.tocar_updated_at();
+
+			DROP TRIGGER IF EXISTS trg_padrao_classificacao_updated ON padrao.produto_classificacao;
+			CREATE TRIGGER trg_padrao_classificacao_updated BEFORE UPDATE ON padrao.produto_classificacao
+				FOR EACH ROW EXECUTE FUNCTION padrao.tocar_updated_at();
+
+			DROP TRIGGER IF EXISTS trg_padrao_insumo_updated ON padrao.insumo;
+			CREATE TRIGGER trg_padrao_insumo_updated BEFORE UPDATE ON padrao.insumo
+				FOR EACH ROW EXECUTE FUNCTION padrao.tocar_updated_at();
+
+			DROP TRIGGER IF EXISTS trg_padrao_adicional_updated ON padrao.adicional;
+			CREATE TRIGGER trg_padrao_adicional_updated BEFORE UPDATE ON padrao.adicional
+				FOR EACH ROW EXECUTE FUNCTION padrao.tocar_updated_at();
+
+			DROP TRIGGER IF EXISTS trg_padrao_custo_tipo_updated ON padrao.custo_adicional_tipo;
+			CREATE TRIGGER trg_padrao_custo_tipo_updated BEFORE UPDATE ON padrao.custo_adicional_tipo
+				FOR EACH ROW EXECUTE FUNCTION padrao.tocar_updated_at();
+
+			DROP TRIGGER IF EXISTS trg_padrao_produto_fabricado_updated ON padrao.produto_fabricado;
+			CREATE TRIGGER trg_padrao_produto_fabricado_updated BEFORE UPDATE ON padrao.produto_fabricado
+				FOR EACH ROW EXECUTE FUNCTION padrao.tocar_updated_at();
+
+			DROP TRIGGER IF EXISTS trg_padrao_produto_venda_updated ON padrao.produto_venda;
+			CREATE TRIGGER trg_padrao_produto_venda_updated BEFORE UPDATE ON padrao.produto_venda
+				FOR EACH ROW EXECUTE FUNCTION padrao.tocar_updated_at();
+
+			DROP TRIGGER IF EXISTS trg_padrao_pacote_updated ON padrao.pacote;
+			CREATE TRIGGER trg_padrao_pacote_updated BEFORE UPDATE ON padrao.pacote
+				FOR EACH ROW EXECUTE FUNCTION padrao.tocar_updated_at();
+		`,
+	},
+	{
+		Nome: "035_seed_padrao_lanchonete",
+		SQLUp: `
+			-- ==================================================
+			-- Catalogo padrao: pacote Lanchonete
+			-- Idempotente: usa ON CONFLICT nas chaves naturais.
+			-- Nao cria modulo: o usuario cria "Cadastros Padrao"
+			-- e associa os formularios pela interface.
+			-- ==================================================
+
+			-- ---------- formularios ----------
+			DO $$
+			DECLARE
+				v_nome TEXT;
+				v_id INTEGER;
+			BEGIN
+				FOREACH v_nome IN ARRAY ARRAY[
+					'Marcas Padrao',
+					'Classificacoes Padrao',
+					'Insumos Padrao',
+					'Adicionais Padrao',
+					'Adicionais x Classificacao Padrao',
+					'Custos Adicionais Padrao',
+					'Produtos Fabricados Padrao',
+					'Receitas Padrao',
+					'Produtos x Adicionais Padrao',
+					'Produtos Venda Padrao',
+					'Itens Produto Venda Padrao',
+					'Pacotes Padrao',
+					'Itens Pacote Padrao',
+					'Replicar Cadastros Padrao'
+				] LOOP
+					IF NOT EXISTS (SELECT 1 FROM public.formulario WHERE nome = v_nome) THEN
+						SELECT COALESCE(MAX(id), 0) + 1 INTO v_id FROM public.formulario;
+						INSERT INTO public.formulario (id, nome) VALUES (v_id, v_nome);
+					END IF;
+				END LOOP;
+
+				SELECT setval(pg_get_serial_sequence('public.formulario', 'id'), COALESCE(MAX(id), 1))
+					INTO v_id FROM public.formulario;
+			END $$;
+
+			-- ---------- marcas ----------
+			INSERT INTO padrao.marca (codigo, nome) VALUES
+				('MARCA_PROPRIA', 'Marca Propria'),
+				('SEARA', 'Seara'),
+				('PERDIGAO', 'Perdigao'),
+				('PIACENTINI', 'Piacentini'),
+				('HELLMANNS', 'Hellmanns'),
+				('COCA_COLA', 'Coca-Cola'),
+				('GUARANA_ANTARCTICA', 'Guarana Antarctica'),
+				('FANTA', 'Fanta')
+			ON CONFLICT (codigo) DO NOTHING;
+
+			-- ---------- classificacoes de produto de venda ----------
+			INSERT INTO padrao.produto_classificacao (codigo, nome, ordem) VALUES
+				('LANCHE', 'Lanches', 1),
+				('PORCAO', 'Porcoes', 2),
+				('BEBIDA', 'Bebidas', 3),
+				('SOBREMESA', 'Sobremesas', 4),
+				('COMBO', 'Combos', 5)
+			ON CONFLICT (codigo) DO NOTHING;
+
+			-- ---------- insumos ----------
+			INSERT INTO padrao.insumo (codigo, nome, unidade_medida, custo_medio, marca_id)
+			SELECT v.codigo, v.nome, v.un, v.custo, m.id
+			FROM (VALUES
+				('IN_PAO_BURGER', 'Pao de Hamburguer', 'un', 1.20, 'MARCA_PROPRIA'),
+				('IN_PAO_HOTDOG', 'Pao de Hot Dog', 'un', 0.90, 'MARCA_PROPRIA'),
+				('IN_CARNE_BOVINA', 'Carne Bovina Moida', 'kg', 38.00, 'SEARA'),
+				('IN_CARNE_FRANGO', 'Peito de Frango', 'kg', 22.00, 'SEARA'),
+				('IN_QUEIJO_MUSSARELA', 'Queijo Mussarela', 'kg', 45.00, 'PIACENTINI'),
+				('IN_QUEIJO_CHEDDAR', 'Queijo Cheddar', 'kg', 48.00, 'PIACENTINI'),
+				('IN_PRESUNTO', 'Presunto', 'kg', 32.00, 'PERDIGAO'),
+				('IN_BACON', 'Bacon', 'kg', 42.00, 'SEARA'),
+				('IN_ALFACE', 'Alface', 'un', 2.50, 'MARCA_PROPRIA'),
+				('IN_TOMATE', 'Tomate', 'kg', 8.00, 'MARCA_PROPRIA'),
+				('IN_CEBOLA', 'Cebola', 'kg', 6.00, 'MARCA_PROPRIA'),
+				('IN_BATATA', 'Batata Pre-Frita', 'kg', 18.00, 'MARCA_PROPRIA'),
+				('IN_OLEO', 'Oleo de Soja', 'L', 8.00, 'MARCA_PROPRIA'),
+				('IN_MAIONESE', 'Maionese', 'kg', 14.00, 'HELLMANNS'),
+				('IN_KETCHUP', 'Ketchup', 'kg', 12.00, 'HELLMANNS'),
+				('IN_MOSTARDA', 'Mostarda', 'kg', 11.00, 'HELLMANNS'),
+				('IN_SAL', 'Sal Refinado', 'kg', 3.00, 'MARCA_PROPRIA'),
+				('IN_OVO', 'Ovo', 'un', 0.80, 'MARCA_PROPRIA'),
+				('IN_REFRIG_LATA', 'Refrigerante Lata 350ml', 'un', 3.50, 'COCA_COLA'),
+				('IN_AGUA', 'Agua Mineral 500ml', 'un', 1.20, 'MARCA_PROPRIA'),
+				('IN_EMBALAGEM', 'Embalagem para Lanche', 'un', 0.60, 'MARCA_PROPRIA'),
+				('IN_EMBALAGEM_BATATA', 'Embalagem para Batata', 'un', 0.40, 'MARCA_PROPRIA'),
+				('IN_GUARDANAPO', 'Guardanapo', 'un', 0.05, 'MARCA_PROPRIA')
+			) AS v(codigo, nome, un, custo, marca)
+			LEFT JOIN padrao.marca m ON m.codigo = v.marca
+			ON CONFLICT (codigo) DO NOTHING;
+
+			-- ---------- adicionais ----------
+			INSERT INTO padrao.adicional (codigo, nome, descricao, preco) VALUES
+				('AD_BACON', 'Bacon Extra', 'Fatias de bacon crocante', 6.00),
+				('AD_CHEDDAR', 'Cheddar Extra', 'Queijo cheddar derretido', 5.00),
+				('AD_CATUPIRY', 'Catupiry', 'Requeijao cremoso', 5.00),
+				('AD_OVO', 'Ovo Frito', 'Ovo frito', 3.00),
+				('AD_PRESUNTO', 'Presunto Extra', 'Fatias de presunto', 4.00),
+				('AD_QUEIJO', 'Queijo Extra', 'Fatia extra de mussarela', 4.00),
+				('AD_CARNE', 'Carne Extra', 'Hamburguer extra', 8.00),
+				('AD_BATATA_PALHA', 'Batata Palha', 'Porcao de batata palha', 3.50),
+				('AD_ONION', 'Cebola Caramelizada', 'Cebola caramelizada', 4.00)
+			ON CONFLICT (codigo) DO NOTHING;
+
+			-- ---------- adicionais x classificacoes ----------
+			INSERT INTO padrao.adicional_produto_classificacao (adicional_id, produto_classificacao_id, status)
+			SELECT a.id, c.id, 1
+			FROM (VALUES
+				('AD_BACON', 'LANCHE'), ('AD_CHEDDAR', 'LANCHE'), ('AD_CATUPIRY', 'LANCHE'),
+				('AD_OVO', 'LANCHE'), ('AD_PRESUNTO', 'LANCHE'), ('AD_QUEIJO', 'LANCHE'),
+				('AD_CARNE', 'LANCHE'), ('AD_ONION', 'LANCHE'),
+				('AD_BACON', 'COMBO'), ('AD_CHEDDAR', 'COMBO'), ('AD_QUEIJO', 'COMBO'), ('AD_CARNE', 'COMBO'),
+				('AD_BATATA_PALHA', 'PORCAO')
+			) AS v(ad, class)
+			JOIN padrao.adicional a ON a.codigo = v.ad
+			JOIN padrao.produto_classificacao c ON c.codigo = v.class
+			ON CONFLICT DO NOTHING;
+
+			-- ---------- tipos de custo adicional ----------
+			INSERT INTO padrao.custo_adicional_tipo (codigo, nome) VALUES
+				('CUSTO_ENERGIA', 'Energia'),
+				('CUSTO_GAS', 'Gas'),
+				('CUSTO_EMBALAGEM', 'Embalagem'),
+				('CUSTO_FRETE', 'Frete'),
+				('CUSTO_MAO_OBRA', 'Mao de Obra')
+			ON CONFLICT (codigo) DO NOTHING;
+
+			-- ---------- produtos fabricados ----------
+			INSERT INTO padrao.produto_fabricado
+				(codigo, nome, descricao, rendimento, unidade_medida, custo_unitario, margem_lucro, valor_venda_sugerido, preco)
+			VALUES
+				('PF_HAMBURGUER', 'Hamburguer Artesanal', 'Hamburguer bovino 180g', 1.000, 'un', 12.00, 60.00, 19.20, 19.20),
+				('PF_FRANGO', 'Frango Empanado', 'File de frango empanado', 1.000, 'un', 8.00, 60.00, 12.80, 12.80),
+				('PF_MOLHO', 'Molho Especial', 'Molho da casa', 1.000, 'L', 15.00, 50.00, 22.50, 22.50),
+				('PF_CHEDDAR', 'Cheddar Cremoso', 'Cheddar derretido', 1.000, 'kg', 35.00, 60.00, 56.00, 56.00),
+				('PF_BATATA', 'Batata Frita', 'Porcao de batata frita', 1.000, 'un', 6.00, 80.00, 10.80, 10.80)
+			ON CONFLICT (codigo) DO NOTHING;
+
+			-- ---------- receitas ----------
+			INSERT INTO padrao.receita_ingrediente (produto_fabricado_id, insumo_id, quantidade)
+			SELECT pf.id, i.id, v.qtd
+			FROM (VALUES
+				('PF_HAMBURGUER', 'IN_CARNE_BOVINA', 0.180),
+				('PF_HAMBURGUER', 'IN_SAL', 0.002),
+				('PF_HAMBURGUER', 'IN_CEBOLA', 0.010),
+				('PF_FRANGO', 'IN_CARNE_FRANGO', 0.120),
+				('PF_FRANGO', 'IN_SAL', 0.002),
+				('PF_MOLHO', 'IN_MAIONESE', 0.500),
+				('PF_MOLHO', 'IN_KETCHUP', 0.200),
+				('PF_MOLHO', 'IN_MOSTARDA', 0.100),
+				('PF_CHEDDAR', 'IN_QUEIJO_CHEDDAR', 1.000),
+				('PF_BATATA', 'IN_BATATA', 0.300),
+				('PF_BATATA', 'IN_OLEO', 0.050),
+				('PF_BATATA', 'IN_SAL', 0.002)
+			) AS v(pf, ins, qtd)
+			JOIN padrao.produto_fabricado pf ON pf.codigo = v.pf
+			JOIN padrao.insumo i ON i.codigo = v.ins
+			ON CONFLICT (produto_fabricado_id, insumo_id) DO NOTHING;
+
+			-- ---------- produtos fabricados x adicionais ----------
+			INSERT INTO padrao.produto_adicional (produto_fabricado_id, adicional_id)
+			SELECT pf.id, a.id
+			FROM (VALUES
+				('PF_HAMBURGUER', 'AD_BACON'), ('PF_HAMBURGUER', 'AD_CHEDDAR'),
+				('PF_HAMBURGUER', 'AD_QUEIJO'), ('PF_HAMBURGUER', 'AD_CARNE'),
+				('PF_HAMBURGUER', 'AD_OVO'), ('PF_HAMBURGUER', 'AD_ONION'),
+				('PF_FRANGO', 'AD_BACON'), ('PF_FRANGO', 'AD_CHEDDAR'), ('PF_FRANGO', 'AD_QUEIJO'),
+				('PF_BATATA', 'AD_CHEDDAR'), ('PF_BATATA', 'AD_BACON'), ('PF_BATATA', 'AD_BATATA_PALHA')
+			) AS v(pf, ad)
+			JOIN padrao.produto_fabricado pf ON pf.codigo = v.pf
+			JOIN padrao.adicional a ON a.codigo = v.ad
+			ON CONFLICT DO NOTHING;
+
+			-- ---------- produtos de venda ----------
+			INSERT INTO padrao.produto_venda
+				(codigo, nome, descricao, preco, produto_fabricado_id, produto_classificacao_id, ativo)
+			SELECT v.codigo, v.nome, v.descricao, v.preco, pf.id, c.id, TRUE
+			FROM (VALUES
+				('PV_XBURGER', 'X-Burger', 'Pao, hamburguer, queijo e molho especial', 18.90, 'PF_HAMBURGUER', 'LANCHE'),
+				('PV_XSALADA', 'X-Salada', 'Pao, hamburguer, queijo, alface e tomate', 21.90, 'PF_HAMBURGUER', 'LANCHE'),
+				('PV_XBACON', 'X-Bacon', 'Pao, hamburguer, queijo, bacon e molho', 24.90, 'PF_HAMBURGUER', 'LANCHE'),
+				('PV_XTUDO', 'X-Tudo', 'Pao, hamburguer, queijo, presunto, ovo e bacon', 29.90, 'PF_HAMBURGUER', 'LANCHE'),
+				('PV_XFRANGO', 'X-Frango', 'Pao, frango empanado, queijo e molho', 22.90, 'PF_FRANGO', 'LANCHE'),
+				('PV_BATATA', 'Batata Frita', 'Porcao de batata frita', 14.90, 'PF_BATATA', 'PORCAO'),
+				('PV_BATATA_CHEDDAR', 'Batata Cheddar e Bacon', 'Batata com cheddar e bacon', 22.90, 'PF_BATATA', 'PORCAO'),
+				('PV_REFRIG', 'Refrigerante Lata', 'Refrigerante lata 350ml', 5.00, NULL, 'BEBIDA'),
+				('PV_AGUA', 'Agua Mineral', 'Agua mineral 500ml', 3.00, NULL, 'BEBIDA'),
+				('PV_COMBO_XBURGER', 'Combo X-Burger', 'X-Burger + batata + refrigerante', 27.90, 'PF_HAMBURGUER', 'COMBO'),
+				('PV_MILKSHAKE', 'Milkshake', 'Milkshake 400ml', 12.00, NULL, 'SOBREMESA')
+			) AS v(codigo, nome, descricao, preco, pf, class)
+			LEFT JOIN padrao.produto_fabricado pf ON pf.codigo = v.pf
+			LEFT JOIN padrao.produto_classificacao c ON c.codigo = v.class
+			ON CONFLICT (codigo) DO NOTHING;
+
+			-- ---------- itens dos produtos de venda ----------
+			INSERT INTO padrao.produto_venda_item
+				(produto_venda_id, nome, pode_remover, pode_adicionar, adicional_id, ordem, ativo)
+			SELECT pv.id, v.nome, v.remover, v.adicionar, a.id, v.ordem, TRUE
+			FROM (VALUES
+				('PV_XBURGER', 'Pao', TRUE, FALSE, NULL::text, 1),
+				('PV_XBURGER', 'Hamburguer', TRUE, TRUE, 'AD_CARNE', 2),
+				('PV_XBURGER', 'Queijo Mussarela', TRUE, TRUE, 'AD_QUEIJO', 3),
+				('PV_XBURGER', 'Molho Especial', TRUE, FALSE, NULL::text, 4),
+				('PV_XSALADA', 'Pao', TRUE, FALSE, NULL::text, 1),
+				('PV_XSALADA', 'Hamburguer', TRUE, TRUE, 'AD_CARNE', 2),
+				('PV_XSALADA', 'Queijo Mussarela', TRUE, TRUE, 'AD_QUEIJO', 3),
+				('PV_XSALADA', 'Alface', TRUE, FALSE, NULL::text, 4),
+				('PV_XSALADA', 'Tomate', TRUE, FALSE, NULL::text, 5),
+				('PV_XSALADA', 'Molho Especial', TRUE, FALSE, NULL::text, 6),
+				('PV_XBACON', 'Pao', TRUE, FALSE, NULL::text, 1),
+				('PV_XBACON', 'Hamburguer', TRUE, TRUE, 'AD_CARNE', 2),
+				('PV_XBACON', 'Queijo Mussarela', TRUE, TRUE, 'AD_QUEIJO', 3),
+				('PV_XBACON', 'Bacon', TRUE, TRUE, 'AD_BACON', 4),
+				('PV_XBACON', 'Molho Especial', TRUE, FALSE, NULL::text, 5),
+				('PV_XTUDO', 'Pao', TRUE, FALSE, NULL::text, 1),
+				('PV_XTUDO', 'Hamburguer', TRUE, TRUE, 'AD_CARNE', 2),
+				('PV_XTUDO', 'Queijo Mussarela', TRUE, TRUE, 'AD_QUEIJO', 3),
+				('PV_XTUDO', 'Presunto', TRUE, TRUE, 'AD_PRESUNTO', 4),
+				('PV_XTUDO', 'Ovo', TRUE, TRUE, 'AD_OVO', 5),
+				('PV_XTUDO', 'Bacon', TRUE, TRUE, 'AD_BACON', 6),
+				('PV_XTUDO', 'Molho Especial', TRUE, FALSE, NULL::text, 7),
+				('PV_XFRANGO', 'Pao', TRUE, FALSE, NULL::text, 1),
+				('PV_XFRANGO', 'Frango Empanado', TRUE, TRUE, NULL::text, 2),
+				('PV_XFRANGO', 'Queijo Mussarela', TRUE, TRUE, 'AD_QUEIJO', 3),
+				('PV_XFRANGO', 'Molho Especial', TRUE, FALSE, NULL::text, 4),
+				('PV_BATATA', 'Batata Frita', FALSE, TRUE, NULL::text, 1),
+				('PV_BATATA_CHEDDAR', 'Batata Frita', FALSE, TRUE, NULL::text, 1),
+				('PV_BATATA_CHEDDAR', 'Cheddar Cremoso', FALSE, TRUE, 'AD_CHEDDAR', 2),
+				('PV_BATATA_CHEDDAR', 'Bacon', FALSE, TRUE, 'AD_BACON', 3),
+				('PV_REFRIG', 'Refrigerante Lata', FALSE, FALSE, NULL::text, 1),
+				('PV_AGUA', 'Agua Mineral', FALSE, FALSE, NULL::text, 1),
+				('PV_COMBO_XBURGER', 'X-Burger', TRUE, FALSE, NULL::text, 1),
+				('PV_COMBO_XBURGER', 'Batata Frita', TRUE, FALSE, NULL::text, 2),
+				('PV_COMBO_XBURGER', 'Refrigerante Lata', TRUE, FALSE, NULL::text, 3),
+				('PV_MILKSHAKE', 'Milkshake', FALSE, FALSE, NULL::text, 1)
+			) AS v(pv, nome, remover, adicionar, ad, ordem)
+			JOIN padrao.produto_venda pv ON pv.codigo = v.pv
+			LEFT JOIN padrao.adicional a ON a.codigo = v.ad
+			ON CONFLICT (produto_venda_id, nome) DO NOTHING;
+
+			-- ---------- pacote ----------
+			INSERT INTO padrao.pacote (codigo, nome, descricao) VALUES
+				('PAC_LANCHONETE', 'Lanchonete', 'Cadastros base para lanchonetes')
+			ON CONFLICT (codigo) DO NOTHING;
+
+			-- ---------- itens do pacote ----------
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'marca', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.marca x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'produto_classificacao', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.produto_classificacao x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'insumo', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.insumo x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'adicional', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.adicional x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'custo_adicional_tipo', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.custo_adicional_tipo x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'produto_fabricado', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.produto_fabricado x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'receita_ingrediente', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.receita_ingrediente x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'produto_venda', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.produto_venda x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO padrao.pacote_item (pacote_id, tipo, padrao_id, ordem)
+			SELECT p.id, 'produto_venda_item', x.id, ROW_NUMBER() OVER (ORDER BY x.id)
+			FROM padrao.pacote p CROSS JOIN padrao.produto_venda_item x
+			WHERE p.codigo = 'PAC_LANCHONETE'
+			ON CONFLICT DO NOTHING;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {
