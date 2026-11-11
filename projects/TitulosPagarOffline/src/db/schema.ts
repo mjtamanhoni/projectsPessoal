@@ -1,0 +1,51 @@
+export const SCHEMA_VERSION = 1;
+
+export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS app_config (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  nome TEXT NOT NULL DEFAULT '',
+  empresa TEXT NOT NULL DEFAULT '',
+  cnpj TEXT NOT NULL DEFAULT '',
+  chave_pix TEXT NOT NULL DEFAULT '',
+  pin_hash TEXT,
+  pin_salt TEXT,
+  pin_iter INTEGER NOT NULL DEFAULT 120000,
+  pin_len INTEGER NOT NULL DEFAULT 4,
+  biometria INTEGER NOT NULL DEFAULT 0,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+INSERT OR IGNORE INTO app_config (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS titulo (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  credor TEXT NOT NULL,
+  descricao TEXT,
+  numero_documento TEXT,
+  chave_pix TEXT,
+  parcela INTEGER NOT NULL DEFAULT 1 CHECK (parcela >= 1),
+  valor_total_centavos INTEGER NOT NULL CHECK (valor_total_centavos > 0),
+  data_emissao TEXT NOT NULL,
+  data_vencimento TEXT NOT NULL,
+  cancelado_em TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK (data_vencimento >= data_emissao)
+);
+
+CREATE INDEX IF NOT EXISTS idx_titulo_vencimento ON titulo (data_vencimento);
+CREATE INDEX IF NOT EXISTS idx_titulo_credor ON titulo (credor);
+
+CREATE TABLE IF NOT EXISTS pagamento (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  titulo_id INTEGER NOT NULL REFERENCES titulo (id) ON DELETE CASCADE,
+  data_pagamento TEXT NOT NULL,
+  valor_centavos INTEGER NOT NULL CHECK (valor_centavos > 0),
+  forma TEXT NOT NULL DEFAULT 'PIX',
+  observacao TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_pagamento_titulo ON pagamento (titulo_id);
+`;

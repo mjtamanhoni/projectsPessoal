@@ -75,3 +75,12 @@ projects/Gestor_Backup_*/
 !projects/Gestor/Mobile/TitulosPagar/Logomarca/*.jpeg
 !projects/Gestor/FrontEnd/src/server/database/*.sql
 !projects/Gestor/BackEnd/Server/src/*.sql
+
+# ============================================
+# Titulos a Pagar Offline (app independente)
+# ============================================
+!projects/TitulosPagarOffline/.gitignore
+!projects/TitulosPagarOffline/**/.gitignore
+!projects/TitulosPagarOffline/**/*.bat
+!projects/TitulosPagarOffline/**/*.ps1
+!projects/TitulosPagarOffline/**/*.png
