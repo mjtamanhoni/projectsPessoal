@@ -9,7 +9,7 @@ import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
 import { TituloPagarForm, type TituloPagarFormData } from '@/components/forms/TituloPagarForm';
 import { PagamentoTituloForm, type PagamentoTituloFormData } from '@/components/forms/PagamentoTituloForm';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { saldoDoTitulo, statusDoTitulo } from '@/lib/titulosPagar';
+import { saldoDoTitulo, statusDoTitulo, tituloAtrasado, tituloEmAberto } from '@/lib/titulosPagar';
 import type { PrintColumn } from '@/lib/cadastro-pdf';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
@@ -18,11 +18,27 @@ import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
 import { RelatorioTitulosPagar } from '@/components/reports/RelatorioTitulosPagar';
 import { PrintButton } from '@/components/ui/PrintButton';
-import { Plus, Menu, Trash2, CircleDollarSign, RefreshCw, FileText, Wallet } from 'lucide-react';
+import { Plus, Menu, Trash2, CircleDollarSign, RefreshCw, FileText, Wallet, AlertTriangle } from 'lucide-react';
 import { RowActions } from '@/components/ui/RowActions';
 import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell,
+} from 'recharts';
 
 const columnHelper = createColumnHelper<TituloPagar>();
+
+const chartTooltipStyle = {
+  contentStyle: { backgroundColor: '#FFFFFF', border: '1px solid #D6DDD0', borderRadius: '8px', fontSize: 12 },
+};
+
+function formatCurrencyCompact(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
+}
 
 const printColumns: PrintColumn[] = [
   { header: 'Credor', accessor: (row) => String(row.credor ?? '') },
@@ -79,7 +95,35 @@ export function TitulosPagar() {
   const totais = useMemo(() => {
     const totalTitulos = titulos.reduce((acc, titulo) => acc + Number(titulo.valorTotal ?? 0), 0);
     const totalPago = titulos.reduce((acc, titulo) => acc + Number(titulo.totalPago ?? 0), 0);
-    return { totalTitulos, totalPago, saldo: totalTitulos - totalPago };
+    const atrasados = titulos.filter(tituloAtrasado);
+    const totalAtrasado = atrasados.reduce((acc, titulo) => acc + saldoDoTitulo(titulo), 0);
+    return { totalTitulos, totalPago, saldo: totalTitulos - totalPago, totalAtrasado, qtdAtrasados: atrasados.length };
+  }, [titulos]);
+
+  const comparativo = useMemo(() => [
+    { nome: 'Total de Títulos', valor: totais.totalTitulos, cor: '#DC2626' },
+    { nome: 'Total Pago', valor: totais.totalPago, cor: '#16A34A' },
+  ], [totais]);
+
+  const mensal = useMemo(() => {
+    const mapa = new Map<string, { total: number; pago: number; emAberto: boolean }>();
+    for (const titulo of titulos) {
+      const [ano, mes] = String(titulo.dataVencimento ?? '').split('T')[0].split('-').map(Number);
+      if (!ano || !mes) continue;
+      const chave = `${ano}-${String(mes).padStart(2, '0')}`;
+      const atual = mapa.get(chave) ?? { total: 0, pago: 0, emAberto: false };
+      atual.total += Number(titulo.valorTotal ?? 0);
+      atual.pago += Number(titulo.totalPago ?? 0);
+      if (tituloEmAberto(titulo)) atual.emAberto = true;
+      mapa.set(chave, atual);
+    }
+    return Array.from(mapa.entries())
+      .filter(([, valor]) => valor.emAberto)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([chave, valor]) => {
+        const [ano, mes] = chave.split('-');
+        return { mesAno: `${mes}/${ano}`, total: valor.total, pago: valor.pago };
+      });
   }, [titulos]);
 
   const fetchPagamentos = useCallback(async (tituloId: number) => {
@@ -406,7 +450,7 @@ export function TitulosPagar() {
         </ShowForPermission>
       </PageHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
         <Card>
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-text-secondary">Total de Títulos a Pagar</p>
@@ -441,6 +485,17 @@ export function TitulosPagar() {
           </p>
           <p className="text-xs text-text-muted mt-1">Títulos a pagar menos pagamentos efetivados</p>
         </Card>
+
+        <Card>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-text-secondary">Total em Atraso</p>
+            <div className="p-2 bg-red-100 rounded-lg">
+              <AlertTriangle size={20} className="text-accent-red" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-accent-red">{formatCurrency(totais.totalAtrasado)}</p>
+          <p className="text-xs text-text-muted mt-1">{totais.qtdAtrasados} título(s) em atraso</p>
+        </Card>
       </div>
 
       <Card>
@@ -463,6 +518,60 @@ export function TitulosPagar() {
           renderSubComponent={renderPagamentos}
         />
       </Card>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+        <Card title="Demonstrativo: Total de Títulos x Total Pago">
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={comparativo} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                <XAxis dataKey="nome" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis
+                  tickFormatter={(value) => formatCurrencyCompact(Number(value))}
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={80}
+                />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} {...chartTooltipStyle} />
+                <Bar dataKey="valor" name="Valor" radius={[6, 6, 0, 0]} maxBarSize={140}>
+                  {comparativo.map((item) => (
+                    <Cell key={item.nome} fill={item.cor} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card title="Demonstrativo Mensal: Total de Títulos x Total Pago">
+          {mensal.length === 0 ? (
+            <div className="h-72 flex items-center justify-center">
+              <p className="text-sm text-text-secondary">Nenhum mês com título em aberto, pendente ou atrasado.</p>
+            </div>
+          ) : (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mensal} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                  <XAxis dataKey="mesAno" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickFormatter={(value) => formatCurrencyCompact(Number(value))}
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={80}
+                  />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} {...chartTooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="total" name="Total de Títulos" fill="#DC2626" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="pago" name="Total Pago" fill="#16A34A" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+      </div>
 
       <Modal
         isOpen={modalOpen}
