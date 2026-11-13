@@ -1736,6 +1736,34 @@ var Migracoes = []Migracao{
 			ON CONFLICT DO NOTHING;
 		`,
 	},
+	{
+		Nome: "036_licenca_titulos_pagar_offline",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.licenca_titulos_pagar (
+				id SERIAL PRIMARY KEY,
+				empresa_id INTEGER NOT NULL DEFAULT 1,
+				cliente VARCHAR(200) NOT NULL,
+				cnpj VARCHAR(20),
+				device VARCHAR(20),
+				plano VARCHAR(30) NOT NULL DEFAULT 'full',
+				key_id VARCHAR(40),
+				token TEXT NOT NULL UNIQUE,
+				emitido_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				expira_em TIMESTAMPTZ,
+				observacoes TEXT,
+				revogado_em TIMESTAMPTZ,
+				revogado_por INTEGER,
+				motivo_revogacao TEXT,
+				criado_por INTEGER,
+				criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			);
+
+			CREATE INDEX IF NOT EXISTS idx_licenca_titulos_pagar_device
+				ON public.licenca_titulos_pagar (device);
+			CREATE INDEX IF NOT EXISTS idx_licenca_titulos_pagar_cnpj
+				ON public.licenca_titulos_pagar (cnpj);
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

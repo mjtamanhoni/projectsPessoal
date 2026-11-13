@@ -1307,6 +1307,33 @@ class HorseApiService {
     }
   }
 
+  async listarLicencasTitulosPagar(): Promise<unknown> {
+    try {
+      const res = await this.api.get('/licencaTitulosPagar', { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async gerarLicencaTitulosPagar(data: Record<string, unknown>): Promise<unknown> {
+    try {
+      const res = await this.api.post('/licencaTitulosPagar', data, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async revogarLicencaTitulosPagar(id: number, motivo?: string): Promise<unknown> {
+    try {
+      const res = await this.api.post('/licencaTitulosPagar/revogar', { id, motivo }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarMigracoes(): Promise<unknown> {
     try {
       const res = await this.api.get('/migracoes', { headers: this.getAuthHeaders() });

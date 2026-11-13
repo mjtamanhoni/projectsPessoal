@@ -43,7 +43,12 @@ func main() {
 
 	database.SeedSequences(pool)
 
+	if err := database.SyncErpEmpresas(pool); err != nil {
+		log.Printf("Aviso: não foi possível sincronizar empresas para o schema erp: %v", err)
+	}
+
 	basicCRUD := handlers.NewBasicCRUD(pool)
+	erpHandler := handlers.NewErpHandler(pool)
 	padraoHandler := handlers.NewPadraoHandler(pool)
 	financeiro := &handlers.FinanceiroHandler{Pool: pool, BasicCRUD: basicCRUD}
 	horasHandler := &handlers.HorasHandler{Pool: pool, BasicCRUD: basicCRUD}
@@ -52,6 +57,11 @@ func main() {
 	relatorioIA := &handlers.RelatorioIAHandler{Pool: pool}
 	testPage := &handlers.TestPageHandler{Pool: pool, Cfg: cfg}
 	apkHandler := handlers.NewAPKHandler(cfg.APKDir)
+	licencaTitulosPagar := handlers.NewLicencaTitulosPagarHandler(
+		pool,
+		cfg.LicencaTitulosPagarPrivateKeyFile,
+		cfg.LicencaTitulosPagarKeyID,
+	)
 	logStore := gestorLogger.New(filepath.Join(cfg.DataDir, "logs"))
 	go func() {
 		logStore.CleanOldLogs()
@@ -379,6 +389,29 @@ carregar();
 		r.Post("/cliente", basicCRUD.ClienteAtualizar)
 		r.Delete("/cliente", basicCRUD.ClienteExcluir)
 
+		// ERP
+		r.Get("/erp/lookups", erpHandler.Lookups)
+		r.Get("/erp/pessoas", erpHandler.PessoasListar)
+		r.Post("/erp/pessoas", erpHandler.PessoaSalvar)
+		r.Get("/erp/pessoas/{id}", erpHandler.PessoaObter)
+		r.Put("/erp/pessoas/{id}", erpHandler.PessoaSalvar)
+		r.Delete("/erp/pessoas/{id}", erpHandler.PessoaExcluir)
+		r.Get("/erp/clientes", erpHandler.ClientesListar)
+		r.Post("/erp/clientes", erpHandler.ClienteSalvar)
+		r.Get("/erp/clientes/{id}", erpHandler.ClienteObter)
+		r.Put("/erp/clientes/{id}", erpHandler.ClienteSalvar)
+		r.Delete("/erp/clientes/{id}", erpHandler.ClienteExcluir)
+		r.Get("/erp/fornecedores", erpHandler.FornecedoresListar)
+		r.Post("/erp/fornecedores", erpHandler.FornecedorSalvar)
+		r.Get("/erp/fornecedores/{id}", erpHandler.FornecedorObter)
+		r.Put("/erp/fornecedores/{id}", erpHandler.FornecedorSalvar)
+		r.Delete("/erp/fornecedores/{id}", erpHandler.FornecedorExcluir)
+		r.Get("/erp/{tabela}", erpHandler.Listar)
+		r.Post("/erp/{tabela}", erpHandler.Salvar)
+		r.Get("/erp/{tabela}/{id}", erpHandler.Obter)
+		r.Put("/erp/{tabela}/{id}", erpHandler.Salvar)
+		r.Delete("/erp/{tabela}/{id}", erpHandler.Excluir)
+
 		// Categoria Pagar
 		r.Get("/categoriaPagar", basicCRUD.CategoriaPagarListar)
 		r.Post("/categoriaPagar", basicCRUD.CategoriaPagarAtualizar)
@@ -659,6 +692,11 @@ carregar();
 		r.Get("/apk", apkHandler.Listar)
 		r.Post("/apk", apkHandler.Upload)
 		r.Delete("/apk/{filename}", apkHandler.Excluir)
+
+		// Licencas do APK Títulos a Pagar offline
+		r.Get("/licencaTitulosPagar", licencaTitulosPagar.Listar)
+		r.Post("/licencaTitulosPagar", licencaTitulosPagar.Gerar)
+		r.Post("/licencaTitulosPagar/revogar", licencaTitulosPagar.Revogar)
 
 	})
 

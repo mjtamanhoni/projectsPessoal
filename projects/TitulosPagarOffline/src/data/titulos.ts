@@ -1,5 +1,6 @@
 import { emTransacao, query, run } from '../db/connection';
 import { formatCurrency, hojeISO } from '../format';
+import { garantirPodeCriarTitulos } from './licenca';
 import type {
   PagamentoEfetuado,
   PagamentoInput,
@@ -139,6 +140,8 @@ export async function salvarTitulo(
   const itens = Array.isArray(dados) ? dados : [dados];
   if (itens.length === 0) return;
   await emTransacao(async () => {
+    const novos = itens.filter((item) => !item.id).length;
+    if (novos > 0) await garantirPodeCriarTitulos(novos);
     for (const item of itens) {
       await salvarUm(item);
     }

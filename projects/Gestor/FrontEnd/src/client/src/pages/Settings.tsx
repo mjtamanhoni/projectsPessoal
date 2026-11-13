@@ -7,7 +7,7 @@ import { fetchSettings, saveSettings } from '@/lib/settings';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import api from '@/lib/api';
 import type { AppSettings, Categoria, Empresa } from '@/types';
-import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search, Download, QrCode, Upload, BookOpen, FileText } from 'lucide-react';
+import { Save, Server, Monitor, Loader2, Trash2, DollarSign, AlertTriangle, Database, CheckCircle, Printer, HardDrive, Play, Check, Search, Download, QrCode, Upload, BookOpen, FileText, KeyRound } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/Spinner';
@@ -15,6 +15,7 @@ import type { ModuleItem } from '@/context/ModuleContext';
 import { useAuth } from '@/context/AuthContext';
 import { gerarGuiaSuperadminPDF } from '@/lib/guia-superadmin';
 import { viewPDF } from '@/lib/pdf';
+import { LicencasMobile } from './LicencasMobile';
 
 interface PortaDetectada {
   nome: string;
@@ -35,7 +36,7 @@ function QRCodeImage({ value, size = 180 }: { value: string; size?: number }) {
 }
 
 
-type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes' | 'instalacao' | 'guia';
+type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes' | 'instalacao' | 'guia' | 'licencas';
 
 export function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -65,7 +66,7 @@ export function Settings() {
   const [uploadingAPK, setUploadingAPK] = useState(false);
   const [excluindoAPK, setExcluindoAPK] = useState<string | null>(null);
   const { addToast } = useToast();
-  const { isSuperadmin } = useAuth();
+  const { isSuperadmin, empresa } = useAuth();
 
   useEffect(() => {
     fetchSettings()
@@ -105,10 +106,16 @@ export function Settings() {
   }, [tab]);
 
   useEffect(() => {
-    if (!isSuperadmin && (tab === 'limpeza' || tab === 'migracoes' || tab === 'instalacao' || tab === 'guia')) {
+    const somenteSuperadmin =
+      tab === 'limpeza' || tab === 'migracoes' || tab === 'instalacao' || tab === 'guia';
+    if (!isSuperadmin && somenteSuperadmin) {
+      setTab('servidor');
+      return;
+    }
+    if (tab === 'licencas' && !(isSuperadmin && empresa?.id === 1)) {
       setTab('servidor');
     }
-  }, [isSuperadmin, tab]);
+  }, [isSuperadmin, empresa?.id, tab]);
 
   useEffect(() => {
     if (tab === 'impressao') {
@@ -223,6 +230,9 @@ export function Settings() {
     ...(isSuperadmin ? [{ key: 'migracoes' as Tab, label: 'Banco de Dados', icon: <HardDrive size={16} /> }] : []),
     ...(isSuperadmin ? [{ key: 'instalacao' as Tab, label: 'Instalação do App', icon: <Download size={16} /> }] : []),
     ...(isSuperadmin ? [{ key: 'guia' as Tab, label: 'Guia Superadmin', icon: <BookOpen size={16} /> }] : []),
+    ...(isSuperadmin && empresa?.id === 1
+      ? [{ key: 'licencas' as Tab, label: 'Licenças Mobile', icon: <KeyRound size={16} /> }]
+      : []),
   ];
 
   return (
@@ -1134,6 +1144,8 @@ export function Settings() {
           </>
         )}
 
+        {tab === 'licencas' && <LicencasMobile />}
+
         {tab === 'guia' && (
           <div className="space-y-6">
             <Card>
@@ -1372,7 +1384,7 @@ export function Settings() {
           </div>
         )}
 
-        {tab !== 'guia' && (
+        {tab !== 'guia' && tab !== 'licencas' && (
         <div className="flex justify-end pt-2">
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}

@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { LockProvider, useLock } from './security/LockProvider';
 import { ConfigProvider } from './security/ConfigProvider';
+import { LicenseProvider } from './security/LicenseProvider';
 import { SplashScreen } from './components/SplashScreen';
 import { Lock } from './pages/Lock';
 import { Dashboard } from './pages/Dashboard';
@@ -66,7 +67,9 @@ export default function App() {
   return (
     <LockProvider>
       <ConfigProvider>
-        <AppShell />
+        <LicenseProvider>
+          <AppShell />
+        </LicenseProvider>
       </ConfigProvider>
     </LockProvider>
   );

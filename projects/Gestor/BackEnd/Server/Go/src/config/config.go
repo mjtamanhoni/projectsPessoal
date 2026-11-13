@@ -8,16 +8,18 @@ import (
 )
 
 type Config struct {
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	ServerPort string
-	JWTSecret  string
-	DataDir    string
-	FotosDir   string
-	APKDir     string
+	DBHost                            string
+	DBPort                            string
+	DBUser                            string
+	DBPassword                        string
+	DBName                            string
+	ServerPort                        string
+	JWTSecret                         string
+	DataDir                           string
+	FotosDir                          string
+	APKDir                            string
+	LicencaTitulosPagarPrivateKeyFile string
+	LicencaTitulosPagarKeyID          string
 }
 
 func Load() *Config {
@@ -36,16 +38,18 @@ func Load() *Config {
 	}
 
 	return &Config{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: dbPassword,
-		DBName:     getEnv("DB_NAME", "gestor"),
-		ServerPort: getEnv("SERVER_PORT", "9000"),
-		JWTSecret:  jwtSecret,
-		DataDir:    getEnv("DATA_DIR", "data"),
-		FotosDir:   getEnv("FOTOS_DIR", "../Fotos"),
-		APKDir:     getEnv("APK_DIR", "../apk"),
+		DBHost:                            getEnv("DB_HOST", "localhost"),
+		DBPort:                            getEnv("DB_PORT", "5432"),
+		DBUser:                            getEnv("DB_USER", "postgres"),
+		DBPassword:                        dbPassword,
+		DBName:                            getEnv("DB_NAME", "gestor"),
+		ServerPort:                        getEnv("SERVER_PORT", "9000"),
+		JWTSecret:                         jwtSecret,
+		DataDir:                           getEnv("DATA_DIR", "data"),
+		FotosDir:                          getEnv("FOTOS_DIR", "../Fotos"),
+		APKDir:                            getEnv("APK_DIR", "../apk"),
+		LicencaTitulosPagarPrivateKeyFile: getEnv("LICENCA_TITULOS_PAGAR_PRIVATE_KEY_FILE", ""),
+		LicencaTitulosPagarKeyID:          getEnv("LICENCA_TITULOS_PAGAR_KEY_ID", "2026-01"),
 	}
 }
 

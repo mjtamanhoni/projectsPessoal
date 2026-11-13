@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ReceiptIcon } from './Icons';
 
 interface Props {
   onFinalizar: () => void;
@@ -36,7 +35,7 @@ export function SplashScreen({ onFinalizar }: Props) {
 
       <div className="splash-brand">
         <span className="splash-brand-mark">
-          <ReceiptIcon size={18} />
+          <img src="/logo-icon.png" alt="" />
         </span>
         <span>Títulos a Pagar</span>
       </div>

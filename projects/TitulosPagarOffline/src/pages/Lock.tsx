@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { VERSAO_APP, limparDados, removerPin } from '../data';
 import { useLock } from '../security/LockProvider';
 import { Modal } from '../components/Modal';
-import { CheckIcon, ReceiptIcon } from '../components/Icons';
+import { CheckIcon } from '../components/Icons';
 
 type Etapa = 'pin' | 'confirmar';
 
@@ -131,8 +131,8 @@ export function Lock() {
       <div className="screen-glow" />
 
       <header className="login-header">
-        <div className="brand-mark">
-          <ReceiptIcon size={34} />
+        <div className="brand-mark brand-logo">
+          <img src="/logo-icon.png" alt="Títulos a Pagar" />
         </div>
         <h1>Títulos a Pagar</h1>
         <p>

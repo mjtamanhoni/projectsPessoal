@@ -48,4 +48,23 @@ CREATE TABLE IF NOT EXISTS pagamento (
 );
 
 CREATE INDEX IF NOT EXISTS idx_pagamento_titulo ON pagamento (titulo_id);
+
+CREATE TABLE IF NOT EXISTS dispositivo (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  codigo TEXT NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS licenca (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  token TEXT NOT NULL,
+  plano TEXT NOT NULL,
+  cliente TEXT,
+  cnpj TEXT,
+  device TEXT,
+  key_id TEXT,
+  emitido_em TEXT,
+  expira_em TEXT,
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;

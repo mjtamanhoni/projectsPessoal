@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
+  LimiteLicencaError,
   excluirTitulo,
   extrairErro,
   listarPagamentos,
@@ -12,6 +14,7 @@ import {
   type TituloPagarInput,
 } from '../data';
 import { useConfig } from '../security/ConfigProvider';
+import { useLicense } from '../security/LicenseProvider';
 import {
   MESES,
   formatCurrency,
@@ -58,7 +61,9 @@ function podePagar(titulo: TituloPagar): boolean {
 }
 
 export function Titulos() {
+  const navigate = useNavigate();
   const { config } = useConfig();
+  const { status: licenca, recarregar: recarregarLicenca } = useLicense();
   const [titulos, setTitulos] = useState<TituloPagar[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -67,6 +72,7 @@ export function Titulos() {
   const [mes, setMes] = useState('');
   const [ano, setAno] = useState('');
   const [novoAberto, setNovoAberto] = useState(false);
+  const [limiteAberto, setLimiteAberto] = useState(false);
   const [editarTitulo, setEditarTitulo] = useState<TituloPagar | null>(null);
   const [excluirAlvo, setExcluirAlvo] = useState<TituloPagar | null>(null);
   const [excluindo, setExcluindo] = useState(false);
@@ -103,6 +109,10 @@ export function Titulos() {
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  useEffect(() => {
+    void recarregarLicenca();
+  }, [recarregarLicenca]);
 
   useEffect(() => {
     if (!historicoTitulo?.id) return;
@@ -172,13 +182,28 @@ export function Titulos() {
     }));
   }, [listaFiltrada]);
 
+  const abrirNovoTitulo = () => {
+    if (licenca && !licenca.podeCriar) {
+      setLimiteAberto(true);
+      return;
+    }
+    setNovoAberto(true);
+  };
+
   const cadastrarTitulo = async (data: TituloPagarInput[]) => {
     try {
       await salvarTitulo(data);
       setNovoAberto(false);
-      notificar('ok', data.length > 1 ? `${data.length} parcelas cadastradas com sucesso.` : 'Título cadastrado com sucesso.');
+      notificar('ok', data.length > 1 ? `${data.length} parcelas cadastradas com sucesso.` : 'T�tulo cadastrado com sucesso.');
       await carregar();
+      await recarregarLicenca();
     } catch (e) {
+      if (e instanceof LimiteLicencaError) {
+        setNovoAberto(false);
+        setLimiteAberto(true);
+        await recarregarLicenca();
+        return;
+      }
       notificar('error', extrairErro(e));
       throw e;
     }
@@ -188,8 +213,9 @@ export function Titulos() {
     try {
       await salvarTitulo(data);
       setEditarTitulo(null);
-      notificar('ok', 'Título atualizado com sucesso.');
+      notificar('ok', 'T�tulo atualizado com sucesso.');
       await carregar();
+      await recarregarLicenca();
     } catch (e) {
       notificar('error', extrairErro(e));
       throw e;
@@ -202,8 +228,9 @@ export function Titulos() {
     try {
       await excluirTitulo(excluirAlvo.id);
       setExcluirAlvo(null);
-      notificar('ok', 'Título excluído com sucesso.');
+      notificar('ok', 'T�tulo exclu�do com sucesso.');
       await carregar();
+      await recarregarLicenca();
     } catch (e) {
       notificar('error', extrairErro(e));
     } finally {
@@ -265,6 +292,29 @@ export function Titulos() {
             {titulos.length} {titulos.length === 1 ? 'título' : 'títulos'} cadastrados
           </span>
         </div>
+
+        {licenca && licenca.plano !== 'full' && (
+          <div className={`license-notice${licenca.podeCriar ? '' : ' blocked'}`}>
+            <div>
+              <strong>
+                {licenca.podeCriar
+                  ? 'Demonstração'
+                  : 'Limite da demonstração atingido'}
+              </strong>
+              <span>
+                {licenca.totalTitulos}/{licenca.limiteTotal} títulos •{' '}
+                {licenca.titulosNoMes}/{licenca.limiteMensal} novos neste mês
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => navigate('/configuracoes')}
+            >
+              Ativar
+            </button>
+          </div>
+        )}
 
         <section className="dashboard-filter" aria-label="Filtro por mês e ano">
           <div className="section-heading">
@@ -366,8 +416,8 @@ export function Titulos() {
                 : 'Ajuste a busca ou o filtro para ver outros títulos.'}
             </p>
             {titulos.length === 0 && (
-              <button type="button" className="btn btn-primary" onClick={() => setNovoAberto(true)}>
-                <PlusIcon size={18} /> Novo título
+              <button type="button" className="btn btn-primary" onClick={abrirNovoTitulo}>
+                <PlusIcon size={18} /> Novo t�tulo
               </button>
             )}
           </div>
@@ -493,7 +543,7 @@ export function Titulos() {
         )}
       </main>
 
-      <button type="button" className="fab" onClick={() => setNovoAberto(true)} aria-label="Novo título">
+      <button type="button" className="fab" onClick={abrirNovoTitulo} aria-label="Novo título">
         <PlusIcon size={26} />
       </button>
 
@@ -506,6 +556,44 @@ export function Titulos() {
           onClose={() => setNovoAberto(false)}
         >
           <TituloForm onSubmit={cadastrarTitulo} onCancel={() => setNovoAberto(false)} />
+        </Modal>
+      )}
+
+      {limiteAberto && (
+        <Modal
+          title="Limite da demonstração"
+          subtitle="Ative a licença para cadastrar mais"
+          onClose={() => setLimiteAberto(false)}
+        >
+          <p className="confirm-text">
+            A demonstração permite até {licenca?.limiteTotal ?? 10} títulos não cancelados
+            e {licenca?.limiteMensal ?? 3} novos títulos por mês. Você já tem{' '}
+            {licenca?.totalTitulos ?? 0} títulos e {licenca?.titulosNoMes ?? 0} novos neste
+            mês.
+          </p>
+          <p className="settings-hint">
+            Excluir um título libera uma vaga. Para cadastros ilimitados, ative a licença
+            em Configurações → Licença.
+          </p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setLimiteAberto(false)}
+            >
+              Agora não
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setLimiteAberto(false);
+                navigate('/configuracoes');
+              }}
+            >
+              Ativar licença
+            </button>
+          </div>
         </Modal>
       )}
 

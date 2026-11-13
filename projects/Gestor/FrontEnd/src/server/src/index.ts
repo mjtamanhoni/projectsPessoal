@@ -32,6 +32,7 @@ import marcasRoutes from './routes/marcas';
 import bandeiraCartaoRoutes from './routes/bandeira-cartao';
 import produtoClassificacaoRoutes from './routes/produto-classificacao';
 import migracoesRoutes from './routes/migracoes';
+import licencasRoutes from './routes/licencas';
 import perdasInsumoRoutes from './routes/perdas-insumo';
 import perdasProdutoRoutes from './routes/perdas-produto';
 import usoConsumoRoutes from './routes/uso-consumo';
@@ -63,6 +64,7 @@ import condicoesPagamentoRoutes from './routes/condicoes-pagamento';
 import formasPagamentoCondicoesRoutes from './routes/formas-pagamento-condicoes';
 import relatorioIaRoutes from './routes/relatorioIa';
 import padraoRoutes from './routes/padrao';
+import erpRoutes from './routes/erp';
 
 const app = express();
 
@@ -182,6 +184,7 @@ app.use('/api/marcas', marcasRoutes);
 app.use('/api/bandeiras-cartao', bandeiraCartaoRoutes);
 app.use('/api/produto-classificacao', produtoClassificacaoRoutes);
 app.use('/api/migracoes', migracoesRoutes);
+app.use('/api/licencaTitulosPagar', licencasRoutes);
 app.use('/api/compras-insumo', comprasInsumoRoutes);
 app.use('/api/produtos-fabricados', produtosFabricadosRoutes);
 app.use('/api/receitas-ingredientes', receitasIngredientesRoutes);
@@ -213,6 +216,7 @@ app.use('/api/condicoes-pagamento', condicoesPagamentoRoutes);
 app.use('/api/formas-pagamento-condicoes', formasPagamentoCondicoesRoutes);
 app.use('/api/relatorio-ia', relatorioIaRoutes);
 app.use('/api/padrao', padraoRoutes);
+app.use('/api/erp', erpRoutes);
 
 // APK proxy (stream multipart directly to Go backend)
 app.all('/api/apk*', async (req, res) => {

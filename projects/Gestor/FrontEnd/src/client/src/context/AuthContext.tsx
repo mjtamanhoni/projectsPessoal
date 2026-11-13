@@ -76,12 +76,20 @@ async function fetchEmpresaData(empresaId: number): Promise<Empresa | null> {
   }
 }
 
+const ERP_COMPAT_ROUTES: Record<string, string> = {
+  Clientes: '/erp/clientes',
+  Fornecedores: '/erp/fornecedores',
+};
+
 function buildRotasPermitidas(permissoes: FormularioPermissao[], irrestrito: boolean): string[] {
   if (irrestrito) return [];
   const rotas = new Set<string>();
   for (const form of permissoes) {
     if (formRouteMap[form.nome]) {
       rotas.add(formRouteMap[form.nome]);
+    }
+    if (ERP_COMPAT_ROUTES[form.nome]) {
+      rotas.add(ERP_COMPAT_ROUTES[form.nome]);
     }
   }
   return Array.from(rotas);
