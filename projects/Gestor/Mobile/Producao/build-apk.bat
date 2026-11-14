@@ -64,7 +64,7 @@ if exist "%KEYSTORE%" (
     )
     echo  [info] Usando keytool: !KEYTOOL!
 
-    !KEYTOOL! -genkey -v -keystore "%KEYSTORE%" -alias "%KEY_ALIAS%" -keyalg RSA -keysize 2048 -validity 10000 -storepass "gestor123" -keypass "gestor123" -dname "CN=Gestor, OU=Conesoft, O=Conesoft, L=Cidade, ST=Estado, C=BR" -noprompt
+    !KEYTOOL! -genkey -v -keystore "%KEYSTORE%" -alias "%KEY_ALIAS%" -keyalg RSA -keysize 2048 -validity 10000 -storepass "gestor123" -keypass "gestor123" -dname "CN=Gestor, OU=MJTSystems, O=MJTSystems, L=Cidade, ST=Estado, C=BR" -noprompt
     if !errorlevel! neq 0 (
         echo.
         echo  [error] Falha ao gerar keystore

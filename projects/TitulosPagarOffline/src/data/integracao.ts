@@ -360,7 +360,7 @@ export async function obterPixCobranca(
   const valor = valorCentavos && valorCentavos > 0 ? valorCentavos / 100 : undefined;
   return gerarPayloadPix({
     chave: chaveLimpa,
-    nome: 'CONESOFT',
+    nome: 'MJTSYSTEMS',
     cidade: 'BRASIL',
     valor,
     txid: `LIC${codigo}`.slice(0, 25),

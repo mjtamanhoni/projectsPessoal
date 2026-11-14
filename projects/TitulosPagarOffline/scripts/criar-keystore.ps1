@@ -99,7 +99,7 @@ if ($senha -ne $confirmacao) {
 Write-Host ''
 Write-Host 'Gerando a keystore...'
 
-$dname = 'CN=Titulos a Pagar Offline, OU=Mobile, O=Conesoft, L=BRASIL, ST=BR, C=BR'
+$dname = 'CN=Titulos a Pagar Offline, OU=Mobile, O=MJTSystems, L=BRASIL, ST=BR, C=BR'
 $env:KW_STOREPASS = $senha
 try {
     & $keytool -genkeypair -v `

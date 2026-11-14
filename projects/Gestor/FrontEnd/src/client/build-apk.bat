@@ -88,7 +88,7 @@ if exist "%KEYSTORE%" (
         -validity 10000 ^
         -storepass "gestor123" ^
         -keypass "gestor123" ^
-        -dname "CN=Gestor Financeiro, OU=Conesoft, O=Conesoft, L=Cidade, ST=Estado, C=BR" ^
+        -dname "CN=Gestor Financeiro, OU=MJTSystems, O=MJTSystems, L=Cidade, ST=Estado, C=BR" ^
         -noprompt
     if !errorlevel! neq 0 (
         echo.
