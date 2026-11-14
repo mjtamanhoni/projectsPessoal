@@ -364,6 +364,10 @@ carregar();
 	os.MkdirAll(uploadsDir, 0755)
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
 
+	// Licenciamento offline do APK Titulos a Pagar (endpoint publico do aparelho)
+	r.Post("/licencaTitulosPagar/dispositivos/sincronizar", licencaTitulosPagar.SincronizarDispositivo)
+	r.Post("/licencaTitulosPagar/dispositivos/confirmar", licencaTitulosPagar.ConfirmarEntregaDispositivo)
+
 	// JWT-protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.JWTAuth)
@@ -697,6 +701,10 @@ carregar();
 		r.Get("/licencaTitulosPagar", licencaTitulosPagar.Listar)
 		r.Post("/licencaTitulosPagar", licencaTitulosPagar.Gerar)
 		r.Post("/licencaTitulosPagar/revogar", licencaTitulosPagar.Revogar)
+		r.Get("/licencaTitulosPagar/solicitacoes", licencaTitulosPagar.ListarSolicitacoes)
+		r.Get("/licencaTitulosPagar/solicitacoes/comprovante", licencaTitulosPagar.ComprovanteSolicitacao)
+		r.Post("/licencaTitulosPagar/solicitacoes/liberar", licencaTitulosPagar.LiberarSolicitacao)
+		r.Post("/licencaTitulosPagar/solicitacoes/revogar", licencaTitulosPagar.RevogarSolicitacao)
 
 	})
 

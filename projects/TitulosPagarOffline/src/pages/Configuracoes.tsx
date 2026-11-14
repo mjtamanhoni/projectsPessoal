@@ -16,6 +16,7 @@ import { useConfig } from '../security/ConfigProvider';
 import { useLicense } from '../security/LicenseProvider';
 import { useLock } from '../security/LockProvider';
 import { BottomNav } from '../components/BottomNav';
+import { Desbloqueio } from '../components/Desbloqueio';
 import { Modal } from '../components/Modal';
 import { formatDate, mascaraCpfCnpj } from '../format';
 import {
@@ -545,6 +546,8 @@ export function Configuracoes() {
             </>
           )}
         </section>
+
+        <Desbloqueio />
 
         <section className="settings-card">
           <div className="section-heading">

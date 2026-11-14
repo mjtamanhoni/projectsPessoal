@@ -1764,6 +1764,47 @@ var Migracoes = []Migracao{
 				ON public.licenca_titulos_pagar (cnpj);
 		`,
 	},
+	{
+		Nome: "037_licenca_titulos_pagar_solicitacoes",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.licenca_titulos_pagar_solicitacao (
+				id SERIAL PRIMARY KEY,
+				device VARCHAR(20) NOT NULL UNIQUE,
+				segredo_hash VARCHAR(64) NOT NULL,
+				cliente VARCHAR(200),
+				cnpj VARCHAR(20),
+				app_versao VARCHAR(40),
+				plataforma VARCHAR(30),
+				status VARCHAR(20) NOT NULL DEFAULT 'pendente'
+					CHECK (status IN ('pendente', 'liberada', 'revogada')),
+				token TEXT,
+				licenca_id INTEGER REFERENCES public.licenca_titulos_pagar (id) ON DELETE SET NULL,
+				observacoes TEXT,
+				criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				ultimo_contato_em TIMESTAMPTZ,
+				liberado_em TIMESTAMPTZ,
+				liberado_por INTEGER,
+				entregue_em TIMESTAMPTZ
+			);
+
+			CREATE INDEX IF NOT EXISTS idx_licenca_titulos_pagar_solicitacao_status
+				ON public.licenca_titulos_pagar_solicitacao (status, ultimo_contato_em DESC);
+		`,
+	},
+	{
+		Nome: "038_licenca_titulos_pagar_solicitacao_pagamento",
+		SQLUp: `
+			ALTER TABLE public.licenca_titulos_pagar_solicitacao
+				ADD COLUMN IF NOT EXISTS pix_chave VARCHAR(255),
+				ADD COLUMN IF NOT EXISTS valor_centavos BIGINT,
+				ADD COLUMN IF NOT EXISTS mensagem TEXT,
+				ADD COLUMN IF NOT EXISTS comprovante_base64 TEXT,
+				ADD COLUMN IF NOT EXISTS comprovante_nome VARCHAR(200),
+				ADD COLUMN IF NOT EXISTS comprovante_tipo VARCHAR(60),
+				ADD COLUMN IF NOT EXISTS comprovante_em TIMESTAMPTZ;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

@@ -3,6 +3,7 @@ export * from './erros';
 export * from './titulos';
 export * from './config';
 export * from './licenca';
+export * from './integracao';
 export * from './seguranca';
 export * from './backup';
 

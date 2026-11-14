@@ -61,4 +61,65 @@ router.post('/revogar', async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.get('/solicitacoes', async (_req: AuthRequest, res: Response) => {
+  try {
+    const result = await horseApi.listarSolicitacoesTitulosPagar();
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.get('/solicitacoes/comprovante', async (req: AuthRequest, res: Response) => {
+  try {
+    const id = Number(req.query.id);
+    if (!id || id <= 0) {
+      res.status(400).json({ error: 'Informe o id da solicitação' });
+      return;
+    }
+    const result = await horseApi.obterComprovanteSolicitacaoTitulosPagar(id);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.post('/solicitacoes/liberar', async (req: AuthRequest, res: Response) => {
+  try {
+    const id = Number(req.body?.id);
+    if (!id || id <= 0) {
+      res.status(400).json({ error: 'Informe o id da solicitação' });
+      return;
+    }
+    const result = await horseApi.liberarSolicitacaoTitulosPagar({
+      id,
+      cliente: req.body?.cliente,
+      cnpj: req.body?.cnpj,
+      validade: req.body?.validade,
+      observacoes: req.body?.observacoes,
+    });
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
+router.post('/solicitacoes/revogar', async (req: AuthRequest, res: Response) => {
+  try {
+    const id = Number(req.body?.id);
+    if (!id || id <= 0) {
+      res.status(400).json({ error: 'Informe o id da solicitação' });
+      return;
+    }
+    const result = await horseApi.revogarSolicitacaoTitulosPagar(id);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
 export default router;

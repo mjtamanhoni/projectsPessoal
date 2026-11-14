@@ -1,6 +1,10 @@
 import { emTransacao, query, run } from '../db/connection';
 import { formatCurrency, hojeISO } from '../format';
-import { garantirPodeCriarTitulos } from './licenca';
+import {
+  LimiteLicencaError,
+  garantirPodeCriarTitulos,
+  obterStatusLicenca,
+} from './licenca';
 import type {
   PagamentoEfetuado,
   PagamentoInput,
@@ -152,6 +156,51 @@ export async function excluirTitulo(id: number): Promise<void> {
   await emTransacao(async () => {
     await run('DELETE FROM pagamento WHERE titulo_id = ?', [id]);
     await run('DELETE FROM titulo WHERE id = ?', [id]);
+  });
+}
+
+export async function cancelarTitulo(id: number): Promise<void> {
+  await emTransacao(async () => {
+    const rows = await query<{ cancelado_em: string | null }>(
+      'SELECT cancelado_em FROM titulo WHERE id = ?',
+      [id]
+    );
+    const titulo = rows[0];
+    if (!titulo) throw new Error('Título não encontrado.');
+    if (titulo.cancelado_em) throw new Error('Este título já está cancelado.');
+
+    await run(
+      `UPDATE titulo
+          SET cancelado_em = datetime('now'),
+              atualizado_em = datetime('now')
+        WHERE id = ?`,
+      [id]
+    );
+  });
+}
+
+export async function reativarTitulo(id: number): Promise<void> {
+  await emTransacao(async () => {
+    const rows = await query<{ cancelado_em: string | null }>(
+      'SELECT cancelado_em FROM titulo WHERE id = ?',
+      [id]
+    );
+    const titulo = rows[0];
+    if (!titulo) throw new Error('Título não encontrado.');
+    if (!titulo.cancelado_em) throw new Error('Este título não está cancelado.');
+
+    const status = await obterStatusLicenca();
+    if (status.plano !== 'full' && status.totalTitulos + 1 > (status.limiteTotal ?? 0)) {
+      throw new LimiteLicencaError('total', status);
+    }
+
+    await run(
+      `UPDATE titulo
+          SET cancelado_em = NULL,
+              atualizado_em = datetime('now')
+        WHERE id = ?`,
+      [id]
+    );
   });
 }
 

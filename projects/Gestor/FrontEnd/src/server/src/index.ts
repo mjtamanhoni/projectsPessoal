@@ -184,6 +184,36 @@ app.use('/api/marcas', marcasRoutes);
 app.use('/api/bandeiras-cartao', bandeiraCartaoRoutes);
 app.use('/api/produto-classificacao', produtoClassificacaoRoutes);
 app.use('/api/migracoes', migracoesRoutes);
+
+app.post('/api/licencaTitulosPagar/dispositivos/:acao', async (req, res) => {
+  const acao = req.params.acao;
+  if (acao !== 'sincronizar' && acao !== 'confirmar') {
+    res.status(404).json({ error: 'Rota não encontrada' });
+    return;
+  }
+  try {
+    const upstream = await axios.post(
+      `${config.horseApi.baseUrl}/licencaTitulosPagar/dispositivos/${acao}`,
+      req.body,
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 45000,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      }
+    );
+    res.json(upstream.data);
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      res
+        .status(error.response?.status ?? 502)
+        .json(error.response?.data ?? { error: 'Erro ao comunicar com o servidor' });
+      return;
+    }
+    res.status(502).json({ error: 'Erro ao comunicar com o servidor' });
+  }
+});
+
 app.use('/api/licencaTitulosPagar', licencasRoutes);
 app.use('/api/compras-insumo', comprasInsumoRoutes);
 app.use('/api/produtos-fabricados', produtosFabricadosRoutes);

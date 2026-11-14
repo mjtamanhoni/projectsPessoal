@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LimiteLicencaError,
+  cancelarTitulo,
   excluirTitulo,
   extrairErro,
   listarPagamentos,
   listarTitulos,
+  reativarTitulo,
   salvarPagamento,
   salvarTitulo,
   type PagamentoEfetuado,
@@ -42,13 +44,14 @@ import {
   XIcon,
 } from '../components/Icons';
 
-type Filtro = 'todos' | 'abertos' | 'atrasados' | 'baixados';
+type Filtro = 'todos' | 'abertos' | 'atrasados' | 'baixados' | 'cancelados';
 
 const FILTROS: { id: Filtro; label: string }[] = [
   { id: 'todos', label: 'Todos' },
   { id: 'abertos', label: 'Em aberto' },
   { id: 'atrasados', label: 'Atrasados' },
   { id: 'baixados', label: 'Baixados' },
+  { id: 'cancelados', label: 'Cancelados' },
 ];
 
 function saldoDoTitulo(titulo: TituloPagar): number {
@@ -58,6 +61,11 @@ function saldoDoTitulo(titulo: TituloPagar): number {
 function podePagar(titulo: TituloPagar): boolean {
   const status = (titulo.status || '').toUpperCase();
   return status !== 'QUITADO' && status !== 'CANCELADO' && saldoDoTitulo(titulo) > 0.005;
+}
+
+function podeCancelar(titulo: TituloPagar): boolean {
+  const status = (titulo.status || '').toUpperCase();
+  return status !== 'QUITADO' && status !== 'CANCELADO';
 }
 
 export function Titulos() {
@@ -76,6 +84,8 @@ export function Titulos() {
   const [editarTitulo, setEditarTitulo] = useState<TituloPagar | null>(null);
   const [excluirAlvo, setExcluirAlvo] = useState<TituloPagar | null>(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [cancelarAlvo, setCancelarAlvo] = useState<TituloPagar | null>(null);
+  const [cancelando, setCancelando] = useState(false);
   const [menuAbertoId, setMenuAbertoId] = useState<number | null>(null);
   const [pagamentoTitulo, setPagamentoTitulo] = useState<TituloPagar | null>(null);
   const [historicoTitulo, setHistoricoTitulo] = useState<TituloPagar | null>(null);
@@ -153,6 +163,7 @@ export function Titulos() {
       const status = (titulo.status || '').toUpperCase();
       if (filtro === 'abertos' && (status === 'QUITADO' || status === 'CANCELADO')) return false;
       if (filtro === 'baixados' && status !== 'QUITADO') return false;
+      if (filtro === 'cancelados' && status !== 'CANCELADO') return false;
       if (filtro === 'atrasados') {
         if (status === 'QUITADO' || status === 'CANCELADO') return false;
         if (!isOverdue(titulo.data_vencimento)) return false;
@@ -235,6 +246,35 @@ export function Titulos() {
       notificar('error', extrairErro(e));
     } finally {
       setExcluindo(false);
+    }
+  };
+
+  const confirmarCancelamento = async () => {
+    if (!cancelarAlvo?.id) return;
+    setCancelando(true);
+    try {
+      await cancelarTitulo(cancelarAlvo.id);
+      setCancelarAlvo(null);
+      notificar('ok', 'Título cancelado. Ele não conta mais nos limites da demonstração.');
+      await carregar();
+      await recarregarLicenca();
+    } catch (e) {
+      notificar('error', extrairErro(e));
+    } finally {
+      setCancelando(false);
+    }
+  };
+
+  const reativar = async (titulo: TituloPagar) => {
+    if (!titulo.id) return;
+    setMenuAbertoId(null);
+    try {
+      await reativarTitulo(titulo.id);
+      notificar('ok', 'Título reativado.');
+      await carregar();
+      await recarregarLicenca();
+    } catch (e) {
+      notificar('error', extrairErro(e));
     }
   };
 
@@ -468,23 +508,13 @@ export function Titulos() {
                             <button
                               type="button"
                               role="menuitem"
+                              disabled={status.tone === 'cancelado'}
                               onClick={() => {
                                 setMenuAbertoId(null);
                                 setEditarTitulo(titulo);
                               }}
                             >
                               <EditIcon size={16} /> Editar
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="danger"
-                              onClick={() => {
-                                setMenuAbertoId(null);
-                                setExcluirAlvo(titulo);
-                              }}
-                            >
-                              <TrashIcon size={16} /> Excluir
                             </button>
                             <button
                               type="button"
@@ -506,6 +536,39 @@ export function Titulos() {
                               }}
                             >
                               <HistoryIcon size={16} /> Lista de pagamentos
+                            </button>
+                            {podeCancelar(titulo) && (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="danger"
+                                onClick={() => {
+                                  setMenuAbertoId(null);
+                                  setCancelarAlvo(titulo);
+                                }}
+                              >
+                                <XIcon size={16} /> Cancelar título
+                              </button>
+                            )}
+                            {status.tone === 'cancelado' && (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => void reativar(titulo)}
+                              >
+                                <RefreshIcon size={16} /> Reativar título
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="danger"
+                              onClick={() => {
+                                setMenuAbertoId(null);
+                                setExcluirAlvo(titulo);
+                              }}
+                            >
+                              <TrashIcon size={16} /> Excluir
                             </button>
                           </div>
                         </>
@@ -572,8 +635,8 @@ export function Titulos() {
             mês.
           </p>
           <p className="settings-hint">
-            Excluir um título libera uma vaga. Para cadastros ilimitados, ative a licença
-            em Configurações → Licença.
+            Cancelar ou excluir um título libera uma vaga. Para cadastros ilimitados,
+            ative a licença em Configurações → Licença.
           </p>
           <div className="form-actions">
             <button
@@ -639,6 +702,39 @@ export function Titulos() {
               disabled={excluindo}
             >
               {excluindo ? 'Excluindo...' : 'Excluir'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {cancelarAlvo && (
+        <Modal
+          title="Cancelar título"
+          subtitle={cancelarAlvo.credor}
+          onClose={() => {
+            if (!cancelando) setCancelarAlvo(null);
+          }}
+        >
+          <p className="confirm-text">
+            O título será marcado como cancelado e deixará de contar no saldo em aberto e
+            nos limites da demonstração. Os pagamentos já registrados serão mantidos.
+          </p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setCancelarAlvo(null)}
+              disabled={cancelando}
+            >
+              Voltar
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => void confirmarCancelamento()}
+              disabled={cancelando}
+            >
+              {cancelando ? 'Cancelando...' : 'Cancelar título'}
             </button>
           </div>
         </Modal>

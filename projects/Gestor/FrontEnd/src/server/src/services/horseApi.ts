@@ -1334,6 +1334,46 @@ class HorseApiService {
     }
   }
 
+  async listarSolicitacoesTitulosPagar(): Promise<unknown> {
+    try {
+      const res = await this.api.get('/licencaTitulosPagar/solicitacoes', { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async liberarSolicitacaoTitulosPagar(data: Record<string, unknown>): Promise<unknown> {
+    try {
+      const res = await this.api.post('/licencaTitulosPagar/solicitacoes/liberar', data, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async revogarSolicitacaoTitulosPagar(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.post('/licencaTitulosPagar/solicitacoes/revogar', { id }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async obterComprovanteSolicitacaoTitulosPagar(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.get('/licencaTitulosPagar/solicitacoes/comprovante', {
+        params: { id },
+        headers: this.getAuthHeaders(),
+        timeout: 30000,
+      });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarMigracoes(): Promise<unknown> {
     try {
       const res = await this.api.get('/migracoes', { headers: this.getAuthHeaders() });
