@@ -701,9 +701,10 @@ carregar();
 		r.Get("/licencaTitulosPagar", licencaTitulosPagar.Listar)
 		r.Post("/licencaTitulosPagar", licencaTitulosPagar.Gerar)
 		r.Post("/licencaTitulosPagar/revogar", licencaTitulosPagar.Revogar)
-		r.Get("/licencaTitulosPagar/solicitacoes", licencaTitulosPagar.ListarSolicitacoes)
-		r.Get("/licencaTitulosPagar/solicitacoes/comprovante", licencaTitulosPagar.ComprovanteSolicitacao)
-		r.Post("/licencaTitulosPagar/solicitacoes/liberar", licencaTitulosPagar.LiberarSolicitacao)
+	r.Get("/licencaTitulosPagar/solicitacoes", licencaTitulosPagar.ListarSolicitacoes)
+	r.Get("/licencaTitulosPagar/solicitacoes/comprovante", licencaTitulosPagar.ComprovanteSolicitacao)
+	r.Post("/licencaTitulosPagar/solicitacoes/pix", licencaTitulosPagar.EnviarPixSolicitacao)
+	r.Post("/licencaTitulosPagar/solicitacoes/liberar", licencaTitulosPagar.LiberarSolicitacao)
 		r.Post("/licencaTitulosPagar/solicitacoes/revogar", licencaTitulosPagar.RevogarSolicitacao)
 
 	})

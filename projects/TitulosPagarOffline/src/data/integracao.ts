@@ -5,15 +5,12 @@ import { bytesParaBase64 } from './base64';
 import { obterConfig } from './config';
 import { ativarLicenca, obterCodigoDispositivo, obterStatusLicenca } from './licenca';
 
-export const VALOR_LICENCA_CENTAVOS = 0;
-
 const VERSAO_APP =
   typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
 
 export interface Integracao {
   url: string;
   porta: number;
-  chave_pix: string;
 }
 
 export type SolicitacaoSituacao =
@@ -37,15 +34,22 @@ export interface Comprovante {
   tipo: string;
 }
 
-export interface DadosSolicitacao {
-  comprovante?: Comprovante;
-  mensagem?: string;
-  valor_centavos?: number;
+export interface ResultadoSolicitacao {
+  situacao: SolicitacaoSituacao;
+  licencaAtiva: boolean;
+  pix_chave: string;
+  valor_centavos: number;
+  has_comprovante: boolean;
+  mensagem: string;
 }
 
 interface RespostaDispositivo {
   status?: string;
   token?: string;
+  pix_chave?: string;
+  valor_centavos?: number;
+  has_comprovante?: boolean;
+  mensagem?: string;
 }
 
 function texto(valor: unknown): string {
@@ -54,13 +58,12 @@ function texto(valor: unknown): string {
 
 export async function obterIntegracao(): Promise<Integracao> {
   const rows = await query<Record<string, unknown>>(
-    'SELECT url, porta, chave_pix FROM integracao WHERE id = 1'
+    'SELECT url, porta FROM integracao WHERE id = 1'
   );
   const row = rows[0] ?? {};
   return {
     url: texto(row.url),
     porta: Number(row.porta ?? 3001) || 3001,
-    chave_pix: texto(row.chave_pix),
   };
 }
 
@@ -81,7 +84,6 @@ function normalizarUrl(valor: string): string {
 export async function salvarIntegracao(dados: Integracao): Promise<Integracao> {
   const url = normalizarUrl(dados.url);
   const porta = Math.floor(Number(dados.porta));
-  const chavePix = texto(dados.chave_pix);
 
   if (!url) throw new Error('Informe a URL de acesso ao servidor.');
   if (!Number.isFinite(porta) || porta < 1 || porta > 65535) {
@@ -90,9 +92,9 @@ export async function salvarIntegracao(dados: Integracao): Promise<Integracao> {
 
   await run(
     `UPDATE integracao
-        SET url = ?, porta = ?, chave_pix = ?, atualizado_em = datetime('now')
+        SET url = ?, porta = ?, atualizado_em = datetime('now')
       WHERE id = 1`,
-    [url, porta, chavePix]
+    [url, porta]
   );
 
   return obterIntegracao();
@@ -180,7 +182,14 @@ async function chamarDispositivo(
         throw new Error(mensagem);
       }
 
-      return { status: texto(dados.status), token: texto(dados.token) };
+      return {
+        status: texto(dados.status),
+        token: texto(dados.token),
+        pix_chave: texto(dados.pix_chave),
+        valor_centavos: Number(dados.valor_centavos ?? 0) || 0,
+        has_comprovante: Boolean(dados.has_comprovante),
+        mensagem: texto(dados.mensagem),
+      };
     } catch (erro) {
       if (erro instanceof DOMException && erro.name === 'AbortError') {
         ultimoErro = new Error('Tempo esgotado ao falar com o servidor.');
@@ -246,9 +255,41 @@ async function salvarSituacao(
   await run(`UPDATE solicitacao SET ${sets.join(', ')} WHERE id = 1`, valores);
 }
 
-export async function enviarSolicitacao(
-  dados: DadosSolicitacao = {}
-): Promise<SolicitacaoLocal> {
+function corpoBase(codigo: string, segredo: string) {
+  return { codigo, device: codigo, segredo };
+}
+
+async function processarResposta(
+  resposta: RespostaDispositivo,
+  extras: { mensagem?: string; valor_centavos?: number; comprovante_nome?: string } = {}
+): Promise<ResultadoSolicitacao> {
+  const codigo = await obterCodigoDispositivo();
+  const segredo = await obterSegredo();
+  const dados = {
+    pix_chave: resposta.pix_chave ?? '',
+    valor_centavos: resposta.valor_centavos ?? 0,
+    has_comprovante: Boolean(resposta.has_comprovante),
+    mensagem: resposta.mensagem ?? '',
+  };
+
+  if (resposta.status === 'liberada' && resposta.token) {
+    await ativarLicenca(resposta.token);
+    await chamarDispositivo('confirmar', corpoBase(codigo, segredo)).catch(() => undefined);
+    await salvarSituacao('entregue', extras);
+    const status = await obterStatusLicenca();
+    return { ...dados, situacao: 'entregue', licencaAtiva: status.plano === 'full' };
+  }
+
+  if (resposta.status === 'revogada') {
+    await salvarSituacao('revogada', extras);
+    return { ...dados, situacao: 'revogada', licencaAtiva: false };
+  }
+
+  await salvarSituacao('pendente', extras, Boolean(extras.comprovante_nome));
+  return { ...dados, situacao: 'pendente', licencaAtiva: false };
+}
+
+export async function solicitarDesbloqueio(): Promise<ResultadoSolicitacao> {
   const integracao = await obterIntegracao();
   if (!integracao.url) throw new Error('Configure a URL do servidor em Configurações.');
 
@@ -256,105 +297,69 @@ export async function enviarSolicitacao(
   const codigo = await obterCodigoDispositivo();
   const segredo = await obterSegredo();
 
-  const corpo: Record<string, unknown> = {
-    codigo,
-    device: codigo,
-    segredo,
+  const resposta = await chamarDispositivo('sincronizar', {
+    ...corpoBase(codigo, segredo),
     cliente: config.empresa || config.nome || 'Cliente Titulos a Pagar',
     cnpj: config.cnpj,
     app_versao: VERSAO_APP,
     plataforma: Capacitor.getPlatform(),
-    pix_chave: integracao.chave_pix,
-    valor_centavos: dados.valor_centavos ?? VALOR_LICENCA_CENTAVOS,
-    mensagem: dados.mensagem?.trim() || '',
-  };
+  });
 
-  if (dados.comprovante) {
-    const base64 = dados.comprovante.base64.trim();
-    if (base64.length > 8 * 1024 * 1024) {
-      throw new Error('O comprovante é muito grande. Use uma imagem menor.');
-    }
-    corpo.comprovante_base64 = base64;
-    corpo.comprovante_nome = dados.comprovante.nome.slice(0, 200);
-    corpo.comprovante_tipo = dados.comprovante.tipo.slice(0, 60);
-  }
-
-  const resposta = await chamarDispositivo('sincronizar', corpo);
-
-  if (resposta.status === 'liberada' && resposta.token) {
-    await ativarLicenca(resposta.token);
-    await chamarDispositivo('confirmar', { codigo, segredo }).catch(() => undefined);
-    await salvarSituacao('entregue', {
-      mensagem: dados.mensagem,
-      valor_centavos: corpo.valor_centavos as number,
-      comprovante_nome: dados.comprovante?.nome,
-    });
-    return obterSolicitacaoLocal();
-  }
-
-  if (resposta.status === 'revogada') {
-    await salvarSituacao('revogada', {
-      mensagem: dados.mensagem,
-      valor_centavos: corpo.valor_centavos as number,
-      comprovante_nome: dados.comprovante?.nome,
-    });
-    return obterSolicitacaoLocal();
-  }
-
-  await salvarSituacao(
-    'pendente',
-    {
-      mensagem: dados.mensagem,
-      valor_centavos: corpo.valor_centavos as number,
-      comprovante_nome: dados.comprovante?.nome,
-    },
-    true
-  );
-  return obterSolicitacaoLocal();
+  return processarResposta(resposta);
 }
 
-export interface ResultadoConsulta {
-  situacao: SolicitacaoSituacao;
-  licencaAtiva: boolean;
-}
+export async function enviarComprovante(
+  comprovante: Comprovante,
+  mensagem?: string
+): Promise<ResultadoSolicitacao> {
+  const integracao = await obterIntegracao();
+  if (!integracao.url) throw new Error('Configure a URL do servidor em Configurações.');
 
-export async function consultarSolicitacao(): Promise<ResultadoConsulta> {
   const codigo = await obterCodigoDispositivo();
   const segredo = await obterSegredo();
-  const resposta = await chamarDispositivo('sincronizar', { codigo, segredo });
 
-  if (resposta.status === 'liberada' && resposta.token) {
-    await ativarLicenca(resposta.token);
-    await chamarDispositivo('confirmar', { codigo, segredo }).catch(() => undefined);
-    await salvarSituacao('entregue');
-    await run(
-      "UPDATE solicitacao SET verificado_em = datetime('now'), atualizado_em = datetime('now') WHERE id = 1"
-    );
-    const status = await obterStatusLicenca();
-    return { situacao: 'entregue', licencaAtiva: status.plano === 'full' };
+  const base64 = comprovante.base64.trim();
+  if (base64.length > 8 * 1024 * 1024) {
+    throw new Error('O comprovante é muito grande. Use uma imagem menor.');
   }
+
+  const resposta = await chamarDispositivo('sincronizar', {
+    ...corpoBase(codigo, segredo),
+    mensagem: mensagem?.trim() || '',
+    comprovante_base64: base64,
+    comprovante_nome: comprovante.nome.slice(0, 200),
+    comprovante_tipo: comprovante.tipo.slice(0, 60),
+  });
+
+  return processarResposta(resposta, {
+    mensagem,
+    comprovante_nome: comprovante.nome,
+  });
+}
+
+export async function consultarSolicitacao(): Promise<ResultadoSolicitacao> {
+  const codigo = await obterCodigoDispositivo();
+  const segredo = await obterSegredo();
+  const resposta = await chamarDispositivo('sincronizar', corpoBase(codigo, segredo));
+  const resultado = await processarResposta(resposta);
 
   await run(
     "UPDATE solicitacao SET verificado_em = datetime('now'), atualizado_em = datetime('now') WHERE id = 1"
   );
 
-  if (resposta.status === 'revogada') {
-    await salvarSituacao('revogada');
-    return { situacao: 'revogada', licencaAtiva: false };
-  }
-
-  await salvarSituacao('pendente');
-  return { situacao: 'pendente', licencaAtiva: false };
+  return resultado;
 }
 
-export async function obterPixCobranca(valorCentavos?: number): Promise<string> {
-  const integracao = await obterIntegracao();
-  if (!integracao.chave_pix) return '';
+export async function obterPixCobranca(
+  chave: string,
+  valorCentavos?: number
+): Promise<string> {
+  const chaveLimpa = chave.trim();
+  if (!chaveLimpa) return '';
   const codigo = await obterCodigoDispositivo();
-  const valor =
-    valorCentavos && valorCentavos > 0 ? valorCentavos / 100 : undefined;
+  const valor = valorCentavos && valorCentavos > 0 ? valorCentavos / 100 : undefined;
   return gerarPayloadPix({
-    chave: integracao.chave_pix,
+    chave: chaveLimpa,
     nome: 'CONESOFT',
     cidade: 'BRASIL',
     valor,

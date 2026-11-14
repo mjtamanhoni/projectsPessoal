@@ -10,7 +10,6 @@ const INTEGRACAO_URL_PADRAO = valorEnv(
   'mjtsystems-gestor.duckdns.org'
 );
 const INTEGRACAO_PORTA_PADRAO = Number(import.meta.env.VITE_INTEGRACAO_PORTA) || 3001;
-const INTEGRACAO_PIX_PADRAO = valorEnv(import.meta.env.VITE_INTEGRACAO_PIX);
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS app_config (
@@ -84,12 +83,11 @@ CREATE TABLE IF NOT EXISTS integracao (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   url TEXT NOT NULL DEFAULT '',
   porta INTEGER NOT NULL DEFAULT 3001,
-  chave_pix TEXT NOT NULL DEFAULT '',
   atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO integracao (id, url, porta, chave_pix)
-VALUES (1, '${INTEGRACAO_URL_PADRAO}', ${INTEGRACAO_PORTA_PADRAO}, '${INTEGRACAO_PIX_PADRAO}');
+INSERT OR IGNORE INTO integracao (id, url, porta)
+VALUES (1, '${INTEGRACAO_URL_PADRAO}', ${INTEGRACAO_PORTA_PADRAO});
 
 CREATE TABLE IF NOT EXISTS solicitacao (
   id INTEGER PRIMARY KEY CHECK (id = 1),

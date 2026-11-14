@@ -463,8 +463,6 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 		CNPJ              string `json:"cnpj"`
 		AppVersao         string `json:"app_versao"`
 		Plataforma        string `json:"plataforma"`
-		PixChave          string `json:"pix_chave"`
-		ValorCentavos     int64  `json:"valor_centavos"`
 		Mensagem          string `json:"mensagem"`
 		ComprovanteBase64 string `json:"comprovante_base64"`
 		ComprovanteNome   string `json:"comprovante_nome"`
@@ -490,7 +488,6 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 	cnpj := limitarTexto(req.CNPJ, 20)
 	appVersao := limitarTexto(req.AppVersao, 40)
 	plataforma := limitarTexto(req.Plataforma, 30)
-	pixChave := limitarTexto(req.PixChave, 255)
 	mensagem := limitarTexto(req.Mensagem, 2000)
 	comprovanteNome := limitarTexto(req.ComprovanteNome, 200)
 	comprovanteTipo := limitarTexto(req.ComprovanteTipo, 60)
@@ -507,11 +504,6 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 		}
 	}
 
-	var valorPtr *int64
-	if req.ValorCentavos > 0 {
-		valor := req.ValorCentavos
-		valorPtr = &valor
-	}
 	var comprovanteEm *time.Time
 	if comprovanteBase64 != "" {
 		agora := time.Now()
@@ -536,16 +528,16 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 		_, err = h.Pool.Exec(ctx, `
 			INSERT INTO public.licenca_titulos_pagar_solicitacao
 				(device, segredo_hash, cliente, cnpj, app_versao, plataforma,
-				 pix_chave, valor_centavos, mensagem, comprovante_base64,
+				 mensagem, comprovante_base64,
 				 comprovante_nome, comprovante_tipo, comprovante_em,
 				 status, ultimo_contato_em)
 			VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''),
-			        NULLIF($6, ''), NULLIF($7, ''), $8, NULLIF($9, ''),
-			        NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''), $13,
+			        NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''),
+			        NULLIF($9, ''), NULLIF($10, ''), $11,
 			        'pendente', NOW())
 			ON CONFLICT (device) DO NOTHING
 		`, device, hash, cliente, cnpj, appVersao, plataforma,
-			pixChave, valorPtr, mensagem, comprovanteBase64,
+			mensagem, comprovanteBase64,
 			comprovanteNome, comprovanteTipo, comprovanteEm)
 		if err != nil {
 			JsonError(w, err.Error(), http.StatusInternalServerError)
@@ -561,6 +553,10 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 			JsonError(w, "Codigo do aparelho ja registrado com outro segredo", http.StatusForbidden)
 			return
 		}
+		if err != nil {
+			JsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	} else if err != nil {
 		JsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -572,17 +568,15 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 		       cnpj = COALESCE(NULLIF($3, ''), cnpj),
 		       app_versao = COALESCE(NULLIF($4, ''), app_versao),
 		       plataforma = COALESCE(NULLIF($5, ''), plataforma),
-		       pix_chave = COALESCE(NULLIF($6, ''), pix_chave),
-		       valor_centavos = COALESCE($7, valor_centavos),
-		       mensagem = COALESCE(NULLIF($8, ''), mensagem),
-		       comprovante_base64 = COALESCE(NULLIF($9, ''), comprovante_base64),
-		       comprovante_nome = COALESCE(NULLIF($10, ''), comprovante_nome),
-		       comprovante_tipo = COALESCE(NULLIF($11, ''), comprovante_tipo),
-		       comprovante_em = COALESCE($12, comprovante_em),
+		       mensagem = COALESCE(NULLIF($6, ''), mensagem),
+		       comprovante_base64 = COALESCE(NULLIF($7, ''), comprovante_base64),
+		       comprovante_nome = COALESCE(NULLIF($8, ''), comprovante_nome),
+		       comprovante_tipo = COALESCE(NULLIF($9, ''), comprovante_tipo),
+		       comprovante_em = COALESCE($10, comprovante_em),
 		       ultimo_contato_em = NOW(),
 		       atualizado_em = NOW()
-		 WHERE device = $1 AND segredo_hash = $13
-	`, device, cliente, cnpj, appVersao, plataforma, pixChave, valorPtr,
+		 WHERE device = $1 AND segredo_hash = $11
+	`, device, cliente, cnpj, appVersao, plataforma,
 		mensagem, comprovanteBase64, comprovanteNome, comprovanteTipo,
 		comprovanteEm, hash)
 	if err != nil {
@@ -609,18 +603,44 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 		token = nil
 	}
 
-	switch status {
-	case "liberada":
-		if token != nil && strings.TrimSpace(*token) != "" {
-			JsonSuccess(w, map[string]string{"status": "liberada", "token": *token})
-			return
-		}
-		JsonSuccess(w, map[string]string{"status": "pendente"})
-	case "revogada":
-		JsonSuccess(w, map[string]string{"status": "revogada"})
-	default:
-		JsonSuccess(w, map[string]string{"status": "pendente"})
+	var (
+		pixChave       string
+		valorCentavos  int64
+		hasComprovante bool
+		mensagemAtual  string
+	)
+	err = h.Pool.QueryRow(ctx, `
+		SELECT status, token,
+		       COALESCE(pix_chave, ''),
+		       COALESCE(valor_centavos, 0),
+		       (comprovante_base64 IS NOT NULL AND comprovante_base64 <> ''),
+		       COALESCE(mensagem, '')
+		  FROM public.licenca_titulos_pagar_solicitacao
+		 WHERE device = $1 AND segredo_hash = $2
+	`, device, hash).Scan(&status, &token, &pixChave, &valorCentavos, &hasComprovante, &mensagemAtual)
+	if errors.Is(err, pgx.ErrNoRows) {
+		JsonError(w, "Solicitacao nao encontrada", http.StatusNotFound)
+		return
 	}
+	if err != nil {
+		JsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resposta := map[string]any{
+		"status":          status,
+		"pix_chave":       pixChave,
+		"valor_centavos":  valorCentavos,
+		"has_comprovante": hasComprovante,
+		"mensagem":        mensagemAtual,
+	}
+	if status == "liberada" && token != nil && strings.TrimSpace(*token) != "" {
+		resposta["token"] = *token
+	} else if status == "liberada" {
+		resposta["status"] = "pendente"
+	}
+
+	JsonSuccess(w, resposta)
 }
 
 func (h *LicencaTitulosPagarHandler) ConfirmarEntregaDispositivo(w http.ResponseWriter, r *http.Request) {
@@ -684,10 +704,11 @@ func (h *LicencaTitulosPagarHandler) ListarSolicitacoes(w http.ResponseWriter, r
 		       COALESCE(to_char(liberado_em, 'YYYY-MM-DD"T"HH24:MI:SS'), ''),
 		       COALESCE(to_char(entregue_em, 'YYYY-MM-DD"T"HH24:MI:SS'), '')
 		  FROM public.licenca_titulos_pagar_solicitacao
-		 ORDER BY CASE status
-		            WHEN 'pendente' THEN 0
-		            WHEN 'liberada' THEN 1
-		            ELSE 2
+		 ORDER BY CASE
+		            WHEN status = 'pendente' AND comprovante_base64 IS NOT NULL AND comprovante_base64 <> '' THEN 0
+		            WHEN status = 'pendente' THEN 1
+		            WHEN status = 'liberada' THEN 2
+		            ELSE 3
 		          END,
 		          COALESCE(ultimo_contato_em, criado_em) DESC
 	`)
@@ -735,6 +756,55 @@ func (h *LicencaTitulosPagarHandler) ListarSolicitacoes(w http.ResponseWriter, r
 	}
 
 	JsonSuccess(w, lista)
+}
+
+func (h *LicencaTitulosPagarHandler) EnviarPixSolicitacao(w http.ResponseWriter, r *http.Request) {
+	if !h.autorizado(w, r) {
+		return
+	}
+
+	var req struct {
+		ID            int    `json:"id"`
+		PixChave      string `json:"pix_chave"`
+		ValorCentavos *int64 `json:"valor_centavos"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
+		JsonError(w, "Dados invalidos", http.StatusBadRequest)
+		return
+	}
+	if req.ID <= 0 {
+		JsonError(w, "Informe o id da solicitacao", http.StatusBadRequest)
+		return
+	}
+	pixChave := limitarTexto(strings.TrimSpace(req.PixChave), 255)
+	if pixChave == "" {
+		JsonError(w, "Informe a chave PIX", http.StatusBadRequest)
+		return
+	}
+
+	var valorPtr *int64
+	if req.ValorCentavos != nil && *req.ValorCentavos > 0 {
+		valor := *req.ValorCentavos
+		valorPtr = &valor
+	}
+
+	tag, err := h.Pool.Exec(context.Background(), `
+		UPDATE public.licenca_titulos_pagar_solicitacao
+		   SET pix_chave = $2,
+		       valor_centavos = COALESCE($3, valor_centavos),
+		       atualizado_em = NOW()
+		 WHERE id = $1 AND status IN ('pendente', 'revogada')
+	`, req.ID, pixChave, valorPtr)
+	if err != nil {
+		JsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		JsonError(w, "Solicitacao nao encontrada ou ja liberada", http.StatusNotFound)
+		return
+	}
+
+	JsonSuccess(w, map[string]string{"status": "ok"})
 }
 
 func (h *LicencaTitulosPagarHandler) ComprovanteSolicitacao(w http.ResponseWriter, r *http.Request) {

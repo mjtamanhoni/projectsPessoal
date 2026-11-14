@@ -1896,6 +1896,25 @@ p {
 }
 
 /* --- Desbloqueio --- */
+.passos-desbloqueio {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.passos-desbloqueio strong {
+  color: var(--text);
+}
+
+.passos-desbloqueio ::marker {
+  color: var(--gold);
+  font-weight: 700;
+}
+
 .section-subhead {
   display: flex;
   align-items: center;

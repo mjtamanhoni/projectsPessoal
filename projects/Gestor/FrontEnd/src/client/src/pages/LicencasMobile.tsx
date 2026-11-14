@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/context/ToastContext';
 import api, { getErrorMsg } from '@/lib/api';
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
 
 interface LicencaMobile {
   id: number;
@@ -69,6 +70,18 @@ const FORM_LIBERAR_INICIAL: FormLiberar = {
   observacoes: '',
 };
 
+interface FormPix {
+  pix_chave: string;
+  valor: string;
+}
+
+const FORM_PIX_INICIAL: FormPix = {
+  pix_chave: '',
+  valor: '',
+};
+
+const PIX_PADRAO_KEY = 'gestor:licencas:pixChavePadrao';
+
 interface FormLicenca {
   cliente: string;
   cnpj: string;
@@ -110,9 +123,15 @@ function statusSolicitacao(solicitacao: SolicitacaoMobile): { label: string; cla
   if (solicitacao.status === 'liberada') {
     return solicitacao.entregue_em
       ? { label: 'Entregue ao app', classe: 'bg-green-100 text-green-700' }
-      : { label: 'Liberada', classe: 'bg-blue-100 text-blue-700' };
+      : { label: 'Token gerado', classe: 'bg-blue-100 text-blue-700' };
   }
-  return { label: 'Pendente', classe: 'bg-amber-100 text-amber-700' };
+  if (!solicitacao.pix_chave) {
+    return { label: 'Aguardando chave PIX', classe: 'bg-amber-100 text-amber-700' };
+  }
+  if (!solicitacao.has_comprovante) {
+    return { label: 'Aguardando comprovante', classe: 'bg-sky-100 text-sky-700' };
+  }
+  return { label: 'Comprovante enviado', classe: 'bg-violet-100 text-violet-700' };
 }
 
 function hojeISO(): string {
@@ -128,6 +147,14 @@ function statusLicenca(licenca: LicencaMobile): { label: string; classe: string 
     return { label: 'Vencida', classe: 'bg-amber-100 text-amber-700' };
   }
   return { label: 'Ativa', classe: 'bg-green-100 text-green-700' };
+}
+
+function lembrarPixPadrao(chave: string): void {
+  try {
+    localStorage.setItem(PIX_PADRAO_KEY, chave);
+  } catch {
+    return;
+  }
 }
 
 async function copiarTexto(texto: string): Promise<boolean> {
@@ -165,6 +192,9 @@ export function LicencasMobile() {
   const [liberarAlvo, setLiberarAlvo] = useState<SolicitacaoMobile | null>(null);
   const [formLiberar, setFormLiberar] = useState<FormLiberar>(FORM_LIBERAR_INICIAL);
   const [liberando, setLiberando] = useState(false);
+  const [pixAlvo, setPixAlvo] = useState<SolicitacaoMobile | null>(null);
+  const [formPix, setFormPix] = useState<FormPix>(FORM_PIX_INICIAL);
+  const [enviandoPix, setEnviandoPix] = useState(false);
   const [revogandoSolicitacao, setRevogandoSolicitacao] = useState<number | null>(null);
   const [comprovante, setComprovante] = useState<{ nome: string; tipo: string; base64: string } | null>(null);
   const [comprovanteAberto, setComprovanteAberto] = useState(false);
@@ -270,6 +300,50 @@ export function LicencasMobile() {
       validade: '',
       observacoes: solicitacao.mensagem || '',
     });
+  };
+
+  const abrirPix = (solicitacao: SolicitacaoMobile) => {
+    let padrao = '';
+    try {
+      padrao = localStorage.getItem(PIX_PADRAO_KEY) ?? '';
+    } catch {
+      padrao = '';
+    }
+    setPixAlvo(solicitacao);
+    setFormPix({
+      pix_chave: solicitacao.pix_chave || padrao,
+      valor:
+        solicitacao.valor_centavos > 0
+          ? formatCurrencyInput(String(solicitacao.valor_centavos))
+          : '',
+    });
+  };
+
+  const enviarPix = async () => {
+    if (!pixAlvo) return;
+    const chave = formPix.pix_chave.trim();
+    if (!chave) {
+      addToast('error', 'Informe a chave PIX');
+      return;
+    }
+    setEnviandoPix(true);
+    try {
+      const valorCentavos = Math.round(parseCurrencyInput(formPix.valor) * 100);
+      await api.post('/licencaTitulosPagar/solicitacoes/pix', {
+        id: pixAlvo.id,
+        pix_chave: chave,
+        valor_centavos: valorCentavos > 0 ? valorCentavos : undefined,
+      });
+      lembrarPixPadrao(chave);
+      setPixAlvo(null);
+      setFormPix(FORM_PIX_INICIAL);
+      await carregarSolicitacoes();
+      addToast('success', 'Chave PIX enviada. O app receberá na próxima atualização.');
+    } catch (e) {
+      addToast('error', getErrorMsg(e, 'Erro ao enviar chave PIX'));
+    } finally {
+      setEnviandoPix(false);
+    }
   };
 
   const atualizarCampoLiberar = (campo: keyof FormLiberar, valor: string) => {
@@ -477,6 +551,11 @@ export function LicencasMobile() {
           </Button>
         </div>
 
+        <p className="text-xs text-text-secondary mb-3">
+          Fluxo: o app envia a solicitação → você envia a chave PIX → o cliente paga e anexa o
+          comprovante → você libera o token.
+        </p>
+
         {carregandoSolicitacoes ? (
           <div className="flex items-center justify-center py-10 text-text-secondary gap-2">
             <Loader2 size={18} className="animate-spin" />
@@ -511,7 +590,11 @@ export function LicencasMobile() {
                       <div className="text-xs text-text-secondary mt-1 flex flex-wrap gap-x-4 gap-y-1">
                         {solicitacao.cnpj && <span>CNPJ/CPF: {solicitacao.cnpj}</span>}
                         <span>Valor: {formatarValor(solicitacao.valor_centavos)}</span>
-                        {solicitacao.pix_chave && <span>PIX: {solicitacao.pix_chave}</span>}
+                        {solicitacao.pix_chave ? (
+                          <span>PIX: {solicitacao.pix_chave}</span>
+                        ) : (
+                          <span className="text-amber-700 font-medium">Chave PIX ainda não enviada</span>
+                        )}
                         <span>Enviada: {formatarDataHora(solicitacao.criado_em)}</span>
                         <span>Último contato: {formatarDataHora(solicitacao.ultimo_contato_em)}</span>
                         {solicitacao.app_versao && (
@@ -526,6 +609,12 @@ export function LicencasMobile() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
+                      {(solicitacao.status === 'pendente' || solicitacao.status === 'revogada') && (
+                        <Button variant="secondary" onClick={() => abrirPix(solicitacao)}>
+                          <KeyRound size={15} />
+                          {solicitacao.pix_chave ? 'Alterar PIX' : 'Enviar PIX'}
+                        </Button>
+                      )}
                       {solicitacao.has_comprovante && (
                         <Button
                           variant="secondary"
@@ -540,7 +629,7 @@ export function LicencasMobile() {
                           Comprovante
                         </Button>
                       )}
-                      {solicitacao.status === 'pendente' && (
+                      {solicitacao.status === 'pendente' && solicitacao.has_comprovante && (
                         <Button onClick={() => abrirLiberar(solicitacao)}>
                           <CheckCircle2 size={15} />
                           Liberar
@@ -660,6 +749,52 @@ export function LicencasMobile() {
           continua funcionando até ser substituído ou expirar.
         </p>
       </Card>
+
+      <Modal
+        isOpen={!!pixAlvo}
+        onClose={() => {
+          if (!enviandoPix) setPixAlvo(null);
+        }}
+        title="Enviar chave PIX ao app"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+            A chave será enviada ao aparelho{' '}
+            <strong className="font-mono tracking-wider">{pixAlvo?.device}</strong>. O app mostrará
+            o PIX copia e cola para o cliente pagar.
+          </div>
+          <Input
+            label="Chave PIX *"
+            value={formPix.pix_chave}
+            onChange={(e) => setFormPix((atual) => ({ ...atual, pix_chave: e.target.value }))}
+            placeholder="CNPJ, e-mail, telefone ou chave aleatória"
+          />
+          <div className="space-y-1.5">
+            <label className="label-field">Valor da licença (opcional)</label>
+            <input
+              className="input-field"
+              inputMode="numeric"
+              placeholder="0,00"
+              value={formPix.valor}
+              onChange={(e) =>
+                setFormPix((atual) => ({ ...atual, valor: formatCurrencyInput(e.target.value) }))
+              }
+            />
+            <p className="text-xs text-text-secondary">
+              Se informado, o app gera o PIX já com o valor. Deixe vazio para combinar com o cliente.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setPixAlvo(null)} disabled={enviandoPix}>
+              Cancelar
+            </Button>
+            <Button onClick={() => void enviarPix()} disabled={enviandoPix}>
+              {enviandoPix ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+              {enviandoPix ? 'Enviando...' : 'Enviar chave PIX'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={!!liberarAlvo}

@@ -1343,6 +1343,15 @@ class HorseApiService {
     }
   }
 
+  async enviarPixSolicitacaoTitulosPagar(data: Record<string, unknown>): Promise<unknown> {
+    try {
+      const res = await this.api.post('/licencaTitulosPagar/solicitacoes/pix', data, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async liberarSolicitacaoTitulosPagar(data: Record<string, unknown>): Promise<unknown> {
     try {
       const res = await this.api.post('/licencaTitulosPagar/solicitacoes/liberar', data, { headers: this.getAuthHeaders() });
