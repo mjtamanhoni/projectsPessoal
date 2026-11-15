@@ -1379,6 +1379,15 @@ class HorseApiService {
     }
   }
 
+  async excluirLicencaTitulosPagar(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.post('/licencaTitulosPagar/excluir', { id }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async obterComprovanteSolicitacaoTitulosPagar(id: number): Promise<unknown> {
     try {
       const res = await this.api.get('/licencaTitulosPagar/solicitacoes/comprovante', {

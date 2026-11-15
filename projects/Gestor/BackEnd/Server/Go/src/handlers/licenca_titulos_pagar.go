@@ -455,6 +455,35 @@ func (h *LicencaTitulosPagarHandler) Revogar(w http.ResponseWriter, r *http.Requ
 	JsonSuccess(w, map[string]string{"mensagem": "Licenca revogada"})
 }
 
+func (h *LicencaTitulosPagarHandler) Excluir(w http.ResponseWriter, r *http.Request) {
+	if !h.autorizado(w, r) {
+		return
+	}
+
+	var req struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID <= 0 {
+		JsonError(w, "Informe o id da licenca", http.StatusBadRequest)
+		return
+	}
+
+	tag, err := h.Pool.Exec(context.Background(), `
+		DELETE FROM public.licenca_titulos_pagar
+		 WHERE id = $1 AND revogado_em IS NOT NULL
+	`, req.ID)
+	if err != nil {
+		JsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		JsonError(w, "Licenca nao encontrada ou nao esta revogada", http.StatusBadRequest)
+		return
+	}
+
+	JsonSuccess(w, map[string]string{"mensagem": "Licenca excluida"})
+}
+
 func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Codigo            string `json:"codigo"`
@@ -996,14 +1025,14 @@ func (h *LicencaTitulosPagarHandler) ExcluirSolicitacao(w http.ResponseWriter, r
 
 	tag, err := h.Pool.Exec(context.Background(), `
 		DELETE FROM public.licenca_titulos_pagar_solicitacao
-		 WHERE id = $1
+		 WHERE id = $1 AND status = 'revogada'
 	`, req.ID)
 	if err != nil {
 		JsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		JsonError(w, "Solicitacao nao encontrada", http.StatusNotFound)
+		JsonError(w, "Solicitacao nao encontrada ou nao esta revogada", http.StatusBadRequest)
 		return
 	}
 

@@ -701,6 +701,7 @@ carregar();
 		r.Get("/licencaTitulosPagar", licencaTitulosPagar.Listar)
 		r.Post("/licencaTitulosPagar", licencaTitulosPagar.Gerar)
 		r.Post("/licencaTitulosPagar/revogar", licencaTitulosPagar.Revogar)
+		r.Post("/licencaTitulosPagar/excluir", licencaTitulosPagar.Excluir)
 	r.Get("/licencaTitulosPagar/solicitacoes", licencaTitulosPagar.ListarSolicitacoes)
 	r.Get("/licencaTitulosPagar/solicitacoes/comprovante", licencaTitulosPagar.ComprovanteSolicitacao)
 	r.Post("/licencaTitulosPagar/solicitacoes/pix", licencaTitulosPagar.EnviarPixSolicitacao)

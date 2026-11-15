@@ -200,7 +200,11 @@ export function LicencasMobile() {
   const [enviandoPix, setEnviandoPix] = useState(false);
   const [revogandoSolicitacao, setRevogandoSolicitacao] = useState<number | null>(null);
   const [excluindo, setExcluindo] = useState<number | null>(null);
-  const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
+  const [excluindoLicenca, setExcluindoLicenca] = useState<number | null>(null);
+  const [secoes, setSecoes] = useState<{ solicitacoes: boolean; licencas: boolean }>({
+    solicitacoes: false,
+    licencas: false,
+  });
   const [comprovante, setComprovante] = useState<{ nome: string; tipo: string; base64: string } | null>(null);
   const [comprovanteAberto, setComprovanteAberto] = useState(false);
   const [carregandoComprovante, setCarregandoComprovante] = useState<number | null>(null);
@@ -233,6 +237,12 @@ export function LicencasMobile() {
     void carregar();
     void carregarSolicitacoes();
   }, [carregar, carregarSolicitacoes]);
+
+  useEffect(() => {
+    if (solicitacoes.some((s) => s.status === 'pendente')) {
+      setSecoes((atual) => (atual.solicitacoes ? atual : { ...atual, solicitacoes: true }));
+    }
+  }, [solicitacoes]);
 
   const totalAtivas = useMemo(
     () => licencas.filter((l) => !l.revogado_em && (!l.expira_em || l.expira_em >= hojeISO())).length,
@@ -374,9 +384,9 @@ export function LicencasMobile() {
       setLiberarAlvo(null);
       setFormLiberar(FORM_LIBERAR_INICIAL);
       await Promise.all([carregar(), carregarSolicitacoes()]);
-      addToast('success', 'Solicitação liberada. O app receberá o token ao verificar.');
+      addToast('success', 'Solicitação desbloqueada. O app receberá o token ao verificar.');
     } catch (e) {
-      addToast('error', getErrorMsg(e, 'Erro ao liberar solicitação'));
+      addToast('error', getErrorMsg(e, 'Erro ao desbloquear solicitação'));
     } finally {
       setLiberando(false);
     }
@@ -400,11 +410,7 @@ export function LicencasMobile() {
 
   const excluirSolicitacao = async (solicitacao: SolicitacaoMobile) => {
     const nome = solicitacao.cliente || solicitacao.device;
-    const aviso =
-      solicitacao.status === 'pendente'
-        ? `Excluir a solicitação de "${nome}"? Ela sairá do painel e o cliente poderá solicitar novamente pelo app.`
-        : `Excluir a solicitação de "${nome}"? Esta ação remove o registro do painel.`;
-    if (!window.confirm(aviso)) {
+    if (!window.confirm(`Excluir a solicitação revogada de "${nome}"?`)) {
       return;
     }
     setExcluindo(solicitacao.id);
@@ -419,8 +425,28 @@ export function LicencasMobile() {
     }
   };
 
-  const alternarExpandido = (chave: string) => {
-    setExpandidos((atual) => ({ ...atual, [chave]: !atual[chave] }));
+  const excluirLicenca = async (licenca: LicencaMobile) => {
+    if (
+      !window.confirm(
+        `Excluir a licença revogada de "${licenca.cliente}"? O registro sairá do painel; o token já instalado continua válido no aparelho.`
+      )
+    ) {
+      return;
+    }
+    setExcluindoLicenca(licenca.id);
+    try {
+      await api.post('/licencaTitulosPagar/excluir', { id: licenca.id });
+      await carregar();
+      addToast('success', 'Licença excluída');
+    } catch (e) {
+      addToast('error', getErrorMsg(e, 'Erro ao excluir licença'));
+    } finally {
+      setExcluindoLicenca(null);
+    }
+  };
+
+  const alternarSecao = (secao: 'solicitacoes' | 'licencas') => {
+    setSecoes((atual) => ({ ...atual, [secao]: !atual[secao] }));
   };
 
   const verComprovante = async (solicitacao: SolicitacaoMobile) => {
@@ -571,173 +597,162 @@ export function LicencasMobile() {
               </p>
             </div>
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => void carregarSolicitacoes()}
-            disabled={carregandoSolicitacoes}
-          >
-            <RefreshCw size={16} className={carregandoSolicitacoes ? 'animate-spin' : ''} />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => alternarSecao('solicitacoes')}>
+              {secoes.solicitacoes ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              {secoes.solicitacoes ? 'Retrair' : 'Expandir'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void carregarSolicitacoes()}
+              disabled={carregandoSolicitacoes}
+            >
+              <RefreshCw size={16} className={carregandoSolicitacoes ? 'animate-spin' : ''} />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
-        <p className="text-xs text-text-secondary mb-3">
-          Fluxo: o app envia a solicitação → você envia a chave PIX → o cliente paga (PIX, dinheiro
-          ou cartão) → você libera o token. O comprovante é opcional e fica registrado quando o
-          cliente envia.
-        </p>
+        {secoes.solicitacoes && (
+          <>
+            <p className="text-xs text-text-secondary mb-3">
+              Fluxo: o app envia a solicitação → você envia a chave PIX → o cliente paga (PIX,
+              dinheiro ou cartão) → você desbloqueia o token. O comprovante é opcional e fica
+              registrado quando o cliente envia.
+            </p>
 
-        {carregandoSolicitacoes ? (
-          <div className="flex items-center justify-center py-10 text-text-secondary gap-2">
-            <Loader2 size={18} className="animate-spin" />
-            Carregando solicitações...
-          </div>
-        ) : solicitacoes.length === 0 ? (
-          <div className="text-center py-10 text-text-secondary">
-            Nenhuma solicitação de desbloqueio recebida.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {solicitacoes.map((solicitacao) => {
-              const status = statusSolicitacao(solicitacao);
-              const chave = `sol-${solicitacao.id}`;
-              const aberto = Boolean(expandidos[chave]);
-              const podeLiberar =
-                solicitacao.status === 'pendente' || solicitacao.status === 'revogada';
-              return (
-                <div key={solicitacao.id} className="rounded-xl border border-border-primary">
-                  <button
-                    type="button"
-                    className="w-full flex items-start justify-between gap-3 p-4 text-left"
-                    onClick={() => alternarExpandido(chave)}
-                    aria-expanded={aberto}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {aberto ? (
-                          <ChevronDown size={16} className="text-text-secondary" />
-                        ) : (
-                          <ChevronRight size={16} className="text-text-secondary" />
-                        )}
-                        <span className="font-semibold text-text-primary">
-                          {solicitacao.cliente || 'Sem nome'}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${status.classe}`}>
-                          {status.label}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-bg-muted text-text-secondary font-mono tracking-wider">
-                          {solicitacao.device}
-                        </span>
-                      </div>
-                      <div className="text-xs text-text-secondary mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                        <span>Enviada: {formatarDataHora(solicitacao.criado_em)}</span>
-                        <span>
-                          Último contato: {formatarDataHora(solicitacao.ultimo_contato_em)}
-                        </span>
-                        {solicitacao.has_comprovante && (
-                          <span className="text-emerald-700 font-medium">Comprovante anexado</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-xs text-text-secondary shrink-0">
-                      {aberto ? 'Retrair' : 'Expandir'}
-                    </span>
-                  </button>
-
-                  {aberto && (
-                    <div className="px-4 pb-4 pt-3 border-t border-border-primary space-y-3">
-                      <div className="text-xs text-text-secondary flex flex-wrap gap-x-4 gap-y-1">
-                        {solicitacao.cnpj && <span>CNPJ/CPF: {solicitacao.cnpj}</span>}
-                        <span>Valor: {formatarValor(solicitacao.valor_centavos)}</span>
-                        {solicitacao.pix_chave ? (
-                          <span>PIX: {solicitacao.pix_chave}</span>
-                        ) : (
-                          <span className="text-amber-700 font-medium">
-                            Chave PIX ainda não enviada
-                          </span>
-                        )}
-                        {solicitacao.app_versao && (
-                          <span>
-                            App: {solicitacao.app_versao}
-                            {solicitacao.plataforma ? ` (${solicitacao.plataforma})` : ''}
-                          </span>
-                        )}
-                        {solicitacao.comprovante_nome && (
-                          <span>Comprovante: {solicitacao.comprovante_nome}</span>
-                        )}
-                        {solicitacao.liberado_em && (
-                          <span>Liberada: {formatarDataHora(solicitacao.liberado_em)}</span>
-                        )}
-                        {solicitacao.entregue_em && (
-                          <span>Entregue: {formatarDataHora(solicitacao.entregue_em)}</span>
-                        )}
-                      </div>
-
-                      {solicitacao.mensagem && (
-                        <p className="text-xs text-text-secondary">“{solicitacao.mensagem}”</p>
-                      )}
-
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {(solicitacao.status === 'pendente' ||
-                          solicitacao.status === 'revogada') && (
-                          <Button variant="secondary" onClick={() => abrirPix(solicitacao)}>
-                            <KeyRound size={15} />
-                            {solicitacao.pix_chave ? 'Alterar PIX' : 'Enviar PIX'}
-                          </Button>
-                        )}
-                        {solicitacao.has_comprovante && (
-                          <Button
-                            variant="secondary"
-                            onClick={() => void verComprovante(solicitacao)}
-                            disabled={carregandoComprovante === solicitacao.id}
-                          >
-                            {carregandoComprovante === solicitacao.id ? (
-                              <Loader2 size={15} className="animate-spin" />
+            {carregandoSolicitacoes ? (
+              <div className="flex items-center justify-center py-10 text-text-secondary gap-2">
+                <Loader2 size={18} className="animate-spin" />
+                Carregando solicitações...
+              </div>
+            ) : solicitacoes.length === 0 ? (
+              <div className="text-center py-10 text-text-secondary">
+                Nenhuma solicitação de desbloqueio recebida.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {solicitacoes.map((solicitacao) => {
+                  const status = statusSolicitacao(solicitacao);
+                  const podeDesbloquear =
+                    solicitacao.status === 'pendente' || solicitacao.status === 'revogada';
+                  return (
+                    <div
+                      key={solicitacao.id}
+                      className="rounded-xl border border-border-primary p-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-text-primary">
+                              {solicitacao.cliente || 'Sem nome'}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${status.classe}`}>
+                              {status.label}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-bg-muted text-text-secondary font-mono tracking-wider">
+                              {solicitacao.device}
+                            </span>
+                          </div>
+                          <div className="text-xs text-text-secondary mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                            {solicitacao.cnpj && <span>CNPJ/CPF: {solicitacao.cnpj}</span>}
+                            <span>Valor: {formatarValor(solicitacao.valor_centavos)}</span>
+                            {solicitacao.pix_chave ? (
+                              <span>PIX: {solicitacao.pix_chave}</span>
                             ) : (
-                              <Eye size={15} />
+                              <span className="text-amber-700 font-medium">
+                                Chave PIX ainda não enviada
+                              </span>
                             )}
-                            Comprovante
-                          </Button>
-                        )}
-                        {podeLiberar && (
-                          <Button onClick={() => abrirLiberar(solicitacao)}>
-                            <CheckCircle2 size={15} />
-                            Liberar
-                          </Button>
-                        )}
-                        {solicitacao.status !== 'revogada' && (
-                          <Button
-                            variant="danger"
-                            onClick={() => void revogarSolicitacao(solicitacao)}
-                            disabled={revogandoSolicitacao === solicitacao.id}
-                          >
-                            {revogandoSolicitacao === solicitacao.id ? (
-                              <Loader2 size={15} className="animate-spin" />
-                            ) : (
-                              <Ban size={15} />
+                            <span>Enviada: {formatarDataHora(solicitacao.criado_em)}</span>
+                            <span>
+                              Último contato: {formatarDataHora(solicitacao.ultimo_contato_em)}
+                            </span>
+                            {solicitacao.app_versao && (
+                              <span>
+                                App: {solicitacao.app_versao}
+                                {solicitacao.plataforma ? ` (${solicitacao.plataforma})` : ''}
+                              </span>
                             )}
-                            Revogar
-                          </Button>
-                        )}
-                        <Button
-                          variant="danger"
-                          onClick={() => void excluirSolicitacao(solicitacao)}
-                          disabled={excluindo === solicitacao.id}
-                        >
-                          {excluindo === solicitacao.id ? (
-                            <Loader2 size={15} className="animate-spin" />
-                          ) : (
-                            <Trash2 size={15} />
+                            {solicitacao.comprovante_nome && (
+                              <span>Comprovante: {solicitacao.comprovante_nome}</span>
+                            )}
+                            {solicitacao.liberado_em && (
+                              <span>Liberada: {formatarDataHora(solicitacao.liberado_em)}</span>
+                            )}
+                            {solicitacao.entregue_em && (
+                              <span>Entregue: {formatarDataHora(solicitacao.entregue_em)}</span>
+                            )}
+                          </div>
+                          {solicitacao.mensagem && (
+                            <p className="text-xs text-text-secondary mt-1">
+                              “{solicitacao.mensagem}”
+                            </p>
                           )}
-                          Excluir
-                        </Button>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {podeDesbloquear && (
+                            <Button variant="secondary" onClick={() => abrirPix(solicitacao)}>
+                              <KeyRound size={15} />
+                              {solicitacao.pix_chave ? 'Alterar PIX' : 'Enviar PIX'}
+                            </Button>
+                          )}
+                          {solicitacao.has_comprovante && (
+                            <Button
+                              variant="secondary"
+                              onClick={() => void verComprovante(solicitacao)}
+                              disabled={carregandoComprovante === solicitacao.id}
+                            >
+                              {carregandoComprovante === solicitacao.id ? (
+                                <Loader2 size={15} className="animate-spin" />
+                              ) : (
+                                <Eye size={15} />
+                              )}
+                              Comprovante
+                            </Button>
+                          )}
+                          {podeDesbloquear && (
+                            <Button onClick={() => abrirLiberar(solicitacao)}>
+                              <CheckCircle2 size={15} />
+                              Desbloquear
+                            </Button>
+                          )}
+                          {solicitacao.status !== 'revogada' && (
+                            <Button
+                              variant="danger"
+                              onClick={() => void revogarSolicitacao(solicitacao)}
+                              disabled={revogandoSolicitacao === solicitacao.id}
+                            >
+                              {revogandoSolicitacao === solicitacao.id ? (
+                                <Loader2 size={15} className="animate-spin" />
+                              ) : (
+                                <Ban size={15} />
+                              )}
+                              Revogar
+                            </Button>
+                          )}
+                          {solicitacao.status === 'revogada' && (
+                            <Button
+                              variant="danger"
+                              onClick={() => void excluirSolicitacao(solicitacao)}
+                              disabled={excluindo === solicitacao.id}
+                            >
+                              {excluindo === solicitacao.id ? (
+                                <Loader2 size={15} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={15} />
+                              )}
+                              Excluir
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </Card>
 
@@ -747,112 +762,120 @@ export function LicencasMobile() {
             <h3 className="text-lg font-semibold text-text-primary">Licenças emitidas</h3>
             <p className="text-sm text-text-secondary">{licencas.length} registro(s)</p>
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              void carregar();
-              void carregarSolicitacoes();
-            }}
-            disabled={carregando}
-          >
-            <RefreshCw size={16} className={carregando ? 'animate-spin' : ''} />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => alternarSecao('licencas')}>
+              {secoes.licencas ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              {secoes.licencas ? 'Retrair' : 'Expandir'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void carregar();
+                void carregarSolicitacoes();
+              }}
+              disabled={carregando}
+            >
+              <RefreshCw size={16} className={carregando ? 'animate-spin' : ''} />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
-        {carregando ? (
-          <div className="flex items-center justify-center py-10 text-text-secondary gap-2">
-            <Loader2 size={18} className="animate-spin" />
-            Carregando licenças...
-          </div>
-        ) : licencas.length === 0 ? (
-          <div className="text-center py-10 text-text-secondary">
-            Nenhuma licença emitida ainda.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {licencas.map((licenca) => {
-              const status = statusLicenca(licenca);
-              const chave = `lic-${licenca.id}`;
-              const aberto = Boolean(expandidos[chave]);
-              return (
-                <div key={licenca.id} className="rounded-xl border border-border-primary">
-                  <div className="flex items-start justify-between gap-3 p-4">
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 text-left"
-                      onClick={() => alternarExpandido(chave)}
-                      aria-expanded={aberto}
+        {secoes.licencas && (
+          <>
+            {carregando ? (
+              <div className="flex items-center justify-center py-10 text-text-secondary gap-2">
+                <Loader2 size={18} className="animate-spin" />
+                Carregando licenças...
+              </div>
+            ) : licencas.length === 0 ? (
+              <div className="text-center py-10 text-text-secondary">
+                Nenhuma licença emitida ainda.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {licencas.map((licenca) => {
+                  const status = statusLicenca(licenca);
+                  return (
+                    <div
+                      key={licenca.id}
+                      className="rounded-xl border border-border-primary p-4"
                     >
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {aberto ? (
-                          <ChevronDown size={16} className="text-text-secondary" />
-                        ) : (
-                          <ChevronRight size={16} className="text-text-secondary" />
-                        )}
-                        <span className="font-semibold text-text-primary">{licenca.cliente}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${status.classe}`}>
-                          {status.label}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-bg-muted text-text-secondary">
-                          {licenca.plano}
-                        </span>
-                      </div>
-                      <div className="text-xs text-text-secondary mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                        <span>Aparelho: {licenca.device || 'qualquer'}</span>
-                        <span>Emitida: {formatarData(licenca.emitido_em)}</span>
-                        <span>
-                          Validade:{' '}
-                          {licenca.expira_em ? formatarData(licenca.expira_em) : 'permanente'}
-                        </span>
-                      </div>
-                    </button>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button variant="secondary" onClick={() => void copiar(licenca.token)}>
-                        <Copy size={15} />
-                        Copiar
-                      </Button>
-                      {!licenca.revogado_em && (
-                        <Button
-                          variant="danger"
-                          onClick={() => void revogar(licenca)}
-                          disabled={revogando === licenca.id}
-                        >
-                          {revogando === licenca.id ? (
-                            <Loader2 size={15} className="animate-spin" />
-                          ) : (
-                            <Ban size={15} />
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-text-primary">{licenca.cliente}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${status.classe}`}>
+                              {status.label}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-bg-muted text-text-secondary">
+                              {licenca.plano}
+                            </span>
+                          </div>
+                          <div className="text-xs text-text-secondary mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                            {licenca.cnpj && <span>CNPJ/CPF: {licenca.cnpj}</span>}
+                            <span>Aparelho: {licenca.device || 'qualquer'}</span>
+                            <span>Emitida: {formatarDataHora(licenca.emitido_em)}</span>
+                            <span>
+                              Validade:{' '}
+                              {licenca.expira_em ? formatarData(licenca.expira_em) : 'permanente'}
+                            </span>
+                          </div>
+                          {licenca.observacoes && (
+                            <p className="text-xs text-text-secondary mt-1">{licenca.observacoes}</p>
                           )}
-                          Revogar
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {aberto && (
-                    <div className="px-4 pb-4 pt-3 border-t border-border-primary space-y-3">
-                      <div className="text-xs text-text-secondary flex flex-wrap gap-x-4 gap-y-1">
-                        {licenca.cnpj && <span>CNPJ/CPF: {licenca.cnpj}</span>}
-                        <span>Emitida em: {formatarDataHora(licenca.emitido_em)}</span>
-                        <span>
-                          Validade:{' '}
-                          {licenca.expira_em ? formatarData(licenca.expira_em) : 'permanente'}
-                        </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button variant="secondary" onClick={() => void copiar(licenca.token)}>
+                            <Copy size={15} />
+                            Copiar
+                          </Button>
+                          {!licenca.revogado_em && (
+                            <Button
+                              variant="danger"
+                              onClick={() => void revogar(licenca)}
+                              disabled={revogando === licenca.id}
+                            >
+                              {revogando === licenca.id ? (
+                                <Loader2 size={15} className="animate-spin" />
+                              ) : (
+                                <Ban size={15} />
+                              )}
+                              Revogar
+                            </Button>
+                          )}
+                          {licenca.revogado_em && (
+                            <Button
+                              variant="danger"
+                              onClick={() => void excluirLicenca(licenca)}
+                              disabled={excluindoLicenca === licenca.id}
+                            >
+                              {excluindoLicenca === licenca.id ? (
+                                <Loader2 size={15} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={15} />
+                              )}
+                              Excluir
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      {licenca.observacoes && (
-                        <p className="text-xs text-text-secondary">{licenca.observacoes}</p>
-                      )}
-                      <textarea
-                        readOnly
-                        className="input-field w-full min-h-[110px] font-mono text-xs break-all"
-                        value={licenca.token}
-                      />
+                      <details className="mt-3">
+                        <summary className="text-xs text-accent-primary cursor-pointer">
+                          Ver token
+                        </summary>
+                        <textarea
+                          readOnly
+                          className="input-field w-full min-h-[110px] font-mono text-xs break-all mt-2"
+                          value={licenca.token}
+                        />
+                      </details>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
         <p className="text-xs text-text-secondary mt-4">
@@ -912,7 +935,7 @@ export function LicencasMobile() {
         onClose={() => {
           if (!liberando) setLiberarAlvo(null);
         }}
-        title="Liberar solicitação"
+        title="Desbloquear solicitação"
       >
         <div className="space-y-4">
           <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700">
@@ -965,7 +988,7 @@ export function LicencasMobile() {
             </Button>
             <Button onClick={() => void liberar()} disabled={liberando}>
               {liberando ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-              {liberando ? 'Liberando...' : 'Liberar e gerar token'}
+              {liberando ? 'Desbloqueando...' : 'Desbloquear e gerar token'}
             </Button>
           </div>
         </div>
