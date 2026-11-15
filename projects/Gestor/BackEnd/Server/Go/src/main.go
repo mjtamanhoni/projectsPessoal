@@ -62,6 +62,7 @@ func main() {
 		cfg.LicencaTitulosPagarPrivateKeyFile,
 		cfg.LicencaTitulosPagarKeyID,
 	)
+	mensagemHandler := handlers.NewMensagemHandler(pool)
 	logStore := gestorLogger.New(filepath.Join(cfg.DataDir, "logs"))
 	go func() {
 		logStore.CleanOldLogs()
@@ -696,6 +697,12 @@ carregar();
 		r.Get("/apk", apkHandler.Listar)
 		r.Post("/apk", apkHandler.Upload)
 		r.Delete("/apk/{filename}", apkHandler.Excluir)
+
+		// Mensagens
+		r.Get("/mensagens", mensagemHandler.Listar)
+		r.Post("/mensagens", mensagemHandler.Criar)
+		r.Post("/mensagens/lidas", mensagemHandler.MarcarTodasLidas)
+		r.Post("/mensagens/{id}/lida", mensagemHandler.MarcarLida)
 
 		// Licencas do APK Títulos a Pagar offline
 		r.Get("/licencaTitulosPagar", licencaTitulosPagar.Listar)

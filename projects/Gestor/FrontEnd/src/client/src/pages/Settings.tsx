@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -38,11 +39,17 @@ function QRCodeImage({ value, size = 180 }: { value: string; size?: number }) {
 
 type Tab = 'servidor' | 'exibicao' | 'financeiro' | 'impressao' | 'limpeza' | 'sequencias' | 'migracoes' | 'instalacao' | 'guia' | 'licencas';
 
+const TAB_VALIDAS: Tab[] = ['servidor', 'exibicao', 'financeiro', 'impressao', 'limpeza', 'sequencias', 'migracoes', 'instalacao', 'guia', 'licencas'];
+
 export function Settings() {
+  const [searchParams] = useSearchParams();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<Tab>('servidor');
+  const [tab, setTab] = useState<Tab>(() => {
+    const alvo = searchParams.get('tab') as Tab | null;
+    return alvo && TAB_VALIDAS.includes(alvo) ? alvo : 'servidor';
+  });
   const [categoriasPagar, setCategoriasPagar] = useState<Categoria[]>([]);
   const [categoriasReceber, setCategoriasReceber] = useState<Categoria[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -67,6 +74,11 @@ export function Settings() {
   const [excluindoAPK, setExcluindoAPK] = useState<string | null>(null);
   const { addToast } = useToast();
   const { isSuperadmin, empresa } = useAuth();
+
+  useEffect(() => {
+    const alvo = searchParams.get('tab') as Tab | null;
+    if (alvo && TAB_VALIDAS.includes(alvo)) setTab(alvo);
+  }, [searchParams]);
 
   useEffect(() => {
     fetchSettings()

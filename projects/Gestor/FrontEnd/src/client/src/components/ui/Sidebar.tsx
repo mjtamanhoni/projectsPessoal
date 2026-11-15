@@ -1,20 +1,14 @@
-import { useRef, useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Settings as SettingsIcon, LogOut, PanelLeftClose, PanelLeftOpen,
+  Settings as SettingsIcon,
   ArrowLeft, LayoutDashboard, RefreshCw, Building, BookOpen,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useModule } from '@/context/ModuleContext';
 import { useAppMode } from '@/context/AppModeContext';
-import { useToast } from '@/context/ToastContext';
-import { getLogo } from '@/lib/settings';
-import { getUploadsUrl } from '@/lib/empresaLogo';
 import { getModuleIcon, getModuleImage } from '@/lib/moduleIcons';
 import { formRouteMap } from '@/lib/permissions';
-import { ConfirmDialog } from './ConfirmDialog';
-import api, { getErrorMsg } from '@/lib/api';
-import type { Empresa } from '@/types';
 
 const superadminFormNames = new Set([
   'Modulos',
@@ -245,51 +239,11 @@ function FormLink({ f, collapsed }: { f: { id: number; nome: string }; collapsed
   );
 }
 
-export function Sidebar() {
-  const { user, empresaNome, logout, temAcesso, permissoes, irrestrito, empresa, isSuperadmin } = useAuth();
+export function Sidebar({ collapsed }: { collapsed: boolean }) {
+  const { temAcesso, permissoes, irrestrito } = useAuth();
   const { selectedModule, selectModule, menuData, menuLoading, menuError, refetchMenu } = useModule();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(() => empresa?.delivery === 1);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout>>();
   const appMode = useAppMode();
-  const { addToast } = useToast();
-
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [trocaPendente, setTrocaPendente] = useState<Empresa | null>(null);
-  const [trocando, setTrocando] = useState(false);
-
-  useEffect(() => {
-    if (!isSuperadmin) return;
-    api.get('/empresas').then((r) => setEmpresas(r.data as Empresa[])).catch(() => {});
-  }, [isSuperadmin]);
-
-  const executarTroca = async () => {
-    if (!trocaPendente?.id) return;
-    setTrocando(true);
-    try {
-      const res = await api.post('/auth/trocar-empresa', { empresa_id: trocaPendente.id });
-      const token = (res.data as { token: string }).token;
-      const stored = sessionStorage.getItem('user');
-      const userObj = stored ? (JSON.parse(stored) as Record<string, unknown>) : {};
-      const novoUsuario = {
-        ...userObj,
-        token,
-        empresaId: (res.data as { empresa: number }).empresa,
-        empresa_info: (res.data as { empresa_info?: unknown }).empresa_info,
-      };
-      sessionStorage.setItem('token', token);
-      sessionStorage.setItem('user', JSON.stringify(novoUsuario));
-      sessionStorage.removeItem('empresaNome');
-      window.location.reload();
-    } catch (err: unknown) {
-      addToast('error', getErrorMsg(err, 'Erro ao trocar de empresa'));
-      setTrocando(false);
-      setTrocaPendente(null);
-    }
-  };
-
-  const logo = getLogo() ?? (empresa?.logomarca ? getUploadsUrl(empresa.logomarca) : null);
-  const visibleSettings = temAcesso('/settings');
 
   useEffect(() => {
     if (!appMode || selectedModule || menuLoading || !menuData.length) return;
@@ -313,59 +267,15 @@ export function Sidebar() {
   }, [location.pathname, selectedModule, menuData, selectModule]);
 
   const isAppMode = !!appMode;
+  const visibleSettings = temAcesso('/settings');
 
   const linkClass = (isActive: boolean) =>
     `sidebar-link ${collapsed ? 'justify-center px-2' : ''} ${isActive ? 'active' : ''}`;
 
   return (
     <aside
-      className={`${collapsed ? 'w-16' : 'w-64'} min-h-screen bg-bg-card border-r border-border-subtle flex flex-col transition-all duration-300 relative`}
+      className={`${collapsed ? 'w-16' : 'w-64'} h-full bg-bg-card border-r border-border-subtle flex flex-col transition-all duration-300 relative`}
     >
-      <div className="p-4 border-b border-border-subtle flex items-center gap-3">
-        {!collapsed && (
-          <div className="flex-1 min-w-0 flex items-center gap-3">
-            {logo ? (
-              <img src={logo} alt="Logo" className="h-10 max-w-28 object-contain shrink-0" />
-            ) : null}
-            <div className="min-w-0">
-              <h1 className="text-lg font-heading font-bold text-accent-primary truncate">Gestor Financeiro</h1>
-              <p className="text-xs text-text-muted capitalize truncate">{user?.nome}</p>
-              {empresaNome && <p className="text-[11px] text-text-muted/60 truncate">{empresaNome}</p>}
-              {isSuperadmin && empresas.length > 0 && (
-                <select
-                  className="mt-1.5 w-full px-2 py-1.5 bg-background-input border border-border-primary rounded-lg text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
-                  value={user?.empresaId ?? ''}
-                  onChange={(e) => {
-                    const id = Number(e.target.value);
-                    const alvo = empresas.find((emp) => (emp.id ?? emp.codigo) === id);
-                    if (alvo && id !== user?.empresaId) setTrocaPendente(alvo);
-                  }}
-                  title="Trocar de empresa (superadmin)"
-                >
-                  <option value="" disabled>Selecionar empresa...</option>
-                  {empresas.map((emp) => (
-                    <option key={emp.id ?? emp.codigo} value={emp.id ?? emp.codigo}>
-                      {emp.fantasia || emp.razao_social || `Empresa ${emp.id}`}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-        )}
-        <button
-          onClick={() => setCollapsed((prev) => !prev)}
-          className={`p-1.5 rounded-lg hover:bg-background-hover transition-colors shrink-0 ${collapsed ? 'mx-auto' : ''}`}
-          title={collapsed ? 'Expandir menu' : 'Retrair menu'}
-        >
-          {collapsed ? (
-            <PanelLeftOpen size={18} className="text-text-secondary" />
-          ) : (
-            <PanelLeftClose size={18} className="text-text-secondary" />
-          )}
-        </button>
-      </div>
-
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
         {selectedModule ? (
           <div>
@@ -477,24 +387,6 @@ export function Sidebar() {
           )}
         </div>
       </nav>
-
-      <div className="p-3 border-t border-border-subtle">
-        <button onClick={logout} className={`${linkClass(false)} w-full`} title={collapsed ? 'Sair' : undefined}>
-          <LogOut size={20} />
-          {!collapsed && <span>Sair</span>}
-        </button>
-      </div>
-
-      <ConfirmDialog
-        isOpen={trocaPendente !== null}
-        onClose={() => setTrocaPendente(null)}
-        onConfirm={executarTroca}
-        title="Trocar de empresa"
-        message={`Todos os dados exibidos passarao a ser da empresa "${trocaPendente?.fantasia || trocaPendente?.razao_social || ''}" e as proximas gravacoes serao feitas nela. Deseja continuar?`}
-        variant="warning"
-        confirmLabel="Sim, trocar"
-        loading={trocando}
-      />
     </aside>
   );
 }

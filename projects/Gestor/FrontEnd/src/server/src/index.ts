@@ -33,6 +33,7 @@ import bandeiraCartaoRoutes from './routes/bandeira-cartao';
 import produtoClassificacaoRoutes from './routes/produto-classificacao';
 import migracoesRoutes from './routes/migracoes';
 import licencasRoutes from './routes/licencas';
+import mensagensRoutes from './routes/mensagens';
 import perdasInsumoRoutes from './routes/perdas-insumo';
 import perdasProdutoRoutes from './routes/perdas-produto';
 import usoConsumoRoutes from './routes/uso-consumo';
@@ -215,6 +216,7 @@ app.post('/api/licencaTitulosPagar/dispositivos/:acao', async (req, res) => {
 });
 
 app.use('/api/licencaTitulosPagar', licencasRoutes);
+app.use('/api/mensagens', mensagensRoutes);
 app.use('/api/compras-insumo', comprasInsumoRoutes);
 app.use('/api/produtos-fabricados', produtosFabricadosRoutes);
 app.use('/api/receitas-ingredientes', receitasIngredientesRoutes);

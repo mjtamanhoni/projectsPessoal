@@ -1307,6 +1307,42 @@ class HorseApiService {
     }
   }
 
+  async listarMensagens(params?: { modulo?: string; limite?: number }): Promise<unknown> {
+    try {
+      const res = await this.api.get('/mensagens', { params, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async criarMensagem(data: Record<string, unknown>): Promise<unknown> {
+    try {
+      const res = await this.api.post('/mensagens', data, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async marcarMensagemLida(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.post(`/mensagens/${id}/lida`, {}, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async marcarMensagensLidas(): Promise<unknown> {
+    try {
+      const res = await this.api.post('/mensagens/lidas', {}, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarLicencasTitulosPagar(): Promise<unknown> {
     try {
       const res = await this.api.get('/licencaTitulosPagar', { headers: this.getAuthHeaders() });

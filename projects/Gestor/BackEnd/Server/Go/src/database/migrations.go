@@ -1805,6 +1805,43 @@ var Migracoes = []Migracao{
 				ADD COLUMN IF NOT EXISTS comprovante_em TIMESTAMPTZ;
 		`,
 	},
+	{
+		Nome: "039_mensagens",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.mensagem (
+				id SERIAL PRIMARY KEY,
+				empresa_id INTEGER NOT NULL DEFAULT 0,
+				modulo VARCHAR(40) NOT NULL,
+				tipo VARCHAR(20) NOT NULL DEFAULT 'info',
+				titulo VARCHAR(200) NOT NULL,
+				corpo TEXT,
+				acao_rota VARCHAR(200),
+				prioridade SMALLINT NOT NULL DEFAULT 0,
+				remetente_id INTEGER,
+				chave_evento VARCHAR(120) UNIQUE,
+				criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				expira_em TIMESTAMPTZ
+			);
+
+			CREATE INDEX IF NOT EXISTS idx_mensagem_empresa
+				ON public.mensagem (empresa_id, criado_em DESC);
+			CREATE INDEX IF NOT EXISTS idx_mensagem_modulo
+				ON public.mensagem (modulo, criado_em DESC);
+			CREATE INDEX IF NOT EXISTS idx_mensagem_chave_evento
+				ON public.mensagem (chave_evento);
+
+			CREATE TABLE IF NOT EXISTS public.mensagem_leitura (
+				mensagem_id INTEGER NOT NULL
+					REFERENCES public.mensagem (id) ON DELETE CASCADE,
+				usuario_id INTEGER NOT NULL,
+				lida_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				PRIMARY KEY (mensagem_id, usuario_id)
+			);
+
+			CREATE INDEX IF NOT EXISTS idx_mensagem_leitura_usuario
+				ON public.mensagem_leitura (usuario_id);
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

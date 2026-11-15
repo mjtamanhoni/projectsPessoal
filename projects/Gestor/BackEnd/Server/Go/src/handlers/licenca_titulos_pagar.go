@@ -559,7 +559,8 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 			return
 		}
 		// Pode ser um dispositivo novo ou um codigo existente com outro segredo.
-		_, err = h.Pool.Exec(ctx, `
+		var solicitacaoID int
+		err = h.Pool.QueryRow(ctx, `
 			INSERT INTO public.licenca_titulos_pagar_solicitacao
 				(device, segredo_hash, cliente, cnpj, app_versao, plataforma,
 				 mensagem, comprovante_base64,
@@ -570,12 +571,16 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 			        NULLIF($9, ''), NULLIF($10, ''), $11,
 			        'pendente', NOW())
 			ON CONFLICT (device) DO NOTHING
+			RETURNING id
 		`, device, hash, cliente, cnpj, appVersao, plataforma,
 			mensagem, comprovanteBase64,
-			comprovanteNome, comprovanteTipo, comprovanteEm)
-		if err != nil {
+			comprovanteNome, comprovanteTipo, comprovanteEm).Scan(&solicitacaoID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			JsonError(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		if err == nil {
+			h.registrarMensagemSolicitacao(ctx, solicitacaoID, device, cliente, cnpj)
 		}
 
 		err = h.Pool.QueryRow(ctx, `
@@ -675,6 +680,26 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 	}
 
 	JsonSuccess(w, resposta)
+}
+
+func (h *LicencaTitulosPagarHandler) registrarMensagemSolicitacao(ctx context.Context, id int, device, cliente, cnpj string) {
+	corpo := fmt.Sprintf("Aparelho %s solicitou o desbloqueio.", device)
+	if cliente != "" {
+		corpo += fmt.Sprintf(" Cliente: %s.", cliente)
+	}
+	if cnpj != "" {
+		corpo += fmt.Sprintf(" CNPJ: %s.", cnpj)
+	}
+	_, err := h.Pool.Exec(ctx, `
+		INSERT INTO public.mensagem
+			(empresa_id, modulo, tipo, titulo, corpo, acao_rota, chave_evento)
+		VALUES (0, 'titulos_offline', 'solicitacao',
+		        'Nova solicitacao de desbloqueio', $1, '/settings?tab=licencas', $2)
+		ON CONFLICT (chave_evento) DO NOTHING
+	`, corpo, fmt.Sprintf("licenca_solicitacao:%d", id))
+	if err != nil {
+		log.Printf("erro ao registrar mensagem da solicitacao %d: %v", id, err)
+	}
 }
 
 func (h *LicencaTitulosPagarHandler) ConfirmarEntregaDispositivo(w http.ResponseWriter, r *http.Request) {
