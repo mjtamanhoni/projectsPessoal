@@ -18,6 +18,8 @@ import { formatCurrency, formatDate } from '../format';
 import { useLicense } from '../security/LicenseProvider';
 import { CheckIcon, CopyIcon, TrashIcon, WalletIcon } from './Icons';
 
+const CHAVE_MENSAGEM = 'desbloqueio:mensagem';
+
 async function copiarTexto(texto: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(texto);
@@ -47,7 +49,13 @@ export function Desbloqueio({ onIrParaConexao }: { onIrParaConexao?: () => void 
   const [situacao, setSituacao] = useState<SolicitacaoLocal>({ status: 'nenhuma' });
   const [resultado, setResultado] = useState<ResultadoSolicitacao | null>(null);
   const [pix, setPix] = useState('');
-  const [mensagem, setMensagem] = useState('');
+  const [mensagem, setMensagem] = useState(() => {
+    try {
+      return window.localStorage.getItem(CHAVE_MENSAGEM) ?? '';
+    } catch {
+      return '';
+    }
+  });
   const [comprovante, setComprovante] = useState<Comprovante | null>(null);
   const [previa, setPrevia] = useState('');
   const [solicitando, setSolicitando] = useState(false);
@@ -67,6 +75,13 @@ export function Desbloqueio({ onIrParaConexao }: { onIrParaConexao?: () => void 
     const timer = window.setTimeout(() => setFeedback(null), 5000);
     return () => window.clearTimeout(timer);
   }, [feedback]);
+
+  useEffect(() => {
+    try {
+      if (mensagem) window.localStorage.setItem(CHAVE_MENSAGEM, mensagem);
+      else window.localStorage.removeItem(CHAVE_MENSAGEM);
+    } catch {}
+  }, [mensagem]);
 
   const aplicarResultado = useCallback(
     async (r: ResultadoSolicitacao) => {
@@ -122,7 +137,7 @@ export function Desbloqueio({ onIrParaConexao }: { onIrParaConexao?: () => void 
         if (!ativo) return;
         setIntegracao(dados);
         setSituacao(local);
-        setMensagem(local.mensagem ?? '');
+        setMensagem((atual) => (atual.trim() ? atual : local.mensagem ?? ''));
         setCarregando(false);
 
         if (local.status !== 'nenhuma') {
@@ -221,6 +236,7 @@ export function Desbloqueio({ onIrParaConexao }: { onIrParaConexao?: () => void 
       await aplicarResultado(r);
       setComprovante(null);
       setPrevia('');
+      setMensagem('');
       notificar(
         'ok',
         r.situacao === 'entregue'

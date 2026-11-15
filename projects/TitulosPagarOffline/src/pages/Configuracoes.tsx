@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { BottomNav } from '../components/BottomNav';
 import { useConfig } from '../security/ConfigProvider';
 import {
@@ -29,9 +29,25 @@ const ABAS: { id: Aba; rotulo: string; Icone: ComponentType<{ size?: number }> }
   { id: 'sobre', rotulo: 'Sobre', Icone: ReceiptIcon },
 ];
 
+export const CHAVE_ABA_CONFIG = 'config:aba';
+
+function lerAbaInicial(): Aba {
+  try {
+    const salva = window.localStorage.getItem(CHAVE_ABA_CONFIG);
+    if (salva && ABAS.some((item) => item.id === salva)) return salva as Aba;
+  } catch {}
+  return 'dados';
+}
+
 export function Configuracoes() {
   const { config } = useConfig();
-  const [aba, setAba] = useState<Aba>('dados');
+  const [aba, setAba] = useState<Aba>(lerAbaInicial);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CHAVE_ABA_CONFIG, aba);
+    } catch {}
+  }, [aba]);
 
   const inicial = (config?.nome || 'T').trim().charAt(0).toUpperCase();
 
