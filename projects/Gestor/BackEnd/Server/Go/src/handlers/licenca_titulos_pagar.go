@@ -524,6 +524,11 @@ func (h *LicencaTitulosPagarHandler) SincronizarDispositivo(w http.ResponseWrite
 	`, device, hash).Scan(&status, &token)
 
 	if errors.Is(err, pgx.ErrNoRows) {
+		// Consultas de status (sem dados de solicitacao) nao criam registro.
+		if cliente == "" && comprovanteBase64 == "" && mensagem == "" {
+			JsonSuccess(w, map[string]any{"status": "nenhuma"})
+			return
+		}
 		// Pode ser um dispositivo novo ou um codigo existente com outro segredo.
 		_, err = h.Pool.Exec(ctx, `
 			INSERT INTO public.licenca_titulos_pagar_solicitacao
@@ -705,10 +710,9 @@ func (h *LicencaTitulosPagarHandler) ListarSolicitacoes(w http.ResponseWriter, r
 		       COALESCE(to_char(entregue_em, 'YYYY-MM-DD"T"HH24:MI:SS'), '')
 		  FROM public.licenca_titulos_pagar_solicitacao
 		 ORDER BY CASE
-		            WHEN status = 'pendente' AND comprovante_base64 IS NOT NULL AND comprovante_base64 <> '' THEN 0
-		            WHEN status = 'pendente' THEN 1
-		            WHEN status = 'liberada' THEN 2
-		            ELSE 3
+		            WHEN status = 'pendente' THEN 0
+		            WHEN status = 'liberada' THEN 1
+		            ELSE 2
 		          END,
 		          COALESCE(ultimo_contato_em, criado_em) DESC
 	`)
@@ -975,4 +979,33 @@ func (h *LicencaTitulosPagarHandler) RevogarSolicitacao(w http.ResponseWriter, r
 	}
 
 	JsonSuccess(w, map[string]string{"mensagem": "Solicitacao revogada"})
+}
+
+func (h *LicencaTitulosPagarHandler) ExcluirSolicitacao(w http.ResponseWriter, r *http.Request) {
+	if !h.autorizado(w, r) {
+		return
+	}
+
+	var req struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID <= 0 {
+		JsonError(w, "Informe o id da solicitacao", http.StatusBadRequest)
+		return
+	}
+
+	tag, err := h.Pool.Exec(context.Background(), `
+		DELETE FROM public.licenca_titulos_pagar_solicitacao
+		 WHERE id = $1
+	`, req.ID)
+	if err != nil {
+		JsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		JsonError(w, "Solicitacao nao encontrada", http.StatusNotFound)
+		return
+	}
+
+	JsonSuccess(w, map[string]string{"mensagem": "Solicitacao excluida"})
 }

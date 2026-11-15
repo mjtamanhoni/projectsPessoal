@@ -147,4 +147,19 @@ router.post('/solicitacoes/revogar', async (req: AuthRequest, res: Response) => 
   }
 });
 
+router.post('/solicitacoes/excluir', async (req: AuthRequest, res: Response) => {
+  try {
+    const id = Number(req.body?.id);
+    if (!id || id <= 0) {
+      res.status(400).json({ error: 'Informe o id da solicitação' });
+      return;
+    }
+    const result = await horseApi.excluirSolicitacaoTitulosPagar(id);
+    res.json(result);
+  } catch (error: unknown) {
+    const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+  }
+});
+
 export default router;

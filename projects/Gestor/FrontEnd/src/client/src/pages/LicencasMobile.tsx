@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Ban,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Copy,
   Eye,
   FileText,
@@ -10,6 +12,7 @@ import {
   Plus,
   RefreshCw,
   Smartphone,
+  Trash2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -129,7 +132,7 @@ function statusSolicitacao(solicitacao: SolicitacaoMobile): { label: string; cla
     return { label: 'Aguardando chave PIX', classe: 'bg-amber-100 text-amber-700' };
   }
   if (!solicitacao.has_comprovante) {
-    return { label: 'Aguardando comprovante', classe: 'bg-sky-100 text-sky-700' };
+    return { label: 'Aguardando liberação', classe: 'bg-sky-100 text-sky-700' };
   }
   return { label: 'Comprovante enviado', classe: 'bg-violet-100 text-violet-700' };
 }
@@ -196,6 +199,8 @@ export function LicencasMobile() {
   const [formPix, setFormPix] = useState<FormPix>(FORM_PIX_INICIAL);
   const [enviandoPix, setEnviandoPix] = useState(false);
   const [revogandoSolicitacao, setRevogandoSolicitacao] = useState<number | null>(null);
+  const [excluindo, setExcluindo] = useState<number | null>(null);
+  const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   const [comprovante, setComprovante] = useState<{ nome: string; tipo: string; base64: string } | null>(null);
   const [comprovanteAberto, setComprovanteAberto] = useState(false);
   const [carregandoComprovante, setCarregandoComprovante] = useState<number | null>(null);
@@ -393,6 +398,31 @@ export function LicencasMobile() {
     }
   };
 
+  const excluirSolicitacao = async (solicitacao: SolicitacaoMobile) => {
+    const nome = solicitacao.cliente || solicitacao.device;
+    const aviso =
+      solicitacao.status === 'pendente'
+        ? `Excluir a solicitação de "${nome}"? Ela sairá do painel e o cliente poderá solicitar novamente pelo app.`
+        : `Excluir a solicitação de "${nome}"? Esta ação remove o registro do painel.`;
+    if (!window.confirm(aviso)) {
+      return;
+    }
+    setExcluindo(solicitacao.id);
+    try {
+      await api.post('/licencaTitulosPagar/solicitacoes/excluir', { id: solicitacao.id });
+      await carregarSolicitacoes();
+      addToast('success', 'Solicitação excluída');
+    } catch (e) {
+      addToast('error', getErrorMsg(e, 'Erro ao excluir solicitação'));
+    } finally {
+      setExcluindo(null);
+    }
+  };
+
+  const alternarExpandido = (chave: string) => {
+    setExpandidos((atual) => ({ ...atual, [chave]: !atual[chave] }));
+  };
+
   const verComprovante = async (solicitacao: SolicitacaoMobile) => {
     setCarregandoComprovante(solicitacao.id);
     try {
@@ -552,8 +582,9 @@ export function LicencasMobile() {
         </div>
 
         <p className="text-xs text-text-secondary mb-3">
-          Fluxo: o app envia a solicitação → você envia a chave PIX → o cliente paga e anexa o
-          comprovante → você libera o token.
+          Fluxo: o app envia a solicitação → você envia a chave PIX → o cliente paga (PIX, dinheiro
+          ou cartão) → você libera o token. O comprovante é opcional e fica registrado quando o
+          cliente envia.
         </p>
 
         {carregandoSolicitacoes ? (
@@ -569,14 +600,25 @@ export function LicencasMobile() {
           <div className="space-y-3">
             {solicitacoes.map((solicitacao) => {
               const status = statusSolicitacao(solicitacao);
+              const chave = `sol-${solicitacao.id}`;
+              const aberto = Boolean(expandidos[chave]);
+              const podeLiberar =
+                solicitacao.status === 'pendente' || solicitacao.status === 'revogada';
               return (
-                <div
-                  key={solicitacao.id}
-                  className="rounded-xl border border-border-primary p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                <div key={solicitacao.id} className="rounded-xl border border-border-primary">
+                  <button
+                    type="button"
+                    className="w-full flex items-start justify-between gap-3 p-4 text-left"
+                    onClick={() => alternarExpandido(chave)}
+                    aria-expanded={aberto}
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {aberto ? (
+                          <ChevronDown size={16} className="text-text-secondary" />
+                        ) : (
+                          <ChevronRight size={16} className="text-text-secondary" />
+                        )}
                         <span className="font-semibold text-text-primary">
                           {solicitacao.cliente || 'Sem nome'}
                         </span>
@@ -588,69 +630,110 @@ export function LicencasMobile() {
                         </span>
                       </div>
                       <div className="text-xs text-text-secondary mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Enviada: {formatarDataHora(solicitacao.criado_em)}</span>
+                        <span>
+                          Último contato: {formatarDataHora(solicitacao.ultimo_contato_em)}
+                        </span>
+                        {solicitacao.has_comprovante && (
+                          <span className="text-emerald-700 font-medium">Comprovante anexado</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs text-text-secondary shrink-0">
+                      {aberto ? 'Retrair' : 'Expandir'}
+                    </span>
+                  </button>
+
+                  {aberto && (
+                    <div className="px-4 pb-4 pt-3 border-t border-border-primary space-y-3">
+                      <div className="text-xs text-text-secondary flex flex-wrap gap-x-4 gap-y-1">
                         {solicitacao.cnpj && <span>CNPJ/CPF: {solicitacao.cnpj}</span>}
                         <span>Valor: {formatarValor(solicitacao.valor_centavos)}</span>
                         {solicitacao.pix_chave ? (
                           <span>PIX: {solicitacao.pix_chave}</span>
                         ) : (
-                          <span className="text-amber-700 font-medium">Chave PIX ainda não enviada</span>
+                          <span className="text-amber-700 font-medium">
+                            Chave PIX ainda não enviada
+                          </span>
                         )}
-                        <span>Enviada: {formatarDataHora(solicitacao.criado_em)}</span>
-                        <span>Último contato: {formatarDataHora(solicitacao.ultimo_contato_em)}</span>
                         {solicitacao.app_versao && (
                           <span>
                             App: {solicitacao.app_versao}
                             {solicitacao.plataforma ? ` (${solicitacao.plataforma})` : ''}
                           </span>
                         )}
+                        {solicitacao.comprovante_nome && (
+                          <span>Comprovante: {solicitacao.comprovante_nome}</span>
+                        )}
+                        {solicitacao.liberado_em && (
+                          <span>Liberada: {formatarDataHora(solicitacao.liberado_em)}</span>
+                        )}
+                        {solicitacao.entregue_em && (
+                          <span>Entregue: {formatarDataHora(solicitacao.entregue_em)}</span>
+                        )}
                       </div>
+
                       {solicitacao.mensagem && (
-                        <p className="text-xs text-text-secondary mt-1">“{solicitacao.mensagem}”</p>
+                        <p className="text-xs text-text-secondary">“{solicitacao.mensagem}”</p>
                       )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {(solicitacao.status === 'pendente' || solicitacao.status === 'revogada') && (
-                        <Button variant="secondary" onClick={() => abrirPix(solicitacao)}>
-                          <KeyRound size={15} />
-                          {solicitacao.pix_chave ? 'Alterar PIX' : 'Enviar PIX'}
-                        </Button>
-                      )}
-                      {solicitacao.has_comprovante && (
-                        <Button
-                          variant="secondary"
-                          onClick={() => void verComprovante(solicitacao)}
-                          disabled={carregandoComprovante === solicitacao.id}
-                        >
-                          {carregandoComprovante === solicitacao.id ? (
-                            <Loader2 size={15} className="animate-spin" />
-                          ) : (
-                            <Eye size={15} />
-                          )}
-                          Comprovante
-                        </Button>
-                      )}
-                      {solicitacao.status === 'pendente' && solicitacao.has_comprovante && (
-                        <Button onClick={() => abrirLiberar(solicitacao)}>
-                          <CheckCircle2 size={15} />
-                          Liberar
-                        </Button>
-                      )}
-                      {solicitacao.status !== 'revogada' && (
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {(solicitacao.status === 'pendente' ||
+                          solicitacao.status === 'revogada') && (
+                          <Button variant="secondary" onClick={() => abrirPix(solicitacao)}>
+                            <KeyRound size={15} />
+                            {solicitacao.pix_chave ? 'Alterar PIX' : 'Enviar PIX'}
+                          </Button>
+                        )}
+                        {solicitacao.has_comprovante && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => void verComprovante(solicitacao)}
+                            disabled={carregandoComprovante === solicitacao.id}
+                          >
+                            {carregandoComprovante === solicitacao.id ? (
+                              <Loader2 size={15} className="animate-spin" />
+                            ) : (
+                              <Eye size={15} />
+                            )}
+                            Comprovante
+                          </Button>
+                        )}
+                        {podeLiberar && (
+                          <Button onClick={() => abrirLiberar(solicitacao)}>
+                            <CheckCircle2 size={15} />
+                            Liberar
+                          </Button>
+                        )}
+                        {solicitacao.status !== 'revogada' && (
+                          <Button
+                            variant="danger"
+                            onClick={() => void revogarSolicitacao(solicitacao)}
+                            disabled={revogandoSolicitacao === solicitacao.id}
+                          >
+                            {revogandoSolicitacao === solicitacao.id ? (
+                              <Loader2 size={15} className="animate-spin" />
+                            ) : (
+                              <Ban size={15} />
+                            )}
+                            Revogar
+                          </Button>
+                        )}
                         <Button
                           variant="danger"
-                          onClick={() => void revogarSolicitacao(solicitacao)}
-                          disabled={revogandoSolicitacao === solicitacao.id}
+                          onClick={() => void excluirSolicitacao(solicitacao)}
+                          disabled={excluindo === solicitacao.id}
                         >
-                          {revogandoSolicitacao === solicitacao.id ? (
+                          {excluindo === solicitacao.id ? (
                             <Loader2 size={15} className="animate-spin" />
                           ) : (
-                            <Ban size={15} />
+                            <Trash2 size={15} />
                           )}
-                          Revogar
+                          Excluir
                         </Button>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -690,11 +773,23 @@ export function LicencasMobile() {
           <div className="space-y-3">
             {licencas.map((licenca) => {
               const status = statusLicenca(licenca);
+              const chave = `lic-${licenca.id}`;
+              const aberto = Boolean(expandidos[chave]);
               return (
-                <div key={licenca.id} className="rounded-xl border border-border-primary p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
+                <div key={licenca.id} className="rounded-xl border border-border-primary">
+                  <div className="flex items-start justify-between gap-3 p-4">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => alternarExpandido(chave)}
+                      aria-expanded={aberto}
+                    >
                       <div className="flex items-center gap-2 flex-wrap">
+                        {aberto ? (
+                          <ChevronDown size={16} className="text-text-secondary" />
+                        ) : (
+                          <ChevronRight size={16} className="text-text-secondary" />
+                        )}
                         <span className="font-semibold text-text-primary">{licenca.cliente}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${status.classe}`}>
                           {status.label}
@@ -704,16 +799,15 @@ export function LicencasMobile() {
                         </span>
                       </div>
                       <div className="text-xs text-text-secondary mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                        {licenca.cnpj && <span>CNPJ/CPF: {licenca.cnpj}</span>}
                         <span>Aparelho: {licenca.device || 'qualquer'}</span>
                         <span>Emitida: {formatarData(licenca.emitido_em)}</span>
-                        <span>Validade: {licenca.expira_em ? formatarData(licenca.expira_em) : 'permanente'}</span>
+                        <span>
+                          Validade:{' '}
+                          {licenca.expira_em ? formatarData(licenca.expira_em) : 'permanente'}
+                        </span>
                       </div>
-                      {licenca.observacoes && (
-                        <p className="text-xs text-text-secondary mt-1">{licenca.observacoes}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
+                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
                       <Button variant="secondary" onClick={() => void copiar(licenca.token)}>
                         <Copy size={15} />
                         Copiar
@@ -724,20 +818,37 @@ export function LicencasMobile() {
                           onClick={() => void revogar(licenca)}
                           disabled={revogando === licenca.id}
                         >
-                          {revogando === licenca.id ? <Loader2 size={15} className="animate-spin" /> : <Ban size={15} />}
+                          {revogando === licenca.id ? (
+                            <Loader2 size={15} className="animate-spin" />
+                          ) : (
+                            <Ban size={15} />
+                          )}
                           Revogar
                         </Button>
                       )}
                     </div>
                   </div>
-                  <details className="mt-3">
-                    <summary className="text-xs text-accent-primary cursor-pointer">Ver token</summary>
-                    <textarea
-                      readOnly
-                      className="input-field w-full min-h-[110px] font-mono text-xs break-all mt-2"
-                      value={licenca.token}
-                    />
-                  </details>
+
+                  {aberto && (
+                    <div className="px-4 pb-4 pt-3 border-t border-border-primary space-y-3">
+                      <div className="text-xs text-text-secondary flex flex-wrap gap-x-4 gap-y-1">
+                        {licenca.cnpj && <span>CNPJ/CPF: {licenca.cnpj}</span>}
+                        <span>Emitida em: {formatarDataHora(licenca.emitido_em)}</span>
+                        <span>
+                          Validade:{' '}
+                          {licenca.expira_em ? formatarData(licenca.expira_em) : 'permanente'}
+                        </span>
+                      </div>
+                      {licenca.observacoes && (
+                        <p className="text-xs text-text-secondary">{licenca.observacoes}</p>
+                      )}
+                      <textarea
+                        readOnly
+                        className="input-field w-full min-h-[110px] font-mono text-xs break-all"
+                        value={licenca.token}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -807,7 +918,9 @@ export function LicencasMobile() {
           <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700">
             O token será vinculado ao aparelho{' '}
             <strong className="font-mono tracking-wider">{liberarAlvo?.device}</strong> e
-            entregue automaticamente ao app na próxima verificação de liberação.
+            entregue automaticamente ao app na próxima verificação. O comprovante não é
+            obrigatório: libere também para pagamentos em dinheiro, cartão ou outro meio. Se o
+            cliente já enviou comprovante, ele continua registrado.
           </div>
 
           <Input

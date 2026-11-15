@@ -285,6 +285,13 @@ async function processarResposta(
     return { ...dados, situacao: 'revogada', licencaAtiva: false };
   }
 
+  if (resposta.status === 'nenhuma') {
+    await run(
+      "UPDATE solicitacao SET status = 'nenhuma', mensagem = NULL, valor_centavos = NULL, comprovante_nome = NULL, enviado_em = NULL, atualizado_em = datetime('now') WHERE id = 1"
+    );
+    return { ...dados, situacao: 'nenhuma', licencaAtiva: false };
+  }
+
   await salvarSituacao('pendente', extras, Boolean(extras.comprovante_nome));
   return { ...dados, situacao: 'pendente', licencaAtiva: false };
 }

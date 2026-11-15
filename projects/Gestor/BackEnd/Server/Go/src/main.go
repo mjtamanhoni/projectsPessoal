@@ -706,6 +706,7 @@ carregar();
 	r.Post("/licencaTitulosPagar/solicitacoes/pix", licencaTitulosPagar.EnviarPixSolicitacao)
 	r.Post("/licencaTitulosPagar/solicitacoes/liberar", licencaTitulosPagar.LiberarSolicitacao)
 		r.Post("/licencaTitulosPagar/solicitacoes/revogar", licencaTitulosPagar.RevogarSolicitacao)
+		r.Post("/licencaTitulosPagar/solicitacoes/excluir", licencaTitulosPagar.ExcluirSolicitacao)
 
 	})
 

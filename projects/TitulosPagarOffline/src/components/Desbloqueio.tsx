@@ -8,7 +8,6 @@ import {
   obterPixCobranca,
   obterSolicitacaoLocal,
   prepararComprovante,
-  salvarIntegracao,
   solicitarDesbloqueio,
   type Comprovante,
   type Integracao,
@@ -17,7 +16,7 @@ import {
 } from '../data';
 import { formatCurrency, formatDate } from '../format';
 import { useLicense } from '../security/LicenseProvider';
-import { CheckIcon, CopyIcon, ServerIcon, TrashIcon, WalletIcon } from './Icons';
+import { CheckIcon, CopyIcon, TrashIcon, WalletIcon } from './Icons';
 
 async function copiarTexto(texto: string): Promise<boolean> {
   try {
@@ -40,12 +39,11 @@ async function copiarTexto(texto: string): Promise<boolean> {
   }
 }
 
-export function Desbloqueio() {
+export function Desbloqueio({ onIrParaConexao }: { onIrParaConexao?: () => void }) {
   const { status: licenca, recarregar: recarregarLicenca } = useLicense();
 
   const [integracao, setIntegracao] = useState<Integracao>({ url: '', porta: 3001 });
   const [carregando, setCarregando] = useState(true);
-  const [salvandoConexao, setSalvandoConexao] = useState(false);
   const [situacao, setSituacao] = useState<SolicitacaoLocal>({ status: 'nenhuma' });
   const [resultado, setResultado] = useState<ResultadoSolicitacao | null>(null);
   const [pix, setPix] = useState('');
@@ -94,9 +92,11 @@ export function Desbloqueio() {
               ? 'Licença liberada e ativada neste aparelho.'
               : r.situacao === 'revogada'
                 ? 'A solicitação foi revogada pelo suporte.'
-                : r.pix_chave
-                  ? 'Dados atualizados.'
-                  : 'Ainda não há chave PIX. Tente novamente mais tarde.'
+                : r.situacao === 'nenhuma'
+                  ? 'A solicitação não está mais no servidor. Toque em Solicitar desbloqueio para enviar outra.'
+                  : r.pix_chave
+                    ? 'Dados atualizados.'
+                    : 'Ainda não há chave PIX. Tente novamente mais tarde.'
           );
         } else if (r.situacao === 'entregue') {
           notificar('ok', 'Licença liberada e ativada neste aparelho.');
@@ -167,19 +167,6 @@ export function Desbloqueio() {
       ativo = false;
     };
   }, [resultado?.pix_chave, resultado?.valor_centavos]);
-
-  const salvarConexao = async () => {
-    setSalvandoConexao(true);
-    try {
-      const salvo = await salvarIntegracao(integracao);
-      setIntegracao(salvo);
-      notificar('ok', 'Dados de conexão salvos.');
-    } catch (e) {
-      notificar('error', extrairErro(e));
-    } finally {
-      setSalvandoConexao(false);
-    }
-  };
 
   const copiar = async (tipo: 'pix' | 'chave', texto: string) => {
     const ok = await copiarTexto(texto);
@@ -278,13 +265,6 @@ export function Desbloqueio() {
 
       {feedback && <div className={`feedback ${feedback.tone}`}>{feedback.msg}</div>}
 
-      {licencaAtiva ? (
-        <div className="license-badge ok">
-          <CheckIcon size={16} />
-          <span>Licença completa ativa{licenca?.cliente ? ` • ${licenca.cliente}` : ''}</span>
-        </div>
-      ) : null}
-
       {carregando ? (
         <div className="loading-state compact">
           <div className="spinner" />
@@ -316,49 +296,21 @@ export function Desbloqueio() {
             </p>
           )}
 
-          <div className="section-subhead">
-            <ServerIcon size={16} />
-            <span>Conexão com o Gestor</span>
-          </div>
-
-          <label className="field">
-            <span>URL de acesso ao FrontEnd</span>
-            <input
-              className="input"
-              placeholder="exemplo.duckdns.org"
-              value={integracao.url}
-              onChange={(event) =>
-                setIntegracao((atual) => ({ ...atual, url: event.target.value }))
-              }
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-          </label>
-
-          <label className="field">
-            <span>Porta do FrontEnd</span>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={String(integracao.porta)}
-              onChange={(event) =>
-                setIntegracao((atual) => ({
-                  ...atual,
-                  porta: Number(event.target.value.replace(/\D/g, '').slice(0, 5)) || 0,
-                }))
-              }
-            />
-          </label>
-
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => void salvarConexao()}
-            disabled={salvandoConexao}
-          >
-            {salvandoConexao ? 'Salvando...' : 'Salvar conexão'}
-          </button>
+          {!integracao.url && (
+            <div className="settings-callout">
+              <strong>Conexão com o Gestor não configurada</strong>
+              <p>Informe o endereço do servidor para liberar o desbloqueio automático.</p>
+              {onIrParaConexao && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-block"
+                  onClick={onIrParaConexao}
+                >
+                  Configurar conexão
+                </button>
+              )}
+            </div>
+          )}
 
           <div className="section-subhead">
             <WalletIcon size={16} />
@@ -366,14 +318,20 @@ export function Desbloqueio() {
           </div>
 
           {!temSolicitacao ? (
-            <button
-              type="button"
-              className="btn btn-primary btn-block"
-              onClick={() => void solicitar()}
-              disabled={solicitando || !integracao.url}
-            >
-              {solicitando ? 'Enviando...' : 'Solicitar desbloqueio'}
-            </button>
+            licencaAtiva ? (
+              <p className="settings-hint">
+                Licença completa já ativa. Para trocar o token, use a ativação manual abaixo.
+              </p>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                onClick={() => void solicitar()}
+                disabled={solicitando || !integracao.url}
+              >
+                {solicitando ? 'Enviando...' : 'Solicitar desbloqueio'}
+              </button>
+            )
           ) : (
             <>
               <div className="solicitacao-status">
