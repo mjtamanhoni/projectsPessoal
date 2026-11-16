@@ -55,15 +55,58 @@ func tipoMensagemValido(tipo string) bool {
 	return false
 }
 
-func (h *MensagemHandler) mensagemVisivel(ctx context.Context, mensagemID, empresaID int, superadmin bool) (bool, error) {
+var appsMensagem = []string{"gestor", "chego", "titulos_online", "titulos_offline"}
+
+func (h *MensagemHandler) appsPermitidos(ctx context.Context, empresaID int, superadmin bool) ([]string, error) {
+	if superadmin {
+		return append([]string(nil), appsMensagem...), nil
+	}
+
+	var temGestor bool
+	var delivery int
+	if err := h.Pool.QueryRow(ctx, `
+		SELECT
+			EXISTS (
+				SELECT 1
+				  FROM public.empresa_modulo em
+				  JOIN public.modulo m ON m.id = em.modulo_id
+				 WHERE em.empresa_id = $1
+				   AND upper(m.nome) = 'GESTOR'
+			),
+			COALESCE((SELECT delivery FROM public.empresa WHERE id = $1), 0)
+	`, empresaID).Scan(&temGestor, &delivery); err != nil {
+		return nil, err
+	}
+
+	permitidos := make([]string, 0, len(appsMensagem))
+	if temGestor {
+		permitidos = append(permitidos, "gestor", "titulos_online")
+	}
+	if delivery == 1 {
+		permitidos = append(permitidos, "chego")
+	}
+	return permitidos, nil
+}
+
+func appMensagemPermitido(apps []string, modulo string) bool {
+	for _, app := range apps {
+		if app == modulo {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *MensagemHandler) mensagemVisivel(ctx context.Context, mensagemID, empresaID int, superadmin bool, apps []string) (bool, error) {
 	var ok bool
 	err := h.Pool.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1 FROM public.mensagem m
 			 WHERE m.id = $1
 			   AND (m.empresa_id = $2 OR ($3 AND m.empresa_id = 0))
+			   AND ($3 OR m.modulo = ANY($4::text[]))
 		)
-	`, mensagemID, empresaID, superadmin).Scan(&ok)
+	`, mensagemID, empresaID, superadmin, apps).Scan(&ok)
 	return ok, err
 }
 
@@ -89,6 +132,16 @@ func (h *MensagemHandler) Listar(w http.ResponseWriter, r *http.Request) {
 	superadmin := middleware.GetIsSuperadmin(r)
 	ctx := context.Background()
 
+	apps, err := h.appsPermitidos(ctx, empresaID, superadmin)
+	if err != nil {
+		JsonError(w, "Erro ao validar acesso aos apps", http.StatusInternalServerError)
+		return
+	}
+	if modulo != "" && !superadmin && !appMensagemPermitido(apps, modulo) {
+		JsonError(w, "Modulo nao disponivel para esta empresa", http.StatusForbidden)
+		return
+	}
+
 	rows, err := h.Pool.Query(ctx, `
 		SELECT m.id, m.empresa_id, m.modulo, m.tipo, m.titulo,
 		       COALESCE(m.corpo, ''), COALESCE(m.acao_rota, ''),
@@ -100,9 +153,10 @@ func (h *MensagemHandler) Listar(w http.ResponseWriter, r *http.Request) {
 		 WHERE (m.expira_em IS NULL OR m.expira_em > NOW())
 		   AND (m.empresa_id = $2 OR ($3 AND m.empresa_id = 0))
 		   AND ($4 = '' OR m.modulo = $4)
+		   AND ($3 OR m.modulo = ANY($5::text[]))
 		 ORDER BY m.criado_em DESC, m.id DESC
-		 LIMIT $5
-	`, usuarioID, empresaID, superadmin, modulo, limite)
+		 LIMIT $6
+	`, usuarioID, empresaID, superadmin, modulo, apps, limite)
 	if err != nil {
 		JsonError(w, "Erro ao listar mensagens", http.StatusInternalServerError)
 		return
@@ -131,9 +185,10 @@ func (h *MensagemHandler) Listar(w http.ResponseWriter, r *http.Request) {
 		         ON ml.mensagem_id = m.id AND ml.usuario_id = $1
 		 WHERE (m.expira_em IS NULL OR m.expira_em > NOW())
 		   AND (m.empresa_id = $2 OR ($3 AND m.empresa_id = 0))
+		   AND ($3 OR m.modulo = ANY($4::text[]))
 		   AND ml.mensagem_id IS NULL
 		 GROUP BY m.modulo
-	`, usuarioID, empresaID, superadmin)
+	`, usuarioID, empresaID, superadmin, apps)
 	if err != nil {
 		JsonError(w, "Erro ao contar mensagens", http.StatusInternalServerError)
 		return
@@ -161,6 +216,7 @@ func (h *MensagemHandler) Listar(w http.ResponseWriter, r *http.Request) {
 		"itens":      itens,
 		"nao_lidas":  total,
 		"por_modulo": porModulo,
+		"apps":       apps,
 	})
 }
 
@@ -176,7 +232,13 @@ func (h *MensagemHandler) MarcarLida(w http.ResponseWriter, r *http.Request) {
 	superadmin := middleware.GetIsSuperadmin(r)
 	ctx := context.Background()
 
-	visivel, err := h.mensagemVisivel(ctx, id, empresaID, superadmin)
+	apps, err := h.appsPermitidos(ctx, empresaID, superadmin)
+	if err != nil {
+		JsonError(w, "Erro ao validar acesso aos apps", http.StatusInternalServerError)
+		return
+	}
+
+	visivel, err := h.mensagemVisivel(ctx, id, empresaID, superadmin, apps)
 	if err != nil {
 		JsonError(w, "Erro ao verificar mensagem", http.StatusInternalServerError)
 		return
@@ -205,14 +267,21 @@ func (h *MensagemHandler) MarcarTodasLidas(w http.ResponseWriter, r *http.Reques
 	superadmin := middleware.GetIsSuperadmin(r)
 	ctx := context.Background()
 
+	apps, err := h.appsPermitidos(ctx, empresaID, superadmin)
+	if err != nil {
+		JsonError(w, "Erro ao validar acesso aos apps", http.StatusInternalServerError)
+		return
+	}
+
 	tag, err := h.Pool.Exec(ctx, `
 		INSERT INTO public.mensagem_leitura (mensagem_id, usuario_id)
 		SELECT m.id, $1
 		  FROM public.mensagem m
 		 WHERE (m.expira_em IS NULL OR m.expira_em > NOW())
 		   AND (m.empresa_id = $2 OR ($3 AND m.empresa_id = 0))
+		   AND ($3 OR m.modulo = ANY($4::text[]))
 		ON CONFLICT (mensagem_id, usuario_id) DO NOTHING
-	`, usuarioID, empresaID, superadmin)
+	`, usuarioID, empresaID, superadmin, apps)
 	if err != nil {
 		JsonError(w, "Erro ao marcar mensagens", http.StatusInternalServerError)
 		return
@@ -274,7 +343,8 @@ func (h *MensagemHandler) Criar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	empresaID := middleware.GetEmpresaLogada(r)
-	if middleware.GetIsSuperadmin(r) && req.EmpresaID != nil {
+	superadmin := middleware.GetIsSuperadmin(r)
+	if superadmin && req.EmpresaID != nil {
 		if *req.EmpresaID < 0 {
 			JsonError(w, "Empresa invalida", http.StatusBadRequest)
 			return
@@ -296,9 +366,19 @@ func (h *MensagemHandler) Criar(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	apps, err := h.appsPermitidos(ctx, empresaID, superadmin)
+	if err != nil {
+		JsonError(w, "Erro ao validar acesso aos apps", http.StatusInternalServerError)
+		return
+	}
+	if !superadmin && !appMensagemPermitido(apps, modulo) {
+		JsonError(w, "Modulo nao disponivel para esta empresa", http.StatusForbidden)
+		return
+	}
+
 	var id int64
 	var criadoEm time.Time
-	err := h.Pool.QueryRow(ctx, `
+	err = h.Pool.QueryRow(ctx, `
 		INSERT INTO public.mensagem
 			(empresa_id, modulo, tipo, titulo, corpo, acao_rota, prioridade, remetente_id)
 		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8)

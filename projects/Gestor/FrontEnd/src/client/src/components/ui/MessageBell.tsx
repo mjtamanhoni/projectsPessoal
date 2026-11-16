@@ -19,6 +19,7 @@ interface RespostaMensagens {
   itens: Mensagem[];
   nao_lidas: number;
   por_modulo: Record<string, number>;
+  apps: string[];
 }
 
 const ABAS = [
@@ -62,7 +63,7 @@ export function MessageBell() {
   const navigate = useNavigate();
   const [aberto, setAberto] = useState(false);
   const [carregando, setCarregando] = useState(true);
-  const [dados, setDados] = useState<RespostaMensagens>({ itens: [], nao_lidas: 0, por_modulo: {} });
+  const [dados, setDados] = useState<RespostaMensagens>({ itens: [], nao_lidas: 0, por_modulo: {}, apps: [] });
   const [aba, setAba] = useState('todos');
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
@@ -74,7 +75,7 @@ export function MessageBell() {
   const carregar = useCallback(async () => {
     try {
       const { data } = await api.get<RespostaMensagens>('/mensagens', { params: { limite: 80 } });
-      setDados(data);
+      setDados({ ...data, apps: Array.isArray(data.apps) ? data.apps : [] });
       setErro('');
     } catch (err) {
       setErro(getErrorMsg(err, 'Erro ao carregar mensagens'));
@@ -110,6 +111,22 @@ export function MessageBell() {
     const timer = window.setTimeout(() => setAviso(''), 4000);
     return () => window.clearTimeout(timer);
   }, [aviso]);
+
+  const apps = dados.apps;
+  const appsDisponiveis = ABAS.filter((item) => item.id !== 'todos' && apps.includes(item.id));
+  const abasDisponiveis = ABAS.filter((item) => item.id === 'todos' || apps.includes(item.id));
+
+  useEffect(() => {
+    if (aba !== 'todos' && !apps.includes(aba)) {
+      setAba('todos');
+    }
+    if (!form.modulo || !apps.includes(form.modulo)) {
+      setForm((prev) => ({ ...prev, modulo: apps[0] ?? '' }));
+    }
+    if (apps.length === 0) {
+      setComposer(false);
+    }
+  }, [aba, apps, form.modulo]);
 
   const abrir = () => {
     const proximo = !aberto;
@@ -155,6 +172,10 @@ export function MessageBell() {
   };
 
   const enviar = async () => {
+    if (!form.modulo) {
+      setErro('Nenhum app de mensagens disponível para esta empresa.');
+      return;
+    }
     const titulo = form.titulo.trim();
     if (!titulo) {
       setErro('Informe o título da mensagem.');
@@ -213,17 +234,19 @@ export function MessageBell() {
             >
               <CheckCheck size={16} className="text-text-secondary" />
             </button>
-            <button
-              type="button"
-              onClick={() => setComposer((prev) => !prev)}
-              className="p-1.5 rounded-lg hover:bg-background-hover transition-colors"
-              title={composer ? 'Fechar formulário' : 'Nova mensagem'}
-            >
-              {composer ? <X size={16} className="text-text-secondary" /> : <Plus size={16} className="text-text-secondary" />}
-            </button>
+            {appsDisponiveis.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setComposer((prev) => !prev)}
+                className="p-1.5 rounded-lg hover:bg-background-hover transition-colors"
+                title={composer ? 'Fechar formulário' : 'Nova mensagem'}
+              >
+                {composer ? <X size={16} className="text-text-secondary" /> : <Plus size={16} className="text-text-secondary" />}
+              </button>
+            )}
           </div>
 
-          {composer && (
+          {composer && appsDisponiveis.length > 0 && (
             <div className="p-4 border-b border-border-subtle space-y-2 bg-bg-secondary/40">
               <div className="grid grid-cols-2 gap-2">
                 <select
@@ -231,7 +254,7 @@ export function MessageBell() {
                   value={form.modulo}
                   onChange={(e) => setForm((prev) => ({ ...prev, modulo: e.target.value }))}
                 >
-                  {ABAS.filter((item) => item.id !== 'todos').map((item) => (
+                  {appsDisponiveis.map((item) => (
                     <option key={item.id} value={item.id}>{item.rotulo}</option>
                   ))}
                 </select>
@@ -286,7 +309,7 @@ export function MessageBell() {
           )}
 
           <div className="flex gap-1 px-3 py-2 border-b border-border-subtle overflow-x-auto">
-            {ABAS.map((item) => {
+            {abasDisponiveis.map((item) => {
               const qtd = contagem(item.id);
               return (
                 <button
@@ -310,7 +333,7 @@ export function MessageBell() {
               </div>
             ) : itens.length === 0 ? (
               <div className="py-8 text-center text-xs text-text-muted">
-                Nenhuma mensagem.
+                {apps.length === 0 ? 'Nenhum app de mensagens disponível para esta empresa.' : 'Nenhuma mensagem.'}
               </div>
             ) : (
               itens.map((mensagem) => (

@@ -599,15 +599,15 @@ export function Settings() {
               )}
               {portasDetectadas.length > 0 && (
                 <div className="border border-border-primary rounded-lg divide-y divide-border-primary">
-                  {portasDetectadas.map((p) => (
-                    <div key={p.porta} className="flex items-center justify-between px-3 py-2 gap-2">
+                  {portasDetectadas.map((p, index) => (
+                    <div key={p.porta} className={`flex items-center gap-3 px-3 py-2 ${index % 2 === 1 ? 'bg-bg-secondary/40' : ''}`}>
+                      <Button type="button" variant="secondary" className="px-2 py-1 text-xs shrink-0" onClick={() => usarPorta(p.porta)}>
+                        Usar
+                      </Button>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-text-primary truncate">{p.nome}</p>
                         <p className="text-xs text-text-tertiary">{p.porta} ({p.tipo})</p>
                       </div>
-                      <Button type="button" variant="secondary" className="px-2 py-1 text-xs" onClick={() => usarPorta(p.porta)}>
-                        Usar
-                      </Button>
                     </div>
                   ))}
                 </div>
