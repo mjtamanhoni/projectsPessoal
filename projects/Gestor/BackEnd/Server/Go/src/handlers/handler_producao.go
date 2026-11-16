@@ -1456,17 +1456,24 @@ func (h *ProducaoHandler) EncomendaListar(w http.ResponseWriter, r *http.Request
 
 func (h *ProducaoHandler) EncomendaCount(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
-	var count int
-	var maxID int
+	var count, maxID, avaliacoesCount, avaliacoesMaxID int
 	err := h.Pool.QueryRow(r.Context(),
-		`SELECT COUNT(*), COALESCE(MAX(id), 0)
-		 FROM encomenda
-		 WHERE (empresa_id = $1 OR $1 = 0)`, empresaID).Scan(&count, &maxID)
+		`SELECT
+			(SELECT COUNT(*) FROM encomenda WHERE (empresa_id = $1 OR $1 = 0)),
+			(SELECT COALESCE(MAX(id), 0) FROM encomenda WHERE (empresa_id = $1 OR $1 = 0)),
+			(SELECT COUNT(*) FROM encomenda_avaliacao WHERE (empresa_id = $1 OR $1 = 0)),
+			(SELECT COALESCE(MAX(id), 0) FROM encomenda_avaliacao WHERE (empresa_id = $1 OR $1 = 0))`,
+		empresaID).Scan(&count, &maxID, &avaliacoesCount, &avaliacoesMaxID)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	jsonSuccess(w, map[string]interface{}{"count": count, "max_id": maxID})
+	jsonSuccess(w, map[string]interface{}{
+		"count":             count,
+		"max_id":            maxID,
+		"avaliacoes_count":  avaliacoesCount,
+		"avaliacoes_max_id": avaliacoesMaxID,
+	})
 }
 
 func (h *ProducaoHandler) EncomendaAtualizar(w http.ResponseWriter, r *http.Request) {

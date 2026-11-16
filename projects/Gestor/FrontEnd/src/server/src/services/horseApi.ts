@@ -1862,10 +1862,20 @@ async excluirProdutoFabricado(id: number): Promise<unknown> {
     }
   }
 
-  async countEncomendas(): Promise<{ count: number; max_id: number }> {
+  async countEncomendas(): Promise<{
+    count: number;
+    max_id: number;
+    avaliacoes_count: number;
+    avaliacoes_max_id: number;
+  }> {
     try {
       const res = await this.api.get('/encomenda/count', { headers: this.getAuthHeaders() });
-      return res.data as { count: number; max_id: number };
+      return res.data as {
+        count: number;
+        max_id: number;
+        avaliacoes_count: number;
+        avaliacoes_max_id: number;
+      };
     } catch (error) {
       return this.handleError(error);
     }

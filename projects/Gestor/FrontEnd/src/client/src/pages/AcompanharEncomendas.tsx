@@ -92,7 +92,12 @@ export function AcompanharEncomendas() {
   const menuBtnRef = useRef<HTMLButtonElement>(null);
 
   const impressosRef = useRef<Set<number>>(new Set());
-  const lastCountRef = useRef<{ count: number; max_id: number }>({ count: -1, max_id: -1 });
+  const lastCountRef = useRef<{
+    count: number;
+    max_id: number;
+    avaliacoes_count: number;
+    avaliacoes_max_id: number;
+  }>({ count: -1, max_id: -1, avaliacoes_count: -1, avaliacoes_max_id: -1 });
 
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
   const [bandeirasCartao, setBandeirasCartao] = useState<BandeiraCartao[]>([]);
@@ -167,11 +172,21 @@ export function AcompanharEncomendas() {
     if (!refreshSeg || refreshSeg <= 0) return;
     const id = setInterval(() => {
       api.get('/encomendas/count').then((r) => {
-        const { count, max_id } = r.data as { count: number; max_id: number };
+        const { count, max_id, avaliacoes_count, avaliacoes_max_id } = r.data as {
+          count: number;
+          max_id: number;
+          avaliacoes_count: number;
+          avaliacoes_max_id: number;
+        };
         const prev = lastCountRef.current;
-        if (prev.count !== count || prev.max_id !== max_id) {
-          lastCountRef.current = { count, max_id };
-          void refetch();
+        if (
+          prev.count !== count ||
+          prev.max_id !== max_id ||
+          prev.avaliacoes_count !== avaliacoes_count ||
+          prev.avaliacoes_max_id !== avaliacoes_max_id
+        ) {
+          lastCountRef.current = { count, max_id, avaliacoes_count, avaliacoes_max_id };
+          void refetch({ silent: true });
         }
       }).catch(() => {});
     }, refreshSeg * 1000);

@@ -22,13 +22,17 @@ export function useApi<T>(endpoint: string) {
     return err instanceof Error ? err.message : 'Erro desconhecido';
   };
 
-  const fetchData = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) {
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+    }
     try {
       const response = await api.get(endpoint);
       const result = response.data as T[];
       setState({ data: Array.isArray(result) ? result : [], loading: false, error: null });
     } catch (err: unknown) {
+      if (silent) return;
       setState({ data: [], loading: false, error: extractError(err) });
     }
   }, [endpoint]);
