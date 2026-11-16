@@ -1,10 +1,10 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, KeyboardEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { LogIn, Settings, Server, Loader2, Save, KeyRound } from 'lucide-react';
+import { LogIn, Settings, Server, Loader2, Save, KeyRound, AlertTriangle } from 'lucide-react';
 import { fetchSettings, saveSettings } from '@/lib/settings';
 import { formatCpfCnpj } from '@/lib/utils';
 import api from '@/lib/api';
@@ -16,6 +16,7 @@ export function Login() {
   const [cnpjCpf, setCnpjCpf] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [capsLockAtivo, setCapsLockAtivo] = useState(false);
   const { login: authLogin } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -188,6 +189,10 @@ export function Login() {
     }
   };
 
+  const atualizarCapsLock = (e: KeyboardEvent<HTMLInputElement>) => {
+    setCapsLockAtivo(e.getModifierState('CapsLock'));
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -277,14 +282,25 @@ export function Login() {
               required
             />
 
-            <Input
-              label="Senha"
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              placeholder="Digite sua senha"
-              required
-            />
+            <div>
+              <Input
+                label="Senha"
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                onKeyDown={atualizarCapsLock}
+                onKeyUp={atualizarCapsLock}
+                onBlur={() => setCapsLockAtivo(false)}
+                placeholder="Digite sua senha"
+                required
+              />
+              {capsLockAtivo && (
+                <p role="status" aria-live="polite" className="mt-1.5 flex items-center gap-1.5 text-sm text-amber-600">
+                  <AlertTriangle size={14} className="flex-shrink-0" />
+                  Caps Lock está ativado.
+                </p>
+              )}
+            </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar'}
