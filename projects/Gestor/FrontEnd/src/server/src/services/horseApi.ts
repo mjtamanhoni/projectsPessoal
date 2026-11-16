@@ -1343,6 +1343,45 @@ class HorseApiService {
     }
   }
 
+  async obterPerfil(): Promise<unknown> {
+    try {
+      const res = await this.api.get('/perfil', { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async atualizarPerfil(data: {
+    nome?: string;
+    email?: string;
+    senhaAtual?: string;
+    novaSenha?: string;
+    novoPin?: string;
+  }): Promise<unknown> {
+    const payload: Record<string, unknown> = {};
+    if (data.nome !== undefined) payload.nome = data.nome;
+    if (data.email !== undefined) payload.email = data.email;
+    if (data.senhaAtual !== undefined) payload.senha_atual = data.senhaAtual;
+    if (data.novaSenha !== undefined) payload.nova_senha = data.novaSenha;
+    if (data.novoPin !== undefined) payload.novo_pin = data.novoPin;
+    try {
+      const res = await this.api.put('/perfil', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarAvatarPerfil(avatar: string): Promise<unknown> {
+    try {
+      const res = await this.api.post('/perfil/avatar', { avatar }, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarLicencasTitulosPagar(): Promise<unknown> {
     try {
       const res = await this.api.get('/licencaTitulosPagar', { headers: this.getAuthHeaders() });

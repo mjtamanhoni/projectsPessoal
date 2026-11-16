@@ -63,6 +63,7 @@ func main() {
 		cfg.LicencaTitulosPagarKeyID,
 	)
 	mensagemHandler := handlers.NewMensagemHandler(pool)
+	perfilHandler := handlers.NewPerfilHandler(pool)
 	logStore := gestorLogger.New(filepath.Join(cfg.DataDir, "logs"))
 	go func() {
 		logStore.CleanOldLogs()
@@ -383,6 +384,11 @@ carregar();
 		r.Put("/usuario/adminRedefinirSenha", basicCRUD.UsuarioAdminRedefinirSenha)
 		r.Put("/usuario/adminRedefinirPin", basicCRUD.UsuarioAdminRedefinirPin)
 		r.Post("/usuario/trocarEmpresa", loginHandler.TrocarEmpresa)
+
+		// Perfil do usuario logado
+		r.Get("/perfil", perfilHandler.Obter)
+		r.Put("/perfil", perfilHandler.Atualizar)
+		r.Post("/perfil/avatar", perfilHandler.SalvarAvatar)
 
 		// Fornecedor
 		r.Get("/fornecedor", basicCRUD.FornecedorListar)

@@ -232,6 +232,17 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// padrao de filtro no frontend (combobox de usuarios/clientes).
 	empresaLogada := empresaID
 
+	// Avatar do usuario (linha real do usuario, que para o superadmin pode
+	// estar na empresa principal mesmo acessando outra empresa).
+	empresaAvatar := empresaLogada
+	if empresaIDUsuario != nil && *empresaIDUsuario > 0 {
+		empresaAvatar = *empresaIDUsuario
+	}
+	var avatar string
+	_ = h.Pool.QueryRow(r.Context(),
+		`SELECT COALESCE(avatar, '') FROM public.usuario WHERE id = $1 AND empresa_id = $2`,
+		userID, empresaAvatar).Scan(&avatar)
+
 	// Escopo de leitura: tambem usa a empresa do login (inclusive para superadmin).
 	// O superadmin troca de empresa em tempo real via /usuario/trocarEmpresa,
 	// que emite um novo token com a empresa selecionada.
@@ -247,6 +258,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"id":            userID,
 		"nome":          nome,
 		"email":         email,
+		"avatar":        avatar,
 		"usuario":       nome,
 		"token":         token,
 		"empresa":       empresaID,

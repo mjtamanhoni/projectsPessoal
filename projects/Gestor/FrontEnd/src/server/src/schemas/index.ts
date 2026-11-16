@@ -103,6 +103,18 @@ export const usuarioPinBodySchema = z.object({
   empresa_id: z.number().int().positive().optional(),
 });
 
+export const perfilBodySchema = z.object({
+  nome: z.string().min(1, 'Nome e obrigatorio').max(100).optional(),
+  email: z.string().email('Email invalido').max(100).optional().or(z.literal('')),
+  senhaAtual: z.string().max(100).optional().or(z.literal('')),
+  novaSenha: z.string().min(4, 'Senha deve ter pelo menos 4 caracteres').max(100).optional().or(z.literal('')),
+  novoPin: z.string().length(4, 'PIN deve ter exatamente 4 digitos').optional().or(z.literal('')),
+});
+
+export const perfilAvatarBodySchema = z.object({
+  avatar: z.string().max(3_000_000).optional().or(z.literal('')),
+});
+
 export const formularioBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),

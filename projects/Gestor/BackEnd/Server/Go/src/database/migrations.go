@@ -1842,6 +1842,13 @@ var Migracoes = []Migracao{
 				ON public.mensagem_leitura (usuario_id);
 		`,
 	},
+	{
+		Nome: "040_usuario_avatar",
+		SQLUp: `
+			ALTER TABLE public.usuario
+				ADD COLUMN IF NOT EXISTS avatar VARCHAR(255);
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

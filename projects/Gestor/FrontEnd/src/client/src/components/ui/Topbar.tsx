@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Building, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
@@ -8,6 +9,7 @@ import api, { getErrorMsg } from '@/lib/api';
 import type { Empresa } from '@/types';
 import { ConfirmDialog } from './ConfirmDialog';
 import { MessageBell } from './MessageBell';
+import { PerfilModal } from '@/components/PerfilModal';
 
 interface TopbarProps {
   collapsed: boolean;
@@ -20,6 +22,7 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [trocaPendente, setTrocaPendente] = useState<Empresa | null>(null);
   const [trocando, setTrocando] = useState(false);
+  const [perfilAberto, setPerfilAberto] = useState(false);
 
   useEffect(() => {
     if (!isSuperadmin) return;
@@ -53,6 +56,7 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
 
   const logo = getLogo() ?? (empresa?.logomarca ? getUploadsUrl(empresa.logomarca) : null);
   const inicial = (user?.nome || 'U').trim().charAt(0).toUpperCase();
+  const avatarUrl = getUploadsUrl(user?.avatar);
 
   return (
     <header className="h-16 shrink-0 bg-bg-card border-b border-border-subtle flex items-center gap-3 px-4 relative z-40">
@@ -111,13 +115,24 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
         <MessageBell />
 
         <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-border-subtle min-w-0">
-          <div className="w-8 h-8 rounded-full bg-accent-primary/15 text-accent-primary flex items-center justify-center text-xs font-semibold shrink-0">
-            {inicial}
-          </div>
-          <div className="hidden lg:block min-w-0">
-            <p className="text-xs font-medium text-text-primary truncate max-w-40">{user?.nome}</p>
-            <p className="text-[11px] text-text-muted truncate max-w-40">{empresaNome}</p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setPerfilAberto(true)}
+            className="flex items-center gap-2 min-w-0 rounded-lg hover:bg-background-hover transition-colors p-1 -m-1"
+            title="Meu perfil"
+          >
+            <span className="w-8 h-8 rounded-full overflow-hidden bg-accent-primary/15 text-accent-primary flex items-center justify-center text-xs font-semibold shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Foto do usuário" className="w-full h-full object-cover" />
+              ) : (
+                inicial
+              )}
+            </span>
+            <span className="hidden lg:block min-w-0 text-left">
+              <span className="block text-xs font-medium text-text-primary truncate max-w-40">{user?.nome}</span>
+              <span className="block text-[11px] text-text-muted truncate max-w-40">{empresaNome}</span>
+            </span>
+          </button>
           <button
             type="button"
             onClick={logout}
@@ -139,6 +154,8 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
         confirmLabel="Sim, trocar"
         loading={trocando}
       />
+
+      <PerfilModal isOpen={perfilAberto} onClose={() => setPerfilAberto(false)} />
     </header>
   );
 }

@@ -20,6 +20,7 @@ interface AuthContextType {
   setIsOpenLoja: (aberto: boolean) => void;
   login: (login: string, senha: string, pin?: string, empresa?: number | string) => Promise<void>;
   logout: () => void;
+  updateUser: (patch: Partial<User>) => void;
   temAcesso: (rota: string) => boolean;
   temPermissao: (rota: string, acao: string) => boolean;
   loading: boolean;
@@ -138,6 +139,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setIsOpenLoja = useCallback((aberto: boolean) => {
     isOpenLojaRef.current = aberto;
     setIsOpenLojaState(aberto);
+  }, []);
+
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      sessionStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+    if (patch.is_superadmin !== undefined) {
+      setIsSuperadmin(patch.is_superadmin === true);
+    }
   }, []);
 
   const fecharLojaRequest = useCallback(() => {
@@ -284,6 +297,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (!user?.id) return;
+    let cancelado = false;
+    api.get('/perfil')
+      .then((r) => {
+        if (cancelado) return;
+        const perfil = r.data as { nome?: string; email?: string; avatar?: string | null };
+        const patch: Partial<User> = { avatar: perfil.avatar ?? null };
+        if (perfil.nome !== undefined) patch.nome = perfil.nome;
+        if (perfil.email !== undefined) patch.email = perfil.email;
+        updateUser(patch);
+      })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, [user?.id, updateUser]);
+
+  useEffect(() => {
     empresaIdLojaRef.current = empresa?.id ?? null;
     if (!empresa?.id) return;
     let cancelado = false;
@@ -399,7 +428,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [startSessionTimer]);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, isOpenLoja, setIsOpenLoja, login, logout, temAcesso, temPermissao, loading, pausarTimerInatividade, retomarTimerInatividade }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, isOpenLoja, setIsOpenLoja, login, logout, updateUser, temAcesso, temPermissao, loading, pausarTimerInatividade, retomarTimerInatividade }}>
       {children}
     </AuthContext.Provider>
   );

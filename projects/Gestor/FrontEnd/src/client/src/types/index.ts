@@ -135,6 +135,7 @@ export interface User {
   id: number;
   nome: string;
   email: string;
+  avatar?: string | null;
   token: string;
   empresaId: number;
   is_superadmin?: boolean;
