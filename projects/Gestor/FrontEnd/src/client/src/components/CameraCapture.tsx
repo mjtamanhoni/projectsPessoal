@@ -18,8 +18,15 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
 
     const iniciar = async () => {
       try {
+        if (typeof window !== 'undefined' && window.isSecureContext === false) {
+          throw new Error(
+            'A câmera só funciona em conexão segura. Abra o sistema por https:// ou por http://localhost:3001.'
+          );
+        }
         if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error('Este navegador não suporta acesso à câmera');
+          throw new Error(
+            'Este navegador não expôs a API de câmera. Confirme que está em https:// ou localhost e que a página não está no modo de compatibilidade.'
+          );
         }
         const s = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
@@ -41,6 +48,10 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
           setErro('Permissão de câmera negada. Autorize o acesso no navegador.');
         } else if (nome === 'NotFoundError' || nome === 'OverconstrainedError') {
           setErro('Nenhuma câmera foi encontrada neste dispositivo.');
+        } else if (nome === 'NotReadableError' || nome === 'TrackStartError') {
+          setErro('A câmera está em uso por outro aplicativo ou não pôde ser iniciada.');
+        } else if (nome === 'AbortError') {
+          setErro('A abertura da câmera foi interrompida. Tente novamente.');
         } else {
           setErro(err instanceof Error ? err.message : 'Não foi possível abrir a câmera');
         }
