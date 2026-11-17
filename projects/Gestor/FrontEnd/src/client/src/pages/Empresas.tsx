@@ -156,7 +156,7 @@ export function Empresas() {
         const id = emp.id ?? emp.codigo;
         const status = emp.status ?? 1;
         const extras: RowActionDef[] = [];
-        if (id && id !== 1) {
+        if (id) {
           extras.push({
             rotulo: 'Regiões de entrega',
             icone: MapPin,
@@ -165,6 +165,8 @@ export function Empresas() {
             permissaoRota: '/empresas',
             permissaoAcao: ACAO.EDITAR,
           });
+        }
+        if (id && id !== 1) {
           extras.push({
             rotulo: status === 1 ? 'Inativar' : 'Ativar',
             icone: status === 1 ? ToggleLeft : ToggleRight,
