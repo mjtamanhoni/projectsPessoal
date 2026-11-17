@@ -200,9 +200,6 @@ export function RegioesEntregaModal({ isOpen, onClose, empresaId, empresaNome }:
             >
               <RefreshCw size={18} className="text-text-secondary" />
             </button>
-            <Button onClick={salvar} disabled={salvando || carregando || !empresaId}>
-              <Save size={18} /> {salvando ? 'Salvando...' : 'Salvar'}
-            </Button>
           </div>
         </div>
 
@@ -228,7 +225,6 @@ export function RegioesEntregaModal({ isOpen, onClose, empresaId, empresaNome }:
         ) : (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="rounded-xl border border-border-primary p-4">
-              <h3 className="text-sm font-semibold text-text-primary mb-3">Mapa do Brasil</h3>
               <RegioesEntregaMapa
                 ufAtiva={ufAtiva}
                 onSelecionarUf={(uf) => {
