@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import brasilUfsJson from '@/data/brasil-ufs.json';
 import estadosJson from '@/data/estados.json';
 import municipiosJson from '@/data/municipios.json';
-import { ZoomIn, ZoomOut } from 'lucide-react';
 
 export interface Municipio {
   codigo_ibge: string;
@@ -292,22 +291,42 @@ export function RegioesEntregaMapa({ ufAtiva, onSelecionarUf, selecionados, onTo
 
   return (
     <div className="w-full">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <p className="text-xs text-text-secondary">
-          {ampliado
-            ? `Municípios de ${nomeEstado}. Clique nas cidades ou nos nomes para marcar.`
-            : 'Clique em um estado para selecionar; clique novamente para ampliar.'}
-        </p>
-        {ufAtiva && (
+      <div className="mb-3 flex items-start gap-3">
+        {ampliado && (
           <button
             type="button"
-            onClick={() => setZoomUf(ampliado ? null : ufAtiva)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border-primary px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-background-hover transition-colors"
+            onClick={() => setZoomUf(null)}
+            title="Voltar ao mapa do Brasil"
+            aria-label="Voltar ao mapa do Brasil"
+            className="shrink-0 rounded-lg border border-border-primary bg-bg-card p-1 transition-colors hover:bg-background-hover"
           >
-            {ampliado ? <ZoomOut size={14} /> : <ZoomIn size={14} />}
-            {ampliado ? 'Ver Brasil' : `Ampliar ${ufAtiva}`}
+            <svg
+              viewBox={`0 0 ${projecaoBrasil.largura} ${projecaoBrasil.altura}`}
+              className="h-14 w-14"
+              role="img"
+              aria-label="Mapa do Brasil - voltar"
+            >
+              {caminhosBrasil.map((estado) => (
+                <path
+                  key={estado.uf || estado.d}
+                  d={estado.d}
+                  fill={estado.uf === ufAtiva ? 'rgba(59,130,246,0.5)' : 'rgba(148,163,184,0.35)'}
+                  stroke={estado.uf === ufAtiva ? '#3b82f6' : 'rgba(100,116,139,0.65)'}
+                  strokeWidth={estado.uf === ufAtiva ? 1.6 : 0.7}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+            </svg>
           </button>
         )}
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-text-primary">{ampliado ? nomeEstado : 'Mapa do Brasil'}</h3>
+          <p className="text-xs text-text-secondary">
+            {ampliado
+              ? 'Clique nas cidades ou nos nomes para marcar. Clique no mapa pequeno para voltar ao Brasil.'
+              : 'Clique em um estado para ampliar e ver as cidades.'}
+          </p>
+        </div>
       </div>
 
       <svg
@@ -323,8 +342,8 @@ export function RegioesEntregaMapa({ ufAtiva, onSelecionarUf, selecionados, onTo
               d={estado.d}
               onClick={() => {
                 if (!estado.uf) return;
-                if (estado.uf === ufAtiva) setZoomUf(estado.uf);
-                else onSelecionarUf(estado.uf);
+                onSelecionarUf(estado.uf);
+                setZoomUf(estado.uf);
               }}
               className={estado.uf ? 'cursor-pointer transition-colors' : undefined}
               fill={estado.uf === ufAtiva ? 'rgba(59,130,246,0.28)' : 'rgba(148,163,184,0.22)'}
@@ -332,7 +351,7 @@ export function RegioesEntregaMapa({ ufAtiva, onSelecionarUf, selecionados, onTo
               strokeWidth={estado.uf === ufAtiva ? 1.6 : 0.8}
               vectorEffect="non-scaling-stroke"
             >
-              {estado.uf && <title>{estado.uf === ufAtiva ? `${estado.uf} - clique para ampliar` : estado.uf}</title>}
+              {estado.uf && <title>{`${estado.uf} - clique para ampliar`}</title>}
             </path>
           ))}
 
@@ -426,8 +445,8 @@ export function RegioesEntregaMapa({ ufAtiva, onSelecionarUf, selecionados, onTo
         </span>
         <span>
           {ampliado
-            ? 'No mapa ampliado, os nomes aparecem quando há espaço.'
-            : 'Use "Ampliar" para ver o mapa do estado e os nomes das cidades.'}
+            ? 'No mapa do estado, os nomes aparecem quando há espaço.'
+            : 'Clique em um estado para ampliar; use o mapa pequeno para voltar ao Brasil.'}
         </span>
       </div>
     </div>
