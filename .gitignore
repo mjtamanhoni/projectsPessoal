@@ -76,6 +76,9 @@ projects/Gestor_Backup_*/
 !projects/Gestor/FrontEnd/src/server/database/*.sql
 !projects/Gestor/BackEnd/Server/src/*.sql
 
+# Dados geograficos (mapa de regioes de entrega)
+!projects/Gestor/FrontEnd/src/client/src/data/*.json
+
 # ============================================
 # Titulos a Pagar Offline (app independente)
 # ============================================

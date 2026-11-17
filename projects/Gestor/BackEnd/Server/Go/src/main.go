@@ -64,6 +64,7 @@ func main() {
 	)
 	mensagemHandler := handlers.NewMensagemHandler(pool)
 	perfilHandler := handlers.NewPerfilHandler(pool)
+	regiaoEntrega := &handlers.RegiaoEntregaHandler{Pool: pool}
 	logStore := gestorLogger.New(filepath.Join(cfg.DataDir, "logs"))
 	go func() {
 		logStore.CleanOldLogs()
@@ -90,6 +91,7 @@ func main() {
 	r.Post("/usuario/redefinirSenha", basicCRUD.UsuarioRedefinirSenhaPublico)
 	r.Post("/usuario/primeiroAcesso", basicCRUD.PrimeiroAcesso)
 	r.Get("/empresaPublic", basicCRUD.EmpresaListarPublico)
+	r.Get("/geocode/reverse", regiaoEntrega.ReverseGeocode)
 	r.Get("/clientePublico", basicCRUD.ClientePublicoBuscar)
 	r.Post("/clientePublico", basicCRUD.ClientePublicoCriar)
 	r.Get("/clientePublicoPorDocumento", basicCRUD.ClientePublicoBuscarPorDocumento)
@@ -638,6 +640,12 @@ carregar();
 		r.Post("/empresa/logomarca", basicCRUD.EmpresaLogomarcaSalvar)
 		r.Post("/empresa/limpar-dados", basicCRUD.EmpresaLimparDados)
 		r.Post("/empresa/atualizar-sequencias", basicCRUD.EmpresaAtualizarSequencias)
+
+		// Regiao de Entrega
+		r.Get("/regiaoEntrega", regiaoEntrega.Listar)
+		r.Post("/regiaoEntrega", regiaoEntrega.Adicionar)
+		r.Post("/regiaoEntrega/lote", regiaoEntrega.SalvarLote)
+		r.Delete("/regiaoEntrega", regiaoEntrega.Excluir)
 
 		// Marca
 		r.Get("/marca", basicCRUD.MarcaListar)

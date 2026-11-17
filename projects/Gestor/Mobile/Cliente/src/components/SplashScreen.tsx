@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SPLASH_ICON } from '../splash-icon';
+import { detectarRegiao } from '../localizacao';
 
 interface Props {
   onFinalizar: () => void;
@@ -7,8 +8,14 @@ interface Props {
 
 export default function SplashScreen({ onFinalizar }: Props) {
   const [etapa, setEtapa] = useState(0);
+  const deteccaoIniciada = useRef(false);
 
   useEffect(() => {
+    if (!deteccaoIniciada.current) {
+      deteccaoIniciada.current = true;
+      detectarRegiao().catch(() => null);
+    }
+
     const t1 = setTimeout(() => setEtapa(1), 50);
     const t2 = setTimeout(() => setEtapa(2), 600);
     const t3 = setTimeout(() => setEtapa(3), 1200);

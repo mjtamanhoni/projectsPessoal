@@ -1205,6 +1205,44 @@ class HorseApiService {
     }
   }
 
+  async listarRegioesEntrega(params?: Record<string, unknown>): Promise<unknown[]> {
+    try {
+      const res = await this.api.get('/regiaoEntrega', { params, headers: this.getAuthHeaders() });
+      return res.data as unknown[];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async salvarRegioesEntregaLote(payload: unknown): Promise<unknown> {
+    try {
+      const res = await this.api.post('/regiaoEntrega/lote', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async adicionarRegiaoEntrega(payload: unknown): Promise<unknown> {
+    try {
+      const res = await this.api.post('/regiaoEntrega', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirRegiaoEntrega(id: number, empresaId?: number): Promise<unknown> {
+    try {
+      const params: Record<string, unknown> = { id };
+      if (empresaId) params.empresa_id = empresaId;
+      const res = await this.api.delete('/regiaoEntrega', { params, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   async listarPadrao(tabela: string, params?: Record<string, unknown>): Promise<unknown[]> {
     try {
       const res = await this.api.get(`/padrao/${tabela}`, { params, headers: this.getAuthHeaders() });

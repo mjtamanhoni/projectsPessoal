@@ -18,6 +18,24 @@ export interface EmpresaPublic {
   is_open?: number;
 }
 
+export interface RegiaoCoordenada {
+  cidade: string;
+  uf: string;
+  codigo_ibge: string;
+  latitude: number;
+  longitude: number;
+  distancia_km?: number;
+  fora_do_pais?: boolean;
+}
+
+export interface FiltroRegiao {
+  cidade?: string;
+  uf?: string;
+  codigo_ibge?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 export interface Cliente {
   id?: number;
   nome: string;
@@ -392,9 +410,30 @@ export function extrairErro(e: unknown): string {
   return 'Erro desconhecido';
 }
 
-export async function listarEmpresas(apenasDelivery?: boolean): Promise<EmpresaPublic[]> {
-  const res = await request(`/empresaPublic${apenasDelivery ? '?delivery=1' : ''}`);
+export async function listarEmpresas(apenasDelivery?: boolean, regiao?: FiltroRegiao | null): Promise<EmpresaPublic[]> {
+  const params = new URLSearchParams();
+  if (apenasDelivery) params.set('delivery', '1');
+  if (regiao?.codigo_ibge) {
+    params.set('codigo_ibge', regiao.codigo_ibge);
+  } else {
+    if (regiao?.cidade) params.set('cidade', regiao.cidade);
+    if (regiao?.uf) params.set('uf', regiao.uf);
+  }
+  if (regiao?.latitude !== undefined && regiao?.longitude !== undefined) {
+    params.set('latitude', String(regiao.latitude));
+    params.set('longitude', String(regiao.longitude));
+  }
+  const query = params.toString();
+  const res = await request(`/empresaPublic${query ? `?${query}` : ''}`);
   return (await parseResponse(res)) as EmpresaPublic[];
+}
+
+export async function reverseGeocode(latitude: number, longitude: number): Promise<RegiaoCoordenada | null> {
+  const res = await request(
+    `/geocode/reverse?lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`,
+  );
+  const parsed = (await parseResponse(res)) as RegiaoCoordenada | null;
+  return parsed && parsed.codigo_ibge ? parsed : null;
 }
 
 export async function testServer(host: string, port: number): Promise<void> {

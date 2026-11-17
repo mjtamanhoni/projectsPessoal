@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useEffect, useCallback } from 'react';
+﻿import { lazy, Suspense, useMemo, useState, useEffect, useCallback } from 'react';
 import { PaginaFiltros } from '@/components/ui/PaginaFiltros';
 import { passaBusca } from '@/lib/filtros';
 import { Layout } from '@/components/ui/Layout';
@@ -14,7 +14,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import type { Empresa, EmpresaModulo, Modulo } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { Plus, Edit2, Trash2, RefreshCw, KeyRound, ToggleLeft, ToggleRight, Copy, Ban } from 'lucide-react';
+import { Plus, Edit2, Trash2, RefreshCw, KeyRound, ToggleLeft, ToggleRight, Copy, Ban, MapPin } from 'lucide-react';
 import { PrintButton } from '@/components/ui/PrintButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
@@ -22,6 +22,10 @@ import type { RowActionDef } from '@/components/ui/RowActions';
 import api, { getErrorMsg } from '@/lib/api';
 import { copiarTexto } from '@/lib/clipboard';
 import { salvarLogomarcaCache } from '@/lib/empresaLogo';
+
+const RegioesEntregaModal = lazy(() =>
+  import('@/components/RegioesEntregaModal').then((m) => ({ default: m.RegioesEntregaModal })),
+);
 
 const columnHelper = createColumnHelper<Empresa>();
 
@@ -58,6 +62,7 @@ export function Empresas() {
   const [emModalOpen, setEmModalOpen] = useState(false);
   const [emEmpresaId, setEmEmpresaId] = useState<number | null>(null);
   const [emSelected, setEmSelected] = useState<number[]>([]);
+  const [regioesEmpresa, setRegioesEmpresa] = useState<Empresa | null>(null);
 
   const fetchVinculos = useCallback(async (empresaId: number) => {
     if (loadingVinculos.has(empresaId)) return;
@@ -152,6 +157,14 @@ export function Empresas() {
         const status = emp.status ?? 1;
         const extras: RowActionDef[] = [];
         if (id && id !== 1) {
+          extras.push({
+            rotulo: 'Regiões de entrega',
+            icone: MapPin,
+            cor: '#0ea5e9',
+            onClick: () => setRegioesEmpresa(emp),
+            permissaoRota: '/empresas',
+            permissaoAcao: ACAO.EDITAR,
+          });
           extras.push({
             rotulo: status === 1 ? 'Inativar' : 'Ativar',
             icone: status === 1 ? ToggleLeft : ToggleRight,
@@ -511,6 +524,23 @@ export function Empresas() {
           </div>
         </div>
       </Modal>
+
+      {regioesEmpresa && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+              <Spinner />
+            </div>
+          }
+        >
+          <RegioesEntregaModal
+            isOpen
+            onClose={() => setRegioesEmpresa(null)}
+            empresaId={(regioesEmpresa.id ?? regioesEmpresa.codigo)!}
+            empresaNome={regioesEmpresa.fantasia || regioesEmpresa.razao_social}
+          />
+        </Suspense>
+      )}
 
       <ConfirmDialog
         isOpen={confirmDelete !== null}

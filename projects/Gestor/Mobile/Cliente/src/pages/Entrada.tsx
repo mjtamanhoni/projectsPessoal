@@ -16,6 +16,7 @@ import {
   type Encomenda,
 } from '../api';
 import { useSessao } from '../auth';
+import { descricaoRegiao, getRegiaoSalva } from '../localizacao';
 import { mascaraCpfCnpj, mascaraTelefone, normalizarDocumento } from '../format';
 import QRCode from 'qrcode';
 import AvaliacaoModal from '../components/AvaliacaoModal';
@@ -35,11 +36,12 @@ export default function Entrada() {
   const [pendentes, setPendentes] = useState<Record<number, number>>({});
   const [avaliacaoPendente, setAvaliacaoPendente] = useState<{ empresa: EmpresaPublic; encomenda: Encomenda } | null>(null);
   const [avaliacaoModalAberto, setAvaliacaoModalAberto] = useState(false);
+  const [regiao] = useState(() => getRegiaoSalva());
   const cancelRef = useRef(false);
 
   useEffect(() => {
     if (empresas.length > 0) return;
-    listarEmpresas(true)
+    listarEmpresas(true, regiao)
       .then((lista) => {
         const delivery = lista.filter((e) => Number(e.delivery) === 1);
         delivery.sort((a, b) => {
@@ -55,7 +57,7 @@ export default function Entrada() {
       .catch((e) => setErro(extrairErro(e)))
       .finally(() => setCarregandoLista(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [regiao]);
 
   useEffect(() => {
     const doc = normalizarDocumento(documento);
@@ -87,7 +89,7 @@ export default function Entrada() {
 
   const pollEmpresas = useCallback(async () => {
     try {
-      const lista = await listarEmpresas(true);
+      const lista = await listarEmpresas(true, regiao);
       const delivery = lista.filter((e) => Number(e.delivery) === 1);
       setEmpresas((prev) => {
         if (prev.length === 0) return prev;
@@ -114,7 +116,7 @@ export default function Entrada() {
     } catch {
       // polling silencioso
     }
-  }, []);
+  }, [regiao]);
 
   useEffect(() => {
     if (empresas.length === 0) return;
@@ -189,6 +191,11 @@ export default function Entrada() {
     <div className="screen">
       <div className="entrada-title">Mundo de Delícias</div>
       <div className="entrada-subtitle">Selecione quem vai preparar sua encomenda hoje.</div>
+      {regiao && (
+        <div className="entrada-subtitle" style={{ marginTop: -4, fontSize: 11, opacity: 0.8 }}>
+          Entregando em {descricaoRegiao(regiao)}
+        </div>
+      )}
 
       {avaliacaoPendente && (
         <div
@@ -241,7 +248,11 @@ export default function Entrada() {
           <div className="empresa-vazio">Carregando empresas...</div>
         )}
         {!carregandoLista && empresas.length === 0 && !erro && (
-          <div className="empresa-vazio">Nenhuma empresa de delivery disponível.</div>
+          <div className="empresa-vazio">
+            {regiao
+              ? `Nenhuma empresa entrega em ${descricaoRegiao(regiao)}.`
+              : 'Nenhuma empresa de delivery disponível.'}
+          </div>
         )}
         {empresas.map((e) => {
           const fechada = Number(e.is_open) !== 1;

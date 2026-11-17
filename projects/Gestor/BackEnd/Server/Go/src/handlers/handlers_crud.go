@@ -760,9 +760,55 @@ func (h *BasicCRUD) EmpresaListarPublico(w http.ResponseWriter, r *http.Request)
 		) cnt ON cnt.empresa_id = e.id
 		WHERE e.status = 1`
 	var args []interface{}
+	argN := 1
 	if r.URL.Query().Get("delivery") == "1" {
 		query += " AND e.delivery = 1"
 	}
+
+	cidade := strings.TrimSpace(r.URL.Query().Get("cidade"))
+	uf := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("uf")))
+	codigoIBGE := strings.TrimSpace(r.URL.Query().Get("codigo_ibge"))
+
+	// Permite filtrar apenas por coordenadas: resolve o municipio mais proximo.
+	if cidade == "" && codigoIBGE == "" {
+		lat, errLat := strconv.ParseFloat(strings.ReplaceAll(r.URL.Query().Get("latitude"), ",", "."), 64)
+		lon, errLon := strconv.ParseFloat(strings.ReplaceAll(r.URL.Query().Get("longitude"), ",", "."), 64)
+		if errLat == nil && errLon == nil {
+			if nome, ufGeo, codigo, distancia, ok := GeocodePorCoordenada(lat, lon); ok && distancia <= 100 {
+				cidade = nome
+				codigoIBGE = codigo
+				if uf == "" {
+					uf = ufGeo
+				}
+			}
+		}
+	}
+
+	if cidade != "" || uf != "" || codigoIBGE != "" {
+		var cond string
+		if codigoIBGE != "" {
+			cond = fmt.Sprintf("r.codigo_ibge = $%d", argN)
+			args = append(args, codigoIBGE)
+			argN++
+		} else {
+			partes := []string{}
+			if cidade != "" {
+				partes = append(partes, fmt.Sprintf("r.cidade_chave = $%d", argN))
+				args = append(args, chaveCidade(cidade))
+				argN++
+			}
+			if uf != "" {
+				partes = append(partes, fmt.Sprintf("r.uf = $%d", argN))
+				args = append(args, uf)
+				argN++
+			}
+			cond = strings.Join(partes, " AND ")
+		}
+		// Empresas sem regiao configurada continuam atendendo todas as cidades
+		// (compatibilidade com o comportamento anterior a esta funcionalidade).
+		query += " AND (NOT EXISTS (SELECT 1 FROM public.empresa_regiao_entrega r WHERE r.empresa_id = e.id) OR EXISTS (SELECT 1 FROM public.empresa_regiao_entrega r WHERE r.empresa_id = e.id AND " + cond + "))"
+	}
+
 	query += " ORDER BY total_encomendas DESC, e.fantasia, e.razao_social"
 	rows, err := h.Pool.Query(r.Context(), query, args...)
 	if err != nil {

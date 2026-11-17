@@ -1849,6 +1849,94 @@ var Migracoes = []Migracao{
 				ADD COLUMN IF NOT EXISTS avatar VARCHAR(255);
 		`,
 	},
+	{
+		Nome: "041_empresa_regiao_entrega",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.empresa_regiao_entrega (
+				empresa_id INTEGER NOT NULL,
+				id INTEGER NOT NULL,
+				uf CHAR(2) NOT NULL,
+				cidade VARCHAR(120) NOT NULL,
+				cidade_chave VARCHAR(120) NOT NULL,
+				codigo_ibge VARCHAR(10),
+				latitude NUMERIC(11, 7),
+				longitude NUMERIC(11, 7),
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				CONSTRAINT empresa_regiao_entrega_pk PRIMARY KEY (empresa_id, id),
+				CONSTRAINT empresa_regiao_entrega_empresa_fk FOREIGN KEY (empresa_id) REFERENCES public.empresa(id)
+			);
+
+			CREATE UNIQUE INDEX IF NOT EXISTS empresa_regiao_entrega_unique
+				ON public.empresa_regiao_entrega (empresa_id, uf, cidade_chave);
+
+			CREATE INDEX IF NOT EXISTS empresa_regiao_entrega_cidade_idx
+				ON public.empresa_regiao_entrega (cidade_chave, uf);
+
+			CREATE INDEX IF NOT EXISTS empresa_regiao_entrega_ibge_idx
+				ON public.empresa_regiao_entrega (codigo_ibge);
+
+			DO $$
+			DECLARE
+				v_formulario_id INTEGER;
+				v_modulo_id INTEGER;
+				v_vinculo_id INTEGER;
+			BEGIN
+				SELECT id INTO v_formulario_id
+				FROM public.formulario
+				WHERE nome = 'Regioes de Entrega'
+				LIMIT 1;
+
+				IF v_formulario_id IS NULL THEN
+					SELECT COALESCE(MAX(id), 0) + 1 INTO v_formulario_id FROM public.formulario;
+					INSERT INTO public.formulario (id, nome) VALUES (v_formulario_id, 'Regioes de Entrega');
+					BEGIN
+						PERFORM setval(pg_get_serial_sequence('public.formulario', 'id')::regclass, v_formulario_id, true);
+					EXCEPTION WHEN others THEN NULL;
+					END;
+				END IF;
+
+				FOR v_modulo_id IN
+					SELECT id FROM public.modulo
+					WHERE upper(nome) LIKE '%GESTOR%'
+					   OR upper(nome) LIKE '%DELIVERY%'
+					   OR upper(nome) LIKE '%ENTREGA%'
+				LOOP
+					IF NOT EXISTS (
+						SELECT 1 FROM public.modulo_formulario
+						WHERE modulo_id = v_modulo_id AND formulario_id = v_formulario_id
+					) THEN
+						SELECT COALESCE(MAX(id), 0) + 1 INTO v_vinculo_id FROM public.modulo_formulario;
+						INSERT INTO public.modulo_formulario (id, modulo_id, formulario_id, abertura)
+						VALUES (v_vinculo_id, v_modulo_id, v_formulario_id, 7);
+						BEGIN
+							PERFORM setval(pg_get_serial_sequence('public.modulo_formulario', 'id')::regclass, v_vinculo_id, true);
+						EXCEPTION WHEN others THEN NULL;
+						END;
+					END IF;
+				END LOOP;
+			END $$;
+		`,
+	},
+	{
+		Nome: "042_remove_formulario_regioes_entrega",
+		SQLUp: `
+			DELETE FROM public.usuario_formulario_permissao
+			WHERE usuario_formulario_id IN (
+				SELECT uf.id
+				FROM public.usuario_formulario uf
+				JOIN public.formulario f ON f.id = uf.formulario_id
+				WHERE f.nome = 'Regioes de Entrega'
+			);
+
+			DELETE FROM public.usuario_formulario
+			WHERE formulario_id IN (SELECT id FROM public.formulario WHERE nome = 'Regioes de Entrega');
+
+			DELETE FROM public.modulo_formulario
+			WHERE formulario_id IN (SELECT id FROM public.formulario WHERE nome = 'Regioes de Entrega');
+
+			DELETE FROM public.formulario WHERE nome = 'Regioes de Entrega';
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {
