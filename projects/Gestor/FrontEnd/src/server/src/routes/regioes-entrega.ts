@@ -24,7 +24,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.post('/lote', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const body = { ...(req.body as Record<string, unknown>) };
-    if (req.empresaId && req.empresaId > 0) {
+    if (req.empresaId && req.empresaId > 0 && body.empresa_id === undefined) {
       body.empresa_id = req.empresaId;
     }
     const result = await horseApi.salvarRegioesEntregaLote(body);
@@ -37,7 +37,7 @@ router.post('/lote', authMiddleware, async (req: AuthRequest, res: Response) => 
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const body = { ...(req.body as Record<string, unknown>) };
-    if (req.empresaId && req.empresaId > 0) {
+    if (req.empresaId && req.empresaId > 0 && body.empresa_id === undefined) {
       body.empresa_id = req.empresaId;
     }
     const result = await horseApi.adicionarRegiaoEntrega(body);
@@ -49,12 +49,17 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
 router.delete('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.query;
+    const { id, empresa_id } = req.query;
     if (!id) {
       res.status(400).json({ error: 'ID e obrigatorio' });
       return;
     }
-    const empresaId = req.empresaId && req.empresaId > 0 ? req.empresaId : undefined;
+    const empresaId =
+      empresa_id !== undefined && empresa_id !== ''
+        ? Number(empresa_id)
+        : req.empresaId && req.empresaId > 0
+          ? req.empresaId
+          : undefined;
     const result = await horseApi.excluirRegiaoEntrega(Number(id), empresaId);
     res.json(result);
   } catch (error: unknown) {

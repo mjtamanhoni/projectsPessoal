@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -73,13 +73,16 @@ export function RegioesEntregaModal({ isOpen, onClose, empresaId, empresaNome }:
   const [selecionados, setSelecionados] = useState<Map<string, Municipio>>(new Map());
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const requisicaoRef = useRef(0);
 
   const carregar = useCallback(async () => {
     if (!empresaId) return;
+    const requisicao = ++requisicaoRef.current;
     setCarregando(true);
     try {
       const { data } = await api.get('/regioes-entrega', { params: { empresa_id: empresaId } });
-      const rows = (data as RegiaoRow[]) ?? [];
+      if (requisicao !== requisicaoRef.current) return;
+      const rows = ((data as RegiaoRow[]) ?? []).filter((row) => Number(row.empresa_id) === empresaId);
       const mapa = new Map<string, Municipio>();
       for (const row of rows) {
         const municipio = resolverMunicipio(row);
@@ -89,10 +92,11 @@ export function RegioesEntregaModal({ isOpen, onClose, empresaId, empresaNome }:
       const primeiro = rows.find((r) => municipiosPorUf.has(r.uf));
       if (primeiro) setUfAtiva(primeiro.uf);
     } catch (err) {
+      if (requisicao !== requisicaoRef.current) return;
       addToast('error', getErrorMsg(err));
       setSelecionados(new Map());
     } finally {
-      setCarregando(false);
+      if (requisicao === requisicaoRef.current) setCarregando(false);
     }
   }, [empresaId, addToast]);
 
@@ -100,6 +104,7 @@ export function RegioesEntregaModal({ isOpen, onClose, empresaId, empresaNome }:
     if (!isOpen) return;
     setBusca('');
     setUfAtiva('SP');
+    setSelecionados(new Map());
     carregar();
   }, [isOpen, carregar]);
 
