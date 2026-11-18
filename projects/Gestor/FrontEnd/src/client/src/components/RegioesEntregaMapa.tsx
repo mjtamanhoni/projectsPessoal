@@ -566,7 +566,11 @@ export function RegioesEntregaMapa({ ufAtiva, onSelecionarUf, selecionados, onTo
                     strokeWidth={marcado ? 0.8 : 0}
                     vectorEffect={ampliado ? 'non-scaling-stroke' : undefined}
                     onClick={() => {
-                      if (cliquePermitido()) onToggleCidade(municipio);
+                      if (ampliado) {
+                        if (cliquePermitido()) onToggleCidade(municipio);
+                        return;
+                      }
+                      selecionarEstado(municipio.uf);
                     }}
                   >
                     <title>{`${municipio.nome}/${municipio.uf}`}</title>
@@ -588,7 +592,7 @@ export function RegioesEntregaMapa({ ufAtiva, onSelecionarUf, selecionados, onTo
                     stroke="#991b1b"
                     strokeWidth={0.8}
                     opacity={0.9}
-                    onClick={() => onToggleCidade(municipio)}
+                    onClick={() => selecionarEstado(municipio.uf)}
                     className="cursor-pointer"
                   >
                     <title>{`${municipio.nome}/${municipio.uf}`}</title>
