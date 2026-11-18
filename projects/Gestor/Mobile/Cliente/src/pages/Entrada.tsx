@@ -16,7 +16,12 @@ import {
   type Encomenda,
 } from '../api';
 import { useSessao } from '../auth';
-import { descricaoRegiao, getRegiaoSalva } from '../localizacao';
+import {
+  descricaoRegiao,
+  detectarRegiaoDetalhada,
+  getRegiaoSalva,
+  type RegiaoDetectada,
+} from '../localizacao';
 import { mascaraCpfCnpj, mascaraTelefone, normalizarDocumento } from '../format';
 import QRCode from 'qrcode';
 import AvaliacaoModal from '../components/AvaliacaoModal';
@@ -36,11 +41,23 @@ export default function Entrada() {
   const [pendentes, setPendentes] = useState<Record<number, number>>({});
   const [avaliacaoPendente, setAvaliacaoPendente] = useState<{ empresa: EmpresaPublic; encomenda: Encomenda } | null>(null);
   const [avaliacaoModalAberto, setAvaliacaoModalAberto] = useState(false);
-  const [regiao] = useState(() => getRegiaoSalva());
+  const [regiao, setRegiao] = useState<RegiaoDetectada | null>(() => getRegiaoSalva());
+  const [localizando, setLocalizando] = useState(false);
   const cancelRef = useRef(false);
 
   useEffect(() => {
-    if (empresas.length > 0) return;
+    const aoDetectar = (evento: Event) => {
+      const detalhe = (evento as CustomEvent<RegiaoDetectada>).detail;
+      if (detalhe?.codigo_ibge) setRegiao(detalhe);
+    };
+    window.addEventListener('chegou:regiao', aoDetectar);
+    return () => window.removeEventListener('chegou:regiao', aoDetectar);
+  }, []);
+
+  useEffect(() => {
+    let ativo = true;
+    setCarregandoLista(true);
+    setErro('');
     listarEmpresas(true, regiao)
       .then((lista) => {
         const delivery = lista.filter((e) => Number(e.delivery) === 1);
@@ -52,12 +69,26 @@ export default function Entrada() {
           const nomB = (b.fantasia || b.razao_social || '').toUpperCase();
           return nomA.localeCompare(nomB);
         });
-        setEmpresas(delivery);
+        if (ativo) setEmpresas(delivery);
       })
-      .catch((e) => setErro(extrairErro(e)))
-      .finally(() => setCarregandoLista(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch((e) => {
+        if (ativo) setErro(extrairErro(e));
+      })
+      .finally(() => {
+        if (ativo) setCarregandoLista(false);
+      });
+    return () => { ativo = false; };
   }, [regiao]);
+
+  const localizarNovamente = async () => {
+    setLocalizando(true);
+    try {
+      const res = await detectarRegiaoDetalhada();
+      if (res.regiao) setRegiao(res.regiao);
+    } finally {
+      setLocalizando(false);
+    }
+  };
 
   useEffect(() => {
     const doc = normalizarDocumento(documento);
@@ -190,12 +221,46 @@ export default function Entrada() {
   return (
     <div className="screen">
       <div className="entrada-title">Mundo de Delícias</div>
-      <div className="entrada-subtitle">Selecione quem vai preparar sua encomenda hoje.</div>
-      {regiao && (
-        <div className="entrada-subtitle" style={{ marginTop: -4, fontSize: 11, opacity: 0.8 }}>
-          Entregando em {descricaoRegiao(regiao)}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 96,
+          width: '100%',
+          padding: '0 24px',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 3,
+        }}
+      >
+        <div style={{ fontSize: 14, color: '#B0B0B0' }}>
+          Selecione quem vai preparar sua encomenda hoje.
         </div>
-      )}
+        {regiao && (
+          <div style={{ fontSize: 11, color: '#B0B0B0', opacity: 0.8 }}>
+            Entregando em {descricaoRegiao(regiao)}
+          </div>
+        )}
+        {!regiao && !carregandoLista && (
+          <div style={{ fontSize: 11, color: '#B0B0B0', opacity: 0.8 }}>
+            {localizando ? (
+              'Localizando sua cidade...'
+            ) : (
+              <>
+                Não foi possível identificar sua cidade.{' '}
+                <span
+                  style={{ color: '#FFB800', cursor: 'pointer', fontWeight: 600 }}
+                  onClick={localizarNovamente}
+                >
+                  Tentar novamente
+                </span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {avaliacaoPendente && (
         <div

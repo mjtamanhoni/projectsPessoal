@@ -1,33 +1,75 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SPLASH_ICON } from '../splash-icon';
-import { detectarRegiao } from '../localizacao';
+import { detectarRegiaoDetalhada, getRegiaoSalva, type ResultadoDeteccao } from '../localizacao';
 
 interface Props {
   onFinalizar: () => void;
 }
 
+const TEMPO_MINIMO_MS = 1600;
+const TEMPO_MAXIMO_MS = 9000;
+const AVISO_DEMORA_MS = 3000;
+
 export default function SplashScreen({ onFinalizar }: Props) {
   const [etapa, setEtapa] = useState(0);
-  const deteccaoIniciada = useRef(false);
+  const [localizando, setLocalizando] = useState(true);
+  const [resultado, setResultado] = useState<ResultadoDeteccao | null>(null);
+  const [demorando, setDemorando] = useState(false);
 
   useEffect(() => {
-    if (!deteccaoIniciada.current) {
-      deteccaoIniciada.current = true;
-      detectarRegiao().catch(() => null);
-    }
+    let ativo = true;
+    const espera = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
     const t1 = setTimeout(() => setEtapa(1), 50);
-    const t2 = setTimeout(() => setEtapa(2), 600);
-    const t3 = setTimeout(() => setEtapa(3), 1200);
-    const t4 = setTimeout(() => setEtapa(4), 2400);
-    const t5 = setTimeout(() => onFinalizar(), 3200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); };
+    const t2 = setTimeout(() => setEtapa(2), 350);
+    const t3 = setTimeout(() => setEtapa(3), 700);
+    const tDemora = setTimeout(() => {
+      if (ativo) setDemorando(true);
+    }, AVISO_DEMORA_MS);
+
+    (async () => {
+      const deteccao = detectarRegiaoDetalhada().catch(
+        (): ResultadoDeteccao => ({ regiao: null, origem: 'nenhuma' }),
+      );
+      const limite = espera(TEMPO_MAXIMO_MS).then((): ResultadoDeteccao | null => null);
+      const [, detectado] = await Promise.all([
+        espera(TEMPO_MINIMO_MS),
+        Promise.race([deteccao, limite]),
+      ]);
+      if (!ativo) return;
+
+      clearTimeout(tDemora);
+      const cache = getRegiaoSalva();
+      const final: ResultadoDeteccao = detectado ?? (cache
+        ? { regiao: cache, origem: 'cache' }
+        : { regiao: null, origem: 'nenhuma' });
+
+      setResultado(final);
+      setLocalizando(false);
+      setDemorando(false);
+
+      setTimeout(() => {
+        if (ativo) setEtapa(4);
+      }, 700);
+      setTimeout(() => {
+        if (ativo) onFinalizar();
+      }, 1150);
+    })();
+
+    return () => {
+      ativo = false;
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(tDemora);
+    };
   }, [onFinalizar]);
 
   const entrada = etapa >= 1;
   const logoVisivel = etapa >= 2;
   const textoVisivel = etapa >= 3;
   const saindo = etapa >= 4;
+  const regiao = resultado?.regiao ?? null;
 
   return (
     <div
@@ -41,7 +83,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
         justifyContent: 'center',
         background: '#000000',
         opacity: saindo ? 0 : 1,
-        transition: 'opacity 0.5s ease-out',
+        transition: 'opacity 0.45s ease-out',
       }}
     >
       {/* Glow difuso */}
@@ -95,39 +137,111 @@ export default function SplashScreen({ onFinalizar }: Props) {
         />
       </div>
 
-      {/* Texto descritivo */}
+      {/* Status da localizacao */}
       <div
         style={{
           marginTop: 28,
           textAlign: 'center',
+          maxWidth: 300,
+          minHeight: 76,
+          padding: '0 20px',
           transition: 'all 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s',
           transform: textoVisivel ? 'translateY(0)' : 'translateY(12px)',
           opacity: textoVisivel ? 1 : 0,
         }}
       >
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'rgba(255,255,255,0.85)',
-            letterSpacing: 1.5,
-            lineHeight: 1.6,
-            maxWidth: 260,
-          }}
-        >
-          Acompanhe suas entregas
-        </div>
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 400,
-            color: 'rgba(255,255,255,0.45)',
-            letterSpacing: 0.5,
-            marginTop: 6,
-          }}
-        >
-          em tempo real
-        </div>
+        {localizando ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: '#FFB800',
+                  animation: 'dotPulse 1.2s ease-in-out infinite',
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.9)',
+                  letterSpacing: 0.4,
+                }}
+              >
+                Localizando sua região...
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 400,
+                color: 'rgba(255,255,255,0.5)',
+                letterSpacing: 0.3,
+                marginTop: 9,
+                lineHeight: 1.6,
+              }}
+            >
+              {demorando
+                ? 'Isso pode levar alguns segundos. Aguarde...'
+                : 'Vamos usar sua localização para mostrar as empresas que entregam na sua cidade.'}
+            </div>
+          </>
+        ) : regiao ? (
+          <>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: '#34C759',
+                letterSpacing: 0.5,
+              }}
+            >
+              {regiao.cidade}/{regiao.uf}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 400,
+                color: 'rgba(255,255,255,0.55)',
+                letterSpacing: 0.3,
+                marginTop: 9,
+                lineHeight: 1.6,
+              }}
+            >
+              {resultado?.origem === 'gps'
+                ? 'Região identificada. Mostrando empresas que entregam aqui.'
+                : 'Usando sua última localização conhecida.'}
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'rgba(255,255,255,0.9)',
+                letterSpacing: 0.4,
+                lineHeight: 1.5,
+              }}
+            >
+              Não foi possível identificar sua região
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 400,
+                color: 'rgba(255,255,255,0.5)',
+                letterSpacing: 0.3,
+                marginTop: 9,
+                lineHeight: 1.6,
+              }}
+            >
+              Mostrando todas as empresas disponíveis.
+            </div>
+          </>
+        )}
       </div>
 
       {/* Linha decorativa */}
@@ -151,7 +265,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
           display: 'flex',
           gap: 5,
           transition: 'opacity 0.4s ease-out 0.5s',
-          opacity: textoVisivel ? 1 : 0,
+          opacity: textoVisivel && localizando ? 1 : 0,
         }}
       >
         {[0, 1, 2].map((i) => (
@@ -162,7 +276,7 @@ export default function SplashScreen({ onFinalizar }: Props) {
               height: 4,
               borderRadius: '50%',
               background: '#FFB800',
-              animation: textoVisivel ? `dotPulse 1.4s ease-in-out ${i * 0.15}s infinite` : 'none',
+              animation: localizando ? `dotPulse 1.4s ease-in-out ${i * 0.15}s infinite` : 'none',
             }}
           />
         ))}

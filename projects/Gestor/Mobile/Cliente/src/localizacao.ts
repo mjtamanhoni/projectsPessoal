@@ -33,6 +33,13 @@ export function salvarRegiao(regiao: RegiaoDetectada) {
   } catch {
     /* armazenamento indisponivel */
   }
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent<RegiaoDetectada>('chegou:regiao', { detail: regiao }));
+    }
+  } catch {
+    /* ambiente sem window */
+  }
 }
 
 export function limparRegiao() {
@@ -83,13 +90,21 @@ async function obterCoordenadas(tempoLimiteMs = 6000): Promise<{ latitude: numbe
   }
 }
 
-export async function detectarRegiao(): Promise<RegiaoDetectada | null> {
+export type OrigemRegiao = 'gps' | 'cache' | 'nenhuma';
+
+export interface ResultadoDeteccao {
+  regiao: RegiaoDetectada | null;
+  origem: OrigemRegiao;
+}
+
+export async function detectarRegiaoDetalhada(): Promise<ResultadoDeteccao> {
   const cache = getRegiaoSalva();
+  const comCache: ResultadoDeteccao = cache ? { regiao: cache, origem: 'cache' } : { regiao: null, origem: 'nenhuma' };
   try {
     const coords = await obterCoordenadas();
-    if (!coords) return cache;
+    if (!coords) return comCache;
     const geo = await reverseGeocode(coords.latitude, coords.longitude);
-    if (!geo?.codigo_ibge || geo.fora_do_pais) return cache;
+    if (!geo?.codigo_ibge || geo.fora_do_pais) return comCache;
     const regiao: RegiaoDetectada = {
       cidade: geo.cidade,
       uf: geo.uf,
@@ -99,10 +114,14 @@ export async function detectarRegiao(): Promise<RegiaoDetectada | null> {
       detectada_em: Date.now(),
     };
     salvarRegiao(regiao);
-    return regiao;
+    return { regiao, origem: 'gps' };
   } catch {
-    return cache;
+    return comCache;
   }
+}
+
+export async function detectarRegiao(): Promise<RegiaoDetectada | null> {
+  return (await detectarRegiaoDetalhada()).regiao;
 }
 
 export function descricaoRegiao(regiao: RegiaoDetectada | null): string {

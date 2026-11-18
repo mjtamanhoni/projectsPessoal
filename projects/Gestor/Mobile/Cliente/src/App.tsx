@@ -21,13 +21,21 @@ export default function App() {
   const [splashVisivel, setSplashVisivel] = useState(true);
   const finalizarSplash = useCallback(() => setSplashVisivel(false), []);
 
+  if (splashVisivel) {
+    return (
+      <>
+        <SplashScreen onFinalizar={finalizarSplash} />
+        <Watermark />
+      </>
+    );
+  }
+
   return (
     <>
-      {splashVisivel && <SplashScreen onFinalizar={finalizarSplash} />}
       <Watermark />
       <HashRouter>
         <SessaoProvider>
-          <VersionBanner visivel={!splashVisivel} />
+          <VersionBanner visivel />
           <Routes>
             <Route path="/" element={<Entrada />} />
             <Route path="/cadastro" element={<Cadastro />} />
