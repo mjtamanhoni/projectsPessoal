@@ -85,14 +85,14 @@ if not exist "android\app\build\outputs\apk\debug\app-debug.apk" (
   goto erro
 )
 
-copy /y "android\app\build\outputs\apk\debug\app-debug.apk" "TitulosPagarOffline.apk" >nul
+copy /y "android\app\build\outputs\apk\debug\app-debug.apk" "Titulos_Pagar_OffLine_debug.apk" >nul
 if errorlevel 1 goto erro
 
 echo.
 echo ============================================
 echo   APK gerado com sucesso!
 echo.
-echo   Arquivo: %RAIZ%TitulosPagarOffline.apk
+echo   Arquivo: %RAIZ%Titulos_Pagar_OffLine_debug.apk
 echo ============================================
 echo.
 echo Para instalar no celular: copie o APK, abra no aparelho

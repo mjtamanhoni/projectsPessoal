@@ -94,14 +94,14 @@ if not exist "%ASSINADO%" (
   goto erro
 )
 
-copy /y "%ASSINADO%" "TitulosPagarOffline-release.apk" >nul
+copy /y "%ASSINADO%" "Titulos_Pagar_OffLine.apk" >nul
 if errorlevel 1 goto erro
 
 echo.
 echo ============================================
 echo   APK RELEASE gerado com sucesso!
 echo.
-echo   Arquivo: %RAIZ%TitulosPagarOffline-release.apk
+echo   Arquivo: %RAIZ%Titulos_Pagar_OffLine.apk
 echo ============================================
 echo.
 echo Versao atual no build.gradle:

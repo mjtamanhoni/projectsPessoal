@@ -89,7 +89,7 @@ echo.
 
 echo  [4/4] Copiando APK...
 echo.
-set DEST=%ROOT%app-producao.apk
+set DEST=%ROOT%Chego_Lanchonete.apk
 if exist "%APK_PATH%" (
     copy /Y "%APK_PATH%" "%DEST%" >nul
     echo  [ok] APK copiado para: %DEST%
