@@ -224,7 +224,7 @@ export function RegioesEntregaModal({ isOpen, onClose, empresaId, empresaNome }:
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="rounded-xl border border-border-primary p-4">
+            <div className="rounded-xl border border-border-primary p-4 transition-all duration-200 hover:border-accent-primary/30 hover:shadow-lg hover:-translate-y-0.5">
               <RegioesEntregaMapa
                 ufAtiva={ufAtiva}
                 onSelecionarUf={(uf) => {
@@ -238,7 +238,7 @@ export function RegioesEntregaModal({ isOpen, onClose, empresaId, empresaNome }:
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-xl border border-border-primary p-4">
+              <div className="rounded-xl border border-border-primary p-4 transition-all duration-200 hover:border-accent-primary/30 hover:shadow-lg hover:-translate-y-0.5">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-text-primary">Cidades selecionadas ({selecionados.size})</h3>
                   <button
@@ -267,7 +267,7 @@ export function RegioesEntregaModal({ isOpen, onClose, empresaId, empresaNome }:
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border-primary p-4">
+              <div className="rounded-xl border border-border-primary p-4 transition-all duration-200 hover:border-accent-primary/30 hover:shadow-lg hover:-translate-y-0.5">
                 <h3 className="text-sm font-semibold text-text-primary mb-3">Adicionar cidades</h3>
                 <div className="space-y-3">
                   <div className="grid grid-cols-[100px_minmax(0,1fr)] gap-3">
