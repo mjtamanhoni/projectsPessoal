@@ -2031,6 +2031,19 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "044_lanc_horas_trabalhadas_updated_at",
+		SQLUp: `
+			ALTER TABLE public.lanc_horas_trabalhadas
+				ADD COLUMN IF NOT EXISTS observacoes TEXT;
+			ALTER TABLE public.lanc_horas_trabalhadas
+				ADD COLUMN IF NOT EXISTS status SMALLINT NOT NULL DEFAULT 1;
+			ALTER TABLE public.lanc_horas_trabalhadas
+				ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();
+			ALTER TABLE public.lanc_horas_trabalhadas
+				ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {
