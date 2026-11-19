@@ -213,6 +213,24 @@ export const helpModules: HelpModule[] = [
         ],
         tips: ['Registre abatimentos sempre com uma observacao clara do motivo'],
       },
+      {
+        name: 'Ponto Eletrônico',
+        purpose: 'Registro de marcacoes de entrada e saida com fechamento mensal de horas excedentes.',
+        howTo: 'Selecione colaborador, cliente e servico, informe data, hora e tipo (Entrada ou Saida). O sistema pareia as marcacoes do dia e calcula o excedente mensal contra a base do servico e as horas abatidas.',
+        fields: [
+          { label: 'Colaborador', desc: 'Usuario que realizou a marcacao' },
+          { label: 'Cliente', desc: 'Cliente vinculado ao servico' },
+          { label: 'Servico', desc: 'Servico prestado; define a base mensal de horas' },
+          { label: 'Data e Hora', desc: 'Momento da entrada ou saida' },
+          { label: 'Tipo', desc: 'Entrada ou saida' },
+          { label: 'Observacoes', desc: 'Informacao complementar (opcional)' },
+        ],
+        tips: [
+          'Cadastre as marcacoes em pares de Entrada e Saida',
+          'O excedente mensal e recalculado ao abrir o periodo ou alterar uma marcacao',
+          'Horas abatidas continuam sendo lancadas no formulario Abatimentos',
+        ],
+      },
     ],
   },
 

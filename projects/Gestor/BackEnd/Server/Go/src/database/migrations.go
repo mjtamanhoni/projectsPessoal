@@ -1937,6 +1937,100 @@ var Migracoes = []Migracao{
 			DELETE FROM public.formulario WHERE nome = 'Regioes de Entrega';
 		`,
 	},
+	{
+		Nome: "043_ponto_eletronico",
+		SQLUp: `
+			CREATE TABLE IF NOT EXISTS public.lanc_horas_trabalhadas (
+				empresa_id INTEGER NOT NULL,
+				id INTEGER NOT NULL,
+				usuario_id INTEGER NOT NULL,
+				cliente_id INTEGER NOT NULL,
+				servico_id INTEGER NOT NULL,
+				valor_hora NUMERIC(10, 2) NOT NULL DEFAULT 0,
+				data_servico DATE NOT NULL,
+				hora_lancamento TIME NOT NULL,
+				tipo_lancamento CHAR(1) NOT NULL CHECK (tipo_lancamento IN ('E', 'S')),
+				observacoes TEXT,
+				status SMALLINT NOT NULL DEFAULT 1,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				CONSTRAINT lanc_horas_trabalhadas_pk PRIMARY KEY (empresa_id, id),
+				CONSTRAINT lanc_horas_trabalhadas_empresa_fk FOREIGN KEY (empresa_id)
+					REFERENCES public.empresa(id)
+			);
+
+			CREATE INDEX IF NOT EXISTS lanc_horas_trabalhadas_data_idx
+				ON public.lanc_horas_trabalhadas (empresa_id, data_servico);
+
+			CREATE INDEX IF NOT EXISTS lanc_horas_trabalhadas_usuario_idx
+				ON public.lanc_horas_trabalhadas (empresa_id, usuario_id, data_servico);
+
+			CREATE INDEX IF NOT EXISTS lanc_horas_trabalhadas_combo_idx
+				ON public.lanc_horas_trabalhadas (empresa_id, usuario_id, cliente_id, servico_id, data_servico);
+
+			CREATE TABLE IF NOT EXISTS public.horas_excedidas_ponto (
+				empresa_id INTEGER NOT NULL,
+				id INTEGER NOT NULL,
+				usuario_id INTEGER NOT NULL,
+				cliente_id INTEGER NOT NULL,
+				servico_id INTEGER NOT NULL,
+				ano SMALLINT NOT NULL,
+				mes SMALLINT NOT NULL CHECK (mes BETWEEN 1 AND 12),
+				horas_base NUMERIC(10, 2) NOT NULL DEFAULT 0,
+				horas_trabalhadas NUMERIC(10, 2) NOT NULL DEFAULT 0,
+				horas_abatidas NUMERIC(10, 2) NOT NULL DEFAULT 0,
+				delta_horas NUMERIC(10, 2) NOT NULL DEFAULT 0,
+				created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+				CONSTRAINT horas_excedidas_ponto_pk PRIMARY KEY (empresa_id, id),
+				CONSTRAINT horas_excedidas_ponto_empresa_fk FOREIGN KEY (empresa_id)
+					REFERENCES public.empresa(id),
+				CONSTRAINT horas_excedidas_ponto_unique
+					UNIQUE (empresa_id, usuario_id, cliente_id, servico_id, ano, mes)
+			);
+
+			CREATE INDEX IF NOT EXISTS horas_excedidas_ponto_periodo_idx
+				ON public.horas_excedidas_ponto (empresa_id, ano, mes);
+
+			DO $$
+			DECLARE
+				v_formulario_id INTEGER;
+				v_modulo_id INTEGER;
+				v_vinculo_id INTEGER;
+			BEGIN
+				SELECT id INTO v_formulario_id
+				FROM public.formulario
+				WHERE nome = 'Ponto Eletrônico'
+				LIMIT 1;
+
+				IF v_formulario_id IS NULL THEN
+					SELECT COALESCE(MAX(id), 0) + 1 INTO v_formulario_id FROM public.formulario;
+					INSERT INTO public.formulario (id, nome) VALUES (v_formulario_id, 'Ponto Eletrônico');
+					BEGIN
+						PERFORM setval(pg_get_serial_sequence('public.formulario', 'id')::regclass, v_formulario_id, true);
+					EXCEPTION WHEN others THEN NULL;
+					END;
+				END IF;
+
+				FOR v_modulo_id IN
+					SELECT id FROM public.modulo WHERE upper(nome) LIKE '%HORAS%'
+				LOOP
+					IF NOT EXISTS (
+						SELECT 1 FROM public.modulo_formulario
+						WHERE modulo_id = v_modulo_id AND formulario_id = v_formulario_id
+					) THEN
+						SELECT COALESCE(MAX(id), 0) + 1 INTO v_vinculo_id FROM public.modulo_formulario;
+						INSERT INTO public.modulo_formulario (id, modulo_id, formulario_id, abertura)
+						VALUES (v_vinculo_id, v_modulo_id, v_formulario_id, 7);
+						BEGIN
+							PERFORM setval(pg_get_serial_sequence('public.modulo_formulario', 'id')::regclass, v_vinculo_id, true);
+						EXCEPTION WHEN others THEN NULL;
+						END;
+					END IF;
+				END LOOP;
+			END $$;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

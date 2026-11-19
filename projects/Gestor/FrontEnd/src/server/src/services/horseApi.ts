@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao, TituloPagar, TituloPagarInput, PagamentoEfetuado, PagamentoEfetuadoInput } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, PontoLancamento, PontoResumo, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao, TituloPagar, TituloPagarInput, PagamentoEfetuado, PagamentoEfetuadoInput } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -17,6 +17,12 @@ function normalizeDate(val: unknown): string {
   }
   const s = String(val);
   const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : s;
+}
+
+function normalizeHora(val: unknown): string {
+  const s = String(val ?? '');
+  const match = s.match(/^(\d{2}:\d{2})/);
   return match ? match[1] : s;
 }
 
@@ -1135,6 +1141,96 @@ class HorseApiService {
       const res = await this.api.post('/horasExcedidas', payload, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async listarPontoLancamentos(params?: Record<string, unknown>): Promise<PontoLancamento[]> {
+    try {
+      const res = await this.api.get('/pontoLancamentos', { params, headers: this.getAuthHeaders() });
+      const rawData = res.data;
+      if (!Array.isArray(rawData)) {
+        return [];
+      }
+      return rawData.map((item: Record<string, unknown>) => ({
+        id: Number(item.id ?? item.codigo ?? 0),
+        usuarioId: Number(item.usuario_id ?? item.usuarioId ?? 0),
+        usuarioNome: String(item.usuario_nome ?? item.usuarioNome ?? ''),
+        clienteId: Number(item.cliente_id ?? item.clienteId ?? 0),
+        clienteNome: String(item.cliente_nome ?? item.clienteNome ?? ''),
+        servicoId: Number(item.servico_id ?? item.servicoId ?? 0),
+        servicoNome: String(item.servico_nome ?? item.servicoNome ?? ''),
+        valorHora: Number(item.valor_hora ?? item.valorHora ?? 0),
+        dataServico: normalizeDate(item.data_servico ?? item.dataServico ?? ''),
+        horaLancamento: normalizeHora(item.hora_lancamento ?? item.horaLancamento ?? ''),
+        tipoLancamento: String(item.tipo_lancamento ?? item.tipoLancamento ?? 'E') === 'S' ? 'S' : 'E',
+        observacoes: String(item.observacoes ?? ''),
+      }));
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return [];
+      }
+      return this.handleError(error);
+    }
+  }
+
+  async salvarPontoLancamentos(lancamentos: PontoLancamento[]): Promise<unknown> {
+    try {
+      const mapped = lancamentos.map((l) => ({
+        codigo: l.id ?? l.codigo ?? 0,
+        usuario_id: l.usuarioId,
+        cliente_id: l.clienteId,
+        servico_id: l.servicoId,
+        valor_hora: l.valorHora,
+        data_servico: l.dataServico,
+        hora_lancamento: l.horaLancamento,
+        tipo_lancamento: l.tipoLancamento,
+        observacoes: l.observacoes ?? '',
+      }));
+      const payload = mapped.length === 1 ? mapped[0] : mapped;
+      const res = await this.api.post('/pontoLancamentos', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirPontoLancamento(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/pontoLancamentos', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async obterPontoResumo(params?: Record<string, unknown>): Promise<PontoResumo[]> {
+    try {
+      const res = await this.api.get('/pontoResumo', { params, headers: this.getAuthHeaders() });
+      const rawData = res.data;
+      if (!Array.isArray(rawData)) {
+        return [];
+      }
+      return rawData.map((item: Record<string, unknown>) => ({
+        id: Number(item.id ?? 0),
+        usuarioId: Number(item.usuario_id ?? item.usuarioId ?? 0),
+        usuarioNome: String(item.usuario_nome ?? item.usuarioNome ?? ''),
+        clienteId: Number(item.cliente_id ?? item.clienteId ?? 0),
+        clienteNome: String(item.cliente_nome ?? item.clienteNome ?? ''),
+        servicoId: Number(item.servico_id ?? item.servicoId ?? 0),
+        servicoNome: String(item.servico_nome ?? item.servicoNome ?? ''),
+        ano: Number(item.ano ?? 0),
+        mes: Number(item.mes ?? 0),
+        horasBase: Number(item.horas_base ?? item.horasBase ?? 0),
+        horasTrabalhadas: Number(item.horas_trabalhadas ?? item.horasTrabalhadas ?? 0),
+        horasAbatidas: Number(item.horas_abatidas ?? item.horasAbatidas ?? 0),
+        deltaHoras: Number(item.delta_horas ?? item.deltaHoras ?? 0),
+        valorHora: Number(item.valor_hora ?? item.valorHora ?? 0),
+      }));
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return [];
+      }
       return this.handleError(error);
     }
   }

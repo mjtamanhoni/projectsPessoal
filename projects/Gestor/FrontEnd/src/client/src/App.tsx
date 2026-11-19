@@ -35,6 +35,7 @@ const HorasDashboard = lazy(() => import('@/pages/HorasDashboard').then((m) => (
 const ProducaoDashboard = lazy(() => import('@/pages/ProducaoDashboard').then((m) => ({ default: m.ProducaoDashboard })));
 const Abatimentos = lazy(() => import('@/pages/Abatimentos').then((m) => ({ default: m.Abatimentos })));
 const HorasExcedidas = lazy(() => import('@/pages/HorasExcedidas').then((m) => ({ default: m.HorasExcedidas })));
+const PontoEletronico = lazy(() => import('@/pages/PontoEletronico').then((m) => ({ default: m.PontoEletronico })));
 const Servicos = lazy(() => import('@/pages/Servicos').then((m) => ({ default: m.Servicos })));
 const PermissoesFormulario = lazy(() => import('@/pages/PermissoesFormulario').then((m) => ({ default: m.PermissoesFormulario })));
 
@@ -201,6 +202,7 @@ export default function App() {
           {routesFor(HORAS, mode) && <Route path="/horas-dashboard" element={<Private><HorasDashboard /></Private>} />}
           {routesFor(HORAS, mode) && <Route path="/excedidas" element={<Private><HorasExcedidas /></Private>} />}
           {routesFor(HORAS, mode) && <Route path="/abatimentos" element={<Private><Abatimentos /></Private>} />}
+          {routesFor(HORAS, mode) && <Route path="/ponto-eletronico" element={<Private><PontoEletronico /></Private>} />}
           {routesFor(HORAS, mode) && <Route path="/servicos" element={<Private><Servicos /></Private>} />}
           {/* producao */}
           {routesFor(PRODUCAO, mode) && <Route path="/producao-dashboard" element={<Private><ProducaoDashboard /></Private>} />}

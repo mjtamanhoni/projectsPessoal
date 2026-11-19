@@ -157,6 +157,16 @@ const moduleIconMap: Record<string, ModuleIconInfo> = {
     color: '#dc2626',
     bgGradient: 'from-red-500/20 to-red-600/10',
   },
+  'Ponto Eletrônico': {
+    icon: Clock,
+    color: '#0f766e',
+    bgGradient: 'from-teal-500/20 to-teal-600/10',
+  },
+  'Ponto Eletronico': {
+    icon: Clock,
+    color: '#0f766e',
+    bgGradient: 'from-teal-500/20 to-teal-600/10',
+  },
   Abatimentos: {
     icon: Minus,
     color: '#a855f7',

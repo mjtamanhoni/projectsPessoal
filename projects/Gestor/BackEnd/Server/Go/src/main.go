@@ -52,6 +52,7 @@ func main() {
 	padraoHandler := handlers.NewPadraoHandler(pool)
 	financeiro := &handlers.FinanceiroHandler{Pool: pool, BasicCRUD: basicCRUD}
 	horasHandler := &handlers.HorasHandler{Pool: pool, BasicCRUD: basicCRUD}
+	pontoHandler := &handlers.PontoHandler{Pool: pool, BasicCRUD: basicCRUD}
 	producao := &handlers.ProducaoHandler{Pool: pool, BasicCRUD: basicCRUD}
 	loginHandler := &handlers.LoginHandler{Pool: pool}
 	relatorioIA := &handlers.RelatorioIAHandler{Pool: pool}
@@ -480,6 +481,12 @@ carregar();
 		r.Post("/horasExcedidas", horasHandler.HorasExcedidasAtualizar)
 		r.Delete("/horasExcedidas", horasHandler.HorasExcedidasExcluir)
 
+		// Ponto Eletronico
+		r.Get("/pontoLancamentos", pontoHandler.PontoLancamentosListar)
+		r.Post("/pontoLancamentos", pontoHandler.PontoLancamentosSalvar)
+		r.Delete("/pontoLancamentos", pontoHandler.PontoLancamentosExcluir)
+		r.Get("/pontoResumo", pontoHandler.PontoResumo)
+
 		// Relatorio IA (consultas em linguagem natural - somente leitura)
 		r.Post("/relatorio-ia/consulta", relatorioIA.Consulta)
 		r.Get("/relatorio-ia/conversas", relatorioIA.ConversasListar)
@@ -723,10 +730,10 @@ carregar();
 		r.Post("/licencaTitulosPagar", licencaTitulosPagar.Gerar)
 		r.Post("/licencaTitulosPagar/revogar", licencaTitulosPagar.Revogar)
 		r.Post("/licencaTitulosPagar/excluir", licencaTitulosPagar.Excluir)
-	r.Get("/licencaTitulosPagar/solicitacoes", licencaTitulosPagar.ListarSolicitacoes)
-	r.Get("/licencaTitulosPagar/solicitacoes/comprovante", licencaTitulosPagar.ComprovanteSolicitacao)
-	r.Post("/licencaTitulosPagar/solicitacoes/pix", licencaTitulosPagar.EnviarPixSolicitacao)
-	r.Post("/licencaTitulosPagar/solicitacoes/liberar", licencaTitulosPagar.LiberarSolicitacao)
+		r.Get("/licencaTitulosPagar/solicitacoes", licencaTitulosPagar.ListarSolicitacoes)
+		r.Get("/licencaTitulosPagar/solicitacoes/comprovante", licencaTitulosPagar.ComprovanteSolicitacao)
+		r.Post("/licencaTitulosPagar/solicitacoes/pix", licencaTitulosPagar.EnviarPixSolicitacao)
+		r.Post("/licencaTitulosPagar/solicitacoes/liberar", licencaTitulosPagar.LiberarSolicitacao)
 		r.Post("/licencaTitulosPagar/solicitacoes/revogar", licencaTitulosPagar.RevogarSolicitacao)
 		r.Post("/licencaTitulosPagar/solicitacoes/excluir", licencaTitulosPagar.ExcluirSolicitacao)
 

@@ -25,6 +25,8 @@ export const formRouteMap: Record<string, string> = {
   'Horas Trabalhadas': '/horas-trabalhadas',
   'Horas Excedidas': '/excedidas',
   'Abatimentos': '/abatimentos',
+  'Ponto Eletrônico': '/ponto-eletronico',
+  'Ponto Eletronico': '/ponto-eletronico',
   'Relatorio Financeiro': '/relatorios/financeiro',
   'Relatorio Clientes': '/relatorios/cadastros/clientes',
   'Relatorio Fornecedores': '/relatorios/cadastros/fornecedores',

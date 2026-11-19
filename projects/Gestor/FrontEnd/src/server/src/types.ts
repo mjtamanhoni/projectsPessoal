@@ -255,6 +255,39 @@ export interface HoraExcedida {
   dataCriacao?: string;
 }
 
+export interface PontoLancamento {
+  codigo?: number;
+  id?: number;
+  usuarioId: number;
+  usuarioNome?: string;
+  clienteId: number;
+  clienteNome?: string;
+  servicoId: number;
+  servicoNome?: string;
+  valorHora: number;
+  dataServico: string;
+  horaLancamento: string;
+  tipoLancamento: 'E' | 'S';
+  observacoes?: string;
+}
+
+export interface PontoResumo {
+  id?: number;
+  usuarioId: number;
+  usuarioNome?: string;
+  clienteId: number;
+  clienteNome?: string;
+  servicoId: number;
+  servicoNome?: string;
+  ano: number;
+  mes: number;
+  horasBase: number;
+  horasTrabalhadas: number;
+  horasAbatidas: number;
+  deltaHoras: number;
+  valorHora?: number;
+}
+
 export interface ProducaoDashboardData {
   kpis: {
     total_vendas: number;

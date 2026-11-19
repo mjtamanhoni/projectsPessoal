@@ -251,6 +251,20 @@ export const horaAbatidaSchema = z.object({
   observacoes: z.string().max(500).optional().or(z.literal('')),
 });
 
+export const pontoLancamentoSchema = z.object({
+  codigo: z.number().int().positive().optional(),
+  id: z.number().int().positive().optional(),
+  usuarioId: z.number().int().positive('Usuario e obrigatorio'),
+  clienteId: z.number().int().positive('Cliente e obrigatorio'),
+  servicoId: z.number().int().positive('Servico e obrigatorio'),
+  dataServico: z.string().min(1, 'Data e obrigatoria'),
+  horaLancamento: z.string().regex(/^\d{2}:\d{2}$/, 'Hora invalida'),
+  tipoLancamento: z.enum(['E', 'S']),
+  valorHora: z.number().min(0).optional(),
+  observacoes: z.string().max(500).optional().or(z.literal('')),
+});
+
+export type PontoLancamentoInput = z.infer<typeof pontoLancamentoSchema>;
 export type HoraTrabalhadaInput = z.infer<typeof horaTrabalhadaSchema>;
 export type ServicoInput = z.infer<typeof servicoSchema>;
 export type HoraAbatidaInput = z.infer<typeof horaAbatidaSchema>;
