@@ -2044,6 +2044,61 @@ var Migracoes = []Migracao{
 				ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
 		`,
 	},
+	{
+		Nome: "045_ponto_excedidas_manual",
+		SQLUp: `
+			ALTER TABLE public.horas_excedidas_ponto
+				ADD COLUMN IF NOT EXISTS horas_excedidas_manual NUMERIC(10, 2) NOT NULL DEFAULT 0;
+			ALTER TABLE public.horas_excedidas_ponto
+				ADD COLUMN IF NOT EXISTS observacoes TEXT;
+
+			DO $$
+			DECLARE
+				v_formulario_id INTEGER;
+				v_modulo_id INTEGER;
+				v_vinculo_id INTEGER;
+				v_nome TEXT;
+				v_nomes TEXT[] := ARRAY[
+					'Ponto Eletrônico - Horas Excedidas',
+					'Ponto Eletrônico - Dashboard',
+					'Ponto Eletrônico - Relatórios'
+				];
+			BEGIN
+				FOREACH v_nome IN ARRAY v_nomes LOOP
+					SELECT id INTO v_formulario_id
+					FROM public.formulario
+					WHERE nome = v_nome
+					LIMIT 1;
+
+					IF v_formulario_id IS NULL THEN
+						SELECT COALESCE(MAX(id), 0) + 1 INTO v_formulario_id FROM public.formulario;
+						INSERT INTO public.formulario (id, nome) VALUES (v_formulario_id, v_nome);
+						BEGIN
+							PERFORM setval(pg_get_serial_sequence('public.formulario', 'id')::regclass, v_formulario_id, true);
+						EXCEPTION WHEN others THEN NULL;
+						END;
+					END IF;
+
+					FOR v_modulo_id IN
+						SELECT id FROM public.modulo WHERE upper(nome) LIKE '%HORAS%'
+					LOOP
+						IF NOT EXISTS (
+							SELECT 1 FROM public.modulo_formulario
+							WHERE modulo_id = v_modulo_id AND formulario_id = v_formulario_id
+						) THEN
+							SELECT COALESCE(MAX(id), 0) + 1 INTO v_vinculo_id FROM public.modulo_formulario;
+							INSERT INTO public.modulo_formulario (id, modulo_id, formulario_id, abertura)
+							VALUES (v_vinculo_id, v_modulo_id, v_formulario_id, 8);
+							BEGIN
+								PERFORM setval(pg_get_serial_sequence('public.modulo_formulario', 'id')::regclass, v_vinculo_id, true);
+							EXCEPTION WHEN others THEN NULL;
+							END;
+						END IF;
+					END LOOP;
+				END LOOP;
+			END $$;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

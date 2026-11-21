@@ -167,6 +167,36 @@ const moduleIconMap: Record<string, ModuleIconInfo> = {
     color: '#0f766e',
     bgGradient: 'from-teal-500/20 to-teal-600/10',
   },
+  'Ponto Eletrônico - Horas Excedidas': {
+    icon: AlertTriangle,
+    color: '#dc2626',
+    bgGradient: 'from-red-500/20 to-red-600/10',
+  },
+  'Ponto Eletronico - Horas Excedidas': {
+    icon: AlertTriangle,
+    color: '#dc2626',
+    bgGradient: 'from-red-500/20 to-red-600/10',
+  },
+  'Ponto Eletrônico - Dashboard': {
+    icon: LayoutDashboard,
+    color: '#0f766e',
+    bgGradient: 'from-teal-500/20 to-teal-600/10',
+  },
+  'Ponto Eletronico - Dashboard': {
+    icon: LayoutDashboard,
+    color: '#0f766e',
+    bgGradient: 'from-teal-500/20 to-teal-600/10',
+  },
+  'Ponto Eletrônico - Relatórios': {
+    icon: BarChart3,
+    color: '#c2410c',
+    bgGradient: 'from-orange-500/20 to-orange-600/10',
+  },
+  'Ponto Eletronico - Relatorios': {
+    icon: BarChart3,
+    color: '#c2410c',
+    bgGradient: 'from-orange-500/20 to-orange-600/10',
+  },
   Abatimentos: {
     icon: Minus,
     color: '#a855f7',

@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, PontoLancamento, PontoResumo, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao, TituloPagar, TituloPagarInput, PagamentoEfetuado, PagamentoEfetuadoInput } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, PontoLancamento, PontoResumo, PontoExcedenteInput, PontoDashboardData, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao, TituloPagar, TituloPagarInput, PagamentoEfetuado, PagamentoEfetuadoInput } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -1225,12 +1225,50 @@ class HorseApiService {
         horasTrabalhadas: Number(item.horas_trabalhadas ?? item.horasTrabalhadas ?? 0),
         horasAbatidas: Number(item.horas_abatidas ?? item.horasAbatidas ?? 0),
         deltaHoras: Number(item.delta_horas ?? item.deltaHoras ?? 0),
+        horasExcedidasManual: Number(item.horas_excedidas_manual ?? item.horasExcedidasManual ?? 0),
+        observacoes: String(item.observacoes ?? ''),
         valorHora: Number(item.valor_hora ?? item.valorHora ?? 0),
       }));
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return [];
       }
+      return this.handleError(error);
+    }
+  }
+
+  async salvarPontoExcedente(payload: PontoExcedenteInput): Promise<unknown> {
+    try {
+      const mapped = {
+        usuario_id: payload.usuarioId,
+        cliente_id: payload.clienteId,
+        servico_id: payload.servicoId,
+        ano: payload.ano,
+        mes: payload.mes,
+        horas_excedidas_manual: payload.horasExcedidasManual,
+        observacoes: payload.observacoes ?? '',
+      };
+      const res = await this.api.post('/pontoExcedentes', mapped, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async excluirPontoExcedente(id: number): Promise<unknown> {
+    try {
+      const res = await this.api.delete('/pontoExcedentes', { params: { id }, headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async obterPontoDashboard(params?: Record<string, unknown>): Promise<PontoDashboardData> {
+    try {
+      const res = await this.api.get('/pontoDashboard', { params, headers: this.getAuthHeaders() });
+      return res.data as PontoDashboardData;
+    } catch (error) {
       return this.handleError(error);
     }
   }

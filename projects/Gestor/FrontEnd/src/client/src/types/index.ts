@@ -319,7 +319,49 @@ export interface PontoResumo {
   horasTrabalhadas: number;
   horasAbatidas: number;
   deltaHoras: number;
+  horasExcedidasManual?: number;
+  observacoes?: string;
   valorHora?: number;
+}
+
+export interface PontoExcedenteInput {
+  usuarioId: number;
+  clienteId: number;
+  servicoId: number;
+  ano: number;
+  mes: number;
+  horasExcedidasManual: number;
+  observacoes?: string;
+}
+
+export interface PontoDashboardData {
+  cards: {
+    horasAno: number;
+    horasMes: number;
+    horasDia: number;
+    excedenteAno: number;
+    excedenteMes: number;
+    baseAno: number;
+    abatidasAno: number;
+    valorExcedenteAno: number;
+    diasTrabalhados: number;
+    mediaDiaria: number;
+  };
+  mensal: Array<{
+    mes: number;
+    label: string;
+    trabalhadas: number;
+    base: number;
+    abatidas: number;
+    excedentes: number;
+  }>;
+  diario: Array<{
+    dia: number;
+    label: string;
+    trabalhadas: number;
+  }>;
+  porServico: Array<{ nome: string; horas: number }>;
+  porUsuario: Array<{ nome: string; horas: number }>;
 }
 
 export interface FormularioPermissao {

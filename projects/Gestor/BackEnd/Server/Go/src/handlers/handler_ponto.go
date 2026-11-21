@@ -342,6 +342,8 @@ func (h *PontoHandler) PontoResumo(w http.ResponseWriter, r *http.Request) {
 			he.horas_trabalhadas::float8 AS horas_trabalhadas,
 			he.horas_abatidas::float8 AS horas_abatidas,
 			he.delta_horas::float8 AS delta_horas,
+			he.horas_excedidas_manual::float8 AS horas_excedidas_manual,
+			he.observacoes,
 			u.nome AS usuario_nome, c.nome AS cliente_nome, s.nome AS servico_nome,
 			COALESCE(s.valor_hora, 0)::float8 AS valor_hora
 		FROM public.horas_excedidas_ponto he
@@ -457,13 +459,26 @@ func (h *PontoHandler) recalcularPontoCombo(ctx context.Context, tx pgx.Tx, empr
 		return err
 	}
 
-	horasTrabalhadas := calcularHorasPonto(lancamentos)
-	horasBase = arredondarHoras(horasBase)
-	horasAbatidas = arredondarHoras(horasAbatidas)
-	delta := arredondarHoras(horasTrabalhadas - horasAbatidas - horasBase)
+	var excedenteManual float64
+	errManual := tx.QueryRow(ctx, `
+		SELECT COALESCE(horas_excedidas_manual, 0)::float8
+		FROM public.horas_excedidas_ponto
+		WHERE empresa_id = $1 AND usuario_id = $2 AND cliente_id = $3
+		  AND servico_id = $4 AND ano = $5 AND mes = $6`,
+		empresaID, c.UsuarioID, c.ClienteID, c.ServicoID, c.Ano, c.Mes).Scan(&excedenteManual)
+	if errManual != nil && errManual != pgx.ErrNoRows {
+		return errManual
+	}
+
+	horasTrabalhadas := arredondarSegundos(calcularHorasPonto(lancamentos))
+	horasBase = arredondarSegundos(horasBase)
+	horasAbatidas = arredondarSegundos(horasAbatidas)
+	excedenteManual = arredondarSegundos(excedenteManual)
+	delta := arredondarSegundos(horasTrabalhadas - horasAbatidas - horasBase)
 	if delta < 0 {
 		delta = 0
 	}
+	delta = arredondarSegundos(delta + excedenteManual)
 	if valorHora < 0 {
 		valorHora = 0
 	}
@@ -562,4 +577,445 @@ func arredondarHoras(valor float64) float64 {
 		return 0
 	}
 	return math.Round(valor*100) / 100
+}
+
+func arredondarSegundos(valor float64) float64 {
+	if math.Abs(valor) < (0.5 / 3600.0) {
+		return 0
+	}
+	return math.Round(valor*3600) / 3600
+}
+
+// ---- Horas excedidas: lancamento manual (tabela horas_excedidas_ponto) ----
+
+func (h *PontoHandler) PontoExcedentesSalvar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	empresaID := middleware.GetEmpresaLogada(r)
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	for _, item := range items {
+		usuarioID := getInt(item, "usuario_id")
+		clienteID := getInt(item, "cliente_id")
+		servicoID := getInt(item, "servico_id")
+		ano := getInt(item, "ano")
+		mes := getInt(item, "mes")
+		manual := getFloat(item, "horas_excedidas_manual")
+		observacoes := strings.TrimSpace(getStr(item, "observacoes"))
+
+		if usuarioID <= 0 || clienteID <= 0 || servicoID <= 0 {
+			jsonError(w, "Usuario, cliente e servico sao obrigatorios", http.StatusBadRequest)
+			return
+		}
+		if ano <= 0 || mes < 1 || mes > 12 {
+			jsonError(w, "Ano e mes invalidos", http.StatusBadRequest)
+			return
+		}
+		if manual < 0 {
+			manual = 0
+		}
+		manual = arredondarSegundos(manual)
+
+		combo := pontoCombo{
+			UsuarioID: usuarioID,
+			ClienteID: clienteID,
+			ServicoID: servicoID,
+			Ano:       ano,
+			Mes:       mes,
+		}
+
+		tag, err := tx.Exec(r.Context(), `
+			UPDATE public.horas_excedidas_ponto
+			SET horas_excedidas_manual = $1, observacoes = $2, updated_at = NOW()
+			WHERE empresa_id = $3 AND usuario_id = $4 AND cliente_id = $5
+			  AND servico_id = $6 AND ano = $7 AND mes = $8`,
+			manual, nullStr(observacoes), empresaID, usuarioID, clienteID, servicoID, ano, mes)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if tag.RowsAffected() == 0 {
+			id, err := database.GerarID(r.Context(), tx, empresaID, "horas_excedidas_ponto")
+			if err != nil {
+				jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			_, err = tx.Exec(r.Context(), `
+				INSERT INTO public.horas_excedidas_ponto
+					(empresa_id, id, usuario_id, cliente_id, servico_id, ano, mes,
+					 horas_base, horas_trabalhadas, horas_abatidas, delta_horas,
+					 horas_excedidas_manual, observacoes, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,0,0,0,$8,$8,$9,NOW())`,
+				empresaID, id, usuarioID, clienteID, servicoID, ano, mes,
+				manual, nullStr(observacoes))
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if err := h.recalcularPontoCombo(r.Context(), tx, empresaID, combo); err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Horas excedidas lancadas com sucesso"})
+}
+
+func (h *PontoHandler) PontoExcedentesExcluir(w http.ResponseWriter, r *http.Request) {
+	id := parseInt(r.URL.Query().Get("id"), 0)
+	empresaID := middleware.GetEmpresaLogada(r)
+	if id == 0 {
+		jsonError(w, "ID nao informado", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var combo pontoCombo
+	err = tx.QueryRow(r.Context(), `
+		SELECT usuario_id, cliente_id, servico_id, ano, mes
+		FROM public.horas_excedidas_ponto
+		WHERE id = $1 AND empresa_id = $2`, id, empresaID).Scan(
+		&combo.UsuarioID, &combo.ClienteID, &combo.ServicoID, &combo.Ano, &combo.Mes)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			jsonError(w, "Registro nao encontrado", http.StatusNotFound)
+		} else {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if _, err := tx.Exec(r.Context(), `
+		UPDATE public.horas_excedidas_ponto
+		SET horas_excedidas_manual = 0, observacoes = NULL, updated_at = NOW()
+		WHERE id = $1 AND empresa_id = $2`, id, empresaID); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.recalcularPontoCombo(r.Context(), tx, empresaID, combo); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Ajuste de horas excedidas removido"})
+}
+
+// ---- Dashboard do Ponto Eletronico ----
+
+type pontoDashCards struct {
+	HorasAno          float64 `json:"horasAno"`
+	HorasMes          float64 `json:"horasMes"`
+	HorasDia          float64 `json:"horasDia"`
+	ExcedenteAno      float64 `json:"excedenteAno"`
+	ExcedenteMes      float64 `json:"excedenteMes"`
+	BaseAno           float64 `json:"baseAno"`
+	AbatidasAno       float64 `json:"abatidasAno"`
+	ValorExcedenteAno float64 `json:"valorExcedenteAno"`
+	DiasTrabalhados   int     `json:"diasTrabalhados"`
+	MediaDiaria       float64 `json:"mediaDiaria"`
+}
+
+type pontoDashMes struct {
+	Mes         int     `json:"mes"`
+	Label       string  `json:"label"`
+	Trabalhadas float64 `json:"trabalhadas"`
+	Base        float64 `json:"base"`
+	Abatidas    float64 `json:"abatidas"`
+	Excedentes  float64 `json:"excedentes"`
+}
+
+type pontoDashDia struct {
+	Dia         int     `json:"dia"`
+	Label       string  `json:"label"`
+	Trabalhadas float64 `json:"trabalhadas"`
+}
+
+type pontoDashNomeValor struct {
+	Nome  string  `json:"nome"`
+	Horas float64 `json:"horas"`
+}
+
+type pontoDashboardResponse struct {
+	Cards      pontoDashCards       `json:"cards"`
+	Mensal     []pontoDashMes       `json:"mensal"`
+	Diario     []pontoDashDia       `json:"diario"`
+	PorServico []pontoDashNomeValor `json:"porServico"`
+	PorUsuario []pontoDashNomeValor `json:"porUsuario"`
+}
+
+func (h *PontoHandler) PontoDashboard(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaLogada(r)
+	ano := parseInt(r.URL.Query().Get("ano"), 0)
+	mes := parseInt(r.URL.Query().Get("mes"), 0)
+	usuarioID := parseInt(r.URL.Query().Get("usuario_id"), 0)
+	clienteID := parseInt(r.URL.Query().Get("cliente_id"), 0)
+	servicoID := parseInt(r.URL.Query().Get("servico_id"), 0)
+
+	agora := time.Now()
+	if ano <= 0 {
+		ano = agora.Year()
+	}
+	if mes < 1 || mes > 12 {
+		mes = int(agora.Month())
+	}
+
+	inicioAno := time.Date(ano, time.January, 1, 0, 0, 0, 0, time.Local)
+	fimAno := inicioAno.AddDate(1, 0, 0)
+
+	type grupoChave struct {
+		UsuarioID int
+		ClienteID int
+		ServicoID int
+		Dia       string
+	}
+
+	query := `SELECT pl.id, pl.usuario_id, pl.cliente_id, pl.servico_id,
+			pl.data_servico::text AS data_servico, pl.hora_lancamento::text AS hora_lancamento,
+			trim(pl.tipo_lancamento) AS tipo_lancamento,
+			COALESCE(u.nome, '') AS usuario_nome,
+			COALESCE(s.nome, '') AS servico_nome
+		FROM public.lanc_horas_trabalhadas pl
+		LEFT JOIN public.usuario u ON u.id = pl.usuario_id AND u.empresa_id = pl.empresa_id
+		LEFT JOIN public.servico s ON s.id = pl.servico_id AND s.empresa_id = pl.empresa_id
+		WHERE pl.empresa_id = $1 AND pl.data_servico >= $2::date AND pl.data_servico < $3::date`
+	args := []interface{}{empresaID, inicioAno.Format("2006-01-02"), fimAno.Format("2006-01-02")}
+	argN := 4
+	if usuarioID > 0 {
+		query += fmt.Sprintf(" AND pl.usuario_id = $%d", argN)
+		argN++
+		args = append(args, usuarioID)
+	}
+	if clienteID > 0 {
+		query += fmt.Sprintf(" AND pl.cliente_id = $%d", argN)
+		argN++
+		args = append(args, clienteID)
+	}
+	if servicoID > 0 {
+		query += fmt.Sprintf(" AND pl.servico_id = $%d", argN)
+		argN++
+		args = append(args, servicoID)
+	}
+	query += " ORDER BY pl.data_servico, pl.hora_lancamento, pl.id"
+
+	rows, err := h.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	buckets := map[grupoChave][]pontoLancamento{}
+	servicoNomes := map[int]string{}
+	usuarioNomes := map[int]string{}
+	for rows.Next() {
+		var id, uID, cID, sID int
+		var dataStr, horaStr, tipo, uNome, sNome string
+		if err := rows.Scan(&id, &uID, &cID, &sID, &dataStr, &horaStr, &tipo, &uNome, &sNome); err != nil {
+			rows.Close()
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		data, errData := time.Parse("2006-01-02", dataStr)
+		if errData != nil {
+			continue
+		}
+		hora, errHora := time.Parse("15:04:05", horaStr)
+		if errHora != nil {
+			hora, errHora = time.Parse("15:04", horaStr)
+		}
+		if errHora != nil {
+			continue
+		}
+		chave := grupoChave{UsuarioID: uID, ClienteID: cID, ServicoID: sID, Dia: dataStr}
+		buckets[chave] = append(buckets[chave], pontoLancamento{
+			ID: id, Data: data, Hora: hora, Tipo: strings.TrimSpace(tipo),
+		})
+		servicoNomes[sID] = sNome
+		usuarioNomes[uID] = uNome
+	}
+	rows.Close()
+
+	dailyWorked := map[string]float64{}
+	monthWorked := make([]float64, 13)
+	perServico := map[int]float64{}
+	perUsuario := map[int]float64{}
+	for chave, lances := range buckets {
+		horas := calcularHorasPonto(lances)
+		if horas <= 0 {
+			continue
+		}
+		dailyWorked[chave.Dia] += horas
+		if len(chave.Dia) >= 7 {
+			m := int(chave.Dia[5]-'0')*10 + int(chave.Dia[6]-'0')
+			if m >= 1 && m <= 12 {
+				monthWorked[m] += horas
+			}
+		}
+		perServico[chave.ServicoID] += horas
+		perUsuario[chave.UsuarioID] += horas
+	}
+
+	baseMes := make([]float64, 13)
+	abatMes := make([]float64, 13)
+	excMes := make([]float64, 13)
+	valExcMes := make([]float64, 13)
+
+	resumoQuery := `SELECT he.mes,
+			COALESCE(SUM(he.horas_base), 0)::float8,
+			COALESCE(SUM(he.horas_abatidas), 0)::float8,
+			COALESCE(SUM(he.delta_horas), 0)::float8,
+			COALESCE(SUM(he.delta_horas * s.valor_hora), 0)::float8
+		FROM public.horas_excedidas_ponto he
+		LEFT JOIN public.servico s ON s.id = he.servico_id AND s.empresa_id = he.empresa_id
+		WHERE he.empresa_id = $1 AND he.ano = $2`
+	resumoArgs := []interface{}{empresaID, ano}
+	resumoArgN := 3
+	if usuarioID > 0 {
+		resumoQuery += fmt.Sprintf(" AND he.usuario_id = $%d", resumoArgN)
+		resumoArgN++
+		resumoArgs = append(resumoArgs, usuarioID)
+	}
+	if clienteID > 0 {
+		resumoQuery += fmt.Sprintf(" AND he.cliente_id = $%d", resumoArgN)
+		resumoArgN++
+		resumoArgs = append(resumoArgs, clienteID)
+	}
+	if servicoID > 0 {
+		resumoQuery += fmt.Sprintf(" AND he.servico_id = $%d", resumoArgN)
+		resumoArgN++
+		resumoArgs = append(resumoArgs, servicoID)
+	}
+	resumoQuery += " GROUP BY he.mes"
+
+	resumoRows, err := h.Pool.Query(r.Context(), resumoQuery, resumoArgs...)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for resumoRows.Next() {
+		var m int
+		var base, abat, exc, val float64
+		if err := resumoRows.Scan(&m, &base, &abat, &exc, &val); err != nil {
+			resumoRows.Close()
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if m >= 1 && m <= 12 {
+			baseMes[m] = arredondarHoras(base)
+			abatMes[m] = arredondarHoras(abat)
+			excMes[m] = arredondarHoras(exc)
+			valExcMes[m] = math.Round(val*100) / 100
+		}
+	}
+	resumoRows.Close()
+
+	labels := []string{"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"}
+	mensal := make([]pontoDashMes, 0, 12)
+	var totalAno, totalBaseAno, totalAbatAno, totalExcAno, totalValExcAno float64
+	for m := 1; m <= 12; m++ {
+		totalAno += monthWorked[m]
+		totalBaseAno += baseMes[m]
+		totalAbatAno += abatMes[m]
+		totalExcAno += excMes[m]
+		totalValExcAno += valExcMes[m]
+		mensal = append(mensal, pontoDashMes{
+			Mes:         m,
+			Label:       labels[m-1],
+			Trabalhadas: arredondarHoras(monthWorked[m]),
+			Base:        baseMes[m],
+			Abatidas:    abatMes[m],
+			Excedentes:  excMes[m],
+		})
+	}
+	totalAno = arredondarHoras(totalAno)
+
+	diasTrabalhados := 0
+	for _, horas := range dailyWorked {
+		if horas > 0 {
+			diasTrabalhados++
+		}
+	}
+	media := 0.0
+	if diasTrabalhados > 0 {
+		media = arredondarHoras(totalAno / float64(diasTrabalhados))
+	}
+
+	horasDia := arredondarHoras(dailyWorked[agora.Format("2006-01-02")])
+
+	ultimoDia := time.Date(ano, time.Month(mes), 1, 0, 0, 0, 0, time.Local).AddDate(0, 1, -1).Day()
+	diario := make([]pontoDashDia, 0, ultimoDia)
+	mesStr := fmt.Sprintf("%04d-%02d", ano, mes)
+	for d := 1; d <= ultimoDia; d++ {
+		diaStr := fmt.Sprintf("%s-%02d", mesStr, d)
+		diario = append(diario, pontoDashDia{
+			Dia:         d,
+			Label:       fmt.Sprintf("%02d", d),
+			Trabalhadas: arredondarHoras(dailyWorked[diaStr]),
+		})
+	}
+
+	porServico := make([]pontoDashNomeValor, 0, len(perServico))
+	for sid, horas := range perServico {
+		nome := servicoNomes[sid]
+		if nome == "" {
+			nome = fmt.Sprintf("Servico %d", sid)
+		}
+		porServico = append(porServico, pontoDashNomeValor{Nome: nome, Horas: arredondarHoras(horas)})
+	}
+	sort.Slice(porServico, func(i, j int) bool { return porServico[i].Horas > porServico[j].Horas })
+
+	porUsuario := make([]pontoDashNomeValor, 0, len(perUsuario))
+	for uid, horas := range perUsuario {
+		nome := usuarioNomes[uid]
+		if nome == "" {
+			nome = fmt.Sprintf("Usuario %d", uid)
+		}
+		porUsuario = append(porUsuario, pontoDashNomeValor{Nome: nome, Horas: arredondarHoras(horas)})
+	}
+	sort.Slice(porUsuario, func(i, j int) bool { return porUsuario[i].Horas > porUsuario[j].Horas })
+
+	resp := pontoDashboardResponse{
+		Cards: pontoDashCards{
+			HorasAno:          totalAno,
+			HorasMes:          arredondarHoras(monthWorked[mes]),
+			HorasDia:          horasDia,
+			ExcedenteAno:      arredondarHoras(totalExcAno),
+			ExcedenteMes:      excMes[mes],
+			BaseAno:           arredondarHoras(totalBaseAno),
+			AbatidasAno:       arredondarHoras(totalAbatAno),
+			ValorExcedenteAno: math.Round(totalValExcAno*100) / 100,
+			DiasTrabalhados:   diasTrabalhados,
+			MediaDiaria:       media,
+		},
+		Mensal:     mensal,
+		Diario:     diario,
+		PorServico: porServico,
+		PorUsuario: porUsuario,
+	}
+	jsonSuccess(w, resp)
 }

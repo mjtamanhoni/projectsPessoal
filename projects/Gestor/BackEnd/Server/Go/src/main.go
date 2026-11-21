@@ -486,6 +486,9 @@ carregar();
 		r.Post("/pontoLancamentos", pontoHandler.PontoLancamentosSalvar)
 		r.Delete("/pontoLancamentos", pontoHandler.PontoLancamentosExcluir)
 		r.Get("/pontoResumo", pontoHandler.PontoResumo)
+		r.Post("/pontoExcedentes", pontoHandler.PontoExcedentesSalvar)
+		r.Delete("/pontoExcedentes", pontoHandler.PontoExcedentesExcluir)
+		r.Get("/pontoDashboard", pontoHandler.PontoDashboard)
 
 		// Relatorio IA (consultas em linguagem natural - somente leitura)
 		r.Post("/relatorio-ia/consulta", relatorioIA.Consulta)
