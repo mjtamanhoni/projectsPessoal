@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { PontoNav } from '@/components/ponto/PontoNav';
 import { useToast } from '@/context/ToastContext';
-import { competenciaAtualAno, competenciaAtualMes, formatHoras, labelMes } from '@/lib/ponto';
+import { carregarFiltrosPonto, competenciaAtualAno, competenciaAtualMes, formatHoras, labelMes, salvarFiltrosPonto } from '@/lib/ponto';
 import { formatCurrency } from '@/lib/utils';
 import type { PontoDashboardData, Usuario, Cliente, Servico } from '@/types';
 import api from '@/lib/api';
@@ -27,11 +27,12 @@ const tooltipStyle = {
 
 export function PontoDashboard() {
   const hoje = new Date();
-  const [ano, setAno] = useState(hoje.getFullYear());
-  const [mes, setMes] = useState(hoje.getMonth() + 1);
-  const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | undefined>(undefined);
-  const [filtroClienteId, setFiltroClienteId] = useState<number | undefined>(undefined);
-  const [filtroServicoId, setFiltroServicoId] = useState<number | undefined>(undefined);
+  const salvo = useMemo(() => carregarFiltrosPonto('dashboard'), []);
+  const [ano, setAno] = useState(salvo.ano ?? competenciaAtualAno());
+  const [mes, setMes] = useState(salvo.mes ?? competenciaAtualMes());
+  const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | undefined>(salvo.usuarioId);
+  const [filtroClienteId, setFiltroClienteId] = useState<number | undefined>(salvo.clienteId);
+  const [filtroServicoId, setFiltroServicoId] = useState<number | undefined>(salvo.servicoId);
   const [data, setData] = useState<PontoDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,6 +77,16 @@ export function PontoDashboard() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  useEffect(() => {
+    salvarFiltrosPonto('dashboard', {
+      ano,
+      mes,
+      usuarioId: filtroUsuarioId,
+      clienteId: filtroClienteId,
+      servicoId: filtroServicoId,
+    });
+  }, [ano, mes, filtroUsuarioId, filtroClienteId, filtroServicoId]);
+
   const mensalData = useMemo(
     () => (data?.mensal ?? []).map((m) => ({
       ...m,
@@ -92,7 +103,11 @@ export function PontoDashboard() {
     { titulo: 'Horas Hoje', valor: formatHoras(cards?.horasDia ?? 0), icon: Activity, cor: 'text-indigo-600', bg: 'bg-indigo-100' },
     { titulo: 'Excedente no Ano', valor: formatHoras(cards?.excedenteAno ?? 0), icon: Timer, cor: 'text-orange-600', bg: 'bg-orange-100' },
     { titulo: 'Excedente no Mes', valor: formatHoras(cards?.excedenteMes ?? 0), icon: AlertTriangle, cor: 'text-red-600', bg: 'bg-red-100' },
-    { titulo: 'Valor Excedente', valor: formatCurrency(cards?.valorExcedenteAno ?? 0), icon: DollarSign, cor: 'text-emerald-600', bg: 'bg-emerald-100' },
+    { titulo: 'Valor Excedente Ano', valor: formatCurrency(cards?.valorExcedenteAno ?? 0), icon: DollarSign, cor: 'text-emerald-600', bg: 'bg-emerald-100' },
+    { titulo: 'Valor Excedente Mes', valor: formatCurrency(cards?.valorExcedenteMes ?? 0), icon: DollarSign, cor: 'text-teal-600', bg: 'bg-teal-100' },
+    { titulo: 'Valor Trabalhado Ano', valor: formatCurrency(cards?.valorTrabalhadoAno ?? 0), icon: DollarSign, cor: 'text-lime-600', bg: 'bg-lime-100' },
+    { titulo: 'Valor Trabalhado Mes', valor: formatCurrency(cards?.valorTrabalhadoMes ?? 0), icon: DollarSign, cor: 'text-green-700', bg: 'bg-green-100' },
+    { titulo: 'Valor Hoje', valor: formatCurrency(cards?.valorTrabalhadoDia ?? 0), icon: DollarSign, cor: 'text-emerald-700', bg: 'bg-emerald-100' },
     { titulo: 'Dias Trabalhados', valor: String(cards?.diasTrabalhados ?? 0), icon: TrendingUp, cor: 'text-purple-600', bg: 'bg-purple-100' },
     { titulo: 'Media Diaria', valor: formatHoras(cards?.mediaDiaria ?? 0), icon: Users, cor: 'text-cyan-600', bg: 'bg-cyan-100' },
   ];

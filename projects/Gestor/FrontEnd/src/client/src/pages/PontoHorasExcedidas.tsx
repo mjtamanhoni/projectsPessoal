@@ -13,18 +13,23 @@ import { PontoNav } from '@/components/ponto/PontoNav';
 import { PontoExcedenteForm } from '@/components/forms/PontoExcedenteForm';
 import { useToast } from '@/context/ToastContext';
 import { ACAO } from '@/lib/permissions';
-import { competenciaAtual, formatHoras } from '@/lib/ponto';
+import { carregarFiltrosPonto, competenciaAtual, formatHoras, salvarFiltrosPonto } from '@/lib/ponto';
 import { formatCurrency } from '@/lib/utils';
-import type { PontoExcedenteInput, PontoResumo, Usuario } from '@/types';
+import type { PontoExcedenteInput, PontoResumo, Usuario, Cliente, Servico } from '@/types';
 import api from '@/lib/api';
 import { AlertTriangle, Clock, Plus, RefreshCw, Timer } from 'lucide-react';
 
 const columnHelper = createColumnHelper<PontoResumo>();
 
 export function PontoHorasExcedidas() {
-  const [competencia, setCompetencia] = useState(competenciaAtual);
+  const salvo = useMemo(() => carregarFiltrosPonto('horas-excedidas'), []);
+  const [competencia, setCompetencia] = useState(salvo.competencia ?? competenciaAtual());
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | undefined>(undefined);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | undefined>(salvo.usuarioId);
+  const [filtroClienteId, setFiltroClienteId] = useState<number | undefined>(salvo.clienteId);
+  const [filtroServicoId, setFiltroServicoId] = useState<number | undefined>(salvo.servicoId);
   const [registros, setRegistros] = useState<PontoResumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,13 +41,30 @@ export function PontoHorasExcedidas() {
   const { addToast } = useToast();
 
   useEffect(() => {
-    api.get('/usuarios').then((res) => setUsuarios(res.data as Usuario[])).catch(() => {});
+    Promise.all([api.get('/usuarios'), api.get('/clientes'), api.get('/servicos')])
+      .then(([u, c, s]) => {
+        setUsuarios(u.data as Usuario[]);
+        setClientes(c.data as Cliente[]);
+        setServicos(s.data as Servico[]);
+      })
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    salvarFiltrosPonto('horas-excedidas', {
+      competencia,
+      usuarioId: filtroUsuarioId,
+      clienteId: filtroClienteId,
+      servicoId: filtroServicoId,
+    });
+  }, [competencia, filtroUsuarioId, filtroClienteId, filtroServicoId]);
 
   const carregar = useCallback(async (silent = false) => {
     const [ano, mes] = competencia.split('-').map(Number);
     const params: Record<string, number> = { ano, mes };
     if (filtroUsuarioId) params.usuario_id = filtroUsuarioId;
+    if (filtroClienteId) params.cliente_id = filtroClienteId;
+    if (filtroServicoId) params.servico_id = filtroServicoId;
 
     if (silent) setRefreshing(true);
     else setLoading(true);
@@ -57,7 +79,7 @@ export function PontoHorasExcedidas() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [competencia, filtroUsuarioId, addToast]);
+  }, [competencia, filtroUsuarioId, filtroClienteId, filtroServicoId, addToast]);
 
   useEffect(() => {
     carregar();
@@ -215,6 +237,22 @@ export function PontoHorasExcedidas() {
           options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
           title="Filtro por Usuario"
           placeholder="Todos os usuarios"
+        />
+        <RegistroSelect<number>
+          value={filtroClienteId ?? null}
+          onChange={(v) => setFiltroClienteId(v)}
+          onClear={() => setFiltroClienteId(undefined)}
+          options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
+          title="Filtro por Cliente"
+          placeholder="Todos os clientes"
+        />
+        <RegistroSelect<number>
+          value={filtroServicoId ?? null}
+          onChange={(v) => setFiltroServicoId(v)}
+          onClear={() => setFiltroServicoId(undefined)}
+          options={servicos.map((s) => ({ value: (s.id ?? s.codigo)!, label: s.nome }))}
+          title="Filtro por Servico"
+          placeholder="Todos os servicos"
         />
         <ShowForPermission rota="/ponto-eletronico/horas-excedidas" acao={ACAO.INCLUIR}>
           <Button onClick={handleNovo}>

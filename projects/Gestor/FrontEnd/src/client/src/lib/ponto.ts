@@ -34,6 +34,63 @@ export function labelMes(mes: number): string {
   return nomes[mes - 1] || '';
 }
 
+export interface FiltrosPonto {
+  competencia?: string;
+  ano?: number;
+  mes?: number;
+  usuarioId?: number;
+  clienteId?: number;
+  servicoId?: number;
+  tipo?: string;
+}
+
+const FILTROS_PREFIX = 'ponto:filtros:';
+const ULTIMO_LANCAMENTO_KEY = 'ponto:ultimo-lancamento';
+
+export function carregarFiltrosPonto(pagina: string): FiltrosPonto {
+  try {
+    const salvo = localStorage.getItem(FILTROS_PREFIX + pagina);
+    if (salvo) return JSON.parse(salvo) as FiltrosPonto;
+  } catch { /* ignore */ }
+  return {};
+}
+
+export function salvarFiltrosPonto(pagina: string, filtros: FiltrosPonto): void {
+  try {
+    localStorage.setItem(FILTROS_PREFIX + pagina, JSON.stringify(filtros));
+  } catch { /* ignore */ }
+}
+
+export interface UltimoLancamento {
+  usuarioId?: number;
+  clienteId?: number;
+  servicoId?: number;
+}
+
+export function carregarUltimoLancamento(): UltimoLancamento {
+  try {
+    const salvo = localStorage.getItem(ULTIMO_LANCAMENTO_KEY);
+    if (salvo) return JSON.parse(salvo) as UltimoLancamento;
+  } catch { /* ignore */ }
+  return {};
+}
+
+export function salvarUltimoLancamento(dados: UltimoLancamento): void {
+  try {
+    localStorage.setItem(ULTIMO_LANCAMENTO_KEY, JSON.stringify(dados));
+  } catch { /* ignore */ }
+}
+
+export function dataHoje(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function horaAgora(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export function exportarCsv(
   nomeArquivo: string,
   cabecalho: string[],

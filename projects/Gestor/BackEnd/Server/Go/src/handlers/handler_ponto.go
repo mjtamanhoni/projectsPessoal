@@ -49,6 +49,7 @@ func (h *PontoHandler) PontoLancamentosListar(w http.ResponseWriter, r *http.Req
 			pl.valor_hora::float8 AS valor_hora, pl.data_servico::text AS data_servico,
 			pl.hora_lancamento::text AS hora_lancamento, trim(pl.tipo_lancamento) AS tipo_lancamento,
 			pl.observacoes, pl.status, pl.created_at, pl.updated_at,
+			pl.latitude::float8 AS latitude, pl.longitude::float8 AS longitude, pl.foto,
 			u.nome AS usuario_nome, c.nome AS cliente_nome, s.nome AS servico_nome
 		FROM public.lanc_horas_trabalhadas pl
 		LEFT JOIN public.usuario u ON u.id = pl.usuario_id AND u.empresa_id = pl.empresa_id
@@ -122,6 +123,25 @@ func (h *PontoHandler) PontoLancamentosSalvar(w http.ResponseWriter, r *http.Req
 		horaLancamento := strings.TrimSpace(getStr(item, "hora_lancamento"))
 		tipo := strings.ToUpper(strings.TrimSpace(getStr(item, "tipo_lancamento")))
 		valorHora := getFloat(item, "valor_hora")
+		latitude, temLatitude := item["latitude"]
+		longitude, temLongitude := item["longitude"]
+		temGeo := temLatitude && temLongitude && latitude != nil && longitude != nil
+		var latArg, lngArg interface{}
+		if temGeo {
+			lat := getFloat(item, "latitude")
+			lng := getFloat(item, "longitude")
+			if lat < -90 || lat > 90 || lng < -180 || lng > 180 {
+				jsonError(w, "Geolocalizacao invalida", http.StatusBadRequest)
+				return
+			}
+			latArg = lat
+			lngArg = lng
+		}
+		foto := strings.TrimSpace(getStr(item, "foto"))
+		if len(foto) > 300000 {
+			jsonError(w, "Foto muito grande (maximo 300 KB)", http.StatusBadRequest)
+			return
+		}
 
 		if usuarioID <= 0 || clienteID <= 0 || servicoID <= 0 {
 			jsonError(w, "Usuario, cliente e servico sao obrigatorios", http.StatusBadRequest)
@@ -143,8 +163,34 @@ func (h *PontoHandler) PontoLancamentosSalvar(w http.ResponseWriter, r *http.Req
 				empresaID, servicoID).Scan(&valorHora)
 		}
 
+		data, err := time.Parse("2006-01-02", dataServico)
+		if err != nil {
+			jsonError(w, "Data invalida", http.StatusBadRequest)
+			return
+		}
+
 		var old *pontoCombo
 		if id == 0 {
+			esperado, ultimo, errUltimo := h.buscarUltimoPonto(r.Context(), tx, empresaID, usuarioID, data)
+			if errUltimo != nil {
+				jsonError(w, errUltimo.Error(), http.StatusInternalServerError)
+				return
+			}
+			if ultimo != nil && ultimo.Tipo == "E" && ultimo.Data.Before(data) {
+				jsonError(w, fmt.Sprintf(
+					"Ha uma entrada em aberto em %s. Registre a saida desse dia antes de iniciar um novo dia.",
+					ultimo.Data.Format("02/01/2006")), http.StatusConflict)
+				return
+			}
+			if tipo != esperado {
+				rotulo := "Entrada"
+				if esperado == "S" {
+					rotulo = "Saida"
+				}
+				jsonError(w, fmt.Sprintf("O proximo lancamento deve ser %s", rotulo), http.StatusBadRequest)
+				return
+			}
+
 			id, err = database.GerarID(r.Context(), tx, empresaID, "lanc_horas_trabalhadas")
 			if err != nil {
 				jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
@@ -153,10 +199,12 @@ func (h *PontoHandler) PontoLancamentosSalvar(w http.ResponseWriter, r *http.Req
 			_, err = tx.Exec(r.Context(), `
 				INSERT INTO public.lanc_horas_trabalhadas
 					(id, empresa_id, usuario_id, cliente_id, servico_id, valor_hora,
-					 data_servico, hora_lancamento, tipo_lancamento, observacoes, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8::time,$9,$10,NOW())`,
+					 data_servico, hora_lancamento, tipo_lancamento, observacoes,
+					 latitude, longitude, foto, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8::time,$9,$10,$11,$12,$13,NOW())`,
 				id, empresaID, usuarioID, clienteID, servicoID, valorHora,
-				dataServico, horaLancamento, tipo, getStr(item, "observacoes"))
+				dataServico, horaLancamento, tipo, getStr(item, "observacoes"),
+				latArg, lngArg, nullStr(foto))
 		} else {
 			old, err = h.buscarComboLancamento(r.Context(), tx, empresaID, id)
 			if err != nil {
@@ -171,22 +219,18 @@ func (h *PontoHandler) PontoLancamentosSalvar(w http.ResponseWriter, r *http.Req
 				UPDATE public.lanc_horas_trabalhadas
 				SET usuario_id = $1, cliente_id = $2, servico_id = $3, valor_hora = $4,
 					data_servico = $5::date, hora_lancamento = $6::time,
-					tipo_lancamento = $7, observacoes = $8, updated_at = NOW()
-				WHERE id = $9 AND empresa_id = $10`,
+					tipo_lancamento = $7, observacoes = $8,
+					latitude = $9, longitude = $10, foto = $11, updated_at = NOW()
+				WHERE id = $12 AND empresa_id = $13`,
 				usuarioID, clienteID, servicoID, valorHora,
 				dataServico, horaLancamento, tipo, getStr(item, "observacoes"),
-				id, empresaID)
+				latArg, lngArg, nullStr(foto), id, empresaID)
 		}
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		data, err := time.Parse("2006-01-02", dataServico)
-		if err != nil {
-			jsonError(w, "Data invalida", http.StatusBadRequest)
-			return
-		}
 		novo := pontoCombo{
 			UsuarioID: usuarioID,
 			ClienteID: clienteID,
@@ -392,6 +436,119 @@ func (h *PontoHandler) buscarComboLancamento(ctx context.Context, tx pgx.Tx, emp
 	c.Ano = data.Year()
 	c.Mes = int(data.Month())
 	return &c, nil
+}
+
+// buscarUltimoPonto retorna o tipo esperado do proximo lancamento e a ultima
+// marcacao do usuario ate a data informada.
+func (h *PontoHandler) buscarUltimoPonto(ctx context.Context, tx pgx.Tx, empresaID, usuarioID int, data time.Time) (string, *pontoLancamento, error) {
+	var l pontoLancamento
+	var rawData, rawHora, tipo string
+	err := tx.QueryRow(ctx, `
+		SELECT id, data_servico::text, hora_lancamento::text, trim(tipo_lancamento)
+		FROM public.lanc_horas_trabalhadas
+		WHERE empresa_id = $1 AND usuario_id = $2 AND data_servico <= $3::date
+		ORDER BY data_servico DESC, hora_lancamento DESC, id DESC
+		LIMIT 1`,
+		empresaID, usuarioID, data.Format("2006-01-02")).Scan(&l.ID, &rawData, &rawHora, &tipo)
+	if err == pgx.ErrNoRows {
+		return "E", nil, nil
+	}
+	if err != nil {
+		return "", nil, err
+	}
+
+	d, err := time.Parse("2006-01-02", rawData)
+	if err != nil {
+		return "", nil, err
+	}
+	hh, err := time.Parse("15:04:05", rawHora)
+	if err != nil {
+		hh, err = time.Parse("15:04", rawHora)
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	l.Data = d
+	l.Hora = hh
+	l.Tipo = strings.TrimSpace(tipo)
+
+	esperado := "E"
+	if l.Tipo == "E" {
+		esperado = "S"
+	}
+	return esperado, &l, nil
+}
+
+func horaSugeridaFechamento(hora time.Time) string {
+	fim := hora.Add(8 * time.Hour)
+	limite := time.Date(hora.Year(), hora.Month(), hora.Day(), 23, 59, 0, 0, hora.Location())
+	if fim.After(limite) {
+		fim = limite
+	}
+	return fim.Format("15:04")
+}
+
+type pontoUltimoInfo struct {
+	ID   int    `json:"id"`
+	Data string `json:"data"`
+	Hora string `json:"hora"`
+	Tipo string `json:"tipo"`
+}
+
+type pontoProximoResponse struct {
+	Tipo                   string           `json:"tipo"`
+	Ultimo                 *pontoUltimoInfo `json:"ultimo"`
+	DiaEmAberto            bool             `json:"diaEmAberto"`
+	DataEmAberto           string           `json:"dataEmAberto,omitempty"`
+	HoraSugeridaFechamento string           `json:"horaSugeridaFechamento,omitempty"`
+}
+
+func (h *PontoHandler) PontoProximo(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaLogada(r)
+	usuarioID := parseInt(r.URL.Query().Get("usuario_id"), 0)
+	if usuarioID <= 0 {
+		jsonError(w, "Usuario e obrigatorio", http.StatusBadRequest)
+		return
+	}
+
+	data := time.Now()
+	if raw := strings.TrimSpace(r.URL.Query().Get("data")); raw != "" {
+		parsed, err := time.Parse("2006-01-02", raw)
+		if err != nil {
+			jsonError(w, "Data invalida", http.StatusBadRequest)
+			return
+		}
+		data = parsed
+	}
+
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	esperado, ultimo, err := h.buscarUltimoPonto(r.Context(), tx, empresaID, usuarioID, data)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp := pontoProximoResponse{Tipo: esperado}
+	if ultimo != nil {
+		resp.Ultimo = &pontoUltimoInfo{
+			ID:   ultimo.ID,
+			Data: ultimo.Data.Format("2006-01-02"),
+			Hora: ultimo.Hora.Format("15:04"),
+			Tipo: ultimo.Tipo,
+		}
+		if ultimo.Tipo == "E" && ultimo.Data.Before(data) {
+			resp.DiaEmAberto = true
+			resp.DataEmAberto = ultimo.Data.Format("2006-01-02")
+			resp.HoraSugeridaFechamento = horaSugeridaFechamento(ultimo.Hora)
+		}
+	}
+	jsonSuccess(w, resp)
 }
 
 func (h *PontoHandler) recalcularPontoCombo(ctx context.Context, tx pgx.Tx, empresaID int, c pontoCombo) error {
@@ -729,16 +886,20 @@ func (h *PontoHandler) PontoExcedentesExcluir(w http.ResponseWriter, r *http.Req
 // ---- Dashboard do Ponto Eletronico ----
 
 type pontoDashCards struct {
-	HorasAno          float64 `json:"horasAno"`
-	HorasMes          float64 `json:"horasMes"`
-	HorasDia          float64 `json:"horasDia"`
-	ExcedenteAno      float64 `json:"excedenteAno"`
-	ExcedenteMes      float64 `json:"excedenteMes"`
-	BaseAno           float64 `json:"baseAno"`
-	AbatidasAno       float64 `json:"abatidasAno"`
-	ValorExcedenteAno float64 `json:"valorExcedenteAno"`
-	DiasTrabalhados   int     `json:"diasTrabalhados"`
-	MediaDiaria       float64 `json:"mediaDiaria"`
+	HorasAno           float64 `json:"horasAno"`
+	HorasMes           float64 `json:"horasMes"`
+	HorasDia           float64 `json:"horasDia"`
+	ExcedenteAno       float64 `json:"excedenteAno"`
+	ExcedenteMes       float64 `json:"excedenteMes"`
+	BaseAno            float64 `json:"baseAno"`
+	AbatidasAno        float64 `json:"abatidasAno"`
+	ValorExcedenteAno  float64 `json:"valorExcedenteAno"`
+	ValorExcedenteMes  float64 `json:"valorExcedenteMes"`
+	ValorTrabalhadoAno float64 `json:"valorTrabalhadoAno"`
+	ValorTrabalhadoMes float64 `json:"valorTrabalhadoMes"`
+	ValorTrabalhadoDia float64 `json:"valorTrabalhadoDia"`
+	DiasTrabalhados    int     `json:"diasTrabalhados"`
+	MediaDiaria        float64 `json:"mediaDiaria"`
 }
 
 type pontoDashMes struct {
@@ -748,12 +909,14 @@ type pontoDashMes struct {
 	Base        float64 `json:"base"`
 	Abatidas    float64 `json:"abatidas"`
 	Excedentes  float64 `json:"excedentes"`
+	Valor       float64 `json:"valor"`
 }
 
 type pontoDashDia struct {
 	Dia         int     `json:"dia"`
 	Label       string  `json:"label"`
 	Trabalhadas float64 `json:"trabalhadas"`
+	Valor       float64 `json:"valor"`
 }
 
 type pontoDashNomeValor struct {
@@ -799,7 +962,8 @@ func (h *PontoHandler) PontoDashboard(w http.ResponseWriter, r *http.Request) {
 			pl.data_servico::text AS data_servico, pl.hora_lancamento::text AS hora_lancamento,
 			trim(pl.tipo_lancamento) AS tipo_lancamento,
 			COALESCE(u.nome, '') AS usuario_nome,
-			COALESCE(s.nome, '') AS servico_nome
+			COALESCE(s.nome, '') AS servico_nome,
+			COALESCE(s.valor_hora, 0)::float8 AS valor_hora
 		FROM public.lanc_horas_trabalhadas pl
 		LEFT JOIN public.usuario u ON u.id = pl.usuario_id AND u.empresa_id = pl.empresa_id
 		LEFT JOIN public.servico s ON s.id = pl.servico_id AND s.empresa_id = pl.empresa_id
@@ -832,10 +996,12 @@ func (h *PontoHandler) PontoDashboard(w http.ResponseWriter, r *http.Request) {
 	buckets := map[grupoChave][]pontoLancamento{}
 	servicoNomes := map[int]string{}
 	usuarioNomes := map[int]string{}
+	servicoValores := map[int]float64{}
 	for rows.Next() {
 		var id, uID, cID, sID int
 		var dataStr, horaStr, tipo, uNome, sNome string
-		if err := rows.Scan(&id, &uID, &cID, &sID, &dataStr, &horaStr, &tipo, &uNome, &sNome); err != nil {
+		var valorHora float64
+		if err := rows.Scan(&id, &uID, &cID, &sID, &dataStr, &horaStr, &tipo, &uNome, &sNome, &valorHora); err != nil {
 			rows.Close()
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -857,23 +1023,31 @@ func (h *PontoHandler) PontoDashboard(w http.ResponseWriter, r *http.Request) {
 		})
 		servicoNomes[sID] = sNome
 		usuarioNomes[uID] = uNome
+		servicoValores[sID] = valorHora
 	}
 	rows.Close()
 
 	dailyWorked := map[string]float64{}
+	dailyValue := map[string]float64{}
 	monthWorked := make([]float64, 13)
+	monthValue := make([]float64, 13)
 	perServico := map[int]float64{}
 	perUsuario := map[int]float64{}
+	var totalValue float64
 	for chave, lances := range buckets {
 		horas := calcularHorasPonto(lances)
 		if horas <= 0 {
 			continue
 		}
+		valor := horas * servicoValores[chave.ServicoID]
 		dailyWorked[chave.Dia] += horas
+		dailyValue[chave.Dia] += valor
+		totalValue += valor
 		if len(chave.Dia) >= 7 {
 			m := int(chave.Dia[5]-'0')*10 + int(chave.Dia[6]-'0')
 			if m >= 1 && m <= 12 {
 				monthWorked[m] += horas
+				monthValue[m] += valor
 			}
 		}
 		perServico[chave.ServicoID] += horas
@@ -950,6 +1124,7 @@ func (h *PontoHandler) PontoDashboard(w http.ResponseWriter, r *http.Request) {
 			Base:        baseMes[m],
 			Abatidas:    abatMes[m],
 			Excedentes:  excMes[m],
+			Valor:       math.Round(monthValue[m]*100) / 100,
 		})
 	}
 	totalAno = arredondarHoras(totalAno)
@@ -965,7 +1140,9 @@ func (h *PontoHandler) PontoDashboard(w http.ResponseWriter, r *http.Request) {
 		media = arredondarHoras(totalAno / float64(diasTrabalhados))
 	}
 
-	horasDia := arredondarHoras(dailyWorked[agora.Format("2006-01-02")])
+	hojeStr := agora.Format("2006-01-02")
+	horasDia := arredondarHoras(dailyWorked[hojeStr])
+	valorDia := math.Round(dailyValue[hojeStr]*100) / 100
 
 	ultimoDia := time.Date(ano, time.Month(mes), 1, 0, 0, 0, 0, time.Local).AddDate(0, 1, -1).Day()
 	diario := make([]pontoDashDia, 0, ultimoDia)
@@ -976,6 +1153,7 @@ func (h *PontoHandler) PontoDashboard(w http.ResponseWriter, r *http.Request) {
 			Dia:         d,
 			Label:       fmt.Sprintf("%02d", d),
 			Trabalhadas: arredondarHoras(dailyWorked[diaStr]),
+			Valor:       math.Round(dailyValue[diaStr]*100) / 100,
 		})
 	}
 
@@ -1001,16 +1179,20 @@ func (h *PontoHandler) PontoDashboard(w http.ResponseWriter, r *http.Request) {
 
 	resp := pontoDashboardResponse{
 		Cards: pontoDashCards{
-			HorasAno:          totalAno,
-			HorasMes:          arredondarHoras(monthWorked[mes]),
-			HorasDia:          horasDia,
-			ExcedenteAno:      arredondarHoras(totalExcAno),
-			ExcedenteMes:      excMes[mes],
-			BaseAno:           arredondarHoras(totalBaseAno),
-			AbatidasAno:       arredondarHoras(totalAbatAno),
-			ValorExcedenteAno: math.Round(totalValExcAno*100) / 100,
-			DiasTrabalhados:   diasTrabalhados,
-			MediaDiaria:       media,
+			HorasAno:           totalAno,
+			HorasMes:           arredondarHoras(monthWorked[mes]),
+			HorasDia:           horasDia,
+			ExcedenteAno:       arredondarHoras(totalExcAno),
+			ExcedenteMes:       excMes[mes],
+			BaseAno:            arredondarHoras(totalBaseAno),
+			AbatidasAno:        arredondarHoras(totalAbatAno),
+			ValorExcedenteAno:  math.Round(totalValExcAno*100) / 100,
+			ValorExcedenteMes:  math.Round(valExcMes[mes]*100) / 100,
+			ValorTrabalhadoAno: math.Round(totalValue*100) / 100,
+			ValorTrabalhadoMes: math.Round(monthValue[mes]*100) / 100,
+			ValorTrabalhadoDia: valorDia,
+			DiasTrabalhados:    diasTrabalhados,
+			MediaDiaria:        media,
 		},
 		Mensal:     mensal,
 		Diario:     diario,

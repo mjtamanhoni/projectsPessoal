@@ -268,7 +268,18 @@ export interface PontoLancamento {
   dataServico: string;
   horaLancamento: string;
   tipoLancamento: 'E' | 'S';
+  latitude?: number;
+  longitude?: number;
+  foto?: string;
   observacoes?: string;
+}
+
+export interface PontoProximoInfo {
+  tipo: 'E' | 'S';
+  ultimo: { id: number; data: string; hora: string; tipo: 'E' | 'S' } | null;
+  diaEmAberto: boolean;
+  dataEmAberto?: string;
+  horaSugeridaFechamento?: string;
 }
 
 export interface PontoResumo {
@@ -310,6 +321,10 @@ export interface PontoDashboardData {
     baseAno: number;
     abatidasAno: number;
     valorExcedenteAno: number;
+    valorExcedenteMes: number;
+    valorTrabalhadoAno: number;
+    valorTrabalhadoMes: number;
+    valorTrabalhadoDia: number;
     diasTrabalhados: number;
     mediaDiaria: number;
   };
@@ -320,11 +335,13 @@ export interface PontoDashboardData {
     base: number;
     abatidas: number;
     excedentes: number;
+    valor: number;
   }>;
   diario: Array<{
     dia: number;
     label: string;
     trabalhadas: number;
+    valor: number;
   }>;
   porServico: Array<{ nome: string; horas: number }>;
   porUsuario: Array<{ nome: string; horas: number }>;

@@ -2099,6 +2099,15 @@ var Migracoes = []Migracao{
 			END $$;
 		`,
 	},
+	{
+		Nome: "046_ponto_geolocalizacao_foto",
+		SQLUp: `
+			ALTER TABLE public.lanc_horas_trabalhadas
+				ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 7),
+				ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 7),
+				ADD COLUMN IF NOT EXISTS foto TEXT;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

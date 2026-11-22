@@ -486,6 +486,7 @@ carregar();
 		r.Post("/pontoLancamentos", pontoHandler.PontoLancamentosSalvar)
 		r.Delete("/pontoLancamentos", pontoHandler.PontoLancamentosExcluir)
 		r.Get("/pontoResumo", pontoHandler.PontoResumo)
+		r.Get("/pontoProximo", pontoHandler.PontoProximo)
 		r.Post("/pontoExcedentes", pontoHandler.PontoExcedentesSalvar)
 		r.Delete("/pontoExcedentes", pontoHandler.PontoExcedentesExcluir)
 		r.Get("/pontoDashboard", pontoHandler.PontoDashboard)

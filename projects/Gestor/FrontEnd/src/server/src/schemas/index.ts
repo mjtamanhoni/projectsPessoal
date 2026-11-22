@@ -184,6 +184,9 @@ export const pontoLancamentoBodySchema = z.object({
   horaLancamento: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Hora invalida'),
   tipoLancamento: z.enum(['E', 'S']),
   valorHora: z.union([z.number(), z.string().transform((s) => parseFloat(s))]).optional(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
+  foto: z.string().max(300000).optional().nullable(),
   observacoes: z.string().max(500).optional(),
 });
 

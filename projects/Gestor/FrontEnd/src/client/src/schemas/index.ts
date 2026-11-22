@@ -261,6 +261,9 @@ export const pontoLancamentoSchema = z.object({
   horaLancamento: z.string().regex(/^\d{2}:\d{2}$/, 'Hora invalida'),
   tipoLancamento: z.enum(['E', 'S']),
   valorHora: z.number().min(0).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  foto: z.string().max(300000).optional(),
   observacoes: z.string().max(500).optional().or(z.literal('')),
 });
 
@@ -269,7 +272,12 @@ export const pontoExcedenteSchema = z.object({
   clienteId: z.number().int().positive('Cliente e obrigatorio'),
   servicoId: z.number().int().positive('Servico e obrigatorio'),
   competencia: z.string().regex(/^\d{4}-\d{2}$/, 'Competencia invalida'),
-  horas: z.string().regex(/^\d{1,4}:\d{2}(:\d{2})?$/, 'Informe as horas no formato HH:MM:SS'),
+  horas: z.string()
+    .regex(/^\d{1,4}:\d{2}(:\d{2})?$/, 'Informe as horas no formato HH:MM:SS')
+    .refine((valor) => {
+      const [, m, s] = valor.split(':').map(Number);
+      return m < 60 && (s ?? 0) < 60;
+    }, 'Minutos e segundos devem ser menores que 60'),
   observacoes: z.string().max(500).optional().or(z.literal('')),
 });
 
