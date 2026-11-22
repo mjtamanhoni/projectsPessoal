@@ -553,6 +553,78 @@ export function PontoEletronico() {
         </Card>
       </div>
 
+      <Card className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground-primary">Fechamento Mensal</h2>
+            <p className="text-sm text-text-secondary">Excedente = trabalhadas - abatidas - base do servico</p>
+          </div>
+          <button
+            onClick={() => carregar(true)}
+            className="p-2 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
+            title="Recalcular"
+            disabled={refreshing}
+          >
+            <RefreshCw size={18} className={`text-text-secondary ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+        <DataTable
+          columns={columnsResumo}
+          data={resumo}
+          loading={loading}
+          emptyMessage="Nenhum fechamento encontrado para o periodo"
+        />
+        <div className="flex flex-wrap items-center justify-end gap-6 mt-4 pt-4 border-t border-border-subtle">
+          <div className="text-sm text-text-secondary">
+            Base: <span className="font-semibold text-text-primary">{formatHoras(totais.base)}</span>
+          </div>
+          <div className="text-sm text-text-secondary">
+            Trabalhadas: <span className="font-semibold text-text-primary">{formatHoras(totais.trabalhadas)}</span>
+          </div>
+          <div className="text-sm text-text-secondary">
+            Abatidas: <span className="font-semibold text-text-primary">{formatHoras(totais.abatidas)}</span>
+          </div>
+          <div className="text-sm text-text-secondary">
+            Excedentes: <span className="font-semibold text-text-primary">{formatHoras(totais.excedentes)}</span>
+          </div>
+          <div className="text-sm text-text-secondary">
+            Valor Acumulado: <span className="font-semibold text-accent-primary">{formatCurrency(totais.valor)}</span>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <User size={18} className="text-text-secondary" />
+            <h2 className="text-lg font-semibold text-foreground-primary">Marcacoes</h2>
+            {selectedDay && (
+              <button
+                onClick={() => setSelectedDay(null)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent-primary/10 text-xs font-medium text-accent-primary hover:bg-accent-primary/20"
+                title="Limpar filtro do dia"
+              >
+                Dia {formatDate(selectedDay)} <Minus size={12} />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => carregar(true)}
+            className="p-2 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
+            title="Atualizar"
+            disabled={refreshing}
+          >
+            <RefreshCw size={18} className={`text-text-secondary ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+        <DataTable
+          columns={columns}
+          data={lancamentosFiltrados}
+          loading={loading}
+          emptyMessage="Nenhuma marcacao cadastrada no periodo"
+        />
+      </Card>
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
         <Card>
           <div className="flex items-center justify-between mb-4">
@@ -651,78 +723,6 @@ export function PontoEletronico() {
           )}
         </Card>
       </div>
-
-      <Card className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground-primary">Fechamento Mensal</h2>
-            <p className="text-sm text-text-secondary">Excedente = trabalhadas - abatidas - base do servico</p>
-          </div>
-          <button
-            onClick={() => carregar(true)}
-            className="p-2 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
-            title="Recalcular"
-            disabled={refreshing}
-          >
-            <RefreshCw size={18} className={`text-text-secondary ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-        <DataTable
-          columns={columnsResumo}
-          data={resumo}
-          loading={loading}
-          emptyMessage="Nenhum fechamento encontrado para o periodo"
-        />
-        <div className="flex flex-wrap items-center justify-end gap-6 mt-4 pt-4 border-t border-border-subtle">
-          <div className="text-sm text-text-secondary">
-            Base: <span className="font-semibold text-text-primary">{formatHoras(totais.base)}</span>
-          </div>
-          <div className="text-sm text-text-secondary">
-            Trabalhadas: <span className="font-semibold text-text-primary">{formatHoras(totais.trabalhadas)}</span>
-          </div>
-          <div className="text-sm text-text-secondary">
-            Abatidas: <span className="font-semibold text-text-primary">{formatHoras(totais.abatidas)}</span>
-          </div>
-          <div className="text-sm text-text-secondary">
-            Excedentes: <span className="font-semibold text-text-primary">{formatHoras(totais.excedentes)}</span>
-          </div>
-          <div className="text-sm text-text-secondary">
-            Valor Acumulado: <span className="font-semibold text-accent-primary">{formatCurrency(totais.valor)}</span>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <User size={18} className="text-text-secondary" />
-            <h2 className="text-lg font-semibold text-foreground-primary">Marcacoes</h2>
-            {selectedDay && (
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent-primary/10 text-xs font-medium text-accent-primary hover:bg-accent-primary/20"
-                title="Limpar filtro do dia"
-              >
-                Dia {formatDate(selectedDay)} <Minus size={12} />
-              </button>
-            )}
-          </div>
-          <button
-            onClick={() => carregar(true)}
-            className="p-2 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
-            title="Atualizar"
-            disabled={refreshing}
-          >
-            <RefreshCw size={18} className={`text-text-secondary ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-        <DataTable
-          columns={columns}
-          data={lancamentosFiltrados}
-          loading={loading}
-          emptyMessage="Nenhuma marcacao cadastrada no periodo"
-        />
-      </Card>
 
       <Modal isOpen={modalOpen} onClose={handleCloseModal} title={editingId ? 'Editar Marcacao' : 'Nova Marcacao'}>
         <PontoLancamentoForm
