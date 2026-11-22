@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { PrintButton } from '@/components/ui/PrintButton';
-import { PontoNav } from '@/components/ponto/PontoNav';
 import { useToast } from '@/context/ToastContext';
 import {
   carregarFiltrosPonto, competenciaAtual, exportarCsv, formatHoras, labelMes, salvarFiltrosPonto,
@@ -262,8 +261,6 @@ export function PontoRelatorios() {
         </Button>
         <PrintButton title={tabela.titulo} data={printData} columns={printColumns} />
       </PageHeader>
-
-      <PontoNav />
 
       <Card className="mb-6">
         <div className="flex items-center gap-3 flex-wrap">

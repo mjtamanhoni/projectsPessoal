@@ -19,6 +19,16 @@ const MODE_MODULE_MAP: Record<string, string> = {
   producao: 'Producao',
 };
 
+function pickStartForm(mod: { nome: string; formularios: Array<{ nome: string; abertura?: number }> }) {
+  const porAbertura = mod.formularios.find((f) => f.abertura === 1);
+  if (porAbertura) return porAbertura;
+  if (/ponto/i.test(mod.nome)) {
+    const dashboard = mod.formularios.find((f) => /dashboard/i.test(f.nome));
+    if (dashboard) return dashboard;
+  }
+  return mod.formularios[0];
+}
+
 export function ModuloSelector() {
   const { menuData, menuLoading, menuError, refetchMenu, selectModule } = useModule();
   const navigate = useNavigate();
@@ -49,7 +59,7 @@ export function ModuloSelector() {
     if (!mod) return;
 
     selectModule(mod);
-    const target = mod.formularios.find((f) => f.abertura === 1) || mod.formularios[0];
+    const target = pickStartForm(mod);
     if (target) {
       const route = formRouteMap[target.nome];
       if (route) navigate(route, { replace: true });
@@ -102,7 +112,7 @@ export function ModuloSelector() {
 
   const handleSelect = (mod: typeof menuData[0]) => {
     selectModule(mod);
-    const target = mod.formularios.find((f) => f.abertura === 1) || mod.formularios[0];
+    const target = pickStartForm(mod);
     if (target) {
       const route = formRouteMap[target.nome];
       navigate(route || '/');

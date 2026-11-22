@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { RegistroSelect } from '@/components/ui/RegistroSelect';
-import { PontoNav } from '@/components/ponto/PontoNav';
 import { useToast } from '@/context/ToastContext';
 import { carregarFiltrosPonto, competenciaAtualAno, competenciaAtualMes, formatHoras, labelMes, salvarFiltrosPonto } from '@/lib/ponto';
 import { formatCurrency } from '@/lib/utils';
@@ -122,8 +121,6 @@ export function PontoDashboard() {
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
         </Button>
       </PageHeader>
-
-      <PontoNav />
 
       <Card className="mb-6">
         <div className="flex items-center gap-3 flex-wrap">

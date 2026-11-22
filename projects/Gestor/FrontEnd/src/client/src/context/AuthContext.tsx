@@ -3,7 +3,7 @@ import api from '@/lib/api';
 import { getBaseURL } from '@/lib/serverConfig';
 import { fetchSettings, getCachedSettings } from '@/lib/settings';
 import { preloadEmpresaLogomarca } from '@/lib/empresaLogo';
-import { formRouteMap, routeFormMap, ACAO } from '@/lib/permissions';
+import { formRouteMap, ACAO } from '@/lib/permissions';
 import type { User, FormularioPermissao, Empresa } from '@/types';
 
 interface AuthContextType {
@@ -185,11 +185,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const temPermissao = useCallback(
     (rota: string, acao: string): boolean => {
       if (irrestrito) return true;
-      const formName = routeFormMap[rota];
-      if (!formName) return true;
-      const formPerm = permissoes.find(p => p.nome === formName);
-      if (!formPerm) return false;
-      return formPerm.permissoes?.includes(acao) ?? false;
+      const nomesFormulario = Object.keys(formRouteMap).filter((nome) => formRouteMap[nome] === rota);
+      if (nomesFormulario.length === 0) return true;
+      const formsPermitidos = permissoes.filter((p) => nomesFormulario.includes(p.nome));
+      return formsPermitidos.some((p) => p.permissoes?.includes(acao));
     },
     [irrestrito, permissoes]
   );

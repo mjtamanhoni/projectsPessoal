@@ -9,7 +9,6 @@ import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
-import { PontoNav } from '@/components/ponto/PontoNav';
 import { PontoExcedenteForm } from '@/components/forms/PontoExcedenteForm';
 import { useToast } from '@/context/ToastContext';
 import { ACAO } from '@/lib/permissions';
@@ -260,8 +259,6 @@ export function PontoHorasExcedidas() {
           </Button>
         </ShowForPermission>
       </PageHeader>
-
-      <PontoNav />
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <Card>

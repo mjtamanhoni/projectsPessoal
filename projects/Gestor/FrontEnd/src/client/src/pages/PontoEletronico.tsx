@@ -10,7 +10,6 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { PontoLancamentoForm } from '@/components/forms/PontoLancamentoForm';
-import { PontoNav } from '@/components/ponto/PontoNav';
 import { useToast } from '@/context/ToastContext';
 import { ACAO } from '@/lib/permissions';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -493,8 +492,6 @@ export function PontoEletronico() {
           </Button>
         </ShowForPermission>
       </PageHeader>
-
-      <PontoNav />
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
         <Card>

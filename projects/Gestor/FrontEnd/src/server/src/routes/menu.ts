@@ -23,6 +23,13 @@ const formOrdem: Record<string, string[]> = {
     'Relatorio Fabricacoes',
     'Relatorio Vendas Produto',
   ],
+  'PONTO ELETRÔNICO': [
+    'Ponto Eletrônico - Dashboard',
+    'Ponto Eletrônico - Marcações',
+    'Ponto Eletrônico',
+    'Ponto Eletrônico - Horas Excedidas',
+    'Ponto Eletrônico - Relatórios',
+  ],
 };
 
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
