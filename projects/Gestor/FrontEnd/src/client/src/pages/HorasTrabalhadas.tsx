@@ -144,7 +144,7 @@ function saveFilters(filters: FilterState) {
 export function HorasTrabalhadas() {
   const { data: horas, loading, error, create, update, remove, fetchOne, refetch } = useApi<HoraTrabalhada>('/horas-trabalhadas');
   const { data: abatimentos, error: abatimentosError, refetch: refetchAbatimentos } = useApi<HoraAbatida>('/horas-abatidas');
-  const { data: excedidas } = useApi<HoraExcedida>('/horas-excedidas');
+  const { data: excedidas, refetch: refetchExcedidas } = useApi<HoraExcedida>('/horas-excedidas');
 
   useEffect(() => {
     console.log('[HorasTrabalhadas] abatimentos recebidos:', abatimentos?.length, 'error:', abatimentosError, abatimentos?.[0]);
@@ -510,11 +510,13 @@ export function HorasTrabalhadas() {
       };
       if (editing) {
         await update({ ...payload, id: editing.id ?? editing.codigo });
+        await refetchExcedidas();
         setModalOpen(false);
         setEditing(null);
         addToast('success', 'Hora trabalhada atualizada com sucesso');
       } else {
         await create(payload);
+        await refetchExcedidas();
         setLastEntry({ ...payload, observacoes: '' });
         setNewEntryCount((c) => c + 1);
         setFocusDate(true);
@@ -531,6 +533,7 @@ export function HorasTrabalhadas() {
     setDeleting(true);
     try {
       await remove(confirmDelete);
+      await refetchExcedidas();
       setConfirmDelete(null);
       addToast('success', 'Hora trabalhada excluida com sucesso');
     } catch (err: unknown) {
@@ -728,7 +731,7 @@ export function HorasTrabalhadas() {
       <PageHeader title="Horas Trabalhadas" subtitle="Gerencie horas trabalhadas">
         <PrintButton title="Horas Trabalhadas" data={horasFiltradas} columns={printColumns} />
         <ShowForPermission rota="/horas-trabalhadas" acao={ACAO.EXPORTAR}>
-          <Button variant="secondary" onClick={() => refetch()}>
+          <Button variant="secondary" onClick={() => { refetch(); refetchAbatimentos(); refetchExcedidas(); }}>
             <RefreshCw size={18} /> Atualizar
           </Button>
         </ShowForPermission>
