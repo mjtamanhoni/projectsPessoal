@@ -1,9 +1,5 @@
 projects/Gestor/BackEnd/Server/src/Temp/
-projects/ServidorDelphi/Servidor/src/__history/
-projects/ServidorDelphi/Servidor/src/Win32/Debug/
-projects/ServidorDelphi/Servidor/src/Win64/Debug/
-projects/ServidorDelphi/Servidor/src/Win64/Release/
-projects/ServidorDelphi/Servidor/src/__recovery/
+# Servidores Delphi/Lazarus removidos em 2026-11-24
 *.dump
 *.ps1
 *.icns
@@ -87,3 +83,17 @@ projects/Gestor_Backup_*/
 !projects/TitulosPagarOffline/**/*.bat
 !projects/TitulosPagarOffline/**/*.ps1
 !projects/TitulosPagarOffline/**/*.png
+
+# ============================================
+# Higiene 2026-11-24: artefatos de build
+# ============================================
+*.tsbuildinfo
+*.res
+*.dcu
+*.o
+*.ppu
+*.compiled
+*.dproj.local
+*.lps
+__history/
+__recovery/

@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+jobs:
+  go:
+    name: BackEnd Go
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/Gestor/BackEnd/Server/Go/src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: projects/Gestor/BackEnd/Server/Go/src/go.mod
+          cache-dependency-path: projects/Gestor/BackEnd/Server/Go/src/go.sum
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...
+
+  bff:
+    name: BFF (Node)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/Gestor/FrontEnd/src/server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: projects/Gestor/FrontEnd/src/server/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  client:
+    name: Frontend (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/Gestor/FrontEnd/src/client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: projects/Gestor/FrontEnd/src/client/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  mobile:
+    name: Mobile typecheck
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - projects/Gestor/Mobile/Cliente
+          - projects/Gestor/Mobile/Producao
+          - projects/Gestor/Mobile/TitulosPagar
+          - projects/TitulosPagarOffline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+        working-directory: ${{ matrix.app }}
+      - run: npx tsc --noEmit
+        working-directory: ${{ matrix.app }}

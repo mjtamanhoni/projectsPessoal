@@ -1,0 +1,29 @@
+# Normalizacao de line endings (conservadora)
+*.sh        text eol=lf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binarios (nao tentar diff/merge de texto)
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.icns      binary
+*.pdf       binary
+*.xlsx      binary
+*.apk       binary
+*.aab       binary
+*.exe       binary
+*.dll       binary
+*.so        binary
+*.dylib     binary
+*.keystore  binary
+*.jks       binary
+*.wasm      binary
+*.pen       binary
+*.dump      binary
+*.rar       binary
+*.zip       binary
+*.bundle    binary
