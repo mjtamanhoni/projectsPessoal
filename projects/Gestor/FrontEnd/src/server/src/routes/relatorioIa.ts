@@ -292,7 +292,12 @@ router.post('/gerar', authMiddleware, async (req: AuthRequest, res: Response) =>
       } catch {
         // ignora falha de persistencia do erro
       }
-      const status = erroIa instanceof Error && 'status' in erroIa ? (erroIa as { status: number }).status : 502;
+      const statusOriginal =
+        erroIa instanceof Error && 'status' in erroIa ? (erroIa as { status: number }).status : 502;
+      const status = statusOriginal === 401 || statusOriginal === 403 ? 502 : statusOriginal;
+      if (status !== statusOriginal) {
+        console.error('[RelatorioIA] Status do provedor de IA ajustado de', statusOriginal, 'para', status);
+      }
       res.status(status).json({ error: msgErro, conversaId: cid });
     }
   } catch (error: unknown) {

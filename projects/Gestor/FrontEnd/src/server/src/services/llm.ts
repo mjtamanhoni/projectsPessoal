@@ -102,6 +102,69 @@ async function chamarLLM(llm: {
   throw ultimoErro;
 }
 
+const LIMITE_DETALHE_PROVEDOR = 200;
+
+function detalheProvedor(erro: unknown): string {
+  if (!axios.isAxiosError(erro)) return '';
+  const dados = erro.response?.data as { error?: unknown; message?: unknown } | string | undefined;
+
+  let mensagem = '';
+  if (typeof dados === 'string') {
+    mensagem = dados;
+  } else if (dados && typeof dados === 'object') {
+    const interno = dados.error;
+    if (typeof interno === 'string') {
+      mensagem = interno;
+    } else if (interno && typeof interno === 'object') {
+      const texto = (interno as { message?: unknown }).message;
+      if (typeof texto === 'string') mensagem = texto;
+    }
+    if (!mensagem && typeof dados.message === 'string') {
+      mensagem = dados.message;
+    }
+  }
+
+  mensagem = mensagem.replace(/\s+/g, ' ').trim();
+  if (mensagem.length > LIMITE_DETALHE_PROVEDOR) {
+    mensagem = `${mensagem.slice(0, LIMITE_DETALHE_PROVEDOR)}...`;
+  }
+  return mensagem;
+}
+
+export function traduzirErroLLM(erro: unknown): AppError {
+  if (erro instanceof AppError) return erro;
+  if (!axios.isAxiosError(erro)) {
+    return new AppError('Falha ao consultar o provedor de IA. Tente novamente.', 502);
+  }
+
+  const status = erro.response?.status;
+  const detalhe = detalheProvedor(erro);
+  const sufixo = detalhe ? ` Detalhe do provedor: ${detalhe}` : '';
+
+  if (status === 401 || status === 403) {
+    return new AppError(
+      `Falha de autenticacao com o provedor de IA. Verifique a chave e o modelo na aba Config do Relatorio IA.${sufixo}`,
+      502,
+    );
+  }
+  if (status === 429) {
+    return new AppError(
+      `O provedor de IA recusou a requisicao por limite de uso (429). Aguarde alguns instantes e tente novamente.${sufixo}`,
+      429,
+    );
+  }
+  if (status === undefined) {
+    return new AppError(
+      `Nao foi possivel contatar o provedor de IA (tempo esgotado ou falha de rede). Tente novamente.${sufixo}`,
+      504,
+    );
+  }
+  return new AppError(
+    `O provedor de IA retornou erro ${status}. Tente novamente ou verifique a configuracao.${sufixo}`,
+    502,
+  );
+}
+
 export interface LLMOverride {
   apiKey?: string;
   baseUrl?: string;
@@ -142,7 +205,12 @@ export async function gerarRelatorioIA(params: {
   // 7 rodadas: erro de SQL + descoberta de schema + consulta vazia + sucesso
   // ainda deixam margem para o resumo final.
   for (let rodada = 0; rodada < 7; rodada++) {
-    const response = await chamarLLM(llm, messages);
+    let response: Awaited<ReturnType<typeof chamarLLM>>;
+    try {
+      response = await chamarLLM(llm, messages);
+    } catch (err) {
+      throw traduzirErroLLM(err);
+    }
 
     const msg = response.data?.choices?.[0]?.message;
     if (!msg) {
