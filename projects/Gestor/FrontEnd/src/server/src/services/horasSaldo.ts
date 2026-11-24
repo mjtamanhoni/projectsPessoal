@@ -136,7 +136,7 @@ export async function recalcularSaldoAcumulado(
 
   const api = opcoes.api ?? (await import('./horseApi')).horseApi;
   const agora = opcoes.agora ?? new Date();
-  const ultimoMesFechado = chaveMes(agora.getFullYear(), agora.getMonth() + 1) - 1;
+  const mesFinal = chaveMes(agora.getFullYear(), agora.getMonth() + 1);
   let servicos: Servico[] | null = null;
   let totalSalvo = 0;
 
@@ -192,10 +192,10 @@ export async function recalcularSaldoAcumulado(
       saldo = 0;
     }
 
-    if (inicio > ultimoMesFechado) continue;
+    if (inicio > mesFinal) continue;
 
     const { ano: anoInicio, mes: mesInicio } = mesDaChave(inicio);
-    const { ano: anoFim, mes: mesFim } = mesDaChave(ultimoMesFechado);
+    const { ano: anoFim, mes: mesFim } = mesDaChave(mesFinal);
 
     const [trabalhos, abatidas] = await Promise.all([
       api.listarHorasTrabalhadas({
@@ -235,7 +235,7 @@ export async function recalcularSaldoAcumulado(
     }
 
     const paraSalvar: HoraExcedida[] = [];
-    for (let chave = inicio; chave <= ultimoMesFechado; chave++) {
+    for (let chave = inicio; chave <= mesFinal; chave++) {
       const { ano, mes } = mesDaChave(chave);
       saldo = arredondar(saldo + (trabalhadasPorMes.get(chave) ?? 0) - (abatidasPorMes.get(chave) ?? 0) - horasMinimas);
 

@@ -179,7 +179,7 @@ describe('recalcularSaldoAcumulado', () => {
       { agora: new Date(2026, 10, 15), api },
     );
 
-    expect(total).toBe(5);
+    expect(total).toBe(6);
     expect(api.salvos).toHaveLength(1);
     expect(api.salvos[0].map((item) => [item.anoOrigem, item.mesOrigem, item.deltaHoras, item.id])).toEqual([
       [2026, 6, 20, 2],
@@ -187,6 +187,7 @@ describe('recalcularSaldoAcumulado', () => {
       [2026, 8, 40, 4],
       [2026, 9, 50, 5],
       [2026, 10, 60, 6],
+      [2026, 11, 60, undefined],
     ]);
   });
 
@@ -207,10 +208,11 @@ describe('recalcularSaldoAcumulado', () => {
       { agora: new Date(2026, 10, 15), api },
     );
 
-    expect(total).toBe(2);
+    expect(total).toBe(3);
     expect(api.salvos[0].map((item) => [item.mesOrigem, item.anoOrigem, item.deltaHoras])).toEqual([
       [9, 2026, 4],
       [10, 2026, 8],
+      [11, 2026, 9],
     ]);
   });
 
@@ -219,7 +221,7 @@ describe('recalcularSaldoAcumulado', () => {
       servicos: [servico()],
       trabalhos: [trabalho(2026, 10, 10, 10)],
       abatidas: [],
-      excedidas: [excedida(2026, 9, 40, 1), excedida(2026, 10, 50, 2)],
+      excedidas: [excedida(2026, 9, 40, 1), excedida(2026, 10, 50, 2), excedida(2026, 11, 50, 3)],
     });
 
     const total = await recalcularSaldoAcumulado(
@@ -263,10 +265,11 @@ describe('recalcularSaldoAcumulado', () => {
       { agora: new Date(2026, 0, 15), api },
     );
 
-    expect(total).toBe(2);
+    expect(total).toBe(3);
     expect(api.salvos[0].map((item) => [item.anoOrigem, item.mesOrigem, item.deltaHoras])).toEqual([
       [2025, 11, 10],
       [2025, 12, 20],
+      [2026, 1, 20],
     ]);
   });
 
