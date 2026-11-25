@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import api, { getErrorMsg } from '@/lib/api';
-import autoTable from 'jspdf-autotable';
+import autoTable, { type CellDef, type RowInput } from 'jspdf-autotable';
 import { buildPDFWithHeader, downloadPDF, viewPDF } from '@/lib/pdf';
 import {
   Play,
@@ -12,6 +12,9 @@ import {
   X,
   Filter,
   Plus,
+  ListTree,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 
 interface ColunaSchema {
@@ -51,6 +54,10 @@ interface ResultadoConsulta {
   sql: string;
   total_linhas: number;
 }
+
+type ItemTabela =
+  | { tipo: 'grupo'; nivel: number; valor: string }
+  | { tipo: 'linha'; linha: Record<string, unknown> };
 
 // Tabelas associadas a cada modulo do sistema. Uma tabela pode pertencer a
 // mais de um modulo (ex.: cliente e usada por gestor, producao e delivery);
@@ -130,6 +137,31 @@ function fmtCelula(v: unknown): string {
   if (typeof v === 'number') return v.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
+}
+
+// Identidade estavel da coluna escolhida (independente do apelido exibido).
+function chaveColuna(e: Pick<Escolhida, 'tabela' | 'coluna'>): string {
+  return `${e.tabela}.${e.coluna}`;
+}
+
+// Nome que a coluna recebe no resultado (alias quando informado).
+function chaveResultado(e: Escolhida): string {
+  return (e.apelido ?? '').trim() || e.coluna;
+}
+
+// Colunas json/array nao tem operador de ordenacao no Postgres.
+function colunaOrdenavel(c: ColunaSchema): boolean {
+  const t = c.tipo.toLowerCase();
+  return !t.includes('json') && !t.includes('array') && !t.includes('bytea');
+}
+
+// Ordena valores de grupo de forma natural, mas so devolve 0 quando os textos
+// sao identicos (mesma regra usada para detectar a troca de grupo).
+function compararValores(a: unknown, b: unknown): number {
+  const sa = String(a ?? '');
+  const sb = String(b ?? '');
+  if (sa === sb) return 0;
+  return sa.localeCompare(sb, 'pt-BR', { numeric: true }) || (sa < sb ? -1 : 1);
 }
 
 // ------------------------- Filtros (WHERE) -------------------------
@@ -435,6 +467,7 @@ function gerarSQL(
   escolhidas: Escolhida[],
   juncao: 'LEFT JOIN' | 'INNER JOIN',
   filtros: Filtro[],
+  agrupar: string[],
 ): { sql: string; erro: string | null } {
   if (!escolhidas.length) return { sql: '', erro: null };
 
@@ -569,6 +602,18 @@ function gerarSQL(
   const linhasSql = [`SELECT`, `  ${selectCols.join(',\n  ')}`, `FROM ${base}`, ...joins];
   if (where.length) linhasSql.push(`WHERE ${where.join('\n  AND ')}`);
 
+  // O agrupamento e visual, mas ordenar no banco mantem os grupos contiguos
+  // mesmo com o limite de linhas do backend.
+  const gruposSql = agrupar
+    .map((chave) => escolhidas.find((e) => chaveColuna(e) === chave))
+    .filter((e): e is Escolhida => !!e)
+    .filter((e) => {
+      const col = mapa.get(e.tabela)?.colunas.find((c) => c.nome === e.coluna);
+      return !col || colunaOrdenavel(col);
+    })
+    .map((e) => `${e.tabela}.${e.coluna}`);
+  if (gruposSql.length) linhasSql.push(`ORDER BY ${gruposSql.join(', ')}`);
+
   return { sql: linhasSql.join('\n'), erro: null };
 }
 
@@ -580,6 +625,7 @@ export function MontarRelatorio() {
   const [escolhidas, setEscolhidas] = useState<Escolhida[]>([]);
   const [juncao, setJuncao] = useState<'LEFT JOIN' | 'INNER JOIN'>('LEFT JOIN');
   const [filtros, setFiltros] = useState<Filtro[]>([]);
+  const [agrupar, setAgrupar] = useState<string[]>([]);
   const [executando, setExecutando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoConsulta | null>(null);
   const [erro, setErro] = useState('');
@@ -600,9 +646,9 @@ export function MontarRelatorio() {
   const { sql, erro: erroSql } = useMemo(
     () =>
       schema
-        ? gerarSQL(schema, escolhidas, juncao, filtros)
+        ? gerarSQL(schema, escolhidas, juncao, filtros, agrupar)
         : { sql: '', erro: null as string | null },
-    [schema, escolhidas, juncao, filtros],
+    [schema, escolhidas, juncao, filtros, agrupar],
   );
 
   const adicionar = (tabela: string, coluna: string) => {
@@ -616,8 +662,9 @@ export function MontarRelatorio() {
 
   const remover = (tabela: string, coluna: string) => {
     setEscolhidas((prev) => prev.filter((p) => !(p.tabela === tabela && p.coluna === coluna)));
-    // Filtros da coluna removida tambem saem.
+    // Filtros e agrupamentos da coluna removida tambem saem.
     setFiltros((prev) => prev.filter((f) => !(f.tabela === tabela && f.coluna === coluna)));
+    setAgrupar((prev) => prev.filter((k) => k !== `${tabela}.${coluna}`));
     setResultado(null);
   };
 
@@ -625,6 +672,42 @@ export function MontarRelatorio() {
     setEscolhidas((prev) =>
       prev.map((p) => (p.tabela === tabela && p.coluna === coluna ? { ...p, apelido } : p)),
     );
+    setResultado(null);
+  };
+
+  const niveisValidos = agrupar.filter((chave) =>
+    escolhidas.some((e) => chaveColuna(e) === chave),
+  );
+
+  const adicionarNivel = () => {
+    setAgrupar((prev) => {
+      // Precisa sobrar ao menos uma coluna de detalhe fora dos grupos.
+      if (escolhidas.length < 2 || prev.length >= escolhidas.length - 1) return prev;
+      const usados = new Set(prev);
+      const disponivel = escolhidas.find((e) => !usados.has(chaveColuna(e)));
+      return disponivel ? [...prev, chaveColuna(disponivel)] : prev;
+    });
+    setResultado(null);
+  };
+
+  const alterarNivel = (indice: number, chave: string) => {
+    setAgrupar((prev) => prev.map((v, i) => (i === indice ? chave : v)));
+    setResultado(null);
+  };
+
+  const removerNivel = (indice: number) => {
+    setAgrupar((prev) => prev.filter((_, i) => i !== indice));
+    setResultado(null);
+  };
+
+  const moverNivel = (indice: number, direcao: -1 | 1) => {
+    setAgrupar((prev) => {
+      const alvo = indice + direcao;
+      if (alvo < 0 || alvo >= prev.length) return prev;
+      const copia = [...prev];
+      [copia[indice], copia[alvo]] = [copia[alvo], copia[indice]];
+      return copia;
+    });
     setResultado(null);
   };
 
@@ -705,6 +788,62 @@ export function MontarRelatorio() {
     }
   };
 
+  // Colunas agrupadas (na ordem dos niveis) e colunas de detalhe (restante).
+  const chavesGrupo = niveisValidos
+    .map((chave) => escolhidas.find((e) => chaveColuna(e) === chave))
+    .filter((e): e is Escolhida => !!e)
+    .map(chaveResultado);
+
+  const colunasDetalhe = resultado
+    ? resultado.colunas.filter((c) => !chavesGrupo.includes(c))
+    : [];
+
+  const colunasVisiveis = resultado
+    ? chavesGrupo.length && colunasDetalhe.length
+      ? colunasDetalhe
+      : resultado.colunas
+    : [];
+
+  const linhasBase = resultado?.linhas ?? [];
+  const linhasOrdenadas = chavesGrupo.length
+    ? [...linhasBase].sort((a, b) => {
+        for (const k of chavesGrupo) {
+          const cmp = compararValores(a[k], b[k]);
+          if (cmp) return cmp;
+        }
+        return 0;
+      })
+    : linhasBase;
+
+  const itensTabela: ItemTabela[] = [];
+  if (chavesGrupo.length) {
+    let anterior: unknown[] | null = null;
+    for (const linha of linhasOrdenadas) {
+      const valores = chavesGrupo.map((k) => linha[k]);
+      let primeiroDiferente = 0;
+      if (anterior) {
+        while (
+          primeiroDiferente < chavesGrupo.length &&
+          String(valores[primeiroDiferente] ?? '') === String(anterior[primeiroDiferente] ?? '')
+        ) {
+          primeiroDiferente++;
+        }
+      }
+      for (let nivel = primeiroDiferente; nivel < chavesGrupo.length; nivel++) {
+        itensTabela.push({ tipo: 'grupo', nivel, valor: fmtCelula(valores[nivel]) });
+      }
+      itensTabela.push({ tipo: 'linha', linha });
+      anterior = valores;
+    }
+  }
+
+  const descricaoGrupos = niveisValidos
+    .map((chave) => {
+      const e = escolhidas.find((x) => chaveColuna(x) === chave);
+      return e ? `${e.tabela}.${e.coluna}` : chave;
+    })
+    .join(' > ');
+
   const gerarPDF = (modo: 'ver' | 'baixar') => {
     if (!resultado) return;
     const doc = buildPDFWithHeader(
@@ -715,14 +854,35 @@ export function MontarRelatorio() {
           `${escolhidas.length} coluna(s)`,
           `${resultado.total_linhas} linha(s)`,
           `Juncao: ${juncao}`,
+          ...(descricaoGrupos ? [`Agrupado por: ${descricaoGrupos}`] : []),
           ...filtros.map(descricaoFiltro),
         ],
       },
       (d, drawPageHeader) => {
         if (drawPageHeader) drawPageHeader(d);
+        const corpoPdf = (
+          chavesGrupo.length
+            ? itensTabela.map((item) => {
+                if (item.tipo === 'grupo') {
+                  const celula: CellDef = {
+                    content: item.valor,
+                    colSpan: Math.max(colunasVisiveis.length, 1),
+                    styles: {
+                      fontStyle: 'bold',
+                      fillColor: item.nivel === 0 ? [219, 234, 254] : [241, 245, 249],
+                      textColor: [30, 41, 59],
+                      cellPadding: { top: 2, right: 2, bottom: 2, left: 2 + item.nivel * 4 },
+                    },
+                  };
+                  return [celula];
+                }
+                return colunasVisiveis.map((c) => fmtCelula(item.linha[c]));
+              })
+            : resultado.linhas.map((row) => colunasVisiveis.map((c) => fmtCelula(row[c])))
+        ) as RowInput[];
         autoTable(d, {
-          head: [resultado.colunas],
-          body: resultado.linhas.map((row) => resultado.colunas.map((c) => fmtCelula(row[c]))),
+          head: [colunasVisiveis],
+          body: corpoPdf,
           startY: 42,
           margin: { bottom: 15 },
           theme: 'striped',
@@ -931,6 +1091,88 @@ export function MontarRelatorio() {
             ))}
           </div>
 
+          {/* ---------- Agrupamento ---------- */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold flex items-center gap-1.5">
+                <ListTree size={14} /> Agrupar por{' '}
+                <span className="text-text-muted font-normal">(níveis)</span>
+              </h2>
+              <button
+                onClick={adicionarNivel}
+                disabled={escolhidas.length < 2 || niveisValidos.length >= escolhidas.length - 1}
+                className="btn-secondary text-xs flex items-center gap-1.5 disabled:opacity-50"
+                title={
+                  escolhidas.length < 2
+                    ? 'Selecione ao menos duas colunas (uma para agrupar e outra de detalhe).'
+                    : 'Adicionar um nível de agrupamento'
+                }
+              >
+                <Plus size={13} /> Adicionar nível
+              </button>
+            </div>
+
+            {!agrupar.length && (
+              <p className="text-[11px] text-text-muted">
+                Sem agrupamento. Escolha colunas acima e clique em “Adicionar nível” para agrupar
+                (ex.: usuário &gt; cliente &gt; registros). As colunas usadas nos grupos não se
+                repetem nas linhas de detalhe.
+              </p>
+            )}
+
+            {agrupar.map((chave, idx) => {
+              const usadosEmOutros = new Set(agrupar.filter((_, j) => j !== idx));
+              const opcoes = escolhidas.filter((e) => !usadosEmOutros.has(chaveColuna(e)));
+              const atual = escolhidas.find((e) => chaveColuna(e) === chave);
+              return (
+                <div
+                  key={`nivel-${idx}`}
+                  className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border-subtle bg-bg-muted/30 px-2 py-2"
+                >
+                  <span className="text-[11px] font-semibold text-text-secondary">
+                    Nível {idx + 1}
+                  </span>
+                  <select
+                    value={chave}
+                    onChange={(e) => alterarNivel(idx, e.target.value)}
+                    className="rounded-lg border border-border-subtle bg-bg-muted/40 px-2 py-1.5 text-xs outline-none focus:border-blue-500"
+                  >
+                    {opcoes.map((e) => (
+                      <option key={chaveColuna(e)} value={chaveColuna(e)}>
+                        {e.coluna} — {e.tabela}
+                        {e.apelido ? ` (${e.apelido})` : ''}
+                      </option>
+                    ))}
+                    {!atual && <option value={chave}>{chave}</option>}
+                  </select>
+                  <button
+                    onClick={() => moverNivel(idx, -1)}
+                    disabled={idx === 0}
+                    className="text-text-muted hover:text-text-primary disabled:opacity-30"
+                    title="Mover para cima"
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    onClick={() => moverNivel(idx, 1)}
+                    disabled={idx === agrupar.length - 1}
+                    className="text-text-muted hover:text-text-primary disabled:opacity-30"
+                    title="Mover para baixo"
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                  <button
+                    onClick={() => removerNivel(idx)}
+                    className="ml-auto text-text-muted hover:text-red-400"
+                    title="Remover nível"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
           {/* ---------- Filtros (WHERE) ---------- */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -1094,6 +1336,7 @@ export function MontarRelatorio() {
               onClick={() => {
                 setEscolhidas([]);
                 setFiltros([]);
+                setAgrupar([]);
                 setResultado(null);
                 setErro('');
               }}
@@ -1130,11 +1373,17 @@ export function MontarRelatorio() {
 
           {resultado && (
             <div className="rounded-xl border border-border-subtle overflow-hidden">
+              {chavesGrupo.length > 0 && !colunasDetalhe.length && (
+                <div className="px-3 py-2 text-[11px] text-amber-300 bg-amber-500/10 border-b border-amber-500/30">
+                  Todas as colunas escolhidas estão nos grupos. Adicione uma coluna de detalhe para
+                  ver as linhas.
+                </div>
+              )}
               <div className="overflow-auto max-h-96">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-bg-muted/70">
-                      {resultado.colunas.map((c) => (
+                      {colunasVisiveis.map((c) => (
                         <th
                           key={c}
                           className="text-left font-semibold text-text-secondary px-3 py-2 whitespace-nowrap"
@@ -1145,15 +1394,50 @@ export function MontarRelatorio() {
                     </tr>
                   </thead>
                   <tbody>
-                    {resultado.linhas.map((row, i) => (
-                      <tr key={i} className="border-t border-border-subtle">
-                        {resultado.colunas.map((c) => (
-                          <td key={c} className="px-3 py-2 text-text-primary whitespace-nowrap">
-                            {fmtCelula(row[c])}
-                          </td>
+                    {chavesGrupo.length
+                      ? itensTabela.map((item, i) =>
+                          item.tipo === 'grupo' ? (
+                            <tr
+                              key={`g-${i}`}
+                              className={
+                                item.nivel === 0
+                                  ? 'bg-blue-500/10 border-t border-border-subtle'
+                                  : 'bg-bg-muted/40 border-t border-border-subtle'
+                              }
+                            >
+                              <td
+                                colSpan={Math.max(colunasVisiveis.length, 1)}
+                                style={{ paddingLeft: 12 + item.nivel * 18 }}
+                                className="px-3 py-2 font-semibold text-text-primary whitespace-nowrap"
+                              >
+                                {item.valor}
+                              </td>
+                            </tr>
+                          ) : (
+                            <tr key={`l-${i}`} className="border-t border-border-subtle">
+                              {colunasVisiveis.map((c) => (
+                                <td
+                                  key={c}
+                                  className="px-3 py-2 text-text-primary whitespace-nowrap"
+                                >
+                                  {fmtCelula(item.linha[c])}
+                                </td>
+                              ))}
+                            </tr>
+                          ),
+                        )
+                      : resultado.linhas.map((row, i) => (
+                          <tr key={i} className="border-t border-border-subtle">
+                            {resultado.colunas.map((c) => (
+                              <td
+                                key={c}
+                                className="px-3 py-2 text-text-primary whitespace-nowrap"
+                              >
+                                {fmtCelula(row[c])}
+                              </td>
+                            ))}
+                          </tr>
                         ))}
-                      </tr>
-                    ))}
                   </tbody>
                 </table>
               </div>
