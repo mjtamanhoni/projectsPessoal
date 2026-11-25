@@ -35,12 +35,14 @@ interface TabelaSchema {
 
 interface SchemaDB {
   empresa_id: number;
+  modulos?: string[];
   tabelas: TabelaSchema[];
 }
 
 interface Escolhida {
   tabela: string;
   coluna: string;
+  apelido?: string;
 }
 
 interface ResultadoConsulta {
@@ -50,13 +52,17 @@ interface ResultadoConsulta {
   total_linhas: number;
 }
 
-// Agrupamento por convencao de nomes das tabelas -> modulo do sistema.
+// Tabelas associadas a cada modulo do sistema. Uma tabela pode pertencer a
+// mais de um modulo (ex.: cliente e usada por gestor, producao e delivery);
+// na tela ela aparece uma unica vez, no primeiro modulo liberado que a lista.
 const MODULOS: Record<string, string[]> = {
   GESTOR: [
     'bandeira_cartao', 'categoria_pagar', 'categoria_receber', 'cliente',
     'condicao_pagamento', 'contas_pagar', 'contas_pagar_log', 'contas_receber',
     'contas_receber_log', 'forma_pagamento', 'forma_pagamento_condicao',
     'fornecedor', 'lancamento_automatico_config', 'venda_pagamento',
+    'pagamentos_efetuados', 'titulos_pagar', 'licenca_titulos_pagar',
+    'licenca_titulos_pagar_solicitacao',
   ],
   PRODUCAO: [
     'adicional', 'adicional_produto_classificacao', 'compra_insumo',
@@ -67,31 +73,57 @@ const MODULOS: Record<string, string[]> = {
     'produto_classificacao', 'produto_fabricado', 'produto_venda',
     'receita_ingrediente', 'uso_consumo', 'venda_produto',
     'venda_produto_item', 'venda_produto_item_adicional',
-    'venda_produto_item_removido', 'venda_produto_old',
+    'venda_produto_item_removido', 'venda_produto_old', 'produto_venda_item',
+    'cliente', 'fornecedor', 'forma_pagamento', 'forma_pagamento_condicao',
+    'condicao_pagamento', 'bandeira_cartao',
   ],
   'HORAS TRABALHADAS': [
     'horas_abatidas', 'horas_baixa_saldo_geral', 'horas_excedidas',
     'horas_saldo_diario', 'horas_saldo_mensal', 'horas_trabalhadas',
-    'lanc_horas_trabalhadas', 'servico',
+    'lanc_horas_trabalhadas', 'servico', 'horas_excedidas_ponto',
+    'cliente', 'usuario',
   ],
   DELIVERY: [
     'encomenda', 'encomenda_avaliacao', 'encomenda_endereco_entrega',
     'encomenda_item', 'encomenda_item_adicional', 'encomenda_item_removido',
-    'encomenda_pagamento',
+    'encomenda_pagamento', 'empresa_regiao_entrega',
+    'cliente', 'forma_pagamento', 'forma_pagamento_condicao',
+    'condicao_pagamento', 'bandeira_cartao', 'marca',
+    'adicional', 'adicional_produto_classificacao', 'produto_adicional',
+    'produto_classificacao', 'produto_venda', 'produto_venda_item',
+    'produto_fabricado', 'receita_ingrediente', 'insumo', 'fabricacao',
+    'fabricacao_custo_adicional', 'custo_adicional_tipo', 'venda_produto',
+    'venda_produto_item', 'venda_produto_item_adicional',
+    'venda_produto_item_removido', 'venda_produto_old',
+  ],
+  'TITULOS A PAGAR': [
+    'titulos_pagar', 'pagamentos_efetuados', 'licenca_titulos_pagar',
+    'licenca_titulos_pagar_solicitacao', 'categoria_pagar',
+  ],
+  'PONTO ELETRONICO': [
+    'lanc_horas_trabalhadas', 'horas_excedidas_ponto', 'horas_abatidas',
+    'servico', 'cliente', 'usuario',
   ],
   GERAL: [
     'empresa', 'empresa_modulo', 'empresa_sequences', 'formulario', 'modulo',
     'modulo_formulario', 'permissao', 'usuario', 'usuario_empresa',
     'usuario_formulario', 'usuario_formulario_permissao',
+    'empresa_llm_config', 'empresa_token_acesso', 'mensagem', 'mensagem_leitura',
   ],
 };
 
-function moduloDaTabela(nome: string): string {
-  for (const [modulo, tabelas] of Object.entries(MODULOS)) {
-    if (tabelas.includes(nome)) return modulo;
-  }
-  return 'OUTRAS';
+// Normaliza o nome do modulo vindo do banco (ex.: "PONTO ELETRÔNICO")
+// para a chave usada em MODULOS ("PONTO ELETRONICO").
+function normalizarModulo(nome: string): string {
+  return nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
 }
+
+const TABELAS_MAPEADAS = new Set(Object.values(MODULOS).flat());
 
 function fmtCelula(v: unknown): string {
   if (v === null || v === undefined || v === '') return '-';
@@ -365,6 +397,37 @@ function descricaoFiltro(f: Filtro): string {
   return `${ref} ${label}${v1 ? ` ${valores}` : ''}`;
 }
 
+function temEmpresaNaPK(tabela?: TabelaSchema): boolean {
+  return !!tabela?.colunas.some((c) => c.nome === 'empresa_id' && c.pk);
+}
+
+function temColunaEmpresa(tabela?: TabelaSchema): boolean {
+  return !!tabela?.colunas.some((c) => c.nome === 'empresa_id');
+}
+
+// Quando a tabela que entra no JOIN tem empresa_id na chave primaria, a
+// igualdade de empresa_id precisa fazer parte do ON. Vale para LEFT JOIN e
+// INNER JOIN: assim a juncao nao cruza empresas e o LEFT JOIN continua
+// preservando as linhas sem correspondencia.
+function condEmpresaJoin(
+  mapa: Map<string, TabelaSchema>,
+  tabelaJuntada: string,
+  tabelaExistente: string,
+  schema: SchemaDB,
+): string {
+  const juntada = mapa.get(tabelaJuntada);
+  if (!temEmpresaNaPK(juntada)) return '';
+  const existente = mapa.get(tabelaExistente);
+  if (temColunaEmpresa(existente)) {
+    return ` AND ${tabelaJuntada}.empresa_id = ${tabelaExistente}.empresa_id`;
+  }
+  return ` AND ${tabelaJuntada}.empresa_id = ${schema.empresa_id}`;
+}
+
+// Apelidos viram identificadores entre aspas no SELECT; restringimos a letras,
+// numeros, espaco e _ para nao permitir quebra da consulta.
+const RE_APELIDO = /^[A-Za-zÀ-ÿ0-9_ ]+$/;
+
 // Monta o SELECT: tabela base = primeira coluna arrastada; demais tabelas sao
 // conectadas via cadeia de chaves estrangeiras (JOIN automatico).
 function gerarSQL(
@@ -374,6 +437,28 @@ function gerarSQL(
   filtros: Filtro[],
 ): { sql: string; erro: string | null } {
   if (!escolhidas.length) return { sql: '', erro: null };
+
+  // Os apelidos definem os titulos das colunas no resultado; precisam ser
+  // unicos (senao uma coluna sobrescreveria a outra) e seguros para o SQL.
+  const nomesUsados = new Map<string, string>();
+  for (const e of escolhidas) {
+    const apelido = (e.apelido ?? '').trim();
+    if (apelido && !RE_APELIDO.test(apelido)) {
+      return {
+        sql: '',
+        erro: `Apelido invalido em ${e.tabela}.${e.coluna}: use letras, numeros, espaco e _ (sem aspas ou pontuacao).`,
+      };
+    }
+    const nome = apelido || e.coluna;
+    const anterior = nomesUsados.get(nome);
+    if (anterior) {
+      return {
+        sql: '',
+        erro: `O nome "${nome}" ficou repetido (${anterior} e ${e.tabela}.${e.coluna}). Defina um apelido para diferenciar.`,
+      };
+    }
+    nomesUsados.set(nome, `${e.tabela}.${e.coluna}`);
+  }
 
   const porTabela = new Map<string, string[]>();
   const ordem: string[] = [];
@@ -410,7 +495,9 @@ function gerarSQL(
         for (const fk of tJ.fk) {
           if (fk.coluna === 'empresa_id' || fk.coluna_ref === 'empresa_id') continue;
           if (fk.tabela_ref === candidata) {
-            achou = `${juncao} ${candidata} ON ${j}.${fk.coluna} = ${candidata}.${fk.coluna_ref}`;
+            achou =
+              `${juncao} ${candidata} ON ${j}.${fk.coluna} = ${candidata}.${fk.coluna_ref}` +
+              condEmpresaJoin(mapa, candidata, j, schema);
             break;
           }
         }
@@ -421,7 +508,9 @@ function gerarSQL(
         for (const fk of tCand.fk) {
           if (fk.coluna === 'empresa_id' || fk.coluna_ref === 'empresa_id') continue;
           if (jaJuntables.has(fk.tabela_ref)) {
-            achou = `${juncao} ${candidata} ON ${candidata}.${fk.coluna} = ${fk.tabela_ref}.${fk.coluna_ref}`;
+            achou =
+              `${juncao} ${candidata} ON ${candidata}.${fk.coluna} = ${fk.tabela_ref}.${fk.coluna_ref}` +
+              condEmpresaJoin(mapa, candidata, fk.tabela_ref, schema);
             break;
           }
         }
@@ -444,13 +533,20 @@ function gerarSQL(
     };
   }
 
-  const selectCols = escolhidas
-    .map((e) => `${e.tabela}.${e.coluna}`)
-    .filter((c, i, arr) => arr.indexOf(c) === i);
+  const selectCols = escolhidas.map((e) => {
+    const expr = `${e.tabela}.${e.coluna}`;
+    const apelido = (e.apelido ?? '').trim();
+    return apelido ? `${expr} AS "${apelido}"` : expr;
+  });
 
   const where: string[] = [];
   for (const t of jaJuntables) {
-    if (mapa.get(t)?.tem_empresa) where.push(`${t}.empresa_id = ${schema.empresa_id}`);
+    const tabela = mapa.get(t);
+    if (!tabela?.tem_empresa) continue;
+    // Tabelas com empresa_id na PK ja entram com a igualdade no ON do JOIN;
+    // repetir no WHERE quebraria o LEFT JOIN (filtraria linhas sem par).
+    if (t !== base && temEmpresaNaPK(tabela)) continue;
+    where.push(`${t}.empresa_id = ${schema.empresa_id}`);
   }
 
   // Filtros do usuario (WHERE): condicoes encadeadas da esquerda p/ direita,
@@ -522,6 +618,13 @@ export function MontarRelatorio() {
     setEscolhidas((prev) => prev.filter((p) => !(p.tabela === tabela && p.coluna === coluna)));
     // Filtros da coluna removida tambem saem.
     setFiltros((prev) => prev.filter((f) => !(f.tabela === tabela && f.coluna === coluna)));
+    setResultado(null);
+  };
+
+  const renomear = (tabela: string, coluna: string, apelido: string) => {
+    setEscolhidas((prev) =>
+      prev.map((p) => (p.tabela === tabela && p.coluna === coluna ? { ...p, apelido } : p)),
+    );
     setResultado(null);
   };
 
@@ -673,13 +776,29 @@ export function MontarRelatorio() {
       t.colunas.some((c) => c.nome.toLowerCase().includes(termo)),
   );
 
+  // Modulos liberados para a empresa (vindos do backend). Se a lista nao vier
+  // (ex.: banco antigo), exibe todos os modulos para nao esconder tabelas.
+  const modulosLiberados = schema?.modulos?.length
+    ? new Set(schema.modulos.map(normalizarModulo))
+    : new Set(Object.keys(MODULOS));
+
+  // Uma tabela pode pertencer a mais de um modulo (ex.: titulos_pagar esta em
+  // GESTOR e em TITULOS A PAGAR; as tabelas de ponto estao em HORAS e em PONTO
+  // ELETRONICO). Por isso ela aparece em cada modulo liberado que a utiliza.
   const grupos: Array<[string, TabelaSchema[]]> = [];
-  for (const modulo of [...Object.keys(MODULOS), 'OUTRAS']) {
+  for (const modulo of Object.keys(MODULOS)) {
+    if (!modulosLiberados.has(modulo)) continue;
     const ts = tabelasFiltradas
-      .filter((t) => moduloDaTabela(t.nome) === modulo)
+      .filter((t) => MODULOS[modulo].includes(t.nome))
       .sort((a, b) => a.nome.localeCompare(b.nome));
     if (ts.length) grupos.push([modulo, ts]);
   }
+
+  // Tabelas sem modulo conhecido (novas tabelas ainda nao mapeadas) ficam em OUTRAS.
+  const outras = tabelasFiltradas
+    .filter((t) => !TABELAS_MAPEADAS.has(t.nome))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+  if (outras.length) grupos.push(['OUTRAS', outras]);
 
   return (
     <div className="flex flex-1 min-h-0">
@@ -785,6 +904,15 @@ export function MontarRelatorio() {
               >
                 <span className="text-text-muted">{e.tabela}.</span>
                 <span className="text-text-primary font-medium">{e.coluna}</span>
+                <span className="text-[10px] text-text-muted">AS</span>
+                <input
+                  value={e.apelido ?? ''}
+                  onChange={(ev) => renomear(e.tabela, e.coluna, ev.target.value)}
+                  placeholder="apelido"
+                  maxLength={63}
+                  title="Renomear esta coluna no resultado (AS)"
+                  className="w-28 rounded border border-border-subtle bg-bg-base/40 px-1.5 py-0.5 text-[11px] outline-none focus:border-blue-500 placeholder:text-text-muted"
+                />
                 <button
                   onClick={() => adicionarFiltro(e.tabela, e.coluna)}
                   className="ml-1 text-text-muted hover:text-blue-400"
