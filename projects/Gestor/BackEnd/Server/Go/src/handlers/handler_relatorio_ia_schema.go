@@ -12,8 +12,10 @@ import (
 // Esquema do banco para o montador de relatorios (aba "Montar Relatorio"):
 // lista tabelas, colunas (com PK) e chaves estrangeiras para que o frontend
 // consiga montar SELECTs com JOIN automatico entre tabelas relacionadas.
+// Tambem devolve os modulos que a empresa tem direito para que o frontend
+// mostre apenas as tabelas associadas a esses modulos.
 var (
-	relatorioIaSchemaCache   []byte
+	relatorioIaSchemaCache   []schemaTabela
 	relatorioIaSchemaCacheEm time.Time
 	relatorioIaSchemaCacheMu sync.Mutex
 )
@@ -33,21 +35,29 @@ type schemaFK struct {
 }
 
 type schemaTabela struct {
-	Nome       string        `json:"nome"`
-	TemEmpresa bool          `json:"tem_empresa"`
+	Nome       string         `json:"nome"`
+	TemEmpresa bool           `json:"tem_empresa"`
 	Colunas    []schemaColuna `json:"colunas"`
 	FKs        []schemaFK     `json:"fk"`
 }
 
-// Schema devolve tabelas/colunas/FKs do schema public (com cache de 10 min).
+// Schema devolve tabelas/colunas/FKs do schema public (com cache de 10 min)
+// e os modulos liberados para a empresa logada.
 // GET /relatorio-ia/schema
 func (h *RelatorioIAHandler) Schema(w http.ResponseWriter, r *http.Request) {
+	empresaID := middleware.GetEmpresaLogada(r)
+
+	modulos, err := h.modulosDaEmpresa(r, empresaID)
+	if err != nil {
+		jsonError(w, "Erro ao ler modulos da empresa: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	relatorioIaSchemaCacheMu.Lock()
 	if relatorioIaSchemaCache != nil && time.Since(relatorioIaSchemaCacheEm) < relatorioIaSchemaTTL {
 		cached := relatorioIaSchemaCache
 		relatorioIaSchemaCacheMu.Unlock()
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(cached)
+		escreverSchemaRelatorioIA(w, empresaID, modulos, cached)
 		return
 	}
 	relatorioIaSchemaCacheMu.Unlock()
@@ -57,7 +67,7 @@ func (h *RelatorioIAHandler) Schema(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.Pool.Query(r.Context(), `
 		SELECT c.table_name, c.column_name, c.data_type,
-		       (a.attnum = ANY(pc.conkey)) AS pk
+		       COALESCE(a.attnum = ANY(pc.conkey), false) AS pk
 		FROM information_schema.columns c
 		JOIN pg_class cls ON cls.relname = c.table_name AND cls.relnamespace = 'public'::regnamespace
 		JOIN pg_attribute a ON a.attrelid = cls.oid AND a.attname = c.column_name AND NOT a.attisdropped
@@ -66,6 +76,7 @@ func (h *RelatorioIAHandler) Schema(w http.ResponseWriter, r *http.Request) {
 		WHERE c.table_schema = 'public'
 		  AND t.table_type = 'BASE TABLE'
 		  AND c.table_name NOT IN ('_migrations', 'relatorio_ia_conversa', 'relatorio_ia_mensagem', 'relatorio_ia_log')
+		  AND c.table_name NOT LIKE 'backup%'
 		ORDER BY c.table_name, c.ordinal_position`)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -89,6 +100,11 @@ func (h *RelatorioIAHandler) Schema(w http.ResponseWriter, r *http.Request) {
 		if nomeColuna == "empresa_id" {
 			t.TemEmpresa = true
 		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		jsonError(w, "Erro ao ler esquema do banco: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	fkRows, err := h.Pool.Query(r.Context(), `
@@ -119,27 +135,71 @@ func (h *RelatorioIAHandler) Schema(w http.ResponseWriter, r *http.Request) {
 			t.FKs = append(t.FKs, schemaFK{Coluna: coluna, TabelaRef: tabelaRef, ColunaRef: colunaRef})
 		}
 	}
+	fkRows.Close()
+	if err := fkRows.Err(); err != nil {
+		jsonError(w, "Erro ao ler relacionamentos do esquema: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	lista := make([]schemaTabela, 0, len(ordem))
 	for _, nome := range ordem {
 		lista = append(lista, *tabelas[nome])
 	}
 
+	relatorioIaSchemaCacheMu.Lock()
+	relatorioIaSchemaCache = lista
+	relatorioIaSchemaCacheEm = time.Now()
+	relatorioIaSchemaCacheMu.Unlock()
+
+	escreverSchemaRelatorioIA(w, empresaID, modulos, lista)
+}
+
+// modulosDaEmpresa devolve os nomes dos modulos liberados para a empresa.
+// Superadmin enxerga todos os modulos (mesmo comportamento do menu).
+func (h *RelatorioIAHandler) modulosDaEmpresa(r *http.Request, empresaID int) ([]string, error) {
+	query := `SELECT m.nome
+		FROM public.empresa_modulo em
+		JOIN public.modulo m ON m.id = em.modulo_id
+		WHERE em.empresa_id = $1
+		ORDER BY m.id`
+	args := []interface{}{empresaID}
+
+	if middleware.GetIsSuperadmin(r) {
+		query = `SELECT nome FROM public.modulo ORDER BY id`
+		args = nil
+	}
+
+	rows, err := h.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	modulos := []string{}
+	for rows.Next() {
+		var nome string
+		if err := rows.Scan(&nome); err != nil {
+			continue
+		}
+		modulos = append(modulos, nome)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return modulos, nil
+}
+
+func escreverSchemaRelatorioIA(w http.ResponseWriter, empresaID int, modulos []string, tabelas []schemaTabela) {
 	payload := map[string]interface{}{
-		"empresa_id": middleware.GetEmpresaLogada(r),
-		"tabelas":    lista,
+		"empresa_id": empresaID,
+		"modulos":    modulos,
+		"tabelas":    tabelas,
 	}
 	bytes, err := json.Marshal(payload)
 	if err != nil {
 		jsonError(w, "Erro ao montar esquema", http.StatusInternalServerError)
 		return
 	}
-
-	relatorioIaSchemaCacheMu.Lock()
-	relatorioIaSchemaCache = bytes
-	relatorioIaSchemaCacheEm = time.Now()
-	relatorioIaSchemaCacheMu.Unlock()
-
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(bytes)
 }
