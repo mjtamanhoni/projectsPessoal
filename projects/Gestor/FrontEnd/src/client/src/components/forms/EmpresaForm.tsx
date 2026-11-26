@@ -47,7 +47,7 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
 
   const [logoNova, setLogoNova] = useState<string | null>(null);
   const [logoRemovida, setLogoRemovida] = useState(false);
-  const logoAtualUrl = getUploadsUrl(initial?.logomarca);
+  const logoAtualUrl = getUploadsUrl(initial?.logomarca_paginas || initial?.logomarca);
   const logoPreview = logoNova ?? (logoRemovida ? null : logoAtualUrl);
 
   const handleLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {

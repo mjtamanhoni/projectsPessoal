@@ -749,6 +749,9 @@ export interface Empresa {
   email?: string;
   chave_pix?: string;
   logomarca?: string | null;
+  logomarca_paginas?: string | null;
+  logomarca_relatorios?: string | null;
+  logomarca_fiscal?: string | null;
   delivery?: number;
   is_open?: number;
   status?: number;

@@ -23,11 +23,18 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
   const [trocaPendente, setTrocaPendente] = useState<Empresa | null>(null);
   const [trocando, setTrocando] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
+  const [, setLogoVersion] = useState(0);
 
   useEffect(() => {
     if (!isSuperadmin) return;
     api.get('/empresas').then((r) => setEmpresas(r.data as Empresa[])).catch(() => {});
   }, [isSuperadmin]);
+
+  useEffect(() => {
+    const onLogoUpdated = () => setLogoVersion((v) => v + 1);
+    window.addEventListener('logo:updated', onLogoUpdated);
+    return () => window.removeEventListener('logo:updated', onLogoUpdated);
+  }, []);
 
   const executarTroca = async () => {
     if (!trocaPendente?.id) return;
@@ -54,7 +61,8 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
     }
   };
 
-  const logo = getLogo() ?? (empresa?.logomarca ? getUploadsUrl(empresa.logomarca) : null);
+  const caminhoLogo = empresa?.logomarca_paginas || empresa?.logomarca;
+  const logo = getLogo() ?? (caminhoLogo ? getUploadsUrl(caminhoLogo) : null);
   const inicial = (user?.nome || 'U').trim().charAt(0).toUpperCase();
   const avatarUrl = getUploadsUrl(user?.avatar);
 
@@ -75,7 +83,7 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
 
       <div className="flex items-center gap-3 min-w-0">
         {logo ? (
-          <img src={logo} alt="Logo" className="h-9 max-w-28 object-contain shrink-0" />
+          <img src={logo} alt="Logo" className="h-12 max-w-40 object-contain shrink-0" />
         ) : (
           <div className="w-9 h-9 rounded-lg bg-accent-primary/15 text-accent-primary flex items-center justify-center shrink-0">
             <Building size={18} />

@@ -21,7 +21,7 @@ import { RowActions } from '@/components/ui/RowActions';
 import type { RowActionDef } from '@/components/ui/RowActions';
 import api, { getErrorMsg } from '@/lib/api';
 import { copiarTexto } from '@/lib/clipboard';
-import { salvarLogomarcaCache } from '@/lib/empresaLogo';
+import { salvarLogomarcaCache, getEmpresaId } from '@/lib/empresaLogo';
 
 const RegioesEntregaModal = lazy(() =>
   import('@/components/RegioesEntregaModal').then((m) => ({ default: m.RegioesEntregaModal })),
@@ -255,7 +255,9 @@ export function Empresas() {
 
       if (temLogomarca && empresaId) {
         await api.post('/empresas/logomarca', { id: empresaId, logomarca: logoUpload ?? '' });
-        salvarLogomarcaCache(logoUpload || null);
+        if (getEmpresaId() === Number(empresaId)) {
+          salvarLogomarcaCache(logoUpload || null);
+        }
         if (logoUpload) {
           refetch();
         }

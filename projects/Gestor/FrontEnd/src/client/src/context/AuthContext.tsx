@@ -273,7 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const emp = extractEmpresa(parsedUser) ?? await fetchEmpresaData(parsedUser.empresaId);
           setEmpresa(emp);
           setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
-          void preloadEmpresaLogomarca(emp?.logomarca);
+          void preloadEmpresaLogomarca(emp?.logomarca_paginas || emp?.logomarca);
           fetchPermissions()
             .then((data) => {
               setPermissoes(data.formularios);
@@ -321,6 +321,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const lista = r.data as Empresa[];
         const atual = Array.isArray(lista) ? lista.find((e) => e.id === empresa.id) : null;
         if (atual) {
+          setEmpresa((prev) => (prev ? { ...prev, ...atual } : atual));
+          void preloadEmpresaLogomarca(atual.logomarca_paginas || atual.logomarca);
           const aberto = (atual.is_open ?? 0) === 1;
           isOpenLojaRef.current = aberto;
           setIsOpenLojaState(aberto);
@@ -398,7 +400,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const emp = extractEmpresa(data) ?? await fetchEmpresaData(data.empresaId);
     setEmpresa(emp);
     setEmpresaNome(emp?.fantasia || emp?.razao_social || '');
-    void preloadEmpresaLogomarca(emp?.logomarca);
+    void preloadEmpresaLogomarca(emp?.logomarca_paginas || emp?.logomarca);
     try {
       const permData = await fetchPermissions();
       setPermissoes(permData.formularios);
