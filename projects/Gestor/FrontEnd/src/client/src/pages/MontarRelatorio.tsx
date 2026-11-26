@@ -15,6 +15,11 @@ import {
   ListTree,
   ChevronUp,
   ChevronDown,
+  ArrowUpDown,
+  Palette,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from 'lucide-react';
 
 interface ColunaSchema {
@@ -42,10 +47,33 @@ interface SchemaDB {
   tabelas: TabelaSchema[];
 }
 
+type FormatoColuna =
+  | 'auto'
+  | 'moeda'
+  | 'decimal'
+  | 'inteiro'
+  | 'percentual'
+  | 'data'
+  | 'datahora'
+  | 'cnpj'
+  | 'cpf'
+  | 'telefone'
+  | 'manual';
+type AlinhamentoColuna = 'left' | 'center' | 'right';
+
 interface Escolhida {
   tabela: string;
   coluna: string;
   apelido?: string;
+  formato?: FormatoColuna;
+  formatoManual?: string;
+  alinhamento?: AlinhamentoColuna;
+}
+
+interface Ordenacao {
+  id: number;
+  chave: string;
+  direcao: 'ASC' | 'DESC';
 }
 
 interface ResultadoConsulta {
@@ -56,8 +84,10 @@ interface ResultadoConsulta {
 }
 
 type ItemTabela =
-  | { tipo: 'grupo'; nivel: number; valor: string }
+  | { tipo: 'grupo'; nivel: number; chave: string; valor: unknown }
   | { tipo: 'linha'; linha: Record<string, unknown> };
+
+type InfoColuna = { escolhida: Escolhida; coluna?: ColunaSchema };
 
 // Tabelas associadas a cada modulo do sistema. Uma tabela pode pertencer a
 // mais de um modulo (ex.: cliente e usada por gestor, producao e delivery);
@@ -155,6 +185,13 @@ function colunaOrdenavel(c: ColunaSchema): boolean {
   return !t.includes('json') && !t.includes('array') && !t.includes('bytea');
 }
 
+function escolhidaOrdenavel(schema: SchemaDB | null, e: Escolhida): boolean {
+  const col = schema?.tabelas
+    .find((t) => t.nome === e.tabela)
+    ?.colunas.find((c) => c.nome === e.coluna);
+  return !col || colunaOrdenavel(col);
+}
+
 // Ordena valores de grupo de forma natural, mas so devolve 0 quando os textos
 // sao identicos (mesma regra usada para detectar a troca de grupo).
 function compararValores(a: unknown, b: unknown): number {
@@ -162,6 +199,242 @@ function compararValores(a: unknown, b: unknown): number {
   const sb = String(b ?? '');
   if (sa === sb) return 0;
   return sa.localeCompare(sb, 'pt-BR', { numeric: true }) || (sa < sb ? -1 : 1);
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function numeroDe(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v !== 'string') return null;
+  const s = v.trim();
+  if (!s) return null;
+  const normalizado = s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s;
+  const n = Number(normalizado);
+  return Number.isFinite(n) ? n : null;
+}
+
+interface DataHora {
+  y: number;
+  mo: number;
+  d: number;
+  h: number;
+  mi: number;
+  s: number;
+}
+
+function extrairDataHora(v: unknown): DataHora | null {
+  if (v === null || v === undefined || v === '') return null;
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return null;
+    return {
+      y: v.getFullYear(),
+      mo: v.getMonth() + 1,
+      d: v.getDate(),
+      h: v.getHours(),
+      mi: v.getMinutes(),
+      s: v.getSeconds(),
+    };
+  }
+  const texto = String(v);
+  let m = texto.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/,
+  );
+  if (m) {
+    return {
+      y: +m[1],
+      mo: +m[2],
+      d: +m[3],
+      h: +(m[4] ?? 0),
+      mi: +(m[5] ?? 0),
+      s: +(m[6] ?? 0),
+    };
+  }
+  m = texto.match(
+    /^(\d{2})[/-](\d{2})[/-](\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/,
+  );
+  if (m) {
+    return {
+      y: +m[3],
+      mo: +m[2],
+      d: +m[1],
+      h: +(m[4] ?? 0),
+      mi: +(m[5] ?? 0),
+      s: +(m[6] ?? 0),
+    };
+  }
+  m = texto.match(/^(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (m) {
+    return { y: 0, mo: 0, d: 0, h: +m[1], mi: +m[2], s: +(m[3] ?? 0) };
+  }
+  const dt = new Date(texto);
+  if (!isNaN(dt.getTime())) {
+    return {
+      y: dt.getFullYear(),
+      mo: dt.getMonth() + 1,
+      d: dt.getDate(),
+      h: dt.getHours(),
+      mi: dt.getMinutes(),
+      s: dt.getSeconds(),
+    };
+  }
+  return null;
+}
+
+function formatarData(v: unknown): string {
+  const dt = extrairDataHora(v);
+  if (!dt) return fmtCelula(v);
+  return `${pad2(dt.d)}/${pad2(dt.mo)}/${String(dt.y).padStart(4, '0')}`;
+}
+
+function formatarDataManual(v: unknown, pattern: string): string {
+  const dt = extrairDataHora(v);
+  if (!dt) return fmtCelula(v);
+  const tokens: Record<string, string> = {
+    yyyy: String(dt.y).padStart(4, '0'),
+    yy: pad2(dt.y % 100),
+    MM: pad2(dt.mo),
+    M: String(dt.mo),
+    dd: pad2(dt.d),
+    d: String(dt.d),
+    HH: pad2(dt.h),
+    H: String(dt.h),
+    mm: pad2(dt.mi),
+    m: String(dt.mi),
+    ss: pad2(dt.s),
+    s: String(dt.s),
+  };
+  return pattern.replace(/yyyy|yy|MM|M|dd|d|HH|H|mm|m|ss|s/g, (t) => tokens[t] ?? t);
+}
+
+function formatarMoeda(v: unknown): string {
+  const n = numeroDe(v);
+  if (n === null) return fmtCelula(v);
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatarDecimal(v: unknown): string {
+  const n = numeroDe(v);
+  if (n === null) return fmtCelula(v);
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatarCnpj(v: unknown): string {
+  const digitos = String(v ?? '').replace(/\D/g, '');
+  if (digitos.length === 14) {
+    return digitos.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  }
+  return fmtCelula(v);
+}
+
+function formatarCpf(v: unknown): string {
+  const digitos = String(v ?? '').replace(/\D/g, '');
+  if (digitos.length === 11) {
+    return digitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  }
+  return fmtCelula(v);
+}
+
+function formatarTelefone(v: unknown): string {
+  const digitos = String(v ?? '').replace(/\D/g, '');
+  if (digitos.length === 11) {
+    return digitos.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+  }
+  if (digitos.length === 10) {
+    return digitos.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+  }
+  return fmtCelula(v);
+}
+
+function formatarPercentual(v: unknown): string {
+  const n = numeroDe(v);
+  if (n === null) return fmtCelula(v);
+  return `${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
+function formatarInteiro(v: unknown): string {
+  const n = numeroDe(v);
+  if (n === null) return fmtCelula(v);
+  return Math.round(n).toLocaleString('pt-BR');
+}
+
+function formatarDataHora(v: unknown): string {
+  const dt = extrairDataHora(v);
+  if (!dt) return fmtCelula(v);
+  return `${pad2(dt.d)}/${pad2(dt.mo)}/${String(dt.y).padStart(4, '0')} ${pad2(dt.h)}:${pad2(dt.mi)}`;
+}
+
+// Mascara livre baseada em digitos (ex.: 000.000.000-00, (00) 00000-0000).
+// Os caracteres 0/# sao preenchidos pelos digitos do valor; o restante e
+// tratado como literal, permitindo qualquer formato informado pelo usuario.
+function aplicarMascaraDigitos(v: unknown, pattern: string): string {
+  const digitos = String(v ?? '').replace(/\D/g, '');
+  if (!digitos) return fmtCelula(v);
+  let indice = 0;
+  let saida = '';
+  for (const ch of pattern) {
+    if (ch === '0' || ch === '#') {
+      if (indice >= digitos.length) break;
+      saida += digitos[indice++];
+    } else {
+      saida += ch;
+    }
+  }
+  if (indice < digitos.length) saida += digitos.slice(indice);
+  return saida;
+}
+
+function formatarNumeroManual(v: unknown, pattern: string): string {
+  const n = numeroDe(v);
+  if (n === null) return fmtCelula(v);
+  const m = pattern.match(/[#0][#0.,]*/);
+  if (!m) return fmtCelula(v);
+  const numerico = m[0];
+  const inicio = m.index ?? 0;
+  const prefixo = pattern.slice(0, inicio);
+  const sufixo = pattern.slice(inicio + numerico.length);
+  const decMatch = numerico.match(/[.,]([0#]+)$/);
+  const parteDecimal = decMatch?.[1] ?? '';
+  const minimo = (parteDecimal.match(/0/g) ?? []).length;
+  const maximo = (parteDecimal.match(/[0#]/g) ?? []).length;
+  const parteInteira = decMatch
+    ? numerico.slice(0, numerico.length - decMatch[0].length)
+    : numerico;
+  const agrupar = /[.,]/.test(parteInteira);
+  const formatado = n.toLocaleString('pt-BR', {
+    minimumFractionDigits: minimo,
+    maximumFractionDigits: maximo,
+    useGrouping: agrupar,
+  });
+  return `${prefixo}${formatado}${sufixo}`;
+}
+
+function formatarValor(v: unknown, info?: InfoColuna): string {
+  const formato = info?.escolhida.formato ?? 'auto';
+  if (formato === 'moeda') return formatarMoeda(v);
+  if (formato === 'decimal') return formatarDecimal(v);
+  if (formato === 'inteiro') return formatarInteiro(v);
+  if (formato === 'percentual') return formatarPercentual(v);
+  if (formato === 'data') return formatarData(v);
+  if (formato === 'datahora') return formatarDataHora(v);
+  if (formato === 'cnpj') return formatarCnpj(v);
+  if (formato === 'cpf') return formatarCpf(v);
+  if (formato === 'telefone') return formatarTelefone(v);
+  if (formato === 'manual') {
+    const pattern = (info?.escolhida.formatoManual ?? '').trim();
+    if (!pattern) return fmtCelula(v);
+    const cat = info?.coluna ? categoriaColuna(info.coluna) : 'texto';
+    if (cat === 'data' || cat === 'hora') return formatarDataManual(v, pattern);
+    if (cat === 'numero') return formatarNumeroManual(v, pattern);
+    if (/yyyy|yy|dd|MM|HH|mm|ss/i.test(pattern)) return formatarDataManual(v, pattern);
+    if (/[0#]/.test(pattern)) return aplicarMascaraDigitos(v, pattern);
+  }
+  return fmtCelula(v);
+}
+
+function alinhamentoDe(info?: InfoColuna): AlinhamentoColuna {
+  return info?.escolhida.alinhamento ?? 'left';
 }
 
 // ------------------------- Filtros (WHERE) -------------------------
@@ -468,6 +741,7 @@ function gerarSQL(
   juncao: 'LEFT JOIN' | 'INNER JOIN',
   filtros: Filtro[],
   agrupar: string[],
+  ordenar: Ordenacao[],
 ): { sql: string; erro: string | null } {
   if (!escolhidas.length) return { sql: '', erro: null };
 
@@ -603,7 +877,8 @@ function gerarSQL(
   if (where.length) linhasSql.push(`WHERE ${where.join('\n  AND ')}`);
 
   // O agrupamento e visual, mas ordenar no banco mantem os grupos contiguos
-  // mesmo com o limite de linhas do backend.
+  // mesmo com o limite de linhas do backend. A ordenacao do usuario entra
+  // depois das colunas de grupo (para nao quebrar os niveis) e respeita ASC/DESC.
   const gruposSql = agrupar
     .map((chave) => escolhidas.find((e) => chaveColuna(e) === chave))
     .filter((e): e is Escolhida => !!e)
@@ -612,7 +887,20 @@ function gerarSQL(
       return !col || colunaOrdenavel(col);
     })
     .map((e) => `${e.tabela}.${e.coluna}`);
-  if (gruposSql.length) linhasSql.push(`ORDER BY ${gruposSql.join(', ')}`);
+
+  const ordenarSql = ordenar
+    .map((o) => ({ o, e: escolhidas.find((e) => chaveColuna(e) === o.chave) }))
+    .filter(
+      (x): x is { o: Ordenacao; e: Escolhida } => !!x.e && !agrupar.includes(x.o.chave),
+    )
+    .filter(({ e }) => {
+      const col = mapa.get(e.tabela)?.colunas.find((c) => c.nome === e.coluna);
+      return !col || colunaOrdenavel(col);
+    })
+    .map(({ o, e }) => `${e.tabela}.${e.coluna} ${o.direcao}`);
+
+  const ordemSql = [...gruposSql, ...ordenarSql];
+  if (ordemSql.length) linhasSql.push(`ORDER BY ${ordemSql.join(', ')}`);
 
   return { sql: linhasSql.join('\n'), erro: null };
 }
@@ -626,9 +914,13 @@ export function MontarRelatorio() {
   const [juncao, setJuncao] = useState<'LEFT JOIN' | 'INNER JOIN'>('LEFT JOIN');
   const [filtros, setFiltros] = useState<Filtro[]>([]);
   const [agrupar, setAgrupar] = useState<string[]>([]);
+  const [ordenar, setOrdenar] = useState<Ordenacao[]>([]);
   const [executando, setExecutando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoConsulta | null>(null);
   const [erro, setErro] = useState('');
+  // Controle do arrastar-e-soltar para reordenar as colunas escolhidas.
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [alvoArrasto, setAlvoArrasto] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -646,9 +938,9 @@ export function MontarRelatorio() {
   const { sql, erro: erroSql } = useMemo(
     () =>
       schema
-        ? gerarSQL(schema, escolhidas, juncao, filtros, agrupar)
+        ? gerarSQL(schema, escolhidas, juncao, filtros, agrupar, ordenar)
         : { sql: '', erro: null as string | null },
-    [schema, escolhidas, juncao, filtros, agrupar],
+    [schema, escolhidas, juncao, filtros, agrupar, ordenar],
   );
 
   const adicionar = (tabela: string, coluna: string) => {
@@ -662,9 +954,10 @@ export function MontarRelatorio() {
 
   const remover = (tabela: string, coluna: string) => {
     setEscolhidas((prev) => prev.filter((p) => !(p.tabela === tabela && p.coluna === coluna)));
-    // Filtros e agrupamentos da coluna removida tambem saem.
+    // Filtros, agrupamentos e ordenacoes da coluna removida tambem saem.
     setFiltros((prev) => prev.filter((f) => !(f.tabela === tabela && f.coluna === coluna)));
     setAgrupar((prev) => prev.filter((k) => k !== `${tabela}.${coluna}`));
+    setOrdenar((prev) => prev.filter((o) => o.chave !== `${tabela}.${coluna}`));
     setResultado(null);
   };
 
@@ -675,23 +968,52 @@ export function MontarRelatorio() {
     setResultado(null);
   };
 
+  const formatarColuna = (
+    tabela: string,
+    coluna: string,
+    mudanca: Partial<Pick<Escolhida, 'formato' | 'formatoManual' | 'alinhamento'>>,
+  ) => {
+    setEscolhidas((prev) =>
+      prev.map((p) =>
+        p.tabela === tabela && p.coluna === coluna ? { ...p, ...mudanca } : p,
+      ),
+    );
+    // Formatar/alinhar e apenas visual: mantem o resultado atual na tela.
+  };
+
+  const reordenarColuna = (de: string, para: string) => {
+    setEscolhidas((prev) => {
+      const origem = prev.findIndex((e) => chaveColuna(e) === de);
+      const destino = prev.findIndex((e) => chaveColuna(e) === para);
+      if (origem < 0 || destino < 0 || origem === destino) return prev;
+      const copia = [...prev];
+      const [item] = copia.splice(origem, 1);
+      copia.splice(destino, 0, item);
+      return copia;
+    });
+    // A ordem das colunas e apenas visual no resultado; nao precisa reexecutar.
+  };
+
   const niveisValidos = agrupar.filter((chave) =>
     escolhidas.some((e) => chaveColuna(e) === chave),
   );
 
   const adicionarNivel = () => {
-    setAgrupar((prev) => {
-      // Precisa sobrar ao menos uma coluna de detalhe fora dos grupos.
-      if (escolhidas.length < 2 || prev.length >= escolhidas.length - 1) return prev;
-      const usados = new Set(prev);
-      const disponivel = escolhidas.find((e) => !usados.has(chaveColuna(e)));
-      return disponivel ? [...prev, chaveColuna(disponivel)] : prev;
-    });
+    // Precisa sobrar ao menos uma coluna de detalhe fora dos grupos.
+    if (escolhidas.length < 2 || agrupar.length >= escolhidas.length - 1) return;
+    const usados = new Set(agrupar);
+    const disponivel = escolhidas.find((e) => !usados.has(chaveColuna(e)));
+    if (!disponivel) return;
+    const chave = chaveColuna(disponivel);
+    setAgrupar((prev) => [...prev, chave]);
+    // Coluna de grupo nao pode ser ordenada separadamente.
+    setOrdenar((prev) => prev.filter((o) => o.chave !== chave));
     setResultado(null);
   };
 
   const alterarNivel = (indice: number, chave: string) => {
     setAgrupar((prev) => prev.map((v, i) => (i === indice ? chave : v)));
+    setOrdenar((prev) => prev.filter((o) => o.chave !== chave));
     setResultado(null);
   };
 
@@ -702,6 +1024,47 @@ export function MontarRelatorio() {
 
   const moverNivel = (indice: number, direcao: -1 | 1) => {
     setAgrupar((prev) => {
+      const alvo = indice + direcao;
+      if (alvo < 0 || alvo >= prev.length) return prev;
+      const copia = [...prev];
+      [copia[indice], copia[alvo]] = [copia[alvo], copia[indice]];
+      return copia;
+    });
+    setResultado(null);
+  };
+
+  const adicionarOrdenacao = () => {
+    const disponiveis = escolhidas.filter(
+      (e) =>
+        !agrupar.includes(chaveColuna(e)) &&
+        !ordenar.some((o) => o.chave === chaveColuna(e)) &&
+        escolhidaOrdenavel(schema, e),
+    );
+    const alvo = disponiveis[0];
+    if (!alvo) return;
+    setOrdenar((prev) => [
+      ...prev,
+      {
+        id: prev.length ? Math.max(...prev.map((o) => o.id)) + 1 : 1,
+        chave: chaveColuna(alvo),
+        direcao: 'ASC',
+      },
+    ]);
+    setResultado(null);
+  };
+
+  const alterarOrdenacao = (id: number, mudanca: Partial<Ordenacao>) => {
+    setOrdenar((prev) => prev.map((o) => (o.id === id ? { ...o, ...mudanca } : o)));
+    setResultado(null);
+  };
+
+  const removerOrdenacao = (id: number) => {
+    setOrdenar((prev) => prev.filter((o) => o.id !== id));
+    setResultado(null);
+  };
+
+  const moverOrdenacao = (indice: number, direcao: -1 | 1) => {
+    setOrdenar((prev) => {
       const alvo = indice + direcao;
       if (alvo < 0 || alvo >= prev.length) return prev;
       const copia = [...prev];
@@ -794,15 +1157,34 @@ export function MontarRelatorio() {
     .filter((e): e is Escolhida => !!e)
     .map(chaveResultado);
 
+  // Ordem das colunas definida pelo usuario na montagem (arrastar para mover).
+  const ordemChaves = new Map(escolhidas.map((e, i) => [chaveResultado(e), i]));
+  const ordenarPorEscolhidas = (cols: string[]) =>
+    [...cols].sort(
+      (a, b) =>
+        (ordemChaves.get(a) ?? Number.MAX_SAFE_INTEGER) -
+        (ordemChaves.get(b) ?? Number.MAX_SAFE_INTEGER),
+    );
+
   const colunasDetalhe = resultado
-    ? resultado.colunas.filter((c) => !chavesGrupo.includes(c))
+    ? ordenarPorEscolhidas(resultado.colunas.filter((c) => !chavesGrupo.includes(c)))
     : [];
 
   const colunasVisiveis = resultado
     ? chavesGrupo.length && colunasDetalhe.length
       ? colunasDetalhe
-      : resultado.colunas
+      : ordenarPorEscolhidas(resultado.colunas)
     : [];
+
+  // Mapeia o titulo exibido no resultado para a coluna escolhida (com formato e
+  // alinhamento) e para o tipo real no schema.
+  const colunasInfo = new Map<string, InfoColuna>();
+  for (const e of escolhidas) {
+    const coluna = schema?.tabelas
+      .find((t) => t.nome === e.tabela)
+      ?.colunas.find((c) => c.nome === e.coluna);
+    colunasInfo.set(chaveResultado(e), { escolhida: e, coluna });
+  }
 
   const linhasBase = resultado?.linhas ?? [];
   const linhasOrdenadas = chavesGrupo.length
@@ -830,7 +1212,12 @@ export function MontarRelatorio() {
         }
       }
       for (let nivel = primeiroDiferente; nivel < chavesGrupo.length; nivel++) {
-        itensTabela.push({ tipo: 'grupo', nivel, valor: fmtCelula(valores[nivel]) });
+        itensTabela.push({
+          tipo: 'grupo',
+          nivel,
+          chave: chavesGrupo[nivel],
+          valor: valores[nivel],
+        });
       }
       itensTabela.push({ tipo: 'linha', linha });
       anterior = valores;
@@ -843,6 +1230,13 @@ export function MontarRelatorio() {
       return e ? `${e.tabela}.${e.coluna}` : chave;
     })
     .join(' > ');
+
+  const ordenacaoDisponivel = escolhidas.filter(
+    (e) =>
+      !agrupar.includes(chaveColuna(e)) &&
+      !ordenar.some((o) => o.chave === chaveColuna(e)) &&
+      escolhidaOrdenavel(schema, e),
+  );
 
   const gerarPDF = (modo: 'ver' | 'baixar') => {
     if (!resultado) return;
@@ -865,7 +1259,7 @@ export function MontarRelatorio() {
             ? itensTabela.map((item) => {
                 if (item.tipo === 'grupo') {
                   const celula: CellDef = {
-                    content: item.valor,
+                    content: formatarValor(item.valor, colunasInfo.get(item.chave)),
                     colSpan: Math.max(colunasVisiveis.length, 1),
                     styles: {
                       fontStyle: 'bold',
@@ -876,9 +1270,13 @@ export function MontarRelatorio() {
                   };
                   return [celula];
                 }
-                return colunasVisiveis.map((c) => fmtCelula(item.linha[c]));
+                return colunasVisiveis.map((c) =>
+                  formatarValor(item.linha[c], colunasInfo.get(c)),
+                );
               })
-            : resultado.linhas.map((row) => colunasVisiveis.map((c) => fmtCelula(row[c])))
+            : resultado.linhas.map((row) =>
+                colunasVisiveis.map((c) => formatarValor(row[c], colunasInfo.get(c))),
+              )
         ) as RowInput[];
         autoTable(d, {
           head: [colunasVisiveis],
@@ -888,6 +1286,15 @@ export function MontarRelatorio() {
           theme: 'striped',
           headStyles: { fillColor: [59, 130, 246] },
           styles: { fontSize: 8 },
+          didParseCell: (data) => {
+            if (data.section !== 'body' && data.section !== 'head') return;
+            // Linha de grupo usa uma unica celula com colSpan; mantem a esquerda.
+            if (data.section === 'body' && data.cell.colSpan > 1) return;
+            const col = colunasVisiveis[data.column.index];
+            if (!col) return;
+            data.cell.styles.halign = alinhamentoDe(colunasInfo.get(col));
+            if (data.section === 'head') data.cell.styles.textColor = [255, 255, 255];
+          },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           willDrawPage: (data: any) => {
             if (data.pageNumber > 1 && drawPageHeader) {
@@ -1033,7 +1440,12 @@ export function MontarRelatorio() {
       <section className="flex-1 min-w-0 flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Colunas do relatório</h2>
+            <h2 className="text-sm font-semibold">
+              Colunas do relatório
+              <span className="ml-2 text-[11px] font-normal text-text-muted">
+                arraste pelo ícone para reordenar
+              </span>
+            </h2>
             <label className="flex items-center gap-2 text-xs text-text-secondary">
               Junção:
               <select
@@ -1057,38 +1469,81 @@ export function MontarRelatorio() {
                 Arraste colunas da lista da esquerda (ou clique nelas) para montar o relatório…
               </span>
             )}
-            {escolhidas.map((e) => (
-              <span
-                key={`${e.tabela}.${e.coluna}`}
-                className="inline-flex items-center gap-1 rounded-lg border border-border-subtle bg-bg-muted px-2.5 py-1.5 text-xs"
-              >
-                <span className="text-text-muted">{e.tabela}.</span>
-                <span className="text-text-primary font-medium">{e.coluna}</span>
-                <span className="text-[10px] text-text-muted">AS</span>
-                <input
-                  value={e.apelido ?? ''}
-                  onChange={(ev) => renomear(e.tabela, e.coluna, ev.target.value)}
-                  placeholder="apelido"
-                  maxLength={63}
-                  title="Renomear esta coluna no resultado (AS)"
-                  className="w-28 rounded border border-border-subtle bg-bg-base/40 px-1.5 py-0.5 text-[11px] outline-none focus:border-blue-500 placeholder:text-text-muted"
-                />
-                <button
-                  onClick={() => adicionarFiltro(e.tabela, e.coluna)}
-                  className="ml-1 text-text-muted hover:text-blue-400"
-                  title="Filtrar por esta coluna"
+            {escolhidas.map((e) => {
+              const chave = chaveColuna(e);
+              const arrastandoEste = arrastando === chave;
+              const alvoEste = alvoArrasto === chave && arrastando !== chave;
+              return (
+                <span
+                  key={chave}
+                  onDragOver={(ev) => {
+                    if (arrastando && arrastando !== chave) {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      setAlvoArrasto(chave);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (alvoArrasto === chave) setAlvoArrasto(null);
+                  }}
+                  onDrop={(ev) => {
+                    if (arrastando && arrastando !== chave) {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      reordenarColuna(arrastando, chave);
+                    }
+                    setArrastando(null);
+                    setAlvoArrasto(null);
+                  }}
+                  className={`inline-flex items-center gap-1 rounded-lg border bg-bg-muted px-2.5 py-1.5 text-xs transition ${
+                    alvoEste ? 'border-blue-500 ring-2 ring-blue-500/40' : 'border-border-subtle'
+                  } ${arrastandoEste ? 'opacity-50' : ''}`}
                 >
-                  <Filter size={12} />
-                </button>
-                <button
-                  onClick={() => remover(e.tabela, e.coluna)}
-                  className="ml-1 text-text-muted hover:text-red-400"
-                  title="Remover coluna"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
+                  <span
+                    draggable
+                    onDragStart={(ev) => {
+                      ev.stopPropagation();
+                      setArrastando(chave);
+                      ev.dataTransfer.effectAllowed = 'move';
+                      ev.dataTransfer.setData('text/plain', chave);
+                    }}
+                    onDragEnd={() => {
+                      setArrastando(null);
+                      setAlvoArrasto(null);
+                    }}
+                    title="Arraste para mover a coluna"
+                    className="cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary"
+                  >
+                    <GripVertical size={12} />
+                  </span>
+                  <span className="text-text-muted">{e.tabela}.</span>
+                  <span className="text-text-primary font-medium">{e.coluna}</span>
+                  <span className="text-[10px] text-text-muted">AS</span>
+                  <input
+                    value={e.apelido ?? ''}
+                    onChange={(ev) => renomear(e.tabela, e.coluna, ev.target.value)}
+                    placeholder="apelido"
+                    maxLength={63}
+                    title="Renomear esta coluna no resultado (AS)"
+                    className="w-28 rounded border border-border-subtle bg-bg-base/40 px-1.5 py-0.5 text-[11px] outline-none focus:border-blue-500 placeholder:text-text-muted"
+                  />
+                  <button
+                    onClick={() => adicionarFiltro(e.tabela, e.coluna)}
+                    className="ml-1 text-text-muted hover:text-blue-400"
+                    title="Filtrar por esta coluna"
+                  >
+                    <Filter size={12} />
+                  </button>
+                  <button
+                    onClick={() => remover(e.tabela, e.coluna)}
+                    className="ml-1 text-text-muted hover:text-red-400"
+                    title="Remover coluna"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              );
+            })}
           </div>
 
           {/* ---------- Agrupamento ---------- */}
@@ -1171,6 +1626,204 @@ export function MontarRelatorio() {
                 </div>
               );
             })}
+          </div>
+
+          {/* ---------- Ordenação ---------- */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold flex items-center gap-1.5">
+                <ArrowUpDown size={14} /> Ordenação{' '}
+                <span className="text-text-muted font-normal">(ORDER BY)</span>
+              </h2>
+              <button
+                onClick={adicionarOrdenacao}
+                disabled={!ordenacaoDisponivel.length}
+                className="btn-secondary text-xs flex items-center gap-1.5 disabled:opacity-50"
+                title={
+                  !escolhidas.length
+                    ? 'Selecione colunas para ordenar.'
+                    : agrupar.length
+                      ? 'Colunas de grupo são ordenadas automaticamente primeiro.'
+                      : 'Adicionar um nível de ordenação'
+                }
+              >
+                <Plus size={13} /> Adicionar ordenação
+              </button>
+            </div>
+
+            {!ordenar.length && (
+              <p className="text-[11px] text-text-muted">
+                Sem ordenação definida. A consulta usa a ordem natural do banco. Adicione níveis
+                para ordenar por uma ou mais colunas.
+              </p>
+            )}
+
+            {ordenar.map((o, idx) => {
+              const opcoes = escolhidas.filter((e) => {
+                const chave = chaveColuna(e);
+                return (
+                  !agrupar.includes(chave) &&
+                  (!ordenar.some((x) => x.chave === chave) || chave === o.chave) &&
+                  escolhidaOrdenavel(schema, e)
+                );
+              });
+              return (
+                <div
+                  key={o.id}
+                  className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border-subtle bg-bg-muted/30 px-2 py-2"
+                >
+                  <span className="text-[11px] font-semibold text-text-secondary">
+                    Ordem {idx + 1}
+                  </span>
+                  <select
+                    value={o.chave}
+                    onChange={(e) => alterarOrdenacao(o.id, { chave: e.target.value })}
+                    title="Coluna da ordenação"
+                    className="rounded-lg border border-border-subtle bg-bg-muted/40 px-2 py-1.5 text-xs outline-none focus:border-blue-500"
+                  >
+                    {opcoes.map((e) => (
+                      <option key={chaveColuna(e)} value={chaveColuna(e)}>
+                        {e.coluna} — {e.tabela}
+                        {e.apelido ? ` (${e.apelido})` : ''}
+                      </option>
+                    ))}
+                    {!opcoes.some((e) => chaveColuna(e) === o.chave) && (
+                      <option value={o.chave}>{o.chave}</option>
+                    )}
+                  </select>
+                  <select
+                    value={o.direcao}
+                    onChange={(e) =>
+                      alterarOrdenacao(o.id, { direcao: e.target.value as 'ASC' | 'DESC' })
+                    }
+                    title="Direção da ordenação"
+                    className="rounded-lg border border-border-subtle bg-bg-muted/40 px-2 py-1.5 text-xs outline-none focus:border-blue-500"
+                  >
+                    <option value="ASC">Crescente (A→Z)</option>
+                    <option value="DESC">Decrescente (Z→A)</option>
+                  </select>
+                  <button
+                    onClick={() => moverOrdenacao(idx, -1)}
+                    disabled={idx === 0}
+                    className="text-text-muted hover:text-text-primary disabled:opacity-30"
+                    title="Mover para cima"
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    onClick={() => moverOrdenacao(idx, 1)}
+                    disabled={idx === ordenar.length - 1}
+                    className="text-text-muted hover:text-text-primary disabled:opacity-30"
+                    title="Mover para baixo"
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                  <button
+                    onClick={() => removerOrdenacao(o.id)}
+                    className="ml-auto text-text-muted hover:text-red-400"
+                    title="Remover ordenação"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              );
+            })}
+            {agrupar.length > 0 && (
+              <p className="text-[11px] text-text-muted">
+                As colunas de agrupamento são aplicadas primeiro no ORDER BY para manter os
+                níveis contíguos.
+              </p>
+            )}
+          </div>
+
+          {/* ---------- Formatação e alinhamento ---------- */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5">
+              <Palette size={14} /> Formatação e alinhamento
+            </h2>
+
+            {!escolhidas.length && (
+              <p className="text-[11px] text-text-muted">
+                Adicione colunas para configurar formato e alinhamento.
+              </p>
+            )}
+
+            {escolhidas.map((e) => (
+              <div
+                key={`${e.tabela}.${e.coluna}`}
+                className="space-y-2 rounded-xl border border-border-subtle bg-bg-muted/30 px-2 py-2"
+              >
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="min-w-40 truncate text-[11px] font-semibold text-text-secondary">
+                    {e.coluna} <span className="font-normal text-text-muted">— {e.tabela}</span>
+                  </span>
+                  <select
+                    value={e.formato ?? 'auto'}
+                    onChange={(ev) =>
+                      formatarColuna(e.tabela, e.coluna, {
+                        formato: ev.target.value as FormatoColuna,
+                      })
+                    }
+                    title="Formato de exibição (máscara)"
+                    className="rounded-lg border border-border-subtle bg-bg-muted/40 px-2 py-1.5 text-xs outline-none focus:border-blue-500"
+                  >
+                    <option value="auto">Automático</option>
+                    <option value="moeda">Moeda (R$)</option>
+                    <option value="decimal">Decimal (2 casas)</option>
+                    <option value="inteiro">Inteiro</option>
+                    <option value="percentual">Percentual (%)</option>
+                    <option value="data">Data (dd/MM/yyyy)</option>
+                    <option value="datahora">Data e hora (dd/MM/yyyy HH:mm)</option>
+                    <option value="cnpj">CNPJ</option>
+                    <option value="cpf">CPF</option>
+                    <option value="telefone">Telefone</option>
+                    <option value="manual">Personalizada…</option>
+                  </select>
+                  <div
+                    className="inline-flex overflow-hidden rounded-lg border border-border-subtle"
+                    title="Alinhamento da coluna"
+                  >
+                    {(
+                      [
+                        { valor: 'left', Icone: AlignLeft, titulo: 'Alinhar à esquerda' },
+                        { valor: 'center', Icone: AlignCenter, titulo: 'Centralizar' },
+                        { valor: 'right', Icone: AlignRight, titulo: 'Alinhar à direita' },
+                      ] as const
+                    ).map(({ valor, Icone, titulo }) => {
+                      const ativo = (e.alinhamento ?? 'left') === valor;
+                      return (
+                        <button
+                          key={valor}
+                          type="button"
+                          onClick={() =>
+                            formatarColuna(e.tabela, e.coluna, { alinhamento: valor })
+                          }
+                          title={titulo}
+                          aria-pressed={ativo}
+                          className={`px-2 py-1.5 transition ${
+                            ativo
+                              ? 'bg-blue-500/20 text-blue-300'
+                              : 'text-text-muted hover:text-text-primary'
+                          }`}
+                        >
+                          <Icone size={14} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {(e.formato ?? 'auto') === 'manual' && (
+                  <input
+                    value={e.formatoManual ?? ''}
+                    onChange={(ev) =>
+                      formatarColuna(e.tabela, e.coluna, { formatoManual: ev.target.value })
+                    }
+                    placeholder="Máscara livre: R$ #,##0.00 · #,##0.00 · 000.000.000-00 · (00) 00000-0000 · dd/MM/yyyy HH:mm"
+                    className="w-full rounded-lg border border-border-subtle bg-bg-muted/40 px-2 py-1.5 text-xs outline-none focus:border-blue-500 placeholder:text-text-muted"
+                  />
+                )}
+              </div>
+            ))}
           </div>
 
           {/* ---------- Filtros (WHERE) ---------- */}
@@ -1337,6 +1990,7 @@ export function MontarRelatorio() {
                 setEscolhidas([]);
                 setFiltros([]);
                 setAgrupar([]);
+                setOrdenar([]);
                 setResultado(null);
                 setErro('');
               }}
@@ -1386,7 +2040,8 @@ export function MontarRelatorio() {
                       {colunasVisiveis.map((c) => (
                         <th
                           key={c}
-                          className="text-left font-semibold text-text-secondary px-3 py-2 whitespace-nowrap"
+                          style={{ textAlign: alinhamentoDe(colunasInfo.get(c)) }}
+                          className="font-semibold text-text-secondary px-3 py-2 whitespace-nowrap"
                         >
                           {c}
                         </th>
@@ -1410,7 +2065,7 @@ export function MontarRelatorio() {
                                 style={{ paddingLeft: 12 + item.nivel * 18 }}
                                 className="px-3 py-2 font-semibold text-text-primary whitespace-nowrap"
                               >
-                                {item.valor}
+                                {formatarValor(item.valor, colunasInfo.get(item.chave))}
                               </td>
                             </tr>
                           ) : (
@@ -1418,9 +2073,10 @@ export function MontarRelatorio() {
                               {colunasVisiveis.map((c) => (
                                 <td
                                   key={c}
+                                  style={{ textAlign: alinhamentoDe(colunasInfo.get(c)) }}
                                   className="px-3 py-2 text-text-primary whitespace-nowrap"
                                 >
-                                  {fmtCelula(item.linha[c])}
+                                  {formatarValor(item.linha[c], colunasInfo.get(c))}
                                 </td>
                               ))}
                             </tr>
@@ -1428,12 +2084,13 @@ export function MontarRelatorio() {
                         )
                       : resultado.linhas.map((row, i) => (
                           <tr key={i} className="border-t border-border-subtle">
-                            {resultado.colunas.map((c) => (
+                            {colunasVisiveis.map((c) => (
                               <td
                                 key={c}
+                                style={{ textAlign: alinhamentoDe(colunasInfo.get(c)) }}
                                 className="px-3 py-2 text-text-primary whitespace-nowrap"
                               >
-                                {fmtCelula(row[c])}
+                                {formatarValor(row[c], colunasInfo.get(c))}
                               </td>
                             ))}
                           </tr>
