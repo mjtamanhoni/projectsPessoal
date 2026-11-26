@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { getLogoPdf } from './settings';
+import type { Empresa } from '@/types';
 
 interface HeaderOptions {
   title: string;
@@ -91,6 +92,17 @@ function drawHeader(doc: jsPDF, options: HeaderOptions, pageIndex: number, total
   return lineY;
 }
 
+function getEmpresaLogada(): Empresa | null {
+  try {
+    const raw = sessionStorage.getItem('user');
+    if (!raw) return null;
+    const user = JSON.parse(raw) as { empresa_info?: Empresa };
+    return user.empresa_info ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function drawFooter(doc: jsPDF, pageHeight: number) {
   const margin = 14;
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -103,9 +115,34 @@ function drawFooter(doc: jsPDF, pageHeight: number) {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100);
 
-  doc.text('© 2026 - 56.134.688 MARCOS JOSE TAMANHONI', margin, pageHeight - 10.5);
-  doc.text('CNPJ: 56.134.688/0001-57 | ME | Data de abertura: 29/07/2024', margin, pageHeight - 6.5);
-  doc.text('Celular/WhatsApp: (27) 9 8833-7323 | E-mail: mjtamanhoni@gmail.com', margin, pageHeight - 2.5);
+  const empresa = getEmpresaLogada();
+  const nomeEmpresa =
+    empresa?.razao_social || sessionStorage.getItem('empresaNome') || '';
+
+  const linha1 = [nomeEmpresa, empresa?.fantasia].filter((v) => !!v).join(' | ');
+
+  const linha2 = [
+    empresa?.cnpj_cpf ? `CNPJ/CPF: ${empresa.cnpj_cpf}` : '',
+    empresa?.inscricao_estadual_identidade
+      ? `Insc.Est./Ident.: ${empresa.inscricao_estadual_identidade}`
+      : '',
+    empresa?.regime_tributario
+      ? `Regime Tributário: ${empresa.regime_tributario}`
+      : '',
+  ]
+    .filter((v) => !!v)
+    .join(' | ');
+
+  const linha3 = [
+    empresa?.celular ? `Celular: ${empresa.celular}` : '',
+    empresa?.email ? `Email: ${empresa.email}` : '',
+  ]
+    .filter((v) => !!v)
+    .join(' | ');
+
+  if (linha1) doc.text(linha1, margin, pageHeight - 10.5);
+  if (linha2) doc.text(linha2, margin, pageHeight - 6.5);
+  if (linha3) doc.text(linha3, margin, pageHeight - 2.5);
 
   doc.setTextColor(0);
 }
