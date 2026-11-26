@@ -367,9 +367,32 @@ function formatarDataHora(v: unknown): string {
   return `${pad2(dt.d)}/${pad2(dt.mo)}/${String(dt.y).padStart(4, '0')} ${pad2(dt.h)}:${pad2(dt.mi)}`;
 }
 
+// Converte horas decimais (ex.: 4,5) em HH:MM:SS (04:30:00).
+function horasDecimaisParaHms(n: number): string {
+  const totalSeg = Math.round(Math.abs(n) * 3600);
+  const sinal = n < 0 ? '-' : '';
+  const h = Math.floor(totalSeg / 3600);
+  const m = Math.floor((totalSeg % 3600) / 60);
+  const s = totalSeg % 60;
+  return `${sinal}${String(h).padStart(2, '0')}:${pad2(m)}:${pad2(s)}`;
+}
+
 // Hora do dia no formato HH:NN:SS (00-23). Aceita time do banco ("14:30:00"),
-// timestamp ("2026-11-26T14:30:00") e Date.
+// timestamp ("2026-11-26T14:30:00"), Date e horas decimais (4,5 -> 04:30:00).
+// Datas sem horario retornam "-" (em vez de inventar 00:00:00).
 function formatarHora(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '-';
+  const texto = typeof v === 'string' ? v.trim() : '';
+
+  if (typeof v === 'number' || /^-?\d+([.,]\d+)?$/.test(texto)) {
+    const n = numeroDe(v);
+    if (n !== null) return horasDecimaisParaHms(n);
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto) || /^\d{2}[/-]\d{2}[/-]\d{4}$/.test(texto)) {
+    return '-';
+  }
+
   const dt = extrairDataHora(v);
   if (!dt) return fmtCelula(v);
   return `${pad2(dt.h)}:${pad2(dt.mi)}:${pad2(dt.s)}`;
@@ -401,14 +424,7 @@ function formatarTempo(v: unknown): string {
   }
 
   const n = numeroDe(v);
-  if (n !== null) {
-    const totalSeg = Math.round(Math.abs(n) * 3600);
-    const sinal = n < 0 ? '-' : '';
-    const h = Math.floor(totalSeg / 3600);
-    const m = Math.floor((totalSeg % 3600) / 60);
-    const s = totalSeg % 60;
-    return `${sinal}${padH(h)}:${pad2(m)}:${pad2(s)}`;
-  }
+  if (n !== null) return horasDecimaisParaHms(n);
 
   return fmtCelula(v);
 }

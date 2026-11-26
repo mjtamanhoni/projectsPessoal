@@ -555,6 +555,55 @@ func convertPGValue(v interface{}) interface{} {
 	}
 }
 
+// convertPGValueOID formata o valor conforme o OID da coluna. Diferente do
+// convertPGValue generico, preserva a hora de timestamp/timestamptz (que antes
+// virava apenas a data e fazia a mascara Hora exibir "00:00:00").
+func convertPGValueOID(v interface{}, oid uint32) interface{} {
+	switch oid {
+	case pgtype.DateOID:
+		if t, ok := v.(time.Time); ok {
+			return t.Format("2006-01-02")
+		}
+	case pgtype.TimeOID, pgtype.TimetzOID:
+		switch t := v.(type) {
+		case pgtype.Time:
+			if !t.Valid {
+				return nil
+			}
+			return fmt.Sprintf("%02d:%02d:%02d",
+				t.Microseconds/3600000000,
+				(t.Microseconds%3600000000)/60000000,
+				(t.Microseconds%60000000)/1000000)
+		case time.Time:
+			return t.Format("15:04:05")
+		}
+	case pgtype.TimestampOID, pgtype.TimestamptzOID:
+		if t, ok := v.(time.Time); ok {
+			return t.Format("2006-01-02T15:04:05")
+		}
+	case pgtype.IntervalOID:
+		if iv, ok := v.(pgtype.Interval); ok {
+			if !iv.Valid {
+				return nil
+			}
+			totalSecs := int64(iv.Months)*2592000 + int64(iv.Days)*86400 + iv.Microseconds/1000000
+			neg := totalSecs < 0
+			if neg {
+				totalSecs = -totalSecs
+			}
+			hours := totalSecs / 3600
+			minutes := (totalSecs % 3600) / 60
+			secs := totalSecs % 60
+			sinal := ""
+			if neg {
+				sinal = "-"
+			}
+			return fmt.Sprintf("%s%02d:%02d:%02d", sinal, hours, minutes, secs)
+		}
+	}
+	return convertPGValue(v)
+}
+
 func snakeToCamel(s string) string {
 	parts := strings.Split(s, "_")
 	result := parts[0]

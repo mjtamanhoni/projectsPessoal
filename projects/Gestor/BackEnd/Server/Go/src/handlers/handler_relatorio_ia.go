@@ -127,7 +127,11 @@ func (h *RelatorioIAHandler) Consulta(w http.ResponseWriter, r *http.Request) {
 		row := make(map[string]interface{})
 		for i, name := range colunas {
 			if i < len(values) {
-				row[name] = convertPGValue(values[i])
+				var oid uint32
+				if i < len(fieldDescriptions) {
+					oid = fieldDescriptions[i].DataTypeOID
+				}
+				row[name] = convertPGValueOID(values[i], oid)
 			}
 		}
 		linhas = append(linhas, row)
