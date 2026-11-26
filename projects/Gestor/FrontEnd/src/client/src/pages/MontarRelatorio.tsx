@@ -55,6 +55,8 @@ type FormatoColuna =
   | 'percentual'
   | 'data'
   | 'datahora'
+  | 'hora'
+  | 'tempo'
   | 'cnpj'
   | 'cpf'
   | 'telefone'
@@ -365,6 +367,52 @@ function formatarDataHora(v: unknown): string {
   return `${pad2(dt.d)}/${pad2(dt.mo)}/${String(dt.y).padStart(4, '0')} ${pad2(dt.h)}:${pad2(dt.mi)}`;
 }
 
+// Hora do dia no formato HH:NN:SS (00-23). Aceita time do banco ("14:30:00"),
+// timestamp ("2026-11-26T14:30:00") e Date.
+function formatarHora(v: unknown): string {
+  const dt = extrairDataHora(v);
+  if (!dt) return fmtCelula(v);
+  return `${pad2(dt.h)}:${pad2(dt.mi)}:${pad2(dt.s)}`;
+}
+
+// Duracao no formato HHH:NN:SS, permitindo horas acima de 23 (ex.: 55:39:11).
+// Aceita o texto ja convertido pelo backend ("55:39:11"), intervalos com dias
+// ("2 days 07:39:11"), timestamps e numeros (interpretados como horas).
+function formatarTempo(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '-';
+  const padH = (h: number) => String(h).padStart(2, '0');
+  const texto = String(v).trim();
+
+  const comDias = texto.match(
+    /^(-?)(?:(\d+)\s+days?\s+)?(\d{1,3}):(\d{1,2})(?::(\d{1,2}))?(?:\.\d+)?$/i,
+  );
+  if (comDias) {
+    const sinal = comDias[1] ?? '';
+    const dias = Number(comDias[2] ?? 0);
+    const horas = dias * 24 + Number(comDias[3]);
+    const minutos = Number(comDias[4]);
+    const segundos = Number(comDias[5] ?? 0);
+    return `${sinal}${padH(horas)}:${pad2(minutos)}:${pad2(segundos)}`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}[T ]/.test(texto)) {
+    const dt = extrairDataHora(texto);
+    if (dt) return `${padH(dt.h)}:${pad2(dt.mi)}:${pad2(dt.s)}`;
+  }
+
+  const n = numeroDe(v);
+  if (n !== null) {
+    const totalSeg = Math.round(Math.abs(n) * 3600);
+    const sinal = n < 0 ? '-' : '';
+    const h = Math.floor(totalSeg / 3600);
+    const m = Math.floor((totalSeg % 3600) / 60);
+    const s = totalSeg % 60;
+    return `${sinal}${padH(h)}:${pad2(m)}:${pad2(s)}`;
+  }
+
+  return fmtCelula(v);
+}
+
 // Mascara livre baseada em digitos (ex.: 000.000.000-00, (00) 00000-0000).
 // Os caracteres 0/# sao preenchidos pelos digitos do valor; o restante e
 // tratado como literal, permitindo qualquer formato informado pelo usuario.
@@ -418,6 +466,8 @@ function formatarValor(v: unknown, info?: InfoColuna): string {
   if (formato === 'percentual') return formatarPercentual(v);
   if (formato === 'data') return formatarData(v);
   if (formato === 'datahora') return formatarDataHora(v);
+  if (formato === 'hora') return formatarHora(v);
+  if (formato === 'tempo') return formatarTempo(v);
   if (formato === 'cnpj') return formatarCnpj(v);
   if (formato === 'cpf') return formatarCpf(v);
   if (formato === 'telefone') return formatarTelefone(v);
@@ -1774,6 +1824,8 @@ export function MontarRelatorio() {
                     <option value="percentual">Percentual (%)</option>
                     <option value="data">Data (dd/MM/yyyy)</option>
                     <option value="datahora">Data e hora (dd/MM/yyyy HH:mm)</option>
+                    <option value="hora">Hora (HH:NN:SS)</option>
+                    <option value="tempo">Tempo (HHH:NN:SS)</option>
                     <option value="cnpj">CNPJ</option>
                     <option value="cpf">CPF</option>
                     <option value="telefone">Telefone</option>
