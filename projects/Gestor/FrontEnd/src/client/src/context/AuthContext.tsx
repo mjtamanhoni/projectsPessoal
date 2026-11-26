@@ -16,6 +16,7 @@ interface AuthContextType {
   homeRoute: string;
   empresaNome: string;
   empresa: Empresa | null;
+  refreshEmpresa: () => Promise<void>;
   isOpenLoja: boolean | null;
   setIsOpenLoja: (aberto: boolean) => void;
   login: (login: string, senha: string, pin?: string, empresa?: number | string) => Promise<void>;
@@ -152,6 +153,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSuperadmin(patch.is_superadmin === true);
     }
   }, []);
+
+  const refreshEmpresa = useCallback(async () => {
+    const empresaId = user?.empresaId;
+    if (!empresaId) return;
+    const emp = await fetchEmpresaData(empresaId);
+    if (emp) {
+      setEmpresa(emp);
+      setEmpresaNome(emp.fantasia || emp.razao_social || '');
+      void preloadEmpresaLogomarca(emp.logomarca_paginas || emp.logomarca);
+    }
+  }, [user?.empresaId]);
 
   const fecharLojaRequest = useCallback(() => {
     const id = empresaIdLojaRef.current;
@@ -429,7 +441,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [startSessionTimer]);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, isOpenLoja, setIsOpenLoja, login, logout, updateUser, temAcesso, temPermissao, loading, pausarTimerInatividade, retomarTimerInatividade }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isSuperadmin, permissoes, rotasPermitidas, irrestrito, homeRoute, empresaNome, empresa, refreshEmpresa, isOpenLoja, setIsOpenLoja, login, logout, updateUser, temAcesso, temPermissao, loading, pausarTimerInatividade, retomarTimerInatividade }}>
       {children}
     </AuthContext.Provider>
   );

@@ -10,6 +10,7 @@ import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
 import { EmpresaForm } from '@/components/forms/EmpresaForm';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
 import { Spinner } from '@/components/ui/Spinner';
 import type { Empresa, EmpresaModulo, Modulo } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
@@ -51,6 +52,7 @@ export function Empresas() {
   const [deleting, setDeleting] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const { addToast } = useToast();
+  const { refreshEmpresa } = useAuth();
 
   const [tokenModal, setTokenModal] = useState(false);
   const [tokenEmpresa, setTokenEmpresa] = useState<Empresa | null>(null);
@@ -257,10 +259,9 @@ export function Empresas() {
         await api.post('/empresas/logomarca', { id: empresaId, logomarca: logoUpload ?? '' });
         if (getEmpresaId() === Number(empresaId)) {
           salvarLogomarcaCache(logoUpload || null);
+          void refreshEmpresa();
         }
-        if (logoUpload) {
-          refetch();
-        }
+        refetch();
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar empresa';

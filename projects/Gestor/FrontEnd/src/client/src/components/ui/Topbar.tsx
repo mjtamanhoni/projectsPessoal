@@ -67,7 +67,7 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
   const avatarUrl = getUploadsUrl(user?.avatar);
 
   return (
-    <header className="h-16 shrink-0 bg-bg-card border-b border-border-subtle flex items-center gap-3 px-4 relative z-40">
+    <header className="h-20 shrink-0 bg-bg-card border-b border-border-subtle flex items-center gap-3 px-4 relative z-40">
       <button
         type="button"
         onClick={onToggle}
@@ -83,10 +83,10 @@ export function Topbar({ collapsed, onToggle }: TopbarProps) {
 
       <div className="flex items-center gap-3 min-w-0">
         {logo ? (
-          <img src={logo} alt="Logo" className="h-12 max-w-40 object-contain shrink-0" />
+          <img src={logo} alt="Logo" className="h-16 max-w-64 object-contain shrink-0" />
         ) : (
-          <div className="w-9 h-9 rounded-lg bg-accent-primary/15 text-accent-primary flex items-center justify-center shrink-0">
-            <Building size={18} />
+          <div className="w-12 h-12 rounded-lg bg-accent-primary/15 text-accent-primary flex items-center justify-center shrink-0">
+            <Building size={24} />
           </div>
         )}
         <div className="min-w-0 hidden sm:block">

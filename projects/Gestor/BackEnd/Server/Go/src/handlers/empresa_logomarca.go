@@ -8,23 +8,28 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gestor-server/config"
 )
 
 const logomarcasBase = "Logomarcas"
 
-// EmpresaLogomarcaSalvar salva/remove a logomarca de uma empresa.
-// POST /empresa/logomarca  body: { id, logomarca }
-// - logomarca vazio: remove a logomarca atual (apaga o arquivo e zera o campo).
-// - logomarca em base64: salva o arquivo em Fotos/Logomarcas/{nome da empresa}.{ext} e grava o caminho relativo.
+// EmpresaLogomarcaSalvar salva/remove as logomarcas de uma empresa.
+// POST /empresa/logomarca  body: { id, logomarca | logomarca_paginas, logomarca_relatorios, logomarca_fiscal }
+//   - campo ausente: mantém a logomarca atual daquele tipo.
+//   - campo vazio: remove a logomarca atual (apaga o arquivo e zera a coluna).
+//   - campo em base64: salva o arquivo em Fotos/Logomarcas/{nome da empresa}_{campo}_{timestamp}.{ext}
+//     e grava o caminho relativo. O nome é único a cada envio para que a troca de
+//     uma logomarca já existente sempre gere uma URL nova (sem cache do navegador)
+//     e para não sobrescrever um arquivo que possa estar em uso no Windows.
 func (h *BasicCRUD) EmpresaLogomarcaSalvar(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ID              int    `json:"id"`
-		Logomarca       string `json:"logomarca"`        // compatibilidade: usa logomarca_paginas
-		LogomarcaPaginas    string `json:"logomarca_paginas"`     // Logo das páginas
-		LogomarcaRelatorios string `json:"logomarca_relatorios"`  // Logo para relatórios jato de tinta
-		LogomarcaFiscal     string `json:"logomarca_fiscal"`      // Logo para impressora fiscal
+		ID                  int     `json:"id"`
+		Logomarca           *string `json:"logomarca"`            // compatibilidade: usa logomarca_paginas
+		LogomarcaPaginas    *string `json:"logomarca_paginas"`    // Logo das páginas
+		LogomarcaRelatorios *string `json:"logomarca_relatorios"` // Logo para relatórios jato de tinta
+		LogomarcaFiscal     *string `json:"logomarca_fiscal"`     // Logo para impressora fiscal
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonError(w, "JSON inválido", http.StatusBadRequest)
@@ -52,15 +57,12 @@ func (h *BasicCRUD) EmpresaLogomarcaSalvar(w http.ResponseWriter, r *http.Reques
 			req.ID).Scan(&atual); err == nil && atual != nil && *atual != "" {
 			caminho := filepath.Join(fotosDir, filepath.FromSlash(*atual))
 			if _, err := os.Stat(caminho); err == nil {
-				os.Remove(caminho)
+				_ = os.Remove(caminho)
 			}
 		}
 	}
 
 	processarLogomarca := func(campo, valor string) (string, error) {
-		if valor == "" {
-			return "", nil
-		}
 		raw := valor
 		if idx := strings.Index(raw, ","); idx >= 0 {
 			raw = raw[idx+1:]
@@ -82,100 +84,73 @@ func (h *BasicCRUD) EmpresaLogomarcaSalvar(w http.ResponseWriter, r *http.Reques
 			return "", fmt.Errorf("erro ao criar diretório de uploads: %s", campo)
 		}
 
-		arquivoNome := fmt.Sprintf("%s_%s%s", sanitizarNomeArquivo(empresaNome), campo, ext)
+		base := sanitizarNomeArquivo(empresaNome)
+		if runes := []rune(base); len(runes) > 60 {
+			base = string(runes[:60])
+		}
+		arquivoNome := fmt.Sprintf("%s_%s_%s%s", base, campo, time.Now().Format("20060102-150405"), ext)
 		caminhoFinal := filepath.Join(subDir, arquivoNome)
 		if err := os.WriteFile(caminhoFinal, data, 0644); err != nil {
 			return "", err
 		}
-
-		// Remove arquivo anterior se diferente
-		var atual *string
-		if err := h.Pool.QueryRow(r.Context(),
-			fmt.Sprintf(`SELECT %s FROM public.empresa WHERE id = $1`, campo),
-			req.ID).Scan(&atual); err == nil && atual != nil && *atual != "" && *atual != filepath.ToSlash(filepath.Join(logomarcasBase, arquivoNome)) {
-			antigo := filepath.Join(fotosDir, filepath.FromSlash(*atual))
-			if _, err := os.Stat(antigo); err == nil {
-				os.Remove(antigo)
-			}
-		}
-
 		return filepath.ToSlash(filepath.Join(logomarcasBase, arquivoNome)), nil
 	}
 
-	// Processa cada tipo de logomarca
-	var relPaginas, relRelatorios, relFiscal string
-	var err error
-
-	if req.LogomarcaPaginas != "" || req.Logomarca != "" {
-		valor := req.LogomarcaPaginas
-		if valor == "" {
-			valor = req.Logomarca // compatibilidade
-		}
-		if valor != "" {
-			removerArquivoAtual("logomarca_paginas")
-			relPaginas, err = processarLogomarca("logomarca_paginas", valor)
-			if err != nil {
-				jsonError(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-		}
+	// Monta a lista de campos a processar. logomarca é compatibilidade de logomarca_paginas.
+	type campoLogo struct {
+		coluna string
+		valor  *string
 	}
-	if req.LogomarcaRelatorios != "" {
-		removerArquivoAtual("logomarca_relatorios")
-		relRelatorios, err = processarLogomarca("logomarca_relatorios", req.LogomarcaRelatorios)
-		if err != nil {
-			jsonError(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	campos := []campoLogo{}
+	if req.LogomarcaPaginas != nil {
+		campos = append(campos, campoLogo{"logomarca_paginas", req.LogomarcaPaginas})
+	} else if req.Logomarca != nil {
+		campos = append(campos, campoLogo{"logomarca_paginas", req.Logomarca})
 	}
-	if req.LogomarcaFiscal != "" {
-		removerArquivoAtual("logomarca_fiscal")
-		relFiscal, err = processarLogomarca("logomarca_fiscal", req.LogomarcaFiscal)
-		if err != nil {
-			jsonError(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	if req.LogomarcaRelatorios != nil {
+		campos = append(campos, campoLogo{"logomarca_relatorios", req.LogomarcaRelatorios})
+	}
+	if req.LogomarcaFiscal != nil {
+		campos = append(campos, campoLogo{"logomarca_fiscal", req.LogomarcaFiscal})
 	}
 
-	// Atualiza banco
+	if len(campos) == 0 {
+		jsonError(w, "Nenhuma logomarca informada", http.StatusBadRequest)
+		return
+	}
+
 	updates := []string{}
 	vals := []interface{}{}
-	paramIdx := 1
+	resp := map[string]interface{}{}
 
-	if relPaginas != "" {
-		updates = append(updates, fmt.Sprintf("logomarca_paginas = $%d", paramIdx))
-		vals = append(vals, relPaginas)
-		paramIdx++
-	}
-	if relRelatorios != "" {
-		updates = append(updates, fmt.Sprintf("logomarca_relatorios = $%d", paramIdx))
-		vals = append(vals, relRelatorios)
-		paramIdx++
-	}
-	if relFiscal != "" {
-		updates = append(updates, fmt.Sprintf("logomarca_fiscal = $%d", paramIdx))
-		vals = append(vals, relFiscal)
-		paramIdx++
-	}
-
-	if len(updates) > 0 {
-		vals = append(vals, req.ID)
-		query := fmt.Sprintf("UPDATE public.empresa SET %s WHERE id = $%d", strings.Join(updates, ", "), paramIdx)
-		if _, err := h.Pool.Exec(r.Context(), query, vals...); err != nil {
-			jsonError(w, err.Error(), http.StatusInternalServerError)
+	for _, c := range campos {
+		valor := strings.TrimSpace(*c.valor)
+		if valor == "" {
+			// Remove a logomarca atual (arquivo + coluna).
+			removerArquivoAtual(c.coluna)
+			updates = append(updates, fmt.Sprintf("%s = NULL", c.coluna))
+			resp[c.coluna] = nil
+			continue
+		}
+		rel, err := processarLogomarca(c.coluna, valor)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		// Apaga o arquivo antigo. O novo tem nome único, então nunca é o mesmo arquivo.
+		removerArquivoAtual(c.coluna)
+		updates = append(updates, fmt.Sprintf("%s = $%d", c.coluna, len(vals)+1))
+		vals = append(vals, rel)
+		resp[c.coluna] = rel
 	}
 
-	resp := map[string]interface{}{"mensagem": "Logomarcas salvas com sucesso"}
-	if relPaginas != "" {
-		resp["logomarca_paginas"] = relPaginas
+	vals = append(vals, req.ID)
+	query := fmt.Sprintf("UPDATE public.empresa SET %s WHERE id = $%d", strings.Join(updates, ", "), len(vals))
+	if _, err := h.Pool.Exec(r.Context(), query, vals...); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	if relRelatorios != "" {
-		resp["logomarca_relatorios"] = relRelatorios
-	}
-	if relFiscal != "" {
-		resp["logomarca_fiscal"] = relFiscal
-	}
+
+	resp["mensagem"] = "Logomarcas salvas com sucesso"
 	jsonSuccess(w, resp)
 }

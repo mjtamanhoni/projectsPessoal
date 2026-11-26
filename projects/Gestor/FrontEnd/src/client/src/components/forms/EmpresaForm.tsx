@@ -215,7 +215,7 @@ export function EmpresaForm({ onSubmit, onCancel, initial }: EmpresaFormProps) {
             <img
               src={logoPreview}
               alt="Logomarca"
-              className="max-h-16 max-w-40 object-contain border border-border-subtle rounded-lg p-2"
+              className="max-h-24 max-w-56 object-contain border border-border-subtle rounded-lg p-2"
             />
           )}
           <input
