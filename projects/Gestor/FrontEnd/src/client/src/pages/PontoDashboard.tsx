@@ -14,7 +14,7 @@ import {
   Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import {
-  Activity, AlertTriangle, Calendar, Clock, DollarSign, Loader2, RefreshCw, Timer,
+  Activity, AlertTriangle, Calendar, ChevronUp, Clock, DollarSign, Loader2, RefreshCw, Search, Timer,
   TrendingUp, Users,
 } from 'lucide-react';
 
@@ -35,6 +35,7 @@ export function PontoDashboard() {
   const [data, setData] = useState<PontoDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -94,6 +95,17 @@ export function PontoDashboard() {
     [data],
   );
 
+  const filtroResumo = useMemo(() => {
+    const usuario = usuarios.find((u) => (u.id ?? u.codigo) === filtroUsuarioId);
+    const cliente = clientes.find((c) => (c.id ?? c.codigo) === filtroClienteId);
+    const servico = servicos.find((s) => (s.id ?? s.codigo) === filtroServicoId);
+    return {
+      usuario: usuario?.nome ?? 'Todos',
+      cliente: cliente?.nome ?? 'Todos',
+      servico: servico?.nome ?? 'Todos',
+    };
+  }, [usuarios, clientes, servicos, filtroUsuarioId, filtroClienteId, filtroServicoId]);
+
   const cards = data?.cards;
 
   const kpis = [
@@ -142,31 +154,75 @@ export function PontoDashboard() {
               <option key={a} value={a}>{a}</option>
             ))}
           </select>
-          <RegistroSelect<number>
-            value={filtroUsuarioId ?? null}
-            onChange={(v) => setFiltroUsuarioId(v)}
-            onClear={() => setFiltroUsuarioId(undefined)}
-            options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
-            title="Filtro por Usuario"
-            placeholder="Todos os usuarios"
-          />
-          <RegistroSelect<number>
-            value={filtroClienteId ?? null}
-            onChange={(v) => setFiltroClienteId(v)}
-            onClear={() => setFiltroClienteId(undefined)}
-            options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
-            title="Filtro por Cliente"
-            placeholder="Todos os clientes"
-          />
-          <RegistroSelect<number>
-            value={filtroServicoId ?? null}
-            onChange={(v) => setFiltroServicoId(v)}
-            onClear={() => setFiltroServicoId(undefined)}
-            options={servicos.map((s) => ({ value: (s.id ?? s.codigo)!, label: s.nome }))}
-            title="Filtro por Servico"
-            placeholder="Todos os servicos"
-          />
+
+          <span className="text-sm text-text-secondary">
+            <span className="text-text-muted">Usuário:</span>{' '}
+            <span className="font-medium text-text-primary">{filtroResumo.usuario}</span>
+            <span className="mx-1.5 text-text-muted">-</span>
+            <span className="text-text-muted">Cliente:</span>{' '}
+            <span className="font-medium text-text-primary">{filtroResumo.cliente}</span>
+            <span className="mx-1.5 text-text-muted">-</span>
+            <span className="text-text-muted">Serviços:</span>{' '}
+            <span className="font-medium text-text-primary">{filtroResumo.servico}</span>
+          </span>
+
+          <Button
+            variant="secondary"
+            onClick={() => setFiltrosAbertos((v) => !v)}
+            title={filtrosAbertos ? 'Retrair filtros' : 'Expandir filtros'}
+          >
+            <Search size={16} />
+          </Button>
         </div>
+
+        {filtrosAbertos && (
+          <div className="mt-4 pt-4 border-t border-border-subtle flex items-end gap-3 flex-wrap">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-text-secondary">Usuário</span>
+              <RegistroSelect<number>
+                value={filtroUsuarioId ?? null}
+                onChange={(v) => setFiltroUsuarioId(v)}
+                onClear={() => setFiltroUsuarioId(undefined)}
+                options={usuarios.map((u) => ({ value: (u.id ?? u.codigo)!, label: u.nome }))}
+                title="Filtro por Usuário"
+                placeholder="Todos os usuários"
+                className="min-w-[200px]"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-text-secondary">Cliente</span>
+              <RegistroSelect<number>
+                value={filtroClienteId ?? null}
+                onChange={(v) => setFiltroClienteId(v)}
+                onClear={() => setFiltroClienteId(undefined)}
+                options={clientes.map((c) => ({ value: (c.id ?? c.codigo)!, label: c.nome }))}
+                title="Filtro por Cliente"
+                placeholder="Todos os clientes"
+                className="min-w-[200px]"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-text-secondary">Serviço</span>
+              <RegistroSelect<number>
+                value={filtroServicoId ?? null}
+                onChange={(v) => setFiltroServicoId(v)}
+                onClear={() => setFiltroServicoId(undefined)}
+                options={servicos.map((s) => ({ value: (s.id ?? s.codigo)!, label: s.nome }))}
+                title="Filtro por Serviço"
+                placeholder="Todos os serviços"
+                className="min-w-[200px]"
+              />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => setFiltrosAbertos(false)}
+              title="Retrair filtros"
+            >
+              <ChevronUp size={16} />
+              Retrair
+            </Button>
+          </div>
+        )}
       </Card>
 
       {loading ? (
