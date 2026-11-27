@@ -625,7 +625,7 @@ export function PontoEletronico() {
         />
       </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6 mb-6">
         <Card>
           <div className="flex items-center justify-between mb-4">
             <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors" title="Mes anterior">
