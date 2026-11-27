@@ -17,7 +17,7 @@ import { carregarFiltrosPonto, competenciaAtual, formatHoras, salvarFiltrosPonto
 import type { Cliente, PontoLancamento, PontoResumo, Servico, Usuario } from '@/types';
 import api from '@/lib/api';
 import {
-  AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, DollarSign, MapPin,
+  AlertTriangle, ChevronLeft, ChevronRight, Clock, DollarSign, MapPin,
   Minus, Plus, RefreshCw, Timer, User,
 } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -628,74 +628,127 @@ export function PontoEletronico() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <CalendarDays size={18} className="text-text-secondary" />
-              <h2 className="text-lg font-semibold text-foreground-primary">
-                {MONTH_NAMES[calendarDate.getMonth()]} {calendarDate.getFullYear()}
-              </h2>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={prevMonth}
-                className="p-1.5 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
-                title="Mes anterior"
-              >
-                <ChevronLeft size={16} className="text-text-secondary" />
-              </button>
-              <button
-                onClick={nextMonth}
-                className="p-1.5 rounded-lg border border-border-primary hover:bg-background-hover transition-colors"
-                title="Proximo mes"
-              >
-                <ChevronRight size={16} className="text-text-secondary" />
-              </button>
-            </div>
+            <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors" title="Mes anterior">
+              <ChevronLeft size={18} className="text-text-secondary" />
+            </button>
+            <h2 className="text-lg font-heading font-bold text-foreground-primary">
+              {MONTH_NAMES[calendarDate.getMonth()]} {calendarDate.getFullYear()}
+            </h2>
+            <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-bg-muted transition-colors" title="Proximo mes">
+              <ChevronRight size={18} className="text-text-secondary" />
+            </button>
           </div>
+
+          {selectedDay && (
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="text-xs text-accent-primary font-medium">
+                Filtrando: {formatDate(selectedDay)}
+              </span>
+              <button
+                onClick={() => setSelectedDay(null)}
+                className="text-xs text-text-muted hover:text-accent-red transition-colors"
+              >
+                limpar
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-7 gap-1 mb-2">
             {WEEKDAYS.map((d) => (
-              <div key={d} className="text-center text-xs font-medium text-text-muted py-1">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {calendarDays.map((item, idx) => (
-              <div
-                key={`${item.date || 'empty'}-${idx}`}
-                onClick={() => handleDayClick(item.date)}
-                className={`min-h-[74px] rounded-lg border p-1.5 transition-colors ${
-                  item.day === 0
-                    ? 'border-transparent'
-                    : item.isFeriado
-                      ? 'border-red-500/20 bg-red-500/5'
-                      : item.isSunday
-                        ? 'border-border-primary bg-background-secondary/40'
-                        : item.isWeekend
-                          ? 'border-border-primary bg-background-secondary/20'
-                          : 'border-border-primary bg-background-primary'
-                } ${item.date && item.date === selectedDay ? 'ring-2 ring-accent-primary' : ''} ${item.day > 0 ? 'cursor-pointer hover:border-accent-primary' : ''}`}
-                title={item.nomeFeriado || undefined}
-              >
-                {item.day > 0 && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs font-semibold ${
-                        item.isFeriado ? 'text-red-500' : item.isSunday ? 'text-text-muted' : 'text-text-secondary'
-                      }`}>
-                        {item.day}
-                      </span>
-                      {item.horas && item.horas.horas > 0 && (
-                        <span className="text-[10px] font-bold text-green-600">{formatHoras(item.horas.horas)}</span>
-                      )}
-                    </div>
-                    {item.horas && item.horas.horas > 0 && (
-                      <p className="text-[10px] text-text-muted mt-0.5">{formatCurrency(item.horas.valor)}</p>
-                    )}
-                    {item.nomeFeriado && (
-                      <p className="text-[9px] text-red-500/80 truncate mt-0.5">{item.nomeFeriado}</p>
-                    )}
-                  </>
-                )}
+              <div key={d} className="text-center text-xs font-medium text-text-muted py-1">
+                {d}
               </div>
             ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map((item, i) => {
+              const isSelected = selectedDay === item.date;
+              const hasHours = !!item.horas;
+              let bgClass = '';
+              let textClass = item.horas ? 'text-accent-primary' : 'text-text-secondary';
+              let borderClass = 'border-border-subtle';
+
+              if (item.day === 0) {
+                bgClass = '';
+                borderClass = 'border-transparent';
+              } else if (isSelected) {
+                bgClass = 'bg-accent-primary/15 ring-2 ring-accent-primary/30';
+                borderClass = 'border-accent-primary';
+                textClass = 'text-accent-primary font-bold';
+              } else if (item.isFeriado && item.isWeekend) {
+                bgClass = hasHours ? 'bg-purple-500/15' : 'bg-purple-500/10';
+                borderClass = 'border-purple-400';
+                textClass = 'text-purple-600';
+              } else if (item.isFeriado) {
+                bgClass = hasHours ? 'bg-purple-500/10' : 'bg-purple-500/5';
+                borderClass = 'border-purple-300';
+                textClass = 'text-purple-600';
+              } else if (item.isSunday && hasHours) {
+                bgClass = 'bg-red-500/10';
+                borderClass = 'border-red-300';
+                textClass = 'text-red-600';
+              } else if (item.isSunday) {
+                bgClass = 'bg-red-500/5';
+                borderClass = 'border-red-200';
+                textClass = 'text-red-500';
+              } else if (item.isWeekend && hasHours) {
+                bgClass = 'bg-orange-500/10';
+                borderClass = 'border-orange-300';
+                textClass = 'text-orange-600';
+              } else if (item.isWeekend) {
+                bgClass = 'bg-orange-500/5';
+                borderClass = 'border-orange-200';
+                textClass = 'text-orange-500';
+              } else if (hasHours) {
+                bgClass = 'bg-accent-primary/5';
+                borderClass = 'border-accent-primary/30';
+              }
+
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => item.day > 0 && handleDayClick(item.date)}
+                  disabled={item.day === 0}
+                  className={`min-h-[56px] p-1 rounded-lg border text-[11px] transition-colors text-left cursor-pointer ${borderClass} ${bgClass}`}
+                >
+                  {item.day > 0 && (
+                    <>
+                      <div className={`text-right font-medium ${textClass}`}>
+                        {item.day}
+                      </div>
+                      {item.horas && (
+                        <div className="mt-0.5">
+                          <div className={`font-bold ${item.isFeriado ? 'text-purple-600' : item.isSunday ? 'text-red-600' : item.isWeekend ? 'text-orange-600' : 'text-accent-primary'}`}>{formatHoras(item.horas.horas)}</div>
+                          <div className="text-[10px] text-text-muted leading-tight">{formatCurrency(item.horas.valor)}</div>
+                        </div>
+                      )}
+                      {item.isFeriado && (
+                        <div className="text-[9px] text-purple-500 leading-tight mt-0.5 truncate" title={item.nomeFeriado}>
+                          {item.nomeFeriado}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-center gap-4 mt-3 pt-3 border-t border-border-subtle">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-orange-100 border border-orange-300"></div>
+              <span className="text-[11px] text-text-muted">Sabado</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-red-100 border border-red-300"></div>
+              <span className="text-[11px] text-text-muted">Domingo</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-purple-100 border border-purple-300"></div>
+              <span className="text-[11px] text-text-muted">Feriado</span>
+            </div>
           </div>
         </Card>
 
