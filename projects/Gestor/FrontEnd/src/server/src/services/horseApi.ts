@@ -2,7 +2,10 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config';
 import { AppError } from '../types';
-import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico, HoraAbatida, HoraExcedida, PontoLancamento, PontoResumo, PontoExcedenteInput, PontoDashboardData, PontoProximoInfo, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao, TituloPagar, TituloPagarInput, PagamentoEfetuado, PagamentoEfetuadoInput } from '../types';
+import type { Cliente, Fornecedor, Categoria, ContaPagar, ContaReceber, BaixaRequest, LoginRequest, LoginResponse, DashboardData, DashboardFilters, HorasDashboardData, ProducaoDashboardData, Formulario, UsuarioFormulario, HoraTrabalhada, Servico,                                       HoraAbatida,
+                                      HoraExcedida,
+                                      HoraExcedidaAjusteInput,
+                                      PontoLancamento, PontoResumo, PontoExcedenteInput, PontoDashboardData, PontoProximoInfo, Permissao, FormularioPermissao, Insumo, CompraInsumo, ProdutoFabricado, ReceitaIngrediente, CustoAdicionalTipo, Fabricacao, FabricacaoCustoAdicional, VendaProduto, Encomenda, EstoqueInsumo, EstoqueProdutoFabricado, Empresa, Modulo, ModuloFormulario, EmpresaModulo, PerdaInsumo, PerdaProdutoFabricado, UsoConsumo, Adicional, ProdutoAdicional, AdicionalProdutoClassificacao, ProdutoVenda, ProdutoVendaItem, FormaPagamento, CondicaoPagamento, FormaPagamentoCondicao, TituloPagar, TituloPagarInput, PagamentoEfetuado, PagamentoEfetuadoInput } from '../types';
 import { getFinanceiroEmpresa } from './settings';
 
 function ceilTo2(value: number): number {
@@ -1112,6 +1115,8 @@ class HorseApiService {
         mesOrigem: Number(item.mes_origem ?? item.mesOrigem ?? 0),
         anoOrigem: Number(item.ano_origem ?? item.anoOrigem ?? 0),
         deltaHoras: Number(item.delta_horas ?? item.deltaHoras ?? 0),
+        ajusteManual: Number(item.ajuste_manual ?? item.ajusteManual ?? 0),
+        observacoes: String(item.observacoes ?? ''),
         dataCriacao: String(item.data_criacao ?? item.dataCriacao ?? ''),
       }));
     } catch (error) {
@@ -1139,6 +1144,24 @@ class HorseApiService {
       const mapped = horas.map(mapHora);
       const payload = mapped.length === 1 ? mapped[0] : mapped;
       const res = await this.api.post('/horasExcedidas', payload, { headers: this.getAuthHeaders() });
+      return res.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async ajustarHoraExcedida(payload: HoraExcedidaAjusteInput): Promise<unknown> {
+    try {
+      const mapped = {
+        usuario_id: payload.usuarioId,
+        cliente_id: payload.clienteId,
+        servico_id: payload.servicoId,
+        mes_origem: payload.mes,
+        ano_origem: payload.ano,
+        ajuste_manual: payload.ajusteHoras,
+        observacoes: payload.observacoes ?? '',
+      };
+      const res = await this.api.post('/horasExcedidas/ajuste', mapped, { headers: this.getAuthHeaders() });
       return res.data;
     } catch (error) {
       return this.handleError(error);

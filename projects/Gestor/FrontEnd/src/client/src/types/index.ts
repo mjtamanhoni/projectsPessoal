@@ -286,7 +286,19 @@ export interface HoraExcedida {
   mesOrigem: number;
   anoOrigem: number;
   deltaHoras: number;
+  ajusteManual?: number;
+  observacoes?: string;
   dataCriacao?: string;
+}
+
+export interface HoraExcedidaAjusteInput {
+  usuarioId: number;
+  clienteId: number;
+  servicoId: number;
+  ano: number;
+  mes: number;
+  ajusteHoras: number;
+  observacoes?: string;
 }
 
 export interface PontoLancamento {

@@ -200,6 +200,16 @@ export const pontoExcedenteBodySchema = z.object({
   observacoes: z.string().max(500).optional(),
 });
 
+export const horaExcedidaAjusteBodySchema = z.object({
+  usuarioId: z.number().int().positive('Usuario e obrigatorio'),
+  clienteId: z.number().int().positive('Cliente e obrigatorio'),
+  servicoId: z.number().int().positive('Servico e obrigatorio'),
+  ano: z.number().int().min(2000).max(2100),
+  mes: z.number().int().min(1).max(12),
+  ajusteHoras: z.number(),
+  observacoes: z.string().max(500).optional(),
+});
+
 export const insumoBodySchema = z.object({
   codigo: z.number().int().positive().optional(),
   id: z.number().int().positive().optional(),

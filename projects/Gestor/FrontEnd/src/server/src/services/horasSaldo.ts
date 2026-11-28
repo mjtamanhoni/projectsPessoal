@@ -237,9 +237,10 @@ export async function recalcularSaldoAcumulado(
     const paraSalvar: HoraExcedida[] = [];
     for (let chave = inicio; chave <= mesFinal; chave++) {
       const { ano, mes } = mesDaChave(chave);
-      saldo = arredondar(saldo + (trabalhadasPorMes.get(chave) ?? 0) - (abatidasPorMes.get(chave) ?? 0) - horasMinimas);
-
       const existente = porMes.get(chave);
+      const ajuste = Number(existente?.ajusteManual) || 0;
+      saldo = arredondar(saldo + (trabalhadasPorMes.get(chave) ?? 0) - (abatidasPorMes.get(chave) ?? 0) - horasMinimas + ajuste);
+
       if (existente && Math.abs(Number(existente.deltaHoras) - saldo) < 0.005) continue;
 
       paraSalvar.push({

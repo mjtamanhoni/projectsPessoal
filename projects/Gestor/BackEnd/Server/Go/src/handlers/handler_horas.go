@@ -409,6 +409,79 @@ func (h *HorasHandler) HorasExcedidasExcluir(w http.ResponseWriter, r *http.Requ
 	h.BasicCRUD.Excluir(w, r, "horas_excedidas")
 }
 
+// HorasExcedidasAjustar grava um ajuste manual (positivo ou negativo) no saldo
+// acumulado de um mes/ano. O ajuste e somado ao delta calculado automaticamente
+// e nao e sobrescrito pelo recalculo do saldo.
+func (h *HorasHandler) HorasExcedidasAjustar(w http.ResponseWriter, r *http.Request) {
+	items, err := h.BasicCRUD.parseBody(r)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	empresaID := middleware.GetEmpresaLogada(r)
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	for _, item := range items {
+		usuarioID := getInt(item, "usuario_id")
+		clienteID := getInt(item, "cliente_id")
+		servicoID := getInt(item, "servico_id")
+		mesOrigem := getInt(item, "mes_origem")
+		anoOrigem := getInt(item, "ano_origem")
+		ajuste := getFloat(item, "ajuste_manual")
+		observacoes := getStr(item, "observacoes")
+
+		if usuarioID <= 0 || clienteID <= 0 || servicoID <= 0 {
+			jsonError(w, "Usuario, cliente e servico sao obrigatorios", http.StatusBadRequest)
+			return
+		}
+		if anoOrigem <= 0 || mesOrigem < 1 || mesOrigem > 12 {
+			jsonError(w, "Ano e mes invalidos", http.StatusBadRequest)
+			return
+		}
+
+		tag, err := tx.Exec(r.Context(), `
+			UPDATE horas_excedidas
+			SET ajuste_manual = $1, observacoes = $2
+			WHERE empresa_id = $3 AND usuario_id = $4 AND cliente_id = $5
+			  AND servico_id = $6 AND mes_origem = $7 AND ano_origem = $8`,
+			ajuste, nullStr(observacoes), empresaID, usuarioID, clienteID, servicoID, mesOrigem, anoOrigem)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if tag.RowsAffected() == 0 {
+			id, err := database.GerarID(r.Context(), tx, empresaID, "horas_excedidas")
+			if err != nil {
+				jsonError(w, "Erro ao gerar ID: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			_, err = tx.Exec(r.Context(), `
+				INSERT INTO horas_excedidas
+					(id, empresa_id, usuario_id, cliente_id, servico_id,
+					 mes_origem, ano_origem, delta_horas, ajuste_manual, observacoes)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9)`,
+				id, empresaID, usuarioID, clienteID, servicoID,
+				mesOrigem, anoOrigem, ajuste, nullStr(observacoes))
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonSuccess(w, map[string]interface{}{"mensagem": "Ajuste de horas excedidas salvo com sucesso"})
+}
+
 func (h *HorasHandler) HorasDashboardListar(w http.ResponseWriter, r *http.Request) {
 	empresaID := middleware.GetEmpresaID(r)
 

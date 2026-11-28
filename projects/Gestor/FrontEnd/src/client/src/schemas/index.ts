@@ -282,6 +282,22 @@ export const pontoExcedenteSchema = z.object({
 });
 
 export type PontoExcedenteFormInput = z.infer<typeof pontoExcedenteSchema>;
+
+export const horaExcedidaAjusteSchema = z.object({
+  usuarioId: z.number().int().positive('Usuario e obrigatorio'),
+  clienteId: z.number().int().positive('Cliente e obrigatorio'),
+  servicoId: z.number().int().positive('Servico e obrigatorio'),
+  competencia: z.string().regex(/^\d{4}-\d{2}$/, 'Competencia invalida'),
+  horas: z.string()
+    .regex(/^-?\d{1,4}:\d{2}(:\d{2})?$/, 'Informe as horas no formato HH:MM:SS (use - para subtrair)')
+    .refine((valor) => {
+      const [, m, s] = valor.replace('-', '').split(':').map(Number);
+      return m < 60 && (s ?? 0) < 60;
+    }, 'Minutos e segundos devem ser menores que 60'),
+  observacoes: z.string().max(500).optional().or(z.literal('')),
+});
+
+export type HoraExcedidaAjusteFormInput = z.infer<typeof horaExcedidaAjusteSchema>;
 export type PontoLancamentoInput = z.infer<typeof pontoLancamentoSchema>;
 export type HoraTrabalhadaInput = z.infer<typeof horaTrabalhadaSchema>;
 export type ServicoInput = z.infer<typeof servicoSchema>;

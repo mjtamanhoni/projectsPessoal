@@ -2108,6 +2108,15 @@ var Migracoes = []Migracao{
 				ADD COLUMN IF NOT EXISTS foto TEXT;
 		`,
 	},
+	{
+		Nome: "047_horas_excedidas_ajuste_manual",
+		SQLUp: `
+			ALTER TABLE public.horas_excedidas
+				ADD COLUMN IF NOT EXISTS ajuste_manual NUMERIC(10, 2) NOT NULL DEFAULT 0;
+			ALTER TABLE public.horas_excedidas
+				ADD COLUMN IF NOT EXISTS observacoes TEXT;
+		`,
+	},
 }
 
 func InitMigracoes(pool *pgxpool.Pool) error {

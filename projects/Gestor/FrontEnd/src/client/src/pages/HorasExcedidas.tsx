@@ -1,17 +1,20 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DataTable, createColumnHelper } from '@/components/ui/DataTable';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/context/ToastContext';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import type { HoraExcedida, Servico } from '@/types';
+import { formatCurrency } from '@/lib/utils';
+import type { HoraExcedida, HoraExcedidaAjusteInput, Servico } from '@/types';
 import { ShowForPermission } from '@/components/ui/ShowForPermission';
 import { ACAO } from '@/lib/permissions';
-import { RefreshCw, TrendingUp, BarChart3 } from 'lucide-react';
+import { RefreshCw, TrendingUp, BarChart3, Plus, RotateCcw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RowActions } from '@/components/ui/RowActions';
+import { HoraExcedidaAjusteForm } from '@/components/forms/HoraExcedidaAjusteForm';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import api from '@/lib/api';
 
@@ -27,11 +30,18 @@ function formatHoras(decimal: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function formatHorasComSinal(decimal: number): string {
+  return decimal < 0 ? `-${formatHoras(decimal)}` : formatHoras(decimal);
+}
+
 export function HorasExcedidas() {
-  const { data: excedidas, loading, error, remove, refetch } = useApi<HoraExcedida>('/horas-excedidas');
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const { data: excedidas, loading, error, refetch } = useApi<HoraExcedida>('/horas-excedidas');
+  const [confirmReset, setConfirmReset] = useState<HoraExcedida | null>(null);
+  const [resetting, setResetting] = useState(false);
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<HoraExcedida | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -67,6 +77,61 @@ export function HorasExcedidas() {
       }));
   }, [excedidas]);
 
+  const handleNovo = () => {
+    setEditing(null);
+    setEditingId(null);
+    setModalOpen(true);
+  };
+
+  const handleEdit = (item: HoraExcedida) => {
+    setEditing(item);
+    setEditingId(item.id ?? item.codigo ?? null);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditing(null);
+    setEditingId(null);
+  };
+
+  const handleSubmit = async (data: HoraExcedidaAjusteInput) => {
+    try {
+      await api.post('/horas-excedidas/ajuste', data);
+      const editando = editingId !== null;
+      handleCloseModal();
+      await refetch({ silent: true });
+      addToast('success', editando ? 'Ajuste atualizado com sucesso' : 'Ajuste lancado com sucesso');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar ajuste';
+      addToast('error', msg);
+    }
+  };
+
+  const handleReset = async () => {
+    if (confirmReset === null) return;
+    setResetting(true);
+    try {
+      await api.post('/horas-excedidas/ajuste', {
+        usuarioId: confirmReset.usuarioId,
+        clienteId: confirmReset.clienteId,
+        servicoId: confirmReset.servicoId,
+        ano: confirmReset.anoOrigem,
+        mes: confirmReset.mesOrigem,
+        ajusteHoras: 0,
+        observacoes: '',
+      } satisfies HoraExcedidaAjusteInput);
+      setConfirmReset(null);
+      await refetch({ silent: true });
+      addToast('success', 'Ajuste manual removido');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao remover ajuste';
+      addToast('error', msg);
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const columns = [
     columnHelper.accessor((row) => `${String(row.mesOrigem).padStart(2, '0')}/${row.anoOrigem}`, {
       id: 'mesAno',
@@ -85,13 +150,27 @@ export function HorasExcedidas() {
       header: 'Servico',
       enableSorting: true,
     }),
+    columnHelper.accessor('ajusteManual', {
+      header: 'Ajuste Manual',
+      cell: (info) => {
+        const val = Number(info.getValue() || 0);
+        if (!val) return <span className="text-text-muted">--</span>;
+        return (
+          <span className={`font-mono font-medium ${val >= 0 ? 'text-amber-600' : 'text-red-600'}`}>
+            {val >= 0 ? '+' : ''}{formatHorasComSinal(val)}
+          </span>
+        );
+      },
+      enableSorting: true,
+      meta: { align: 'right' } as Record<string, string>,
+    }),
     columnHelper.accessor('deltaHoras', {
       header: 'Acumulado (h)',
       cell: (info) => {
         const val = Number(info.getValue());
         return (
           <span className={val >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-            {val >= 0 ? '+' : ''}{formatHoras(val)}
+            {val >= 0 ? '+' : ''}{formatHorasComSinal(val)}
           </span>
         );
       },
@@ -104,35 +183,36 @@ export function HorasExcedidas() {
       enableColumnFilter: false,
       enableSorting: false,
       size: 50,
-      cell: ({ row }) => (
-        <div className="flex justify-end">
-          <RowActions
-            rota="/horas-excedidas"
-            onDelete={() => setConfirmDelete(row.original.id ?? row.original.codigo!)}
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const temAjuste = Number(row.original.ajusteManual || 0) !== 0;
+        return (
+          <div className="flex justify-end">
+            <RowActions
+              rota="/excedidas"
+              onEdit={() => handleEdit(row.original)}
+              extras={temAjuste ? [{
+                rotulo: 'Remover ajuste',
+                icone: RotateCcw,
+                cor: '#ef4444',
+                onClick: () => setConfirmReset(row.original),
+                permissaoRota: '/excedidas',
+                permissaoAcao: ACAO.EDITAR,
+              }] : []}
+            />
+          </div>
+        );
+      },
     }),
   ];
 
-  const handleDelete = async () => {
-    if (confirmDelete === null) return;
-    setDeleting(true);
-    try {
-      await remove(confirmDelete);
-      setConfirmDelete(null);
-      addToast('success', 'Registro excluido com sucesso');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao excluir registro';
-      addToast('error', msg);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   return (
     <Layout>
-      <PageHeader title="Horas Excedidas Acumuladas" subtitle="Acompanhe horas excedidas acumuladas">
+      <PageHeader title="Horas Excedidas Acumuladas" subtitle="Acompanhe e ajuste horas excedidas acumuladas">
+        <ShowForPermission rota="/excedidas" acao={ACAO.EDITAR}>
+          <Button onClick={handleNovo}>
+            <Plus size={18} /> Ajustar
+          </Button>
+        </ShowForPermission>
         <button onClick={() => refetch()} className="p-2 rounded-lg border border-border-primary hover:bg-background-hover transition-colors" title="Atualizar">
           <RefreshCw size={18} className="text-text-secondary" />
         </button>
@@ -147,7 +227,7 @@ export function HorasExcedidas() {
             </div>
             <div>
               <p className={`text-2xl font-bold ${ultimoAcumulado >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {ultimoAcumulado >= 0 ? '+' : ''}{formatHoras(ultimoAcumulado)}
+                {ultimoAcumulado >= 0 ? '+' : ''}{formatHorasComSinal(ultimoAcumulado)}
               </p>
               <p className="text-sm text-text-muted">{formatCurrency(ultimoAcumuladoValor)}</p>
             </div>
@@ -167,7 +247,7 @@ export function HorasExcedidas() {
                   <YAxis tick={{ fill: '#6B706C', fontSize: 10 }} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
-                    formatter={(value: number) => [formatHoras(value), 'Acumulado']}
+                    formatter={(value: number) => [formatHorasComSinal(value), 'Acumulado']}
                   />
                   <Line type="monotone" dataKey="acumulado" stroke="#F59E0B" strokeWidth={2} dot={{ r: 2, fill: '#F59E0B' }} />
                 </LineChart>
@@ -181,15 +261,29 @@ export function HorasExcedidas() {
         <DataTable columns={columns} data={excedidas} loading={loading} error={error} emptyMessage="Nenhum registro encontrado" />
       </Card>
 
+      <Modal
+        isOpen={modalOpen}
+        onClose={handleCloseModal}
+        title={editingId ? 'Alterar Ajuste de Horas Excedidas' : 'Lancar Ajuste de Horas Excedidas'}
+      >
+        <HoraExcedidaAjusteForm
+          key={`hora-excedida-ajuste-form-${editingId ?? 'new'}`}
+          onSubmit={handleSubmit}
+          onCancel={handleCloseModal}
+          initial={editing}
+          editingId={editingId}
+        />
+      </Modal>
+
       <ConfirmDialog
-        isOpen={confirmDelete !== null}
-        onClose={() => setConfirmDelete(null)}
-        onConfirm={handleDelete}
-        title="Excluir Registro"
-        message="Tem certeza que deseja excluir este registro? Esta acao nao pode ser desfeita."
+        isOpen={confirmReset !== null}
+        onClose={() => setConfirmReset(null)}
+        onConfirm={handleReset}
+        title="Remover Ajuste Manual"
+        message="Tem certeza que deseja remover o ajuste manual desta competencia? O saldo acumulado voltara a ser calculado apenas automaticamente."
         variant="danger"
-        confirmLabel="Excluir"
-        loading={deleting}
+        confirmLabel="Remover"
+        loading={resetting}
       />
     </Layout>
   );

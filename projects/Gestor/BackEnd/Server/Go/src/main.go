@@ -477,9 +477,10 @@ carregar();
 		r.Delete("/horasAbatidas", horasHandler.HorasAbatidasExcluir)
 
 		// Horas Excedidas
-		r.Get("/horasExcedidas", horasHandler.HorasExcedidasListar)
-		r.Post("/horasExcedidas", horasHandler.HorasExcedidasAtualizar)
-		r.Delete("/horasExcedidas", horasHandler.HorasExcedidasExcluir)
+	r.Get("/horasExcedidas", horasHandler.HorasExcedidasListar)
+	r.Post("/horasExcedidas", horasHandler.HorasExcedidasAtualizar)
+	r.Post("/horasExcedidas/ajuste", horasHandler.HorasExcedidasAjustar)
+	r.Delete("/horasExcedidas", horasHandler.HorasExcedidasExcluir)
 
 		// Ponto Eletronico
 		r.Get("/pontoLancamentos", pontoHandler.PontoLancamentosListar)
