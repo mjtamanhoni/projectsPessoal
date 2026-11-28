@@ -7,7 +7,7 @@ import { RegistroSelect } from '@/components/ui/RegistroSelect';
 import { Spinner } from '@/components/ui/Spinner';
 import { Save } from 'lucide-react';
 import { horaExcedidaAjusteSchema, type HoraExcedidaAjusteFormInput } from '@/schemas';
-import { competenciaAtual, formatHoras, parseHorasTexto } from '@/lib/ponto';
+import { competenciaAtual, formatHoras, mascararHoras, parseHorasTexto } from '@/lib/ponto';
 import type { HoraExcedida, HoraExcedidaAjusteInput, Usuario, Cliente, Servico } from '@/types';
 import api from '@/lib/api';
 
@@ -38,7 +38,7 @@ export function HoraExcedidaAjusteForm({ onSubmit, onCancel, initial, editingId 
   const competenciaInicial = initial
     ? `${initial.anoOrigem}-${String(initial.mesOrigem).padStart(2, '0')}`
     : competenciaAtual();
-  const horasIniciais = initial ? formatHorasComSinal(initial.ajusteManual ?? 0) : '00:00:00';
+  const horasIniciais = initial ? formatHorasComSinal(initial.ajusteManual ?? 0) : '';
 
   const { handleSubmit, formState: { errors }, control } = useForm<HoraExcedidaAjusteFormInput>({
     resolver: zodResolver(horaExcedidaAjusteSchema),
@@ -164,16 +164,21 @@ export function HoraExcedidaAjusteForm({ onSubmit, onCancel, initial, editingId 
               placeholder="00:00:00"
               error={errors.horas?.message}
               className="font-mono"
+              inputMode="numeric"
               {...field}
+              onChange={(e) => field.onChange(mascararHoras(e.target.value))}
+              onFocus={(e) => e.target.select()}
             />
           )}
         />
       </div>
 
       <p className="text-xs text-text-muted">
-        Aceita valores acima de 24h e negativos (ex.: <span className="font-mono">33:45:15</span> ou{' '}
-        <span className="font-mono">-02:00:00</span>). O ajuste e somado ao saldo acumulado calculado
-        automaticamente a partir da competencia informada.
+        Digite os numeros: a mascara preenche da direita para a esquerda
+        (<span className="font-mono">0</span> → <span className="font-mono">0:10</span> →{' '}
+        <span className="font-mono">01:00:09</span>). Aceita valores acima de 24h e negativos (ex.:{' '}
+        <span className="font-mono">33:45:15</span> ou <span className="font-mono">-02:00:00</span>). O ajuste e
+        somado ao saldo acumulado calculado automaticamente a partir da competencia informada.
       </p>
 
       <Controller

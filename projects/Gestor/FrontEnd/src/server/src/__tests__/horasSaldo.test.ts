@@ -306,6 +306,22 @@ describe('recalcularSaldoAcumulado', () => {
     expect(total).toBe(0);
     expect(api.salvos).toHaveLength(0);
   });
+
+  it('preserva os segundos do ajuste manual no saldo', async () => {
+    const api = criarApiFake({
+      servicos: [servico()],
+      trabalhos: [trabalho(2026, 6, 10, 10)],
+      abatidas: [],
+      excedidas: [{ ...excedida(2026, 6, 0, 1), ajusteManual: 1.0025 }],
+    });
+
+    await recalcularSaldoAcumulado(
+      [{ usuarioId: USUARIO, clienteId: CLIENTE, servicoId: SERVICO, ano: 2026, mes: 6 }],
+      { agora: new Date(2026, 5, 15), api },
+    );
+
+    expect(api.salvos[0][0].deltaHoras).toBeCloseTo(11.0025, 6);
+  });
 });
 
 describe('referencias', () => {

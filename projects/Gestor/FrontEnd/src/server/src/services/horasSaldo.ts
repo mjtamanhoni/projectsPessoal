@@ -59,7 +59,7 @@ function parseIntervalToDecimal(intervalo: string): number {
 }
 
 function arredondar(valor: number): number {
-  return Math.round((valor + Number.EPSILON) * 100) / 100;
+  return Math.round((valor + Number.EPSILON) * 1_000_000) / 1_000_000;
 }
 
 function chaveCadeia(usuarioId: number, clienteId: number, servicoId: number): string {
@@ -241,7 +241,7 @@ export async function recalcularSaldoAcumulado(
       const ajuste = Number(existente?.ajusteManual) || 0;
       saldo = arredondar(saldo + (trabalhadasPorMes.get(chave) ?? 0) - (abatidasPorMes.get(chave) ?? 0) - horasMinimas + ajuste);
 
-      if (existente && Math.abs(Number(existente.deltaHoras) - saldo) < 0.005) continue;
+      if (existente && Math.abs(Number(existente.deltaHoras) - saldo) < 0.000001) continue;
 
       paraSalvar.push({
         ...(existente?.id ? { id: existente.id } : {}),

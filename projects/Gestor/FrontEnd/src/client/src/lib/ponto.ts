@@ -13,6 +13,28 @@ export function parseHorasTexto(valor: string): number {
   return h + m / 60 + s / 3600;
 }
 
+// Mascara de horas que preenche os digitos da direita para a esquerda
+// (segundos -> minutos -> horas), no mesmo estilo de um campo monetario.
+export function mascararHoras(valor: string): string {
+  const negativo = (valor || '').trim().startsWith('-');
+  const digitos = (valor || '').replace(/\D/g, '').slice(-8);
+  const sinal = negativo ? '-' : '';
+  if (!digitos) return sinal;
+
+  const segundos = digitos.slice(-2);
+  const resto = digitos.slice(0, -2);
+  const minutos = resto.slice(-2);
+  const horas = resto.slice(0, -2);
+
+  if (horas) {
+    return `${sinal}${horas}:${minutos.padStart(2, '0')}:${segundos.padStart(2, '0')}`;
+  }
+  if (minutos) {
+    return `${sinal}${minutos}:${segundos.padStart(2, '0')}`;
+  }
+  return `${sinal}${segundos}`;
+}
+
 export function competenciaAtual(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
